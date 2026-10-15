@@ -1,0 +1,106 @@
+# Parity with the reference viewer
+
+Behaviour observed black-box in the reference viewer (see "Clean-room rules" in `AGENTS.md`),
+written in our own words. Not requirements: an item becomes one only when it lands in
+`docs/spec.md`.
+
+Status: `v1` (already in the spec), `later`, `won't` (with a one-line reason), `open` (undecided).
+
+Observed 2026-10-16, default settings, Windows 11 ARM VM, test folder of 12 generated images in
+5 formats plus a corrupt file, a text file and a hidden file. Keys below are physical keys; the VM
+has a German layout, so `+`/`−` were checked on the numpad and the German `+`/`-` keys.
+
+## Browsing
+
+| Area | Observed behaviour | Featherview | Status |
+|---|---|---|---|
+| Folder list | Opening a file lists its folder in natural order (img2 before img10), case-insensitive. | Same. | v1 |
+| Folder list | Hidden files are listed and count toward the total. | Skip hidden files (Finder hides them too). | v1 |
+| Folder list | Corrupt files with an image extension are listed and count toward the total. | Same: listed, shown as an error when reached. | v1 |
+| Folder list | The list is refreshed on a key (F5) to pick up new files. | Refresh automatically when the folder changes; no key needed. | open |
+| Next / previous | → Space Page Down and wheel-down go to the next file; ← Backspace Page Up and wheel-up go back. | Same keys. Decided: the wheel / two-finger scroll pans, never navigates. | v1 |
+| Next / previous | ↑ ↓ do not change images. ← → and ↑ ↓ scroll instead when the image is larger than the window. | Decided: arrows pan when the image is larger than the window, navigate otherwise; two-finger scroll pans. | v1 |
+| First / last | Home / End jump to first / last (Ctrl variants do the same). | Same. | v1 |
+| End of folder | Going past the last (or before the first) file opens a small folder browser starting at the current folder: restart this folder, go up (←), or enter a subfolder (→ / Space). Siblings are listed in plain alphabetical order (d10 before d2) with image counts filled in only once visited. Every hop takes several keys. | Decided: → past the last image jumps straight to the next folder, no dialog (spec). Open: siblings only, or also subfolders; what happens after the last sibling. | v1 (details open) |
+| Random | A key shows a random file of the folder. | Not in spec. | open |
+| Corrupt file | Reaching a corrupt file shows a modal error with the full path; after dismissing it the window is empty but → continues from that position. | Spec: inline "Can't open <name>", no modal, browsing continues. Keep ours. | v1 |
+
+## Display
+
+| Area | Observed behaviour | Featherview | Status |
+|---|---|---|---|
+| Window size | The window resizes to each image (and grows with zoom): small images at 100 %, large images shrunk to fit the screen. The window has a minimum width; small images are centred on black. | Decided: the window stays put; only the image changes. | v1 |
+| Fit default | Only images larger than the screen are shrunk; small ones stay at 100 %. | Same as spec ("never enlarges small ones"). | v1 |
+| Fit modes | Many fit modes exist (to window, to width, to height, to screen, none) with a few on Shift+letter keys. | Spec has fit (0) and actual size (1) only. | later |
+| Zoom | `+` / `−` zoom in ×1.1 steps (100 → 110 → 121 %). The window grows with the zoom up to the screen size. | Decided: ×1.1 steps; window stays put. | v1 |
+| Actual size | Ctrl+H shows 100 %. Digits 0–9 do nothing. | Spec: `1` actual size, `0` fit (no clash). | v1 |
+| Title bar | Shows the filename and, when scaled, the displayed size in pixels. A leading `*` marks unsaved edits. | Spec: `filename — 3 / 120`. | v1 |
+| Status bar | Shows pixel size and bit depth, position N/M, zoom %, file size / memory size, file date. | Not in spec. Position is in our title. Consider a minimal status line. | open |
+| Full screen | Enter (or double-click) toggles full screen: black background, image fit to the screen, a small overlay with full path and position in the corner. Esc leaves full screen. | Decided: F, Return and double-click toggle; Esc leaves. Position overlay still open. | v1 |
+| Full screen | A left click does nothing; a right click goes to the previous image. | Not in spec (right-click on a Mac means a context menu). | open |
+| Esc in window | Esc quits the program when not in full screen (confirmed twice). | Decided: Esc never quits; ⌘Q quits. | v1 |
+
+## Actions
+
+| Area | Observed behaviour | Featherview | Status |
+|---|---|---|---|
+| Rotate | R / L rotate the displayed image right / left instantly. Not marked as an edit; navigating away discards the rotation silently and the file is unchanged. | Spec: R / L rotate losslessly and write it to the file (EXIF orientation). Ours is a deliberate difference. | v1 |
+| Lossless rotate | A separate dialog (Shift+J) does lossless JPEG rotation on files. | Covered by our R / L. | v1 |
+| Flip | V / H flip vertically / horizontally. | Not in spec (editing). | later |
+| Delete | Delete moves the current file to the Recycle Bin at once, with no confirmation. The deleted image stays on screen; the list shrinks; → continues with the next file. | Spec: ⌘⌫ moves to Trash and shows the next image. Keep ours (Mac convention, and the next image appears at once). | v1 |
+| Unsaved edits | Navigating away from an edited image discards the edit with no prompt. | We don't edit pixels, so nothing to discard. | won't (no pixel editing in v1) |
+| Info | I opens a modal dialog with file name, folder, compression, sizes, colours, file and memory size, list position, file date and load time. | Spec: I toggles a non-modal side panel with camera data. Consider adding load time to our log only. | v1 |
+| Batch | B opens batch conversion / rename. | Spec: ⌘B. | v1 |
+| Thumbnails | T opens a separate window: folder tree on the left, grid of thumbnails with names in natural order, orientation applied, corrupt files shown with a "not allowed" symbol, text files rendered too. | Not in spec. | later |
+| Slideshow | W opens slideshow setup. | Out of scope (slideshows). | won't (out of scope) |
+| Open / save | O opens a file, S saves as, Ctrl+S saves in place, Shift+R reopens. | Spec: ⌘O. Saving is out of scope (no pixel edits). | v1 (open), won't (save) |
+| File ops | F2 rename. F7 move / F8 copy open a list of up to 14 remembered destination folders, picked by a single key (1–9, then letters); missing folders are created. A copy happens silently; the image stays on screen. A move removes the file from the list but the moved image stays on screen. On a name clash it asks (replace / skip / rename, with both files' size, date and preview); overwrite and auto-number are alternatives. | Decided: F7 / F8 in v1. Ours never overwrites (" 2" suffix, no prompt) and shows the next image after a move. Open: numbered destination slots (the key speed feature) vs a single last-used folder. F2 rename is open. | v1 (details open) |
+| Clipboard | Ctrl+C copies the displayed image at full resolution with orientation applied (checked: 400×800 from a tagged 800×400 JPEG). Ctrl+V pastes an image as a new document. | Decided: ⌘C copies (spec). Paste: won't (no documents). | v1 |
+| Other single keys | P settings, A about, C screen capture, M minimise, G animation, U/F5 refresh, D clear display, K filter plugin (marks image as edited), X shows a marker in the status bar (meaning unclear). E, J, N, Q, Y, Z and digits do nothing. | Only navigation, rotate, info, full screen and zoom keys are in our spec. | open |
+
+| Orientation | A JPEG with an EXIF orientation tag (6) is shown upright. | Same (spec). | v1 |
+| Instances | Opening a second file from outside starts a second window; each has its own folder list. | Open: one window that switches to the new file (Mac norm), or one window per file. | open |
+| Text files | A .txt file in the folder is listed and rendered as a tiny picture of its text. | Only decodable images are listed (spec). | v1 |
+
+## Batch
+
+| Area | Observed behaviour | Featherview | Status |
+|---|---|---|---|
+| Modes | Convert, rename, or convert and rename. | Spec: convert with optional rename. Rename-only (no re-encode) is open. | open |
+| Inputs | A file browser plus add, add all (skips hidden and non-image files, but includes corrupt ones), remove, remove all, sort, move up/down, save/load the list as text, optional subfolders. The list is grouped by type, not natural order. | Spec: Add Files, Use Viewer's Folder, Clear. Subfolders and list save/load: later. | v1 |
+| Output folder | Default is a fixed temp folder; a button uses the browsed folder; placeholders allowed in the path. | Spec: chosen by the user. | v1 |
+| Rename | Pattern with `#` as counter digits (default image###). The counter advances only on success. A test-rename button previews names. | Spec: `{name}`, `{n}`, `{n:3}`. Counter-on-success and a rename preview are open. | open |
+| Errors | A corrupt file gets an error line in the log and the batch continues. | Same (spec). | v1 |
+| Clashes | With overwrite off (default), an existing output is skipped with a warning; nothing is written for that file. | Spec: never overwrite, append " 2". Ours writes every file. | v1 |
+| Orientation | Output pixels are upright and the orientation tag is reset to 1. | Same (spec). | v1 |
+| Progress | A log window lists each input and its result, a summary of files and errors, and buttons to copy the log, stop, pause/resume, go back to the batch, or exit. | Spec: progress, "N converted, M failed", one line per failure. Stop and copy-log are open. | open |
+| Threads | Multithreading is optional and off by default (5 threads offered). | Spec: always parallel on all cores but one. | v1 |
+| Advanced | Per-batch operations: crop; resize by width/height, long side, short side, megapixels or percent, with keep-aspect, don't-enlarge and don't-shrink switches and DPI; colour depth; flip, rotate, greyscale, negative, auto colours, auto-crop borders, canvas, text/watermark overlay, border, replace colour, channel swap; sharpen, brightness, contrast, gamma, saturation, colour balance, blur, fine rotation; misc: overwrite, delete originals, subfolders in destination, keep file date, processing order, save/load presets. | Spec: limit longest side, never upscale. Candidates: percent resize, rotate/flip, greyscale, keep file date, presets. Rest is editing: out of scope. | open |
+
+
+## Formats and options (batch and Save As share the same option dialogs)
+
+| Area | Observed behaviour | Featherview | Status |
+|---|---|---|---|
+| Output formats | 20 output formats: BMP, ECW, EMF, GIF, ICO, JLS, JPEG 2000, JPEG, JPEG XL, PCX, PBM, PDF, PGM, PNG, PPM, QOI, RAW, TGA, TIFF, WebP. No HEIC. | ImageIO formats + own PGM/PPM/QOI/PCX + WebP via libwebp; JPEG XL writing in v2; HEIC and AVIF beyond the reference. | v1 |
+| JPEG options | Quality (default 80), progressive, no chroma subsampling, keep EXIF/IPTC/XMP/comment (on), reset orientation (on), reuse original quality, target file size, profiles. | Spec "Format options". | v1 |
+| PNG options | Compression level 0–9 (default 6), custom transparent colour, optional extra optimiser. | Spec (effort levels). | v1 |
+| TIFF options | None / LZW / PackBits / JPEG / ZIP, three bilevel codecs, keep all pages, greyscale palette. | Spec (bilevel codecs: later). | v1 |
+| WebP options | Preset (default/photo/picture/drawing/icon/text), lossless or quality (default 75), method 0–6 (default 4), passes, filter strength, sharpness. | Spec (passes / filter / sharpness: later). | v1 |
+| Rename options | Old-name placeholder and `#` digits; start and step for the counter; remember last counter; three find/replace pairs; rename-only mode copies, moves or renames in place; clash: error / numbered duplicate / overwrite; profiles. | Spec: placeholders, counter, preview, presets. Open: counter start/step, find/replace, rename in place. | open |
+
+## Preferences (P)
+
+16 pages. Relevant behaviour: start folder, single instance (off), start in full screen, warning on Esc-quit (off), auto-rotate by EXIF (on), play animated GIFs (on), file types browsed, transparency checkerboard (on), dark mode (off), remember window frame (on), background colour, status-bar template; browsing: end-of-folder = browser / loop / stop, show hidden files (on), wheel navigates only without scrollbars; full screen: 7 fit modes on digits 1–7, centring on C, overlay text template, hide cursor; zoom step 10 % (relative/absolute/table); colour management off (plugin); file handling: default copy/move folders, confirm delete, jump to next after delete/move (off), sidecar files (THM/XMP) moved along (off), save/overwrite prompts; misc: recent files and folders, 3 external editors, any unused key ends full screen. Featherview: see spec "Settings" (Mac-style, our defaults differ where noted).
+
+## Opening
+
+| Area | Observed behaviour | Featherview | Status |
+|---|---|---|---|
+| Drag and drop | Dropping a file on the window opens it and lists its folder (subfolders not included). | Same (spec). | v1 |
+
+## Not checked yet
+
+Opening a folder directly, reading HEIC/AVIF/RAW in the reference, the meaning of X, options of
+the remaining output formats, the advanced-options dialogs in detail, speed on a 10,000-file
+folder.

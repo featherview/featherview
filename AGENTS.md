@@ -1,0 +1,106 @@
+# Featherview — agent guide
+
+A fast, keyboard-driven image viewer for macOS with batch conversion. Open source.
+Mac only. Native Swift.
+
+- What to build: `docs/spec.md` (the product spec, the only source of requirements)
+- In what order: `docs/roadmap.md` (five milestones; one detailed plan per milestone)
+- How to build it: `docs/superpowers/plans/` (task-by-task plans, newest first by date)
+
+## Clean-room rules (non-negotiable)
+
+Featherview is a clean-room project inspired by the *workflow* of classic Windows viewers.
+It must never derive from another product's code or assets. Its *behaviour* may be observed.
+
+- The reference viewer runs in the maintainer's Windows VM (installed by the maintainer) and may
+  be **observed black-box**: use it as a user would and note what happens. Screenshots of its
+  window only (never the whole screen) go to `research/screenshots/`, which is gitignored and
+  never committed. See the `observe-reference` skill.
+- Do not open, download, read, disassemble or decompile any other viewer's binaries, plugins,
+  installers, help files or bundled files. Do not browse its website, help or FAQ.
+- Observed behaviour goes into `docs/parity.md` in our own words, then into `docs/spec.md` once
+  the maintainer accepts it for a release. `docs/spec.md` stays the only source of requirements;
+  if it is silent, ask the maintainer or decide from first principles and record it there.
+- Matching single-key shortcuts is allowed (it's behaviour, and helps people switching over).
+  Do not copy icons, images, UI text, help text, dialog or settings layouts — not even by
+  cropping or tracing a screenshot. Our UI is designed for the Mac.
+- The name "IrfanView" may appear only in README.md, in a "not affiliated" disclaimer or a
+  plain "alternative to" description. Never in code, UI, bundle names or commit messages.
+- No cat imagery in icons or branding.
+
+## Stack and decisions (fixed — do not change without the maintainer)
+
+| Topic | Decision |
+|---|---|
+| Language | Swift 6, strict concurrency (the package's default language mode) |
+| UI | SwiftUI app shell, AppKit where SwiftUI lacks something (open panels, full screen) |
+| Imaging | ImageIO first (decode/encode/metadata). A third-party codec only for a format ImageIO can't handle (today: WebP encoding; JPEG XL encoding in v2) |
+| Dependencies | Open-source codec libraries are allowed if all hold: permissive licence (BSD/MIT/Apache/zlib), built from source by SwiftPM (C target or package, no prebuilt binaries), used only when that format is read or written, and no measurable cost to the performance budgets (launch, browsing, memory). Anything else: ask first. Record each one in README.md with its licence. |
+| Build | Swift Package Manager + `scripts/bundle.sh` (no .xcodeproj) |
+| Tests | Swift Testing (`import Testing`, `@Test`, `#expect`) in `Tests/FeatherviewCoreTests` |
+| Min macOS | 14.0 (Sonoma) |
+| Bundle ID | `net.mynetx.featherview` — never change it: macOS keys settings and permissions to it |
+| Public URL | `featherview.mynetx.net` — any future update feed (Sparkle appcast) lives here, never on github.io |
+| Repo | github.com/mynetx/featherview (may move to the `featherview` org later; GitHub redirects) |
+| License | Not chosen yet — ask the maintainer; do not add a LICENSE file on your own |
+
+## Commands
+
+Full Xcode must be installed and selected (`sudo xcode-select -s /Applications/Xcode.app`).
+With only the Command Line Tools, `swift build` of the core works, but `swift test` fails
+(Swift Testing macros missing) and the SwiftUI app fails (`@State` macro plugin missing).
+
+```sh
+swift build                      # debug build of everything
+swift test                       # all tests
+swift test --filter ImageListTests   # one suite
+scripts/bundle.sh debug          # build/Featherview.app (ad-hoc signed)
+open build/Featherview.app
+open -a build/Featherview.app ~/Pictures/some.jpg   # open a file with it
+```
+
+## Layout
+
+```
+Sources/FeatherviewCore/   pure logic, no SwiftUI/AppKit — everything here is unit-tested
+Sources/Featherview/       the app: views, menus, keyboard, windows (thin, manually tested)
+Tests/FeatherviewCoreTests/ Swift Testing suites; Fixtures.swift generates test images
+Resources/Info.plist       bundle metadata, copied by scripts/bundle.sh
+docs/spec.md               product spec
+docs/parity.md             behaviour observed in the reference viewer (not requirements)
+docs/roadmap.md            milestones and which plan implements each
+docs/superpowers/plans/    implementation plans
+```
+
+Rule of thumb: if logic can be tested without a window, it belongs in FeatherviewCore.
+
+## Performance budgets (treat a regression as a bug)
+
+| Budget | Target |
+|---|---|
+| Cold launch with a file to first image on screen | < 300 ms (12 MP JPEG, Apple Silicon) |
+| Next/previous image when prefetched | no visible delay (< 16 ms to swap) |
+| Next/previous image, not prefetched | < 150 ms (12 MP JPEG) |
+| Opening a folder of 10,000 files | < 500 ms to first image, UI never blocks |
+| Memory while browsing | bounded by the 8-image cache, decoded at screen size |
+
+How: decode off the main thread at screen size (ImageIO thumbnail API), prefetch 2 neighbours each
+way, never touch file contents while scanning a folder. Measure: the app logs how long each image
+took to appear — `log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'`.
+Use Instruments (Time Profiler) to find where time goes.
+
+## Conventions
+
+- TDD for FeatherviewCore: failing test first, then code. Test images come from `Fixtures`,
+  never committed binaries.
+- Never lose user data: write to a temp file and swap in; never overwrite existing files in
+  batch output; delete means move to Trash.
+- User-facing errors are short sentences naming the file ("Can't open IMG_1234.jpg"), never
+  raw error dumps; one bad file never stops browsing or a batch.
+- Keep `shortcut:` comments for known limits, in the form `shortcut: <limit>, <when to upgrade>`.
+- Commit messages: conventional commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
+
+## Out of scope for v1
+
+Plugins, interactive painting/editing (batch operations are in, see spec), scanning, OCR, printing, slideshows with effects,
+animated GIF playback (first frame only), lossless JPEG crop, video, Windows/Linux, auto-update.

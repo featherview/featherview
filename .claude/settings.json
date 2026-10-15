@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(swift build:*)",
+      "Bash(swift test:*)",
+      "Bash(scripts/bundle.sh:*)",
+      "Bash(open build/Featherview.app:*)",
+      "Bash(open -a build/Featherview.app:*)",
+      "Bash(log show:*)",
+      "Bash(log stream:*)",
+      "Bash(sips:*)",
+      "Bash(screencapture:*)",
+      "Bash(pkill -x Featherview)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "WebFetch|WebSearch",
+        "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/clean-room.sh" }]
+      }
+    ]
+  }
+}
