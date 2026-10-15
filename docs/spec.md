@@ -200,8 +200,13 @@ remembered per format and can be saved as named profiles.
 
 See "Out of scope for v1" in `AGENTS.md`.
 
+## Distribution
+
+Decided 2026-10-16: releases are ad-hoc signed and not notarized (no paid Apple Developer
+account). README.md tells users how to open the app the first time. Revisit if someone sponsors
+the $99/year Apple Developer Program; then sign with Developer ID and notarize.
+
 ## Open decisions for the maintainer
 
 - License (MIT, Apache-2.0 or GPL-3.0).
 - App icon (no cat imagery).
-- Signing and notarization for public releases (needs an Apple Developer account).
