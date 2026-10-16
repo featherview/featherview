@@ -75,6 +75,25 @@
 	<array>
 		<dict>
 			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.jfif</string>
+			<key>UTTypeDescription</key>
+			<string>JPEG image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.jpeg</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>jfif</string>
+					<string>jif</string>
+					<string>jfi</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
 			<string>net.mynetx.featherview.qoi</string>
 			<key>UTTypeDescription</key>
 			<string>QOI image</string>
