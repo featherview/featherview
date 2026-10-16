@@ -398,6 +398,32 @@ final class ViewerModel {
         }
     }
 
+    /// S / ⇧⌘S: writes the shown image (its page, upright) in any writable format, then shows the
+    /// saved file in its folder if Featherview can read it; otherwise the original stays.
+    func saveAs() {
+        guard let url = list.current, !list.isHolding else { return }
+        let page = page
+        Task {
+            guard let choice = await SavePanel.run(for: url, window: window) else { return }
+            let target = choice.url
+            let previous = rotateTask
+            // Queued behind rotations, like Trash and moves: one still running would give the old image.
+            rotateTask = Task {
+                await previous?.value
+                do {
+                    try await Task.detached(priority: .userInitiated) {
+                        try ImageSaver.save(url, page: page, to: target, as: choice.format, options: choice.options)
+                    }.value
+                    guard ImageFormats.isDecodable(target) else { return }
+                    await cache.remove(target)  // it may have replaced a listed file
+                    open(target)
+                } catch {
+                    errorMessage = String(localized: "Couldn't save \(target.lastPathComponent)")
+                }
+            }
+        }
+    }
+
     /// Lets the user pick a slot's folder; returns false if they cancelled.
     @discardableResult
     func chooseFolder(for slot: Int) -> Bool {
