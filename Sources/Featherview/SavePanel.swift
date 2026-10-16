@@ -13,11 +13,13 @@ enum SavePanel {
         panel.directoryURL = url.deletingLastPathComponent()
         let choice = Choice(format: FormatSettings.lastFormat())
         let setType = { (format: OutputFormat) in
-            // macOS then puts the format's extension on the name.
             if let type = format.type { panel.allowedContentTypes = [type] }
+            // Our extension, or macOS picks the type's preferred one (.pbm for PPM, .jpeg for JPEG).
+            let base = URL(fileURLWithPath: panel.nameFieldStringValue.isEmpty ? url.lastPathComponent
+                                                                                : panel.nameFieldStringValue)
+            panel.nameFieldStringValue = format.fileName(for: base)
         }
         setType(choice.format)
-        panel.nameFieldStringValue = url.deletingPathExtension().lastPathComponent
         let accessory = NSHostingView(rootView: Accessory(choice: choice, formatChanged: setType))
         accessory.sizingOptions = [.intrinsicContentSize]
         accessory.frame.size = accessory.fittingSize
