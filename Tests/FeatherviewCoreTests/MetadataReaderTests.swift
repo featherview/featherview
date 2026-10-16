@@ -79,6 +79,13 @@ import Testing
         #expect(exposure(2.5) == decimal(2.5))
     }
 
+    @Test func formatsDateTakenWithTheSystemFormatter() {
+        let date = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2026, month: 8, day: 14, hour: 18, minute: 32, second: 5))!
+        #expect(MetadataReader.taken("2026:08:14 18:32:05") == date.formatted(date: .abbreviated, time: .shortened))
+        #expect(MetadataReader.taken("0000:00:00 00:00:00") == nil)  // cameras without a clock write this
+        #expect(MetadataReader.taken("garbage") == nil)
+    }
+
     @Test func fileSizeFollowsSymlinks() throws {
         let dir = try Fixtures.makeTempDir()
         let target = try Fixtures.writeImage(to: dir.appendingPathComponent("r.jpg"), width: 8, height: 8)

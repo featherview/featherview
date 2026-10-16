@@ -34,7 +34,7 @@ public enum MetadataReader {
         add("Camera", camera(make: tiff[kCGImagePropertyTIFFMake] as? String,
                              model: tiff[kCGImagePropertyTIFFModel] as? String))
         add("Lens", exif[kCGImagePropertyExifLensModel] as? String)
-        add("Taken", exif[kCGImagePropertyExifDateTimeOriginal] as? String)
+        add("Taken", (exif[kCGImagePropertyExifDateTimeOriginal] as? String).flatMap(taken))
         if let seconds = exif[kCGImagePropertyExifExposureTime] as? Double, seconds > 0 {
             add("Exposure", exposure(seconds))
         }
@@ -52,6 +52,17 @@ public enum MetadataReader {
         let brand = make.split(separator: " ").first.map(String.init) ?? ""
         if make.isEmpty || model.lowercased().hasPrefix(brand.lowercased()) { return model }
         return model.isEmpty ? make : "\(make) \(model)"
+    }
+
+    /// EXIF stores local wall time as "yyyy:MM:dd HH:mm:ss" (Gregorian, no time zone); shown in the
+    /// system's date format. nil for placeholders like "0000:00:00 00:00:00".
+    static func taken(_ exif: String) -> String? {
+        let n = exif.split(whereSeparator: { $0 == ":" || $0 == " " }).compactMap { Int($0) }
+        guard n.count == 6, n[0] > 0, (1...12).contains(n[1]), (1...31).contains(n[2]),
+              let date = Calendar(identifier: .gregorian).date(from: DateComponents(
+                  year: n[0], month: n[1], day: n[2], hour: n[3], minute: n[4], second: n[5]))
+        else { return nil }
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 
     /// 1/N for fast shutters and exact unit fractions (1/2, 1/3); decimal seconds otherwise (0.8 s, 2 s).
