@@ -123,11 +123,11 @@ struct ByteReader {
     mutating func skip(_ count: Int) throws { _ = try take(count) }
 }
 
-/// Pixel counts our decoders accept: one decode holds at most 256 MiB of RGBA, and up to five run at
-/// once while prefetching. Decoders must also check the data is long enough for the size (allowing
-/// for their compression) before they allocate `RGBAImage`, so a 100-byte file can't claim 256 MiB.
-// shortcut: 64 megapixels, the largest of our formats' real files are far below; raise it if one isn't.
-let maxOwnPixels = 1 << 26
+/// Pixel counts our decoders accept: 256 MP (the plan's limit), so one decode holds at most 1 GiB of RGBA.
+/// Decoders must also check the data is long enough for the size (allowing for their compression)
+/// before they allocate `RGBAImage`, so a 100-byte file can't claim a gigabyte.
+// shortcut: 256 megapixels, the largest of our formats' real files are far below; raise it if one isn't.
+let maxOwnPixels = 1 << 28
 
 func checkedSize(_ width: Int, _ height: Int) throws -> (Int, Int) {
     guard width > 0, height > 0, width <= 1 << 16, height <= 1 << 16, width * height <= maxOwnPixels

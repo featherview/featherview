@@ -99,8 +99,9 @@ import Testing
         #expect(reader.isAtEnd)
     }
 
-    @Test func pixelCapKeepsOneDecodeAtAFewHundredMegabytes() {
-        #expect(throws: OwnDecodeError.corrupt) { try checkedSize(16384, 16384) }
-        #expect((try? checkedSize(8192, 8192)) != nil)
+    @Test func pixelCapIs256Megapixels() {
+        #expect((try? checkedSize(16384, 16384)) != nil)
+        #expect((try? checkedSize(65536, 4096)) != nil)
+        #expect(throws: OwnDecodeError.corrupt) { try checkedSize(65536, 4097) }
     }
 }
