@@ -20,13 +20,37 @@ enum SavePanel {
         }
         // A new panel's name field says "Untitled", so the first name comes from the image.
         setType(choice.format, url)
-        let accessory = NSHostingView(rootView: Accessory(choice: choice) { setType($0, URL(fileURLWithPath: panel.nameFieldStringValue)) })
-        accessory.sizingOptions = [.intrinsicContentSize]
-        // Auto Layout, not a fixed frame: the panel sizes itself to the accessory.
-        accessory.translatesAutoresizingMaskIntoConstraints = false
+        // AppKit, not SwiftUI: in the panel's accessory a SwiftUI picker took the button's clicks, and
+        // a SwiftUI sheet from there is unreliable. The options open as a sheet on the panel.
+        let formats = FormatRegistry.writable
+        let popUp = NSPopUpButton()
+        // Item by item: addItems(withTitles:) drops repeated titles, which would shift the indices.
+        for format in formats { popUp.menu?.addItem(withTitle: format.name, action: nil, keyEquivalent: "") }
+        popUp.selectItem(at: formats.firstIndex(of: choice.format) ?? 0)
+        let optionsButton = NSButton(title: String(localized: "Options…"), target: nil, action: nil)
+        optionsButton.isEnabled = !choice.format.optionFields.isEmpty
+        let formatChanged = Target {
+            choice.format = formats[popUp.indexOfSelectedItem]
+            choice.options = FormatSettings.options(for: choice.format)
+            optionsButton.isEnabled = !choice.format.optionFields.isEmpty
+            setType(choice.format, URL(fileURLWithPath: panel.nameFieldStringValue))
+        }
+        let showOptions = Target {
+            let sheet = NSWindow(contentViewController: NSHostingController(rootView: OptionsSheet(choice: choice) {
+                if let sheet = panel.attachedSheet { panel.endSheet(sheet) }
+            }))
+            panel.beginSheet(sheet)
+        }
+        popUp.target = formatChanged
+        popUp.action = #selector(Target.fire)
+        optionsButton.target = showOptions
+        optionsButton.action = #selector(Target.fire)
+        let accessory = NSStackView(views: [NSTextField(labelWithString: String(localized: "Format:")), popUp, optionsButton])
+        accessory.edgeInsets = NSEdgeInsets(top: 12, left: 20, bottom: 12, right: 20)
         panel.accessoryView = accessory
 
         let response = if let window { await panel.beginSheetModal(for: window) } else { panel.runModal() }
+        withExtendedLifetime((formatChanged, showOptions)) {}
         guard response == .OK, let target = panel.url else { return nil }
         FormatSettings.save(choice.options, for: choice.format)
         UserDefaults.standard.set(choice.format.id, forKey: FormatSettings.lastSaveFormat.key)
@@ -44,37 +68,27 @@ enum SavePanel {
         }
     }
 
-    struct Accessory: View {
+    struct OptionsSheet: View {
         @Bindable var choice: Choice
-        let formatChanged: (OutputFormat) -> Void
-        @State private var showingOptions = false
+        let done: () -> Void
 
         var body: some View {
-            // The options sit behind a button (maintainer, 2026-10-16), so the panel keeps one size.
-            HStack {
-                Picker("Format:", selection: $choice.format) {
-                    ForEach(FormatRegistry.writable) { Text($0.name).tag($0) }
+            VStack(alignment: .trailing) {
+                Form {
+                    FormatOptionsView(format: choice.format, options: $choice.options)
                 }
-                Button("Options…") { showingOptions = true }
-                    .disabled(choice.format.optionFields.isEmpty)
-            }
-            .sheet(isPresented: $showingOptions) {
-                VStack(alignment: .trailing) {
-                    Form {
-                        FormatOptionsView(format: choice.format, options: $choice.options)
-                    }
-                    Button("Done") { showingOptions = false }
-                        .keyboardShortcut(.defaultAction)
-                }
-                .padding()
-                .frame(width: 420)
-            }
-            .onChange(of: choice.format) { _, format in
-                choice.options = FormatSettings.options(for: format)
-                formatChanged(format)
+                Button("Done", action: done)
+                    .keyboardShortcut(.defaultAction)
             }
             .padding()
             .frame(width: 420)
         }
+    }
+
+    /// An AppKit control's target that runs a closure.
+    private final class Target: NSObject {
+        let action: () -> Void
+        init(_ action: @escaping () -> Void) { self.action = action }
+        @objc func fire() { action() }
     }
 }
