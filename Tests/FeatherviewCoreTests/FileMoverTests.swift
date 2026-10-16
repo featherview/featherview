@@ -11,6 +11,14 @@ import Testing
         }
         #expect(Sidecars.files(for: image).map(\.lastPathComponent) == ["IMG_1.thm", "IMG_1.xmp", "img_1.AAE"])
     }
+
+    @Test func leavesSidecarsSharedWithAnotherImage() throws {
+        let dir = try Fixtures.makeTempDir()
+        let jpeg = try Fixtures.writeImage(to: dir.appendingPathComponent("IMG_1.JPG"), width: 4, height: 4)
+        for name in ["IMG_1.CR2", "IMG_1.xmp"] { try Data("x".utf8).write(to: dir.appendingPathComponent(name)) }
+        #expect(Sidecars.files(for: jpeg).isEmpty)  // the RAW keeps its edits
+        #expect(Sidecars.files(for: dir.appendingPathComponent("IMG_1.CR2")).isEmpty)
+    }
 }
 
 @Suite struct FileMoverTests {
