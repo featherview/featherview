@@ -468,13 +468,19 @@ final class ViewerModel {
         copyTask = Task {
             await pending?.value
             do {
-                let image = try await Task.detached(priority: .userInitiated) {
-                    try ImageDecoder.decode(url, page: page)
+                let data = try await Task.detached(priority: .userInitiated) {
+                    guard let data = ClipboardImage.pngData(try ImageDecoder.decode(url, page: page)) else {
+                        throw DecodeError.unreadable(url)
+                    }
+                    return data
                 }.value
                 guard !Task.isCancelled else { return }
                 let pasteboard = NSPasteboard.general
                 pasteboard.clearContents()
-                pasteboard.writeObjects([NSImage(cgImage: image, size: .zero)])
+                // the pasteboard can still refuse very large data; say so rather than leave it silently empty
+                if !pasteboard.setData(data, forType: .png) {
+                    errorMessage = String(localized: "Couldn't copy \(url.lastPathComponent)")
+                }
             } catch {
                 if !Task.isCancelled { errorMessage = String(localized: "Couldn't copy \(url.lastPathComponent)") }
             }
