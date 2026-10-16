@@ -70,6 +70,7 @@ final class ViewerModel {
     private var pageDecode: Task<CGImage, Error>?
     private var openTask: Task<Void, Never>?
     private var rotateTask: Task<Void, Never>?
+    private var copyTask: Task<Void, Never>?
     /// Read timings with: log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'
     private static let log = Logger(subsystem: "net.mynetx.featherview", category: "viewer")
     /// When the process started, so the first image's log line covers launch and folder scan too.
@@ -462,16 +463,20 @@ final class ViewerModel {
     func copyImage() {
         guard let url = list.current else { return }
         let page = page
-        Task {
+        let pending = rotateTask  // a rotation still rewriting the file would give the old image
+        copyTask?.cancel()  // only the latest ⌘C may reach the pasteboard
+        copyTask = Task {
+            await pending?.value
             do {
                 let image = try await Task.detached(priority: .userInitiated) {
                     try ImageDecoder.decode(url, page: page)
                 }.value
+                guard !Task.isCancelled else { return }
                 let pasteboard = NSPasteboard.general
                 pasteboard.clearContents()
                 pasteboard.writeObjects([NSImage(cgImage: image, size: .zero)])
             } catch {
-                errorMessage = "Couldn't copy \(url.lastPathComponent)"
+                if !Task.isCancelled { errorMessage = String(localized: "Couldn't copy \(url.lastPathComponent)") }
             }
         }
     }
@@ -480,8 +485,15 @@ final class ViewerModel {
     func openWith(_ index: Int) {
         let path = AppSettings.openWith[index].value()
         guard let url = list.current, !path.isEmpty else { return }
-        NSWorkspace.shared.open([url], withApplicationAt: URL(fileURLWithPath: path),
-                                configuration: NSWorkspace.OpenConfiguration())
+        Task {
+            do {
+                _ = try await NSWorkspace.shared.open([url], withApplicationAt: URL(fileURLWithPath: path),
+                                                      configuration: NSWorkspace.OpenConfiguration())
+            } catch {
+                let app = FileManager.default.displayName(atPath: path)
+                errorMessage = String(localized: "Can't open \(url.lastPathComponent) with \(app)")
+            }
+        }
     }
 
     func showInFinder() {
