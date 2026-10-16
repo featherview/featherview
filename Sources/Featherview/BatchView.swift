@@ -80,7 +80,7 @@ struct BatchView: View {
                 }
                 Toggle("Limit size", isOn: $model.limitSize)
                 if model.limitSize {
-                    TextField("Longest side (px)", value: $model.maxDimension, format: .number)
+                    TextField("Longest side (px)", value: $model.maxDimension, format: .number.grouping(.never))
                 }
                 Toggle("Rename", isOn: $model.useRename)
                 if model.useRename {
