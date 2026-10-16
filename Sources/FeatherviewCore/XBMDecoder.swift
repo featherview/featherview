@@ -14,7 +14,8 @@ enum XBMDecoder {
         let text = stripCComments(String(decoding: data, as: UTF8.self))
         let (width, height) = try header(text)
         guard let open = text.firstIndex(of: "{") else { throw OwnDecodeError.truncated }
-        let unitBits = text[..<open].contains("short") ? 16 : 8
+        // The C type word, not a substring: names like `short_arrow_bits` are X11 too.
+        let unitBits = text[..<open].contains(/\bshort\b/) ? 16 : 8
         let body = text[text.index(after: open)...].prefix { $0 != "}" }
         var units: [Int] = []
         for token in body.split(separator: ",") {

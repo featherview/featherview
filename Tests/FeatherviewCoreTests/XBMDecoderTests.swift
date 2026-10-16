@@ -48,4 +48,14 @@ import Testing
         let huge = Self.file.replacingOccurrences(of: "t_width 3", with: "t_width 99999999999999999999999")
         #expect(throws: OwnDecodeError.corrupt) { try XBMDecoder.size(Data(huge.utf8)) }
     }
+
+    @Test func shortInTheNameIsNotX10() throws {
+        let text = """
+            #define short_arrow_width 16
+            #define short_arrow_height 2
+            static unsigned char short_arrow_bits[] = { 0xFF, 0x00, 0x00, 0xFF };
+            """
+        let image = try XBMDecoder.decode(Data(text.utf8))
+        #expect(image[0, 0].r == 0 && image[15, 0].r == 255 && image[0, 1].r == 255 && image[15, 1].r == 0)
+    }
 }
