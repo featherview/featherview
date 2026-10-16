@@ -165,6 +165,8 @@ Questions for this pass (maintainer, 2026-10-16), with what Apple's guidelines s
   hide-on-hover in a window, and every toolbar item must also be in the menu bar. Decide whether
   windowed viewing hides the toolbar after the pointer rests (a media-player style) or only full
   screen does, as now.
+- Settings window: doesn't look like a macOS 26 (Tahoe) settings window yet (maintainer,
+  2026-10-16). Mock it in the current system style along with the rest.
 - Launch time: the toolbar and canvas decide it (2026-10-16: ~385 ms with glass, 350 ms without;
   the window's first glass draw is macOS's cost). Measure launch again after this pass and set the
   budget in `AGENTS.md` then. If the toolbar may start hidden, try showing it only after the first
