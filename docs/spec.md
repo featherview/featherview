@@ -189,7 +189,10 @@ Kannada and Malayalam are iOS-only.
   `userInterfaceLayoutDirection`. Never mirrored: the image itself, rotate symbols and their
   direction (rotate left stays counter-clockwise), crop coordinates.
 - Numbers, sizes, dates and units use system formatters, never hand-built strings.
-- Keyboard shortcuts stay the same in every language.
+- Keyboard shortcuts stay the same in every language, except ← and → in Arabic and Hebrew:
+  they follow the mirrored screen, so ← is next image and → is previous (the "next" chevron
+  points left there). ↑ ↓ Space Page Up/Down Backspace are unchanged; panning a large image
+  stays physical (← pans left).
 - File names produced by rename templates are not translated.
 
 ## Formats
