@@ -54,6 +54,11 @@ final class ViewerModel {
     /// Page of a multi-page TIFF, 0-based; `pageCount` is 1 for every other file.
     private(set) var page = 0
     private(set) var pageCount = 1
+    /// F7 / F8: which panel is open, if any.
+    var destinationPanel: FileOperation?
+    var slots = DestinationSlots(defaults: .standard)
+    /// With "show the next image" off, the removed image stays on screen until the next key.
+    private var holdingRemoved = false
 
     /// Fit mode decodes at screen size (rounded up to a halving step): enough for any window, less memory than full size.
     private let screenPixels = Int(NSScreen.screens
@@ -111,6 +116,7 @@ final class ViewerModel {
         isOpening = true
         closeChooser()
         emptyFolder = nil
+        holdingRemoved = false
         let includeHidden = AppSettings.showHiddenFiles.value()
         let isFolder = isFolderPath(url)
         openedFolder = isFolder ? url : url.deletingLastPathComponent()
@@ -150,10 +156,12 @@ final class ViewerModel {
     }
 
     func next() {
+        if holdingRemoved { holdingRemoved = false; return show() }  // the image after the removed one
         if list.next() { show() } else { pastEnd(forward: true) }
     }
 
     func previous() {
+        holdingRemoved = false
         if list.previous() { show() } else { pastEnd(forward: false) }
     }
     func first() { list.first(); show() }
@@ -238,6 +246,7 @@ final class ViewerModel {
     /// arrow keys feel instant.
     func show(page: Int = 0) {
         loadTask?.cancel()
+        holdingRemoved = false
         // The old file's count would let ⌥→ ask a single-page file for page 2; it's read again below.
         if page == 0 { self.page = 0; pageCount = 1 }
         guard let url = list.current else {
@@ -321,22 +330,95 @@ final class ViewerModel {
         rotateTask = Task {
             await previous?.value
             guard list.urls.contains(url) else { return }  // ⌘⌫ pressed twice before this ran
+            let withSidecars = AppSettings.moveSidecars.value()
             do {
                 // Off the main thread: on a network or slow disk, trashing can take seconds.
                 try await Task.detached(priority: .userInitiated) {
+                    let sidecars = withSidecars ? Sidecars.files(for: url) : []
                     try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                    // shortcut: a sidecar that can't be trashed stays behind silently; report it if users ask.
+                    for sidecar in sidecars { try? FileManager.default.trashItem(at: sidecar, resultingItemURL: nil) }
                 }.value
-                await cache.remove(url)
-                await fullSizeCache.remove(url)
-                let wasCurrent = list.current == url
-                list.remove(url)
-                // Keeps the folder known, so the view says it's empty and ← / → still reach the chooser.
-                if list.isEmpty { emptyFolder = openedFolder ?? url.deletingLastPathComponent() }
-                if wasCurrent { show() }
+                await removeFromList(url)
             } catch {
                 errorMessage = "Couldn't move \(url.lastPathComponent) to the Trash"
             }
         }
+    }
+
+    /// After Trash or a move: the image leaves the list. With "show the next image" on (default) the
+    /// next one shows; off, the removed image stays until the next key, which then shows the one after it.
+    // shortcut: while the removed image is held, the title already names the next file; fine until someone notices.
+    private func removeFromList(_ url: URL) async {
+        await cache.remove(url)
+        await fullSizeCache.remove(url)
+        let wasCurrent = list.current == url
+        let wasLast = list.index == list.urls.count - 1
+        list.remove(url)
+        guard wasCurrent else { return }
+        // Keeps the folder known, so the view says it's empty and ← / → still reach the chooser.
+        if list.isEmpty { emptyFolder = openedFolder ?? url.deletingLastPathComponent() }
+        if AppSettings.showNextAfterRemoval.value() || wasLast || list.isEmpty {
+            show()
+        } else {
+            holdingRemoved = true
+        }
+    }
+
+    func showDestinations(_ operation: FileOperation) {
+        if list.current != nil { destinationPanel = operation }
+    }
+
+    /// F7 / F8 with a slot picked: moves or copies the current file (and sidecars) there.
+    /// A copy leaves the viewer as it is; a move removes the file from the list.
+    func transfer(to slot: Int) {
+        guard let operation = destinationPanel, let url = list.current, let folder = slots[slot] else { return }
+        destinationPanel = nil
+        slots.lastUsed = slot
+        slots.save(to: .standard)
+        if AppSettings.askBeforeMoveCopy.value(), !confirm(operation, url, folder) { return }
+        let withSidecars = AppSettings.moveSidecars.value()
+        let previous = rotateTask
+        rotateTask = Task {
+            await previous?.value
+            guard list.urls.contains(url) else { return }
+            do {
+                let target = try await Task.detached(priority: .userInitiated) {
+                    try FileMover.transfer(url, to: folder, operation: operation,
+                                           sidecars: withSidecars ? Sidecars.files(for: url) : [])
+                }.value
+                // A move into the file's own folder leaves it where it is, so it stays in the list.
+                if operation == .move, target != url { await removeFromList(url) }
+            } catch {
+                errorMessage = operation == .move
+                    ? "Couldn't move \(url.lastPathComponent) to \(folder.lastPathComponent)"
+                    : "Couldn't copy \(url.lastPathComponent) to \(folder.lastPathComponent)"
+            }
+        }
+    }
+
+    /// Lets the user pick a slot's folder; returns false if they cancelled.
+    @discardableResult
+    func chooseFolder(for slot: Int) -> Bool {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.directoryURL = slots[slot]
+        guard panel.runModal() == .OK, let url = panel.url else { return false }
+        slots[slot] = url
+        slots.save(to: .standard)
+        return true
+    }
+
+    private func confirm(_ operation: FileOperation, _ url: URL, _ folder: URL) -> Bool {
+        let alert = NSAlert()
+        alert.messageText = operation == .move
+            ? "Move \(url.lastPathComponent) to \(folder.lastPathComponent)?"
+            : "Copy \(url.lastPathComponent) to \(folder.lastPathComponent)?"
+        alert.addButton(withTitle: operation == .move ? "Move" : "Copy")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     /// Rewrites the file off the main thread. Rotations and trashing run one at a time so none is lost.
