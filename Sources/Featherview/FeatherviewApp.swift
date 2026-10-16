@@ -38,15 +38,23 @@ struct FeatherviewApp: App {
 }
 
 /// Any window can open viewer windows: state restoration may bring back only the Batch or About window
-/// or an extra viewer, and files from Finder still need the main window.
+/// or an extra viewer, and files from Finder still need the main window. The menu bar installs them too
+/// (`ViewerCommands`), for a launch that restores no window at all.
 struct OpensViewerWindows: ViewModifier {
     @Environment(\.openWindow) private var openWindow
 
     func body(content: Content) -> some View {
-        content.onAppear {
-            ViewerModel.windows.install(revealMain: { [openWindow] in openWindow(id: "viewer") },
-                                        openExtra: { [openWindow] in openWindow(id: "viewer-extra", value: $0) })
-        }
+        content.onAppear { Self.install(openWindow) }
+    }
+
+    static func install(_ openWindow: OpenWindowAction) {
+        ViewerModel.windows.install(revealMain: {
+                                        openWindow(id: "viewer")
+                                        // openWindow leaves a minimized window in the Dock, also one restored minimized at launch.
+                                        NSApp.windows.first { $0.identifier?.rawValue == "viewer" && $0.isMiniaturized }?
+                                            .deminiaturize(nil)
+                                    },
+                                    openExtra: { openWindow(id: "viewer-extra", value: $0) })
     }
 }
 

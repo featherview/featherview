@@ -360,6 +360,9 @@ struct ViewerCommands: Commands {
     @AppStorage(statusBarHiddenKey) private var statusBarHidden = false
 
     var body: some Commands {
+        // Built at launch even when no window is restored (the last one was closed or minimized): a file
+        // opened from Finder then still gets the main window, which otherwise waited for a window's view.
+        let _ = OpensViewerWindows.install(openWindow)
         CommandGroup(replacing: .appInfo) {
             Button("About Featherview  (A)") { openWindow(id: "about") }
         }
