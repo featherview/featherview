@@ -11,6 +11,8 @@ enum SavePanel {
     static func run(for url: URL, window: NSWindow?) async -> (url: URL, format: OutputFormat, options: FormatOptions)? {
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
+        // Shown, so the extension visibly follows the chosen format.
+        panel.isExtensionHidden = false
         panel.directoryURL = url.deletingLastPathComponent()
         let choice = Choice(format: FormatSettings.lastFormat())
         let setType = { (format: OutputFormat, base: URL) in
