@@ -3,8 +3,12 @@
 set -eu
 CONFIG="${1:-release}"
 cd "$(dirname "$0")/.."
-swift build -c "$CONFIG" --product Featherview
-BIN="$(swift build -c "$CONFIG" --show-bin-path)/Featherview"
+# SwiftPM records the deployment target (14.0) as the SDK; macOS then gives the app the pre-macOS 26
+# look. The real SDK version turns on Liquid Glass toolbars and controls; 14 and 15 are unaffected.
+SDK="$(xcrun --show-sdk-version)"
+LINK="-Xlinker -platform_version -Xlinker macos -Xlinker 14.0 -Xlinker $SDK"
+swift build -c "$CONFIG" --product Featherview $LINK
+BIN="$(swift build -c "$CONFIG" --show-bin-path $LINK)/Featherview"
 APP=build/Featherview.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
