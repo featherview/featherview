@@ -41,4 +41,51 @@ import Testing
         let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
         #expect(MetadataReader.fields(for: url).contains { $0.label == "File size" })
     }
+
+    private func camera(make: String?, model: String?) -> String? {
+        var tiff: [CFString: Any] = [:]
+        tiff[kCGImagePropertyTIFFMake] = make
+        tiff[kCGImagePropertyTIFFModel] = model
+        return MetadataReader.fields(from: [kCGImagePropertyTIFFDictionary: tiff], fileSize: nil)
+            .first { $0.label == "Camera" }?.value
+    }
+
+    @Test func cameraDoesNotRepeatTheMake() {
+        #expect(camera(make: "Canon", model: "Canon EOS R6") == "Canon EOS R6")
+        #expect(camera(make: "NIKON CORPORATION", model: "NIKON D850") == "NIKON D850")
+        #expect(camera(make: "Apple", model: "iPhone 15 Pro") == "Apple iPhone 15 Pro")
+        #expect(camera(make: "   ", model: "X100") == "X100")
+        #expect(camera(make: "", model: "X100") == "X100")
+        #expect(camera(make: "FUJIFILM", model: nil) == "FUJIFILM")
+    }
+
+    private func exposure(_ seconds: Double) -> String? {
+        let props: [CFString: Any] = [
+            kCGImagePropertyExifDictionary: [kCGImagePropertyExifExposureTime: seconds] as [CFString: Any],
+        ]
+        return MetadataReader.fields(from: props, fileSize: nil).first { $0.label == "Exposure" }?.value
+    }
+
+    @Test func formatsExposureTimes() {
+        let decimal = { (x: Double) in "\(x.formatted(.number.precision(.fractionLength(0...1)))) s" }
+        #expect(exposure(0.004) == "1/250 s")
+        #expect(exposure(1.0 / 3) == "1/3 s")
+        #expect(exposure(0.5) == "1/2 s")
+        #expect(exposure(0.8) == decimal(0.8))
+        #expect(exposure(0.6) == decimal(0.6))
+        #expect(exposure(0.4) == decimal(0.4))
+        #expect(exposure(1) == "1 s")
+        #expect(exposure(2) == "2 s")
+        #expect(exposure(2.5) == decimal(2.5))
+    }
+
+    @Test func fileSizeFollowsSymlinks() throws {
+        let dir = try Fixtures.makeTempDir()
+        let target = try Fixtures.writeImage(to: dir.appendingPathComponent("r.jpg"), width: 8, height: 8)
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+        let size = { (url: URL) in MetadataReader.fields(for: url).first { $0.label == "File size" }?.value }
+        #expect(size(target) != nil)
+        #expect(size(link) == size(target))
+    }
 }
