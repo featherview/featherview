@@ -37,12 +37,16 @@ struct ViewerView: View {
             InfoPanel(url: model.list.current, revision: model.fileRevision)
         }
         .focusedSceneValue(\.viewer, model)
-        .onChange(of: activeState, initial: true) { if activeState == .key { ViewerModel.lastActive.use(model) } }
+        .onChange(of: activeState, initial: true) {
+            guard activeState == .key else { return }
+            ViewerModel.lastActive.use(model)
+            model.becameActive()
+        }
         .background(WindowAccessor { window in
             model.window = window
             // A restored or reopened window may already be in full screen; no didEnter notification follows.
             model.isFullScreen = window.styleMask.contains(.fullScreen)
-            if !rememberFrame { window.setContentSize(NSSize(width: 960, height: 640)); window.center() }
+            if !rememberFrame, !model.isFullScreen { Self.place(window) }
         })
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { note in
             if note.object as? NSWindow === model.window { model.isFullScreen = true }
@@ -93,6 +97,19 @@ struct ViewerView: View {
     /// in the Batch window's text fields (⌘⌫ there means "delete to start of line").
     /// The Mac's ⌫ key sends U+007F; SwiftUI's `.delete` is U+0008 and never matches it.
     private static let backspace = KeyEquivalent("\u{7F}")
+
+    /// Where the next window goes when frames aren't remembered: the first is centred, the rest cascade from it.
+    private static var cascadePoint: NSPoint?
+
+    private static func place(_ window: NSWindow) {
+        window.setContentSize(NSSize(width: 960, height: 640))
+        if let point = cascadePoint {
+            cascadePoint = window.cascadeTopLeft(from: point)
+        } else {
+            window.center()
+            cascadePoint = window.cascadeTopLeft(from: .zero)
+        }
+    }
 
     private func handle(_ press: KeyPress) -> KeyPress.Result {
         // Arrow keys carry the numeric-pad/function flags and Caps Lock changes nothing here,
