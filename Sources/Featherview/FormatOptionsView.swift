@@ -44,7 +44,7 @@ struct FormatOptionsView: View {
             Toggle("Keep camera data, location and keywords", isOn: $options.keepMetadata)
         case .targetSize:
             LabeledContent {
-                TextField("KB", value: Binding { options.targetSizeKB ?? 500 } set: { options.targetSizeKB = max(1, $0) },
+                TextField("KB", value: Binding { options.targetSizeKB ?? 500 } set: { options.targetSizeKB = min(max(1, $0), 1_000_000) },
                           format: .number)
                     .labelsHidden()
                     .frame(width: 80)
