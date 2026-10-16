@@ -35,6 +35,6 @@ struct DestinationPanel: View {
         }
         .padding()
         .frame(width: 400)
-        .background(.regularMaterial, in: .rect(cornerRadius: 10))
+        .panelBackground(cornerRadius: 10)
     }
 }

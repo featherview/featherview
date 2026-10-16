@@ -11,7 +11,7 @@ final class ViewerModel {
         case factor(Double)
     }
 
-    private(set) var list = ImageList(urls: [])
+    private(set) var list = ImageList(urls: []) { didSet { updateAvailability() } }
     private(set) var image: CGImage?
     var errorMessage: String?
     /// True while a folder is being scanned, so the view shows nothing instead of the open hint.
@@ -20,8 +20,46 @@ final class ViewerModel {
     private(set) var zoom = Zoom.fit
     /// Bumped when the current file changes on disk (rotation), so views reading it refresh.
     private(set) var fileRevision = 0
-    /// The overlay's `{size}` and `{date}` for the file shown, read off the main thread when it's shown.
-    private(set) var fileValues: (url: URL, values: [String: String])?
+    /// What the status bar and the overlay show about a file: its pixel size, bytes and date.
+    struct FileInfo {
+        let url: URL
+        let pixelSize: CGSize?
+        let bytes: Int?
+        let modified: Date?
+        /// The overlay's `{size}` and `{date}`.
+        let values: [String: String]
+    }
+    /// For the file shown, read off the main thread when it's shown.
+    private(set) var fileInfo: FileInfo?
+    var fileValues: (url: URL, values: [String: String])? { fileInfo.map { ($0.url, $0.values) } }
+
+    /// The scale the image is shown at, from its full pixel size (not the screen-size decode).
+    var zoomPercent: Int? {
+        switch zoom {
+        case .factor(let factor): return Int((factor * 100).rounded())
+        case .fit:
+            guard let info = fileInfo, info.url == list.current, let size = info.pixelSize else { return nil }
+            return Int((ZoomSteps.fitFactor(image: size, view: viewSize, displayScale: displayScale) * 100).rounded())
+        }
+    }
+
+    /// When toolbar buttons and menu items can act; the methods they call guard on the same.
+    struct Availability: Equatable {
+        /// ← / → work with no images too, as long as a folder is known (the chooser leaves it).
+        var canBrowse = false
+        var hasCurrent = false
+        /// Rotate, Trash, F7 / F8: not on a held (already removed) image.
+        var canChangeFile = false
+        var hasPages = false
+    }
+    /// Stored, and set only when a value flips: buttons reading `list` would all re-evaluate on every image.
+    private(set) var availability = Availability()
+    private func updateAvailability() {
+        let new = Availability(canBrowse: folder != nil, hasCurrent: list.current != nil,
+                               canChangeFile: list.current != nil && !list.isHolding,
+                               hasPages: pageCount > 1 && !list.isHolding)
+        if new != availability { availability = new }
+    }
     /// The viewer area, kept up to date by the view; fit-mode zoom steps start from it.
     var viewSize = CGSize.zero
     var displayScale = 2.0
@@ -42,7 +80,7 @@ final class ViewerModel {
     static let lastActive = LastUsed(fallback: main)
 
     /// A folder opened directly that has no images: the view says so, ← / → still leave it.
-    private(set) var emptyFolder: URL?
+    private(set) var emptyFolder: URL? { didSet { updateAvailability() } }
     /// Shown past either end of the folder (spec "Moving past the end of a folder").
     private let chooserSession = ChooserSession()
     var chooser: FolderChooser? { chooserSession.chooser }
@@ -53,7 +91,7 @@ final class ViewerModel {
     private var countTask: Task<Void, Never>?
     /// Page of a multi-page TIFF, 0-based; `pageCount` is 1 for every other file.
     private(set) var page = 0
-    private(set) var pageCount = 1
+    private(set) var pageCount = 1 { didSet { updateAvailability() } }
     /// F7 / F8: which panel is open, if any.
     var destinationPanel: FileOperation?
     var slots = DestinationSlots(defaults: .standard)
@@ -102,7 +140,7 @@ final class ViewerModel {
     /// The folder being browsed, also when it has no images. It's the path the folder was opened by:
     /// the scanner lists a symlinked folder under its target, and the chooser must go back the way the user came.
     var folder: URL? { openedFolder ?? list.current?.deletingLastPathComponent() ?? emptyFolder }
-    private var openedFolder: URL?
+    private var openedFolder: URL? { didSet { updateAvailability() } }
 
     private func isFolderPath(_ url: URL) -> Bool {
         (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
@@ -246,7 +284,11 @@ final class ViewerModel {
         loadTask?.cancel()
         list.release()
         // The old file's count would let ⌥→ ask a single-page file for page 2; it's read again below.
-        if page == 0 { self.page = 0; pageCount = 1 }
+        // Assigned only when they change: the toolbar reads pageCount and would rebuild its items on every image.
+        if page == 0 {
+            if self.page != 0 { self.page = 0 }
+            if pageCount != 1 { pageCount = 1 }
+        }
         guard let url = list.current else {
             image = nil
             errorMessage = nil  // an old file's error would hide the "Open an image" hint
@@ -291,14 +333,19 @@ final class ViewerModel {
                 // Read again on every show: a rotation changes both size and date. Not awaited, so the
                 // prefetch below doesn't wait for another file read (slow on network or USB disks).
                 Task {
-                    let values = await Task.detached { OverlayTemplate.fileValues(of: url) }.value
-                    if list.current == url { fileValues = (url, values) }
+                    let info = await Task.detached {
+                        let resources = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+                        return FileInfo(url: url, pixelSize: ImageDecoder.displaySize(of: url, page: page),
+                                        bytes: resources?.fileSize, modified: resources?.contentModificationDate,
+                                        values: OverlayTemplate.fileValues(of: url))
+                    }.value
+                    if list.current == url { fileInfo = info }
                 }
                 // Not awaited either, and only for TIFFs: a cached image swaps in without another file read.
                 if page == 0, ImageFormats.mayHavePages(url) {
                     Task {
                         let count = await Task.detached { ImageDecoder.pageCount(of: url) }.value
-                        if list.current == url { pageCount = count }
+                        if list.current == url, pageCount != count { pageCount = count }
                     }
                 }
             } catch {
