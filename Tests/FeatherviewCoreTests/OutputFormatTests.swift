@@ -84,6 +84,12 @@ import Testing
         #expect(tiny.count > 0)
     }
 
+    @Test func jpegTargetSizeTooBigToCountInBytesStillWrites() throws {
+        let huge = 10_000_000_000_000_000  // KB; times 1024 overflows Int
+        let data = try ImageEncoder.encode([image()], as: .jpeg, options: FormatOptions().with { $0.targetSizeKB = huge })
+        #expect(data.count > 0)
+    }
+
     @Test func pngInterlaced() throws {
         let data = try ImageEncoder.encode([image()], as: .png, options: FormatOptions().with { $0.interlaced = true })
         let png = try props(data)[kCGImagePropertyPNGDictionary] as? [CFString: Any]

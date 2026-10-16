@@ -25,7 +25,8 @@ public enum ImageEncoder {
         case .imageIO(let type):
             let metadata = options.keepMetadata ? source.map(metadataProperties) ?? [:] : [:]
             if format.optionFields.contains(.targetSize), let kb = options.targetSizeKB, kb > 0 {
-                return try targetSize(first, type: type, format: format, options: options, metadata: metadata, bytes: kb * 1024)
+                return try targetSize(first, type: type, format: format, options: options, metadata: metadata,
+                                      bytes: min(kb, Int.max / 1024) * 1024)  // a stored setting may be any Int
             }
             var images = [first]
             if format.optionFields.contains(.keepAllPages), options.keepAllPages { images = pages }
