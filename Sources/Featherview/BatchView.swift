@@ -5,7 +5,14 @@ import SwiftUI
 final class BatchModel {
     var inputs: [URL] = []
     var outputFolder: URL?
-    var format = OutputFormat.jpeg
+    /// The batch's own format, so Save As and batch don't change each other's (unknown id → JPEG).
+    var format: OutputFormat {
+        didSet {
+            UserDefaults.standard.set(format.id, forKey: "batchFormat")
+            options = FormatSettings.options(for: format)
+        }
+    }
+    var options: FormatOptions
     var limitSize = false
     var maxDimension = 1920
     var useRename = false
@@ -16,10 +23,17 @@ final class BatchModel {
 
     var failures: [BatchResult] { results.filter { $0.error != nil } }
 
+    init() {
+        let format = FormatRegistry.format(id: UserDefaults.standard.string(forKey: "batchFormat") ?? "jpg") ?? .jpeg
+        options = FormatSettings.options(for: format)
+        self.format = format
+    }
+
     func run() {
         guard let outputFolder, !inputs.isEmpty, !isRunning else { return }
+        FormatSettings.save(options, for: format)
         let job = BatchJob(
-            inputs: inputs, outputFolder: outputFolder, format: format,
+            inputs: inputs, outputFolder: outputFolder, format: format, options: options,
             maxDimension: limitSize ? max(16, maxDimension) : nil,
             rename: useRename ? RenamePattern(renameTemplate) : nil)
         isRunning = true
@@ -72,6 +86,7 @@ struct BatchView: View {
                 Picker("Format", selection: $model.format) {
                     ForEach(FormatRegistry.writable) { Text($0.name).tag($0) }
                 }
+                FormatOptionsView(format: model.format, options: $model.options)
                 Toggle("Limit size", isOn: $model.limitSize)
                 if model.limitSize {
                     TextField("Longest side (px)", value: $model.maxDimension, format: .number.grouping(.never))
