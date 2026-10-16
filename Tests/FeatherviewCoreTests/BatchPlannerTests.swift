@@ -50,6 +50,22 @@ import Testing
         #expect(BatchPlanner.outputURLs(for: job) { _ in false }.map(\.lastPathComponent) == ["A.png", "a 2.png"])
     }
 
+    @Test func namesFitTheFileNameLimit() {
+        // APFS allows 255 bytes per name; a longer extension or a clash suffix must not exceed it.
+        let long = String(repeating: "a", count: 252)
+        let heic = BatchJob(inputs: [URL(fileURLWithPath: "/a/\(long).png")], outputFolder: out, format: .heic)
+        let pngs = BatchJob(inputs: ["/a", "/b"].map { URL(fileURLWithPath: "\($0)/\(long).png") },
+                            outputFolder: out, format: .png)
+        let multibyte = BatchJob(inputs: [URL(fileURLWithPath: "/a/x.png")], outputFolder: out, format: .jpeg,
+                                 rename: RenamePattern(String(repeating: "\u{00E9}", count: 200)))
+        let names = (BatchPlanner.outputURLs(for: heic) { _ in false }
+            + BatchPlanner.outputURLs(for: pngs) { _ in false }
+            + BatchPlanner.outputURLs(for: multibyte) { _ in false }).map(\.lastPathComponent)
+        #expect(names.allSatisfy { $0.decomposedStringWithCanonicalMapping.utf8.count <= 255 })
+        #expect(names[0].hasSuffix(".heic") && names[2].hasSuffix(" 2.png") && names[1] != names[2])
+        #expect(names[3].hasSuffix(".jpg"))
+    }
+
     @Test func manyClashesPlanInLinearTime() {
         // Quadratic probing took over a minute for 2000 clashing names.
         let inputs = (0..<3000).map { URL(fileURLWithPath: "/src/\($0)/IMG.jpg") }

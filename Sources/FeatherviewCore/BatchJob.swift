@@ -64,7 +64,13 @@ public enum BatchPlanner {
             let original = input.deletingPathExtension().lastPathComponent
             let base = job.rename?.baseName(original: original, index: offset + 1) ?? original
             func candidate(_ suffix: String) -> URL {
-                job.outputFolder.appendingPathComponent(base + suffix)
+                // APFS names are at most 255 bytes: shorten the base, whole characters only.
+                // Measured decomposed, because file URLs store names that way (é is 3 bytes).
+                func bytes(_ s: some StringProtocol) -> Int { s.decomposedStringWithCanonicalMapping.utf8.count }
+                let room = 255 - bytes(suffix + "." + job.format.fileExtension)
+                var trimmed = Substring(base)
+                while bytes(trimmed) > room { trimmed = trimmed.dropLast() }
+                return job.outputFolder.appendingPathComponent(trimmed + suffix)
                     .appendingPathExtension(job.format.fileExtension)
             }
             var url = candidate("")
