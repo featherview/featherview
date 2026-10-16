@@ -59,6 +59,13 @@ import Testing
         #expect(throws: DecodeError.unreadable(url)) { try ImageDecoder.decode(url) }
     }
 
+    @Test func infoPanelShowsOwnFormatDimensions() throws {
+        let url = try toyFile(width: 4, height: 2)
+        let labels = MetadataReader.fields(for: url).map(\.label)
+        #expect(labels == ["Dimensions", "File size"])
+        #expect(MetadataReader.fields(for: url).first?.value == "4 × 2")
+    }
+
     @Test func registeringAgainReplacesTheFormat() {
         OwnDecoders.register(Self.toy)
         #expect(OwnDecoders.all.filter { $0.extensions.contains("fvtoy") }.count == 1)
