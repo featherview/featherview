@@ -68,12 +68,13 @@ Spec: "Formats", "Format options", ⇧⌘S Save As.
   XBM, XPM, WBMP, Sun RAS, IFF/LBM. One `OwnDecoders` registry consulted by `ImageFormats` and
   `ImageDecoder`, each decoder unit-tested on hand-built files (fixtures generated in tests, the
   same golden-byte approach as the encoders), corrupt and truncated input included.
-- **Observe first:** option dialogs of GIF, JPEG 2000, TGA, PDF output.
+- Option dialogs of GIF, JPEG 2000, TGA, PDF observed 2026-10-16 (`docs/parity.md`); PDF options
+  decided in spec "Format options".
 - Viewer look (maintainer, 2026-10-16): closer to the reference viewer's density while following
   Apple's HIG and Liquid Glass. Candidates, each to accept into the spec first: a status bar
   (dimensions, zoom %, file size, index, date), a compact toolbar, zoom % in the title, Liquid
   Glass on the chooser, F7/F8 panel and messages (macOS 26+, material below). Clean-room: our
-  own icons, order and labels. **Observe first:** what the reference viewer's status bar shows.
+  own icons, order and labels. Status bar and Liquid Glass decided 2026-10-16 (spec "Viewer").
 - Toolbar speed, part of the redesign: a prefetched next image takes ≈20 ms, over the 16 ms
   budget (milestone 1: ≈12 ms). The title changes on every image and AppKit re-lays out the nine
   SwiftUI toolbar items. Native `NSToolbarItem`s or a title outside the toolbar should fix it;

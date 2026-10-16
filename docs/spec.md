@@ -38,6 +38,13 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 - The window keeps its size and position when the image changes; it never resizes itself to the
   image. Zoom changes the image inside the window, not the window.
 - EXIF orientation is always applied.
+- Status bar (decided 2026-10-16, milestone 3): one line along the bottom of the window, on by
+  default, showing the image's pixel size, zoom %, file size, position N / M and the file's
+  modification date. View › Hide Status Bar hides it (remembered). Hidden in full screen. Our own
+  order, wording and layout (leading-aligned, system small font).
+- Liquid Glass (decided 2026-10-16, milestone 3): on macOS 26 and later the folder chooser, the
+  F7/F8 panel and on-image messages use Liquid Glass; earlier systems keep the current material.
+  Minimum macOS stays 14.
 - A file that can't be decoded shows "Can't open <name>"; browsing continues normally.
 
 ### Keys (no modifiers, viewer window focused)
@@ -84,7 +91,7 @@ Mac SF Symbols, never icons taken from another viewer.
 ### Menu commands
 
 ⌘O Open…, ⌘⌫ Move to Trash, ⌘B Batch Convert…, ⇧⌘S Save As… (the current image in any writable format, with that format's options, orientation
-applied, never overwriting without the standard Mac replace prompt), ⌘C Copy (the current image, full resolution,
+applied, never overwriting without the standard Mac replace prompt; afterwards the window shows the saved file in its folder, decided 2026-10-16), ⌘C Copy (the current image, full resolution,
 orientation applied), ⌘Q Quit. Menus also list the single-key commands
 (with the key in the title) so they are discoverable. Single keys are deliberately not menu
 shortcuts, so typing in the batch window's text fields never triggers viewer actions.
@@ -286,6 +293,8 @@ the About window.
 | TIFF | compression none / LZW / PackBits / JPEG / ZIP, keep all pages |
 | GIF | interlaced |
 | JPEG 2000 | quality 1–100, lossless |
+| PDF | one page per image at the image's size; JPEG quality 1–100 for the image (default 95) or lossless (decided 2026-10-16; paper sizes later) |
+| TGA, BMP, ICO, ICNS, PBM | none |
 | WebP | quality 1–100 (default 75), lossless, effort 0–6 (default 4), preset photo / picture / drawing / icon / text |
 
 Orientation is always applied to the pixels and the tag reset to 1 (not an option). Options are
