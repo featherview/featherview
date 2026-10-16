@@ -54,6 +54,16 @@ import Testing
         #expect(try FolderScanner.images(around: dir).map(\.lastPathComponent) == ["a.jpg", "b.jpg"])
     }
 
+    @Test(arguments: [".hidden.jpg", "x", "photo.raw-ish"])
+    func alwaysListsTheOpenedFile(_ name: String) throws {
+        let dir = try Fixtures.makeTempDir()
+        try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 4, height: 4)
+        try Fixtures.writeImage(to: dir.appendingPathComponent(name), width: 4, height: 4)
+
+        let names = try FolderScanner.images(around: dir.appendingPathComponent(name)).map(\.lastPathComponent)
+        #expect(Set(names) == ["a.jpg", name])
+    }
+
     @Test func missingFolderThrows() {
         #expect(throws: (any Error).self) {
             try FolderScanner.images(around: URL(fileURLWithPath: "/no/such/folder/a.jpg"))

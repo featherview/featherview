@@ -11,8 +11,12 @@ public enum FolderScanner {
             options: [.skipsHiddenFiles])
         // shortcut: localizedStandardCompare sorts 10,000 names in ~220 ms (release), half the
         // folder-open budget; show the opened file first and sort later if that budget slips.
-        return items
-            .filter { ImageFormats.isDecodable($0) && isRegularFile($0) }
+        var images = items.filter { ImageFormats.isDecodable($0) && isRegularFile($0) }
+        // The file the user opened is always listed, even if hidden or of an unknown extension.
+        if !isFolder, isRegularFile(url), !images.contains(where: { $0.lastPathComponent == url.lastPathComponent }) {
+            images.append(folder.appendingPathComponent(url.lastPathComponent))
+        }
+        return images
             .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
     }
 
