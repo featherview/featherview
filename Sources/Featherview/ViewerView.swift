@@ -211,7 +211,7 @@ struct ViewerView: View {
         case .rightArrow, .space: model.chooserEnter()
         case .leftArrow: model.chooserUp()
         case .return: model.chooserOpen()
-        case .escape: model.chooser = nil
+        case .escape: model.closeChooser()
         default: break
         }
         return .handled
