@@ -10,7 +10,7 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
 - HDR photos (iPhone HEIC and JPEG, HDR AVIF, OpenEXR) show their extra brightness on HDR screens
   (macOS 15 and later)
 - Saves and batch converts to JPEG, PNG, HEIC, AVIF, TIFF, GIF, BMP, JPEG 2000, PDF, PSD, TGA, ICO,
-  ICNS, OpenEXR, PGM, PPM, QOI and PCX
+  ICNS, OpenEXR, PBM, PGM, PPM, QOI and PCX
 - Lossless JPEG/HEIC/TIFF rotation
 - Batch convert, resize and rename
 - EXIF info panel; delete moves to Trash

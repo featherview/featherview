@@ -283,7 +283,7 @@ the About window.
 - Write (ImageIO): JPEG, PNG, HEIC, AVIF, TIFF, GIF, BMP, JPEG 2000, PDF, PSD, TGA, ICO, ICNS,
   OpenEXR.
 - Write (own encoders, pure Swift, no dependency): PBM, PGM, PPM, QOI, PCX. PBM is real 1-bit
-  binary PBM, black and white at a 50% threshold (ImageIO's PBM writer writes
+  plain PBM (P1, the only PBM macOS reads), black and white at a 50% threshold (ImageIO's PBM writer writes
   colour ASCII PPM under the .pbm name).
 - Write (open-source encoder, per `AGENTS.md`): WebP (libwebp, BSD).
 - Writing JPEG XL is v2 (needs libjxl, a large C++ build). Reading JPEG XL works in v1 via ImageIO.

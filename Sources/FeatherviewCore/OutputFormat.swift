@@ -9,7 +9,7 @@ public struct OutputFormat: Hashable, Sendable, Identifiable {
         case imageIO(String)
         /// One page per image, drawn with Core Graphics (ImageIO's PDF ignores quality).
         case pdf
-        case pgm, ppm, qoi, pcx
+        case pbm, pgm, ppm, qoi, pcx
     }
 
     /// Stable key, stored in settings: never change one once shipped. The file extension for known formats.
@@ -89,6 +89,7 @@ public enum FormatRegistry {
     static let hidden: Set<String> = [
         "com.apple.atx", "org.khronos.ktx", "org.khronos.ktx2", "org.khronos.astc",
         "com.microsoft.dds", "public.pvr", "public.heics",
+        "public.pbm",  // writes colour ASCII PPM under the .pbm name; ours writes real PBM
     ]
 
     /// Known ImageIO types: id (= extension), name, options, defaults.
@@ -105,7 +106,6 @@ public enum FormatRegistry {
         "com.microsoft.ico": ("ico", "ICO", [], FormatOptions()),
         "com.apple.icns": ("icns", "ICNS", [], FormatOptions()),
         "com.ilm.openexr-image": ("exr", "OpenEXR", [], FormatOptions()),
-        "public.pbm": ("pbm", "PBM", [], FormatOptions()),
         "com.microsoft.bmp": ("bmp", "BMP", [], FormatOptions()),
     ]
 
@@ -126,7 +126,7 @@ public enum FormatRegistry {
                                             writer: .imageIO(identifier), optionFields: [], defaultOptions: FormatOptions()))
             }
         }
-        for (id, name, writer) in [("pgm", "PGM", OutputFormat.Writer.pgm), ("ppm", "PPM", .ppm),
+        for (id, name, writer) in [("pbm", "PBM", OutputFormat.Writer.pbm), ("pgm", "PGM", .pgm), ("ppm", "PPM", .ppm),
                                    ("qoi", "QOI", .qoi), ("pcx", "PCX", .pcx)] {
             formats.append(OutputFormat(id: id, name: name, fileExtension: id, writer: writer,
                                         optionFields: [], defaultOptions: FormatOptions()))

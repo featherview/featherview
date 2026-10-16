@@ -16,6 +16,7 @@ public enum ImageEncoder {
         guard let first = pages.first else { throw EncodeError.failed }
         switch format.writer {
         case .pdf: return try pdf(pages, options)
+        case .pbm: return NetpbmEncoder.pbm(try rgba(first))
         case .pgm: return NetpbmEncoder.pgm(try rgba(first))
         case .ppm: return NetpbmEncoder.ppm(try rgba(first))
         case .qoi: return QOICodec.encode(try rgba(first))
