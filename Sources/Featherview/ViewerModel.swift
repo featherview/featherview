@@ -62,9 +62,9 @@ final class ViewerModel {
     private let screenPixels = Int(NSScreen.screens
         .map { max($0.frame.width, $0.frame.height) * $0.backingScaleFactor }
         .max() ?? 2560)
-    private let cache = ImageCache(capacity: 8)
+    private let cache = ImageCache(capacity: 8, hdr: ImageDecoder.supportsHDR)
     /// Full-size decodes for zoom: one kept, and ones nobody waits for any more are skipped.
-    private let fullSizeCache = ImageCache(capacity: 1)
+    private let fullSizeCache = ImageCache(capacity: 1, hdr: ImageDecoder.supportsHDR)
     private var loadTask: Task<Void, Never>?
     /// The page decode running, if any: ImageIO can't stop one, so the next waits for it (see show).
     private var pageDecode: Task<CGImage, Error>?
@@ -265,7 +265,7 @@ final class ViewerModel {
                     _ = await pageDecode?.result
                     guard !Task.isCancelled else { return }
                     let decode = Task.detached(priority: .userInitiated) {
-                        try ImageDecoder.decode(url, maxPixelSize: size, halvingSteps: true, page: page)
+                        try ImageDecoder.decode(url, maxPixelSize: size, halvingSteps: true, page: page, hdr: ImageDecoder.supportsHDR)
                     }
                     pageDecode = decode
                     // A finished decode would otherwise keep its page in memory, outside both caches.
@@ -471,7 +471,7 @@ final class ViewerModel {
         copies.submit {
             await pending?.value
             do {
-                let image = try await Task.detached(priority: .userInitiated) { try ImageDecoder.decode(url, page: page) }.value
+                let image = try await Task.detached(priority: .userInitiated) { try ImageDecoder.decode(url, page: page, hdr: false) }.value
                 guard !Task.isCancelled else { return }  // a newer ⌘C came in: skip the encode
                 guard let data = await Task.detached(priority: .userInitiated, operation: { ClipboardImage.pngData(image) }).value
                 else { throw DecodeError.unreadable(url) }

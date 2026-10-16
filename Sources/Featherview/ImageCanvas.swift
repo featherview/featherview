@@ -113,6 +113,13 @@ private final class ImageLayerView: NSView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)  // no fade between images
         if (imageLayer.contents as AnyObject?) !== image { imageLayer.contents = image }
+        // Same transaction as `contents`, so an SDR image after an HDR one never flashes bright.
+        let isHDR = image.bitsPerComponent > 8  // display decodes are 8-bit unless HDR
+        if #available(macOS 26, *) {
+            imageLayer.preferredDynamicRange = isHDR ? .high : .standard
+        } else {
+            imageLayer.wantsExtendedDynamicRangeContent = isHDR
+        }
         imageLayer.frame = bounds
         // Below 2× smooth; from 2× on, show the pixels.
         imageLayer.magnificationFilter = smooth ? .linear : .nearest
