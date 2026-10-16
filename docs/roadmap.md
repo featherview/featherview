@@ -150,6 +150,20 @@ touches that make a viewer feel crafted), mockups first as an artifact, reviewed
 maintainer, then planned. Coordinate with milestone 4's batch-window mockups so both share one
 visual language. Clean-room rules still apply.
 
+Questions for this pass (maintainer, 2026-10-16), with what Apple's guidelines say:
+- Liquid Glass and the canvas: since 78f4e39 the app links against the real SDK, so macOS 26+
+  shows glass toolbars. On our black band below them they look flat. The guidelines put glass
+  over content ("use the content layer to inform the color and appearance of the toolbar",
+  reduce toolbar backgrounds), so mock the canvas extending under the toolbar (fit still keeps
+  the image clear of it; zoomed images slide under) and the status bar the same way at the
+  bottom. Also reconsider the black default background under glass.
+- Hiding the toolbar: the guidelines say to consider hiding toolbars temporarily "when content is
+  the primary focus, such as when viewing full-screen photos", contextually, and to let people
+  restore them reliably (moving the pointer to the top of the screen). They don't ask for
+  hide-on-hover in a window, and every toolbar item must also be in the menu bar. Decide whether
+  windowed viewing hides the toolbar after the pointer rests (a media-player style) or only full
+  screen does, as now.
+
 ## v2 (not in v1)
 
 JPEG XL writing (libjxl), thumbnail browser, anything in "Out of scope for v1" in `AGENTS.md`.
