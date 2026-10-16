@@ -100,7 +100,7 @@ has a German layout, so `+`/`−` were checked on the numpad and the German `+`/
 | Area | Observed behaviour | Featherview | Status |
 |---|---|---|---|
 | Drag and drop | Dropping a file on the window opens it and lists its folder (subfolders not included). | Same (spec). | v1 |
-| Folder | Opening a folder (as the program's argument) shows the first entry of its list, even a hidden file; a folder whose only file is a text file shows that file rendered as a picture. Observed 2026-10-16. | Spec: starts at its first image, hidden files skipped. Open: what an imageless folder shows (suggest "No images in <folder>", ← / → still move to other folders). | open |
+| Folder | Opening a folder (as the program's argument) shows the first entry of its list, even a hidden file; a folder whose only file is a text file shows that file rendered as a picture. Observed 2026-10-16. | Spec: starts at its first image, hidden files skipped. Open: what an imageless folder shows (suggest "No images in <folder>", ← / → still move to other folders). | v1 |
 
 ## Mouse, pages and toolbar
 
@@ -108,11 +108,11 @@ Observed 2026-10-16 on a 4000×3000 JPEG and a 3-page TIFF, default settings.
 
 | Area | Observed behaviour | Featherview | Status |
 |---|---|---|---|
-| Left drag | Draws a selection rectangle, in any direction, fitted or zoomed in; the title shows its origin and size in image pixels. It never pans. A plain click clears it. The selection survives a zoom change. | Selection only serves editing (crop, copy part): out of scope. Suggest: dragging pans a zoomed image (the Mac norm, like Preview's move tool), does nothing when it fits. | open |
-| Right drag | Pans a zoomed image, grab style (the image follows the pointer). | Mac: plain drag pans (row above); right-click is for a context menu. | open |
-| Right click | In a window, a right click without dragging shows nothing (no menu, not even with the menu key). In full screen it goes to the previous image (see Display). | Suggest a context menu with the window's actions (copy, rotate, move / copy to, Move to Trash, Show in Finder, Open With), as Mac apps do. | open |
+| Left drag | Draws a selection rectangle, in any direction, fitted or zoomed in; the title shows its origin and size in image pixels. It never pans. A plain click clears it. The selection survives a zoom change. | Selection only serves editing (crop, copy part): out of scope. Suggest: dragging pans a zoomed image (the Mac norm, like Preview's move tool), does nothing when it fits. | v1 |
+| Right drag | Pans a zoomed image, grab style (the image follows the pointer). | Mac: plain drag pans (row above); right-click is for a context menu. | v1 |
+| Right click | In a window, a right click without dragging shows nothing (no menu, not even with the menu key). In full screen it goes to the previous image (see Display). | Suggest a context menu with the window's actions (copy, rotate, move / copy to, Move to Trash, Show in Finder, Open With), as Mac apps do. | v1 |
 | Middle click | Nothing visible. | Nothing. | won't (no behaviour to match) |
-| Multi-page | A multi-page TIFF opens on page 1. Ctrl+Page Down / Ctrl+Page Up go to the next / previous page; at the last page nothing happens. The page shows as "n / m" at the end of the status bar; the title doesn't change. Plain Space / Page Down leave the file for the next one; coming back starts on page 1 again. | Not in spec (spec reads the first frame). Suggest: ⌥→ / ⌥← (Mac keyboards often lack Page keys) step pages, title `name — page 2 / 3 — 3 / 120` only for multi-page files, always start at page 1. | open |
+| Multi-page | A multi-page TIFF opens on page 1. Ctrl+Page Down / Ctrl+Page Up go to the next / previous page; at the last page nothing happens. The page shows as "n / m" at the end of the status bar; the title doesn't change. Plain Space / Page Down leave the file for the next one; coming back starts on page 1 again. | Not in spec (spec reads the first frame). Suggest: ⌥→ / ⌥← (Mac keyboards often lack Page keys) step pages, title `name — page 2 / 3 — 3 / 120` only for multi-page files, always start at page 1. | v1 |
 | Toolbar | A row of small buttons under the menu: open, slideshow, save as, print, delete, cut, copy, paste, undo, info, a zoom-level dropdown, zoom in, zoom out, previous file, next file, previous page, next page (greyed out unless the file has pages), settings, help. Tooltips name the function. | Spec "Toolbar" (decided). Candidates to add: a zoom-level menu, page buttons for multi-page files. Skip slideshow, print, cut / paste / undo (out of scope). | open |
 
 ## Not checked yet

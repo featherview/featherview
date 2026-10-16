@@ -22,6 +22,8 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 
 - Opens a file from Finder (double-click if set as default, "Open With", drag onto the Dock
   icon), from ⌘O, or by dropping a file or folder onto the window.
+- A folder without images shows "No images in <folder>"; ← / → still go to other folders
+  (decided 2026-10-16).
 - Opening a file loads every decodable image in the same folder, in Finder order
   (img2 before img10), hidden files skipped. Opening a folder starts at its first image.
   Decided 2026-10-16: images are recognised by file extension only (scanning never opens a
@@ -30,7 +32,8 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
   links with image names are skipped.
 - Supported formats: everything ImageIO decodes on the user's Mac (JPEG, PNG, HEIC, WebP,
   TIFF, GIF first frame, BMP, camera RAW, …). PDF is not an image here.
-- Window title: `filename — 3 / 120`.
+- Window title: `filename — 3 / 120`; for a multi-page file `filename — page 2 / 3 — 3 / 120`.
+  A multi-page file always opens on page 1 (decided 2026-10-16).
 - Black background. Fit mode shrinks large images to the window and never enlarges small ones.
 - The window keeps its size and position when the image changes; it never resizes itself to the
   image. Zoom changes the image inside the window, not the window.
@@ -51,6 +54,7 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 | 0 | zoom to fit |
 | 1 | actual size (1 image pixel = 1 screen pixel) |
 | + / − | zoom in / out (×1.1 steps, 5 %–1600 %) |
+| ⌥→ / ⌥← | next / previous page of a multi-page file (TIFF, …); nothing past either end |
 | F7 / F8 | move / copy the current file to a folder (see below) |
 | ⌦ (forward delete) | Move to Trash, like ⌘⌫ |
 | O / B / M | Open… / Batch Convert… / minimise the window (as ⌘O / ⌘B / ⌘M) |
@@ -62,13 +66,18 @@ Single keys for commands match the reference viewer, for people switching over (
 ### Mouse and trackpad
 
 - Double-click the image: toggle full screen.
+- Dragging pans a zoomed image (the image follows the pointer); it does nothing when the image
+  fits. No selection rectangle (decided 2026-10-16).
+- Right-click (or Control-click) opens a context menu with the window's actions: Copy, Rotate
+  Left / Right, Move to Folder…, Copy to Folder…, Move to Trash, Show in Finder, Open With
+  (decided 2026-10-16).
 - Two-finger scroll (or a mouse wheel) pans a zoomed image; it never changes images.
 
 ### Toolbar
 
 For mouse users, the viewer window has a standard macOS toolbar (decided 2026-10-16): previous,
-next, rotate left, rotate right, zoom out, zoom to fit, zoom in, info panel, Move to Trash. Each
-button does what its key does and has a tooltip naming that key. View › Hide Toolbar hides it
+next, rotate left, rotate right, zoom out, zoom to fit, zoom in, info panel, Move to Trash, plus previous / next page
+for a multi-page file only. Each button does what its key does and has a tooltip naming that key. View › Hide Toolbar hides it
 (remembered), and View › Customize Toolbar… changes it, as in any Mac app. Hidden in full screen.
 Mac SF Symbols, never icons taken from another viewer.
 

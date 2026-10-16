@@ -42,9 +42,9 @@ Spec: "Viewer" (all of it), "Settings", "Windows".
 - Settings window (⌘,) with every setting in the spec, persisted in `UserDefaults`.
 - Toolbar for mouse users (spec "Toolbar"), SwiftUI `.toolbar` calling the same model actions as
   the keys.
-- **Observe first:** mouse dragging in the window, right-click in the window, opening a folder
-  directly, multi-page TIFF browsing, which functions the toolbar offers (functions only, not
-  layout or icons).
+- Dragging pans a zoomed image; right-click context menu; multi-page files (⌥← / ⌥→, page in
+  the title, page toolbar buttons); "No images in <folder>" for an imageless folder.
+  Observed 2026-10-16 (`docs/parity.md` "Mouse, pages and toolbar").
 
 ## 3. Formats and Save As
 
