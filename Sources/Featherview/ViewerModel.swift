@@ -351,6 +351,8 @@ final class ViewerModel {
             }
             if let size, page == 0, prefetchesNeighbors {
                 await cache.prefetch(neighbors, maxPixelSize: size)
+                // A rotation may have dropped ready[url] meanwhile: this task's image is the unrotated one.
+                guard !Task.isCancelled else { return }
                 let wanted = Set(neighbors + [url])
                 knownInfo = knownInfo.filter { wanted.contains($0.key) }
                 ready = ready.filter { wanted.contains($0.key) }
