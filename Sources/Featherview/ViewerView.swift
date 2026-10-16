@@ -12,9 +12,11 @@ struct ViewerView: View {
             Color.black.ignoresSafeArea()
             if let image = model.image {
                 canvas(image)
-            } else {
-                Text(model.errorMessage ?? "Open an image with ⌘O, or drop one here")
-                    .foregroundStyle(.secondary)
+            } else if let message = model.errorMessage {
+                Text(message).foregroundStyle(.secondary)
+            } else if !model.isOpening && model.list.current == nil {
+                // Only when nothing is on its way: a loading image shows black, not the hint.
+                Text("Open an image with ⌘O, or drop one here").foregroundStyle(.secondary)
             }
         }
         .overlay(alignment: .bottom) {

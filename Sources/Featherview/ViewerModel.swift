@@ -14,6 +14,8 @@ final class ViewerModel {
     private(set) var list = ImageList(urls: [])
     private(set) var image: CGImage?
     var errorMessage: String?
+    /// True while a folder is being scanned, so the view shows nothing instead of the open hint.
+    private(set) var isOpening = false
     var showInfo = false
     private(set) var zoom = Zoom.fit
     /// Bumped when the current file changes on disk (rotation), so views reading it refresh.
@@ -45,7 +47,9 @@ final class ViewerModel {
     func open(_ url: URL) {
         revealWindow()
         openTask?.cancel()
+        isOpening = true
         openTask = Task {
+            defer { if !Task.isCancelled { isOpening = false } }
             do {
                 let urls = try await Task.detached(priority: .userInitiated) {
                     try FolderScanner.images(around: url)
