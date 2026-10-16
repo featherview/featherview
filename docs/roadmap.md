@@ -105,7 +105,8 @@ Spec: "Batch window (⌘B)" (all of it).
   `Fixtures` images.
 - Presets; Replace existing (to Trash), Move originals to Trash, Keep file dates, Recreate
   subfolders.
-- Stop, Pause / Resume, Copy Log.
+- Stop, Pause / Resume, Copy Log. A multi-page file written to a single-page format says "page 1
+  of N" in its log line (spec "Output").
 - Nicer batch window (milestone 1's is a plain form): designed
   for the Mac before it's built — input list with thumbnails and drag and drop, settings
   grouped by step, live preview of output names, progress and log in the window. Mockups first

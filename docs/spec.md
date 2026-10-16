@@ -153,6 +153,9 @@ folder list.
   options (see "Format options"); the same options appear when saving from the viewer. In both,
   an "Options…" button next to the format opens them, so the window and save panel stay short
   (as in the reference viewer).
+- Multi-page input (TIFF, PDF, DCX): TIFF with "keep all pages" and PDF output get every page;
+  any other format gets the first page, and the log line says so ("page 1 of 297"), so no page
+  is dropped silently. No file per page.
 - Output folder chosen by the user (may be the input folder). `{folder}` in the output path
   stands for the input file's folder name.
 - Rename pattern: `{name}` original name, `{n}` counter, `{n:3}` zero-padded counter, `{date}`
