@@ -83,6 +83,18 @@ import Testing
         #expect(last.urls.count == 3)
     }
 
+    @Test func removeByURLKeepsCurrentImage() {
+        var list = ImageList(urls: urls, current: urls[2])
+        list.remove(urls[0])  // before current: same image stays current
+        #expect(list.current == urls[2])
+        list.remove(urls[3])  // after current
+        #expect(list.current == urls[2])
+        list.remove(urls[2])  // current, now last: previous one takes over
+        #expect(list.current == urls[1])
+        list.remove(URL(fileURLWithPath: "/x/gone.jpg"))
+        #expect(list.urls == [urls[1]])
+    }
+
     @Test func emptyListIsSafe() {
         var list = ImageList(urls: [urls[0]])
         list.removeCurrent()

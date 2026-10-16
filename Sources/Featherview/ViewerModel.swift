@@ -122,22 +122,27 @@ final class ViewerModel {
         }
     }
 
+    /// Queued behind rotations: one still running would write the file back after it was trashed.
     func moveCurrentToTrash() {
         guard let url = list.current else { return }
-        do {
-            try FileManager.default.trashItem(at: url, resultingItemURL: nil)
-            Task {
+        let previous = rotateTask
+        rotateTask = Task {
+            await previous?.value
+            guard list.urls.contains(url) else { return }  // ⌘⌫ pressed twice before this ran
+            do {
+                try FileManager.default.trashItem(at: url, resultingItemURL: nil)
                 await cache.remove(url)
                 await fullSizeCache.remove(url)
+                let wasCurrent = list.current == url
+                list.remove(url)
+                if wasCurrent { show() }
+            } catch {
+                errorMessage = "Couldn't move \(url.lastPathComponent) to the Trash"
             }
-            list.removeCurrent()
-            show()
-        } catch {
-            errorMessage = "Couldn't move \(url.lastPathComponent) to the Trash"
         }
     }
 
-    /// Rewrites the file off the main thread. Rotations run one at a time so none is lost.
+    /// Rewrites the file off the main thread. Rotations and trashing run one at a time so none is lost.
     func rotate(_ rotation: Rotation) {
         guard let url = list.current else { return }
         let previous = rotateTask

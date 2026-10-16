@@ -43,9 +43,15 @@ public struct ImageList: Equatable, Sendable {
 
     /// Drops the current entry (after Trash); the following image becomes current.
     public mutating func removeCurrent() {
-        guard !isEmpty else { return }
-        urls.remove(at: index)
-        if index >= urls.count { index = max(urls.count - 1, 0) }
+        if let current { remove(current) }
+    }
+
+    /// Drops `url` (after Trash) and keeps showing the same image; if `url` was current,
+    /// the following image becomes current (the previous one at the end).
+    public mutating func remove(_ url: URL) {
+        guard let removed = urls.firstIndex(of: url) else { return }
+        urls.remove(at: removed)
+        if removed < index || index >= urls.count { index = max(index - 1, 0) }
     }
 
     /// Images up to `radius` steps either side of current, nearest first, for prefetching.
