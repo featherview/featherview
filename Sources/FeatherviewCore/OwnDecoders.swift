@@ -50,7 +50,7 @@ public enum OwnDecoders {
         QOICodec.format, PCXCodec.pcx, PCXCodec.dcx,
         XBMDecoder.format, XPMDecoder.format, WBMPDecoder.format,
         SunRasterDecoder.format, ILBMDecoder.format,
-        // Task 5
+        PDFPages.format,
     ]
 
     private static let formats = OSAllocatedUnfairLock(initialState: builtIn)
