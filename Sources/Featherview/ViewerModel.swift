@@ -54,6 +54,9 @@ final class ViewerModel {
     /// Page of a multi-page TIFF, 0-based; `pageCount` is 1 for every other file.
     private(set) var page = 0
     private(set) var pageCount = 1
+    /// F7 / F8: which panel is open, if any.
+    var destinationPanel: FileOperation?
+    var slots = DestinationSlots(defaults: .standard)
 
     /// Fit mode decodes at screen size (rounded up to a halving step): enough for any window, less memory than full size.
     private let screenPixels = Int(NSScreen.screens
@@ -162,7 +165,8 @@ final class ViewerModel {
     func setZoom(_ zoom: Zoom) {
         let needsReload = (zoom == .fit) != (self.zoom == .fit)
         self.zoom = zoom
-        if needsReload { show(page: page) }
+        // A held image is gone from disk: show() would release it and decode the next file at the held page.
+        if needsReload, !list.isHolding { show(page: page) }
     }
 
     private func pastEnd(forward: Bool) {
@@ -209,9 +213,9 @@ final class ViewerModel {
         }
     }
 
-    /// ⌥→ / ⌥←: pages of a multi-page TIFF; nothing past either end.
-    func nextPage() { if page + 1 < pageCount { page += 1; show(page: page) } }
-    func previousPage() { if page > 0 { page -= 1; show(page: page) } }
+    /// ⌥→ / ⌥←: pages of a multi-page TIFF; nothing past either end, nor on a held (removed) image.
+    func nextPage() { if !list.isHolding, page + 1 < pageCount { page += 1; show(page: page) } }
+    func previousPage() { if !list.isHolding, page > 0 { page -= 1; show(page: page) } }
 
     /// Settings › Viewer › zoom step, 10 % by default (×1.1).
     private var zoomMultiplier: Double { 1 + Double(max(AppSettings.zoomStepPercent.value(), 1)) / 100 }
@@ -238,6 +242,7 @@ final class ViewerModel {
     /// arrow keys feel instant.
     func show(page: Int = 0) {
         loadTask?.cancel()
+        list.release()
         // The old file's count would let ⌥→ ask a single-page file for page 2; it's read again below.
         if page == 0 { self.page = 0; pageCount = 1 }
         guard let url = list.current else {
@@ -316,32 +321,107 @@ final class ViewerModel {
 
     /// Queued behind rotations: one still running would write the file back after it was trashed.
     func moveCurrentToTrash() {
-        guard let url = list.current else { return }
+        guard let url = list.current, !list.isHolding else { return }
         let previous = rotateTask
+        let scan = openTask
         rotateTask = Task {
             await previous?.value
+            await scan?.value  // the scan's list would bring the file back
             guard list.urls.contains(url) else { return }  // ⌘⌫ pressed twice before this ran
+            let withSidecars = AppSettings.moveSidecars.value()
             do {
                 // Off the main thread: on a network or slow disk, trashing can take seconds.
                 try await Task.detached(priority: .userInitiated) {
+                    let sidecars = withSidecars ? Sidecars.files(for: url) : []
                     try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                    // shortcut: a sidecar that can't be trashed stays behind silently; report it if users ask.
+                    for sidecar in sidecars { try? FileManager.default.trashItem(at: sidecar, resultingItemURL: nil) }
                 }.value
-                await cache.remove(url)
-                await fullSizeCache.remove(url)
-                let wasCurrent = list.current == url
-                list.remove(url)
-                // Keeps the folder known, so the view says it's empty and ← / → still reach the chooser.
-                if list.isEmpty { emptyFolder = openedFolder ?? url.deletingLastPathComponent() }
-                if wasCurrent { show() }
+                await removeFromList(url)
             } catch {
                 errorMessage = "Couldn't move \(url.lastPathComponent) to the Trash"
             }
         }
     }
 
+    /// After Trash or a move: the image leaves the list. With "show the next image" on (default) the
+    /// next one shows; off, the removed image stays until the next key, which then shows the one after it.
+    private func removeFromList(_ url: URL) async {
+        await cache.remove(url)
+        await fullSizeCache.remove(url)
+        let wasCurrent = list.current == url
+        let wasLast = list.index == list.urls.count - 1
+        let hold = wasCurrent && !wasLast && !AppSettings.showNextAfterRemoval.value()
+        // Held, the removed file stays current, so ⌘⌫, F7 / F8, R / L and Info can't reach the unseen next one.
+        list.remove(url, hold: hold)
+        guard wasCurrent, !hold else { return }
+        // Keeps the folder known, so the view says it's empty and ← / → still reach the chooser.
+        if list.isEmpty { emptyFolder = openedFolder ?? url.deletingLastPathComponent() }
+        show()
+    }
+
+    func showDestinations(_ operation: FileOperation) {
+        guard list.current != nil, !list.isHolding else { return }
+        slots = DestinationSlots(defaults: .standard)  // Settings or another window may have changed them
+        destinationPanel = operation
+    }
+
+    /// F7 / F8 with a slot picked: moves or copies the current file (and sidecars) there.
+    /// A copy leaves the viewer as it is; a move removes the file from the list.
+    func transfer(to slot: Int) {
+        guard let operation = destinationPanel, let url = list.current, !list.isHolding else { return }
+        slots = DestinationSlots.update(in: .standard) { $0.lastUsed = slot }
+        guard let folder = slots[slot] else { return }
+        destinationPanel = nil
+        if AppSettings.askBeforeMoveCopy.value(), !confirm(operation, url, folder) { return }
+        let withSidecars = AppSettings.moveSidecars.value()
+        let previous = rotateTask
+        let scan = openTask
+        rotateTask = Task {
+            await previous?.value
+            await scan?.value  // the scan's list would bring the file back
+            guard list.urls.contains(url) else { return }
+            do {
+                let target = try await Task.detached(priority: .userInitiated) {
+                    try FileMover.transfer(url, to: folder, operation: operation,
+                                           sidecars: withSidecars ? Sidecars.files(for: url) : [])
+                }.value
+                // A move into the file's own folder leaves it where it is, so it stays in the list.
+                if operation == .move, target != url { await removeFromList(url) }
+            } catch {
+                errorMessage = operation == .move
+                    ? String(localized: "Couldn't move \(url.lastPathComponent) to \(folder.lastPathComponent)")
+                    : String(localized: "Couldn't copy \(url.lastPathComponent) to \(folder.lastPathComponent)")
+            }
+        }
+    }
+
+    /// Lets the user pick a slot's folder; returns false if they cancelled.
+    @discardableResult
+    func chooseFolder(for slot: Int) -> Bool {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.directoryURL = slots[slot]
+        guard panel.runModal() == .OK, let url = panel.url else { return false }
+        slots = DestinationSlots.update(in: .standard) { $0[slot] = url }
+        return true
+    }
+
+    private func confirm(_ operation: FileOperation, _ url: URL, _ folder: URL) -> Bool {
+        let alert = NSAlert()
+        alert.messageText = operation == .move
+            ? String(localized: "Move \(url.lastPathComponent) to \(folder.lastPathComponent)?")
+            : String(localized: "Copy \(url.lastPathComponent) to \(folder.lastPathComponent)?")
+        alert.addButton(withTitle: operation == .move ? String(localized: "Move") : String(localized: "Copy"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
     /// Rewrites the file off the main thread. Rotations and trashing run one at a time so none is lost.
     func rotate(_ rotation: Rotation) {
-        guard let url = list.current else { return }
+        guard let url = list.current, !list.isHolding else { return }  // a held image is already gone
         let page = page
         let previous = rotateTask
         rotateTask = Task {

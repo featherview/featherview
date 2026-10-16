@@ -40,6 +40,7 @@ struct ViewerView: View {
         }
         .overlay {
             if model.chooser != nil { FolderChooserView(model: model) }
+            if let operation = model.destinationPanel { DestinationPanel(model: model, operation: operation) }
         }
         .overlay(alignment: .bottom) {
             if let message = model.errorMessage, model.image != nil {
@@ -132,6 +133,8 @@ struct ViewerView: View {
     /// in the Batch window's text fields (⌘⌫ there means "delete to start of line").
     /// The Mac's ⌫ key sends U+007F; SwiftUI's `.delete` is U+0008 and never matches it.
     private static let backspace = KeyEquivalent("\u{7F}")
+    private static let f7 = KeyEquivalent(Character(UnicodeScalar(NSF7FunctionKey)!))
+    private static let f8 = KeyEquivalent(Character(UnicodeScalar(NSF8FunctionKey)!))
 
     /// Where the next window goes when frames aren't remembered: the first is centred, the rest cascade from it.
     private static var cascadePoint: NSPoint?
@@ -151,6 +154,7 @@ struct ViewerView: View {
         // so only these modifiers count.
         let modifiers = press.modifiers.intersection([.command, .control, .option, .shift])
         if model.isChooserOpen { return handleChooser(press, modifiers) }
+        if let operation = model.destinationPanel { return handleDestinations(press, modifiers, operation) }
         if modifiers == .option {
             switch press.key {
             case .rightArrow: model.nextPage(); return .handled
@@ -173,6 +177,8 @@ struct ViewerView: View {
             case .home: model.first(); return .handled
             case .end: model.last(); return .handled
             case .deleteForward: model.moveCurrentToTrash(); return .handled
+            case Self.f7: model.showDestinations(.move); return .handled
+            case Self.f8: model.showDestinations(.copy); return .handled
             case .return: model.toggleFullScreen(); return .handled
             case .escape:
                 guard model.isFullScreen else { return .ignored }
@@ -215,6 +221,29 @@ struct ViewerView: View {
         default: break
         }
         return .handled
+    }
+
+    /// While the F7 / F8 panel shows: a slot key picks a folder, ↑ ↓ and Return use the highlight.
+    private func handleDestinations(_ press: KeyPress, _ modifiers: EventModifiers,
+                                    _ operation: FileOperation) -> KeyPress.Result {
+        guard modifiers.subtracting(.shift).isEmpty else { return .handled }
+        switch press.key {
+        case .escape: model.destinationPanel = nil
+        case .upArrow: model.slots.lastUsed = max(model.slots.lastUsed - 1, 0)
+        case .downArrow: model.slots.lastUsed = min(model.slots.lastUsed + 1, DestinationSlots.count - 1)
+        case .return: pick(model.slots.lastUsed)
+        default:
+            if let character = press.characters.first, let slot = DestinationSlots.slot(forKey: character) {
+                pick(slot)
+            }
+        }
+        return .handled
+    }
+
+    /// An empty slot asks for its folder first.
+    private func pick(_ slot: Int) {
+        if model.slots[slot] == nil, !model.chooseFolder(for: slot) { return }
+        model.transfer(to: slot)
     }
 }
 
@@ -280,6 +309,8 @@ struct ViewerCommands: Commands {
             Button("Rotate Left  (L)") { model?.rotate(.counterClockwise) }
             Divider()
             // ⌘⌫ is handled by the viewer, not as a menu shortcut (see ViewerView.handle).
+            Button("Move to Folder…  (F7)") { model?.showDestinations(.move) }
+            Button("Copy to Folder…  (F8)") { model?.showDestinations(.copy) }
             Button("Move to Trash  (⌘⌫ or ⌦)") { model?.moveCurrentToTrash() }
             Button("Show Info  (I)") { model?.showInfo.toggle() }
             Divider()

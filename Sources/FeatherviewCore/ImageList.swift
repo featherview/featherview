@@ -4,6 +4,10 @@ import Foundation
 public struct ImageList: Equatable, Sendable {
     public private(set) var urls: [URL]
     public private(set) var index: Int
+    /// A removed image kept on screen ("show the next image" off): it stays current, so actions
+    /// reach the file the user sees, until the next key moves on; `index` already points past it.
+    private var held: URL?
+    public var isHolding: Bool { held != nil }
 
     /// Selects `current` if it is in `urls`, else the first image. Compares by name within the
     /// list's folder (resolved once, not per entry), so a symlink and its target stay separate.
@@ -18,7 +22,7 @@ public struct ImageList: Equatable, Sendable {
             ?? urls.firstIndex { $0.lastPathComponent.lowercased() == name.lowercased() } ?? 0
     }
 
-    public var current: URL? { urls.indices.contains(index) ? urls[index] : nil }
+    public var current: URL? { held ?? (urls.indices.contains(index) ? urls[index] : nil) }
     public var isEmpty: Bool { urls.isEmpty }
     /// 1-based, for the window title: "3 / 120".
     public var position: String { isEmpty ? "0 / 0" : "\(index + 1) / \(urls.count)" }
@@ -26,6 +30,7 @@ public struct ImageList: Equatable, Sendable {
     /// False (and unchanged) at the last image: the caller decides what "past the end" means.
     @discardableResult
     public mutating func next() -> Bool {
+        if held != nil { held = nil; return true }  // the image after the removed one
         guard index + 1 < urls.count else { return false }
         index += 1
         return true
@@ -33,13 +38,16 @@ public struct ImageList: Equatable, Sendable {
 
     @discardableResult
     public mutating func previous() -> Bool {
-        guard index > 0, !isEmpty else { return false }
+        guard index > 0, !isEmpty else { return false }  // a held first image stays held
+        held = nil
         index -= 1
         return true
     }
 
-    public mutating func first() { index = 0 }
-    public mutating func last() { index = max(urls.count - 1, 0) }
+    public mutating func first() { held = nil; index = 0 }
+    public mutating func last() { held = nil; index = max(urls.count - 1, 0) }
+    /// Stops holding a removed image; the one after it becomes current.
+    public mutating func release() { held = nil }
 
     /// Drops the current entry (after Trash); the following image becomes current.
     public mutating func removeCurrent() {
@@ -47,9 +55,11 @@ public struct ImageList: Equatable, Sendable {
     }
 
     /// Drops `url` (after Trash) and keeps showing the same image; if `url` was current,
-    /// the following image becomes current (the previous one at the end).
-    public mutating func remove(_ url: URL) {
+    /// the following image becomes current (the previous one at the end), or with `hold`, stays
+    /// current until the next move.
+    public mutating func remove(_ url: URL, hold: Bool = false) {
         guard let removed = urls.firstIndex(of: url) else { return }
+        if hold, url == current { held = url }
         urls.remove(at: removed)
         if removed < index || index >= urls.count { index = max(index - 1, 0) }
     }

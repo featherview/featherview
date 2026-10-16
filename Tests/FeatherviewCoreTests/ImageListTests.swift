@@ -108,4 +108,40 @@ import Testing
         list.removeCurrent()
         #expect(list.current == nil)
     }
+
+    @Test func heldRemovalStaysCurrentUntilTheNextKey() {
+        var list = ImageList(urls: urls, current: urls[0])
+        list.remove(urls[0], hold: true)
+        // Actions on the current file must reach the one on screen, not the unseen next one.
+        #expect(list.current == urls[0])
+        #expect(list.isHolding)
+        #expect(list.urls == Array(urls[1...]))
+        #expect(list.neighbors(radius: 1) == [urls[2]])
+        let moved = list.next()
+        #expect(moved)
+        #expect(list.current == urls[1])
+        #expect(!list.isHolding)
+
+        var back = ImageList(urls: urls, current: urls[2])
+        back.remove(urls[2], hold: true)
+        back.previous()
+        #expect(back.current == urls[1])
+
+        // ← from a held first image is the start: it keeps holding, so ⌦ can't reach an unseen file.
+        var start = ImageList(urls: urls, current: urls[0])
+        start.remove(urls[0], hold: true)
+        let movedBack = start.previous()
+        #expect(!movedBack)
+        #expect(start.current == urls[0])
+        #expect(start.isHolding)
+
+        var released = ImageList(urls: urls, current: urls[1])
+        released.remove(urls[1], hold: true)
+        released.release()
+        #expect(released.current == urls[2])
+
+        var other = ImageList(urls: urls, current: urls[1])
+        other.remove(urls[3], hold: true)  // not current: nothing to hold
+        #expect(!other.isHolding)
+    }
 }

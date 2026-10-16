@@ -34,6 +34,16 @@ public struct DestinationSlots: Equatable, Sendable {
                   lastUsed: defaults.integer(forKey: Self.lastUsedKey))
     }
 
+    /// Re-reads the saved slots, changes them and saves them: a copy held since then (Settings,
+    /// another viewer window) would otherwise overwrite slots set elsewhere meanwhile.
+    @discardableResult
+    public static func update(in defaults: UserDefaults, _ change: (inout DestinationSlots) -> Void) -> DestinationSlots {
+        var slots = DestinationSlots(defaults: defaults)
+        change(&slots)
+        slots.save(to: defaults)
+        return slots
+    }
+
     public func save(to defaults: UserDefaults) {
         defaults.set(folders.map { $0?.path ?? "" }, forKey: Self.defaultsKey)
         defaults.set(lastUsed, forKey: Self.lastUsedKey)
