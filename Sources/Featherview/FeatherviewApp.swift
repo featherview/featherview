@@ -25,13 +25,19 @@ struct FeatherviewApp: App {
                 .modifier(OpensViewerWindows())
         }
 
+        Window("About Featherview", id: "about") {
+            AboutView()
+                .modifier(OpensViewerWindows())
+        }
+        .windowResizability(.contentSize)
+
         Settings {
             SettingsView()
         }
     }
 }
 
-/// Any window can open viewer windows: state restoration may bring back only the Batch window
+/// Any window can open viewer windows: state restoration may bring back only the Batch or About window
 /// or an extra viewer, and files from Finder still need the main window.
 struct OpensViewerWindows: ViewModifier {
     @Environment(\.openWindow) private var openWindow
