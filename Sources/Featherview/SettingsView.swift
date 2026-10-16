@@ -93,7 +93,7 @@ private struct MoveCopySettings: View {
             Section("Folders for F7 (move) and F8 (copy)") {
                 ForEach(0..<DestinationSlots.count, id: \.self) { slot in
                     LabeledContent(String(DestinationSlots.keys[slot])) {
-                        Text(slots[slot]?.path ?? "Empty")
+                        Text(slots[slot]?.path ?? String(localized: "Empty"))
                             .lineLimit(1)
                             .truncationMode(.middle)
                             .foregroundStyle(slots[slot] == nil ? .secondary : .primary)

@@ -16,7 +16,7 @@ struct DestinationPanel: View {
                     Text(String(DestinationSlots.keys[slot]))
                         .monospaced()
                         .frame(width: 18)
-                    Text(model.slots[slot]?.lastPathComponent ?? "Empty")
+                    Text(model.slots[slot]?.lastPathComponent ?? String(localized: "Empty"))
                         .foregroundStyle(model.slots[slot] == nil ? .secondary : .primary)
                         .help(model.slots[slot]?.path ?? "")
                     Spacer()

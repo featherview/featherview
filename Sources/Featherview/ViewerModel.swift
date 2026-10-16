@@ -390,8 +390,8 @@ final class ViewerModel {
                 if operation == .move, target != url { await removeFromList(url) }
             } catch {
                 errorMessage = operation == .move
-                    ? "Couldn't move \(url.lastPathComponent) to \(folder.lastPathComponent)"
-                    : "Couldn't copy \(url.lastPathComponent) to \(folder.lastPathComponent)"
+                    ? String(localized: "Couldn't move \(url.lastPathComponent) to \(folder.lastPathComponent)")
+                    : String(localized: "Couldn't copy \(url.lastPathComponent) to \(folder.lastPathComponent)")
             }
         }
     }
@@ -412,10 +412,10 @@ final class ViewerModel {
     private func confirm(_ operation: FileOperation, _ url: URL, _ folder: URL) -> Bool {
         let alert = NSAlert()
         alert.messageText = operation == .move
-            ? "Move \(url.lastPathComponent) to \(folder.lastPathComponent)?"
-            : "Copy \(url.lastPathComponent) to \(folder.lastPathComponent)?"
-        alert.addButton(withTitle: operation == .move ? "Move" : "Copy")
-        alert.addButton(withTitle: "Cancel")
+            ? String(localized: "Move \(url.lastPathComponent) to \(folder.lastPathComponent)?")
+            : String(localized: "Copy \(url.lastPathComponent) to \(folder.lastPathComponent)?")
+        alert.addButton(withTitle: operation == .move ? String(localized: "Move") : String(localized: "Copy"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         return alert.runModal() == .alertFirstButtonReturn
     }
 
