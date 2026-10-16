@@ -4,44 +4,40 @@ import SwiftUI
 @main
 struct FeatherviewApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var viewer = ViewerModel()
     @State private var batch = BatchModel()
 
     var body: some Scene {
         Window("Featherview", id: "viewer") {
-            ViewerView(model: viewer)
-                .onAppear { appDelegate.onOpen = { viewer.open($0) } }
+            ViewerView(model: appDelegate.viewer)
         }
-        .commands { ViewerCommands(model: viewer) }
+        .commands { ViewerCommands(model: appDelegate.viewer) }
 
         Window("Batch Convert", id: "batch") {
-            BatchView(model: batch, viewer: viewer)
-                .onAppear {
-                    appDelegate.isBusy = { batch.isRunning }
-                    appDelegate.onOpen = { viewer.open($0) }
-                }
+            BatchView(model: batch, viewer: appDelegate.viewer)
+                .onAppear { appDelegate.isBusy = { batch.isRunning } }
         }
     }
 }
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// Finder can hand us a file before the window exists; hold it until the window is ready.
-    var onOpen: ((URL) -> Void)? {
-        didSet {
-            if let onOpen, let pending {
-                self.pending = nil
-                onOpen(pending)
-            }
-        }
-    }
-
-    private var pending: URL?
+    /// Owned here, not by a view, so a file from Finder starts decoding before any window exists.
+    let viewer = ViewerModel()
     /// True while a batch runs: quitting then would stop it part-way. Set by the Batch window.
     var isBusy: () -> Bool = { false }
 
-    func application(_ application: NSApplication, open urls: [URL]) {
-        guard let url = urls.first else { return }
-        if let onOpen { onOpen(url) } else { pending = url }
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // AppKit hands Finder's files to application(_:open:) only after SwiftUI built the window
+        // (~50 ms later); taking the open event here lets the image decode meanwhile.
+        NSAppleEventManager.shared().setEventHandler(
+            self, andSelector: #selector(openDocuments(_:withReply:)),
+            forEventClass: AEEventClass(kCoreEventClass), andEventID: AEEventID(kAEOpenDocuments))
+    }
+
+    @objc private func openDocuments(_ event: NSAppleEventDescriptor, withReply reply: NSAppleEventDescriptor) {
+        guard let url = event.paramDescriptor(forKeyword: keyDirectObject)?.atIndex(1)?
+            .coerce(toDescriptorType: typeFileURL)?.fileURLValue else { return }
+        viewer.open(url)
     }
 
     // shortcut: once the batch ends with no window open the app stays running, until the user quits; fine for v1.

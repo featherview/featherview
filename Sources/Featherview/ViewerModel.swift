@@ -50,25 +50,45 @@ final class ViewerModel {
     private var loggedLaunch = false
 
     var title: String {
-        list.current.map { "\($0.lastPathComponent) — \(list.position)" } ?? "Featherview"
+        guard let url = list.current else { return "Featherview" }
+        // While the folder is listed the position isn't known yet; "1 / 1" would be wrong.
+        return isOpening ? url.lastPathComponent : "\(url.lastPathComponent) — \(list.position)"
     }
 
-    /// Scans the folder off the main thread: a big folder takes a while to list and sort.
+    /// A file shows at once; its folder is scanned off the main thread meanwhile, because a big
+    /// folder takes longer to list and sort than the image takes to decode.
     func open(_ url: URL) {
         revealWindow()
         openTask?.cancel()
         isOpening = true
+        let isFolder = (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+        // Off the main actor: at launch the main thread is busy building the window, the decode needn't wait.
+        let prefetch = isFolder || zoom != .fit ? nil : screenPixels
+        let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache] in
+            await cache.removeAll()
+            await fullSizeCache.removeAll()
+            if let prefetch { await cache.prefetch([url], maxPixelSize: prefetch) }
+        }
         openTask = Task {
             defer { if !Task.isCancelled { isOpening = false } }
+            await prepare.value
+            guard !Task.isCancelled else { return }
+            if !isFolder {
+                list = ImageList(urls: [url], current: url)
+                show()
+            }
             do {
                 let urls = try await Task.detached(priority: .userInitiated) {
                     try FolderScanner.images(around: url)
                 }.value
                 guard !Task.isCancelled else { return }
                 list = ImageList(urls: urls, current: url)
-                await cache.removeAll()
-                await fullSizeCache.removeAll()
-                show()
+                if isFolder {
+                    show()
+                } else if zoom == .fit {
+                    // show() ran before the neighbours were known; calling it again could restart the decode.
+                    await cache.prefetch(list.neighbors(radius: 2), maxPixelSize: screenPixels)
+                }
             } catch {
                 guard !Task.isCancelled else { return }
                 errorMessage = "Can't open \(url.lastPathComponent)"
