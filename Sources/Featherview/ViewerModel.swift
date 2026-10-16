@@ -16,13 +16,24 @@ final class ViewerModel {
     var errorMessage: String?
     var showInfo = false
     private(set) var zoom = Zoom.fit
+    /// Bumped when the current file changes on disk (rotation), so views reading it refresh.
+    private(set) var fileRevision = 0
+    /// The viewer area, kept up to date by the view; fit-mode zoom steps start from it.
+    var viewSize = CGSize.zero
+    var displayScale = 2.0
+    /// Brings the viewer window back if it was closed; set by the view.
+    var revealWindow: () -> Void = {}
 
     /// Fit mode decodes at screen size: enough for any window, far less memory than full size.
     private let screenPixels = Int(NSScreen.screens
         .map { max($0.frame.width, $0.frame.height) * $0.backingScaleFactor }
         .max() ?? 2560)
     private let cache = ImageCache(capacity: 8)
+    /// Full-size decodes for zoom: one kept, and ones nobody waits for any more are skipped.
+    private let fullSizeCache = ImageCache(capacity: 1)
     private var loadTask: Task<Void, Never>?
+    private var openTask: Task<Void, Never>?
+    private var rotateTask: Task<Void, Never>?
     /// Read timings with: log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'
     private static let log = Logger(subsystem: "net.mynetx.featherview", category: "viewer")
 
@@ -30,13 +41,24 @@ final class ViewerModel {
         list.current.map { "\($0.lastPathComponent) — \(list.position)" } ?? "Featherview"
     }
 
+    /// Scans the folder off the main thread: a big folder takes a while to list and sort.
     func open(_ url: URL) {
-        do {
-            list = ImageList(urls: try FolderScanner.images(around: url), current: url)
-            Task { await cache.removeAll() }
-            show()
-        } catch {
-            errorMessage = "Can't open \(url.lastPathComponent)"
+        revealWindow()
+        openTask?.cancel()
+        openTask = Task {
+            do {
+                let urls = try await Task.detached(priority: .userInitiated) {
+                    try FolderScanner.images(around: url)
+                }.value
+                guard !Task.isCancelled else { return }
+                list = ImageList(urls: urls, current: url)
+                await cache.removeAll()
+                await fullSizeCache.removeAll()
+                show()
+            } catch {
+                guard !Task.isCancelled else { return }
+                errorMessage = "Can't open \(url.lastPathComponent)"
+            }
         }
     }
 
@@ -52,12 +74,22 @@ final class ViewerModel {
         if needsReload { show() }
     }
 
-    func zoomIn() { setZoom(.factor(min(currentFactor * 1.1, 16))) }
-    func zoomOut() { setZoom(.factor(max(currentFactor / 1.1, 0.05))) }
+    func zoomIn() { stepZoom(by: 1.1) }
+    func zoomOut() { stepZoom(by: 1 / 1.1) }
 
-    private var currentFactor: Double {
-        if case .factor(let f) = zoom { return f }
-        return 1
+    /// From fit, steps from the scale the image is shown at, which needs its full pixel size.
+    private func stepZoom(by multiplier: Double) {
+        if case .factor(let factor) = zoom {
+            setZoom(.factor(ZoomSteps.step(factor, by: multiplier)))
+            return
+        }
+        guard let url = list.current else { return }
+        Task {
+            let size = await Task.detached { ImageDecoder.displaySize(of: url) }.value
+            guard zoom == .fit, list.current == url else { return }
+            let fit = size.map { ZoomSteps.fitFactor(image: $0, view: viewSize, displayScale: displayScale) } ?? 1
+            setZoom(.factor(ZoomSteps.step(fit, by: multiplier)))
+        }
     }
 
     /// Shows `list.current`, then prefetches its neighbours so arrow keys feel instant.
@@ -72,13 +104,9 @@ final class ViewerModel {
         let started = ContinuousClock.now
         loadTask = Task {
             do {
-                let decoded: CGImage
-                if let size {
-                    decoded = try await cache.image(for: url, maxPixelSize: size)
-                } else {
-                    // shortcut: full-size zoom bypasses the cache; cache full images too if zooming through a folder feels slow
-                    decoded = try await Task.detached(priority: .userInitiated) { try ImageDecoder.decode(url) }.value
-                }
+                let decoded = size == nil
+                    ? try await fullSizeCache.image(for: url, maxPixelSize: nil)
+                    : try await cache.image(for: url, maxPixelSize: size)
                 guard !Task.isCancelled else { return }
                 image = decoded
                 errorMessage = nil
@@ -98,7 +126,10 @@ final class ViewerModel {
         guard let url = list.current else { return }
         do {
             try FileManager.default.trashItem(at: url, resultingItemURL: nil)
-            Task { await cache.remove(url) }
+            Task {
+                await cache.remove(url)
+                await fullSizeCache.remove(url)
+            }
             list.removeCurrent()
             show()
         } catch {
@@ -106,18 +137,23 @@ final class ViewerModel {
         }
     }
 
+    /// Rewrites the file off the main thread. Rotations run one at a time so none is lost.
     func rotate(_ rotation: Rotation) {
         guard let url = list.current else { return }
-        do {
-            try OrientationRotator.rotate(url, rotation)
-            Task {
+        let previous = rotateTask
+        rotateTask = Task {
+            await previous?.value
+            do {
+                try await Task.detached(priority: .userInitiated) { try OrientationRotator.rotate(url, rotation) }.value
                 await cache.remove(url)
-                show()
+                await fullSizeCache.remove(url)
+                fileRevision += 1
+                if list.current == url { show() }
+            } catch RotateError.unsupportedFormat {
+                errorMessage = "Lossless rotation works with JPEG, HEIC and TIFF only"
+            } catch {
+                errorMessage = "Couldn't rotate \(url.lastPathComponent)"
             }
-        } catch RotateError.unsupportedFormat {
-            errorMessage = "Lossless rotation works with JPEG, HEIC and TIFF only"
-        } catch {
-            errorMessage = "Couldn't rotate \(url.lastPathComponent)"
         }
     }
 

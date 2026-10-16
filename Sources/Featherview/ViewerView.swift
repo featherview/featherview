@@ -4,6 +4,7 @@ import SwiftUI
 struct ViewerView: View {
     @Bindable var model: ViewerModel
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.openWindow) private var openWindow
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -24,9 +25,11 @@ struct ViewerView: View {
                     .padding()
             }
         }
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { model.viewSize = $0 }
+        .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         .navigationTitle(model.title)
         .inspector(isPresented: $model.showInfo) {
-            InfoPanel(url: model.list.current)
+            InfoPanel(url: model.list.current, revision: model.fileRevision)
         }
         .dropDestination(for: URL.self) { urls, _ in
             guard let url = urls.first else { return false }
@@ -36,7 +39,10 @@ struct ViewerView: View {
         .focusable()
         .focusEffectDisabled()
         .focused($focused)
-        .onAppear { focused = true }
+        .onAppear {
+            focused = true
+            model.revealWindow = { [openWindow] in openWindow(id: "viewer") }
+        }
         .onKeyPress(action: handle)
         .frame(minWidth: 480, minHeight: 320)
     }
@@ -63,11 +69,17 @@ struct ViewerView: View {
         }
     }
 
-    /// Single-key shortcuts live here, not in the menus: a plain-letter menu shortcut would also
-    /// fire while typing in the Batch window's text fields.
+    /// Viewer shortcuts live here, not in the menus: a menu shortcut would also fire while typing
+    /// in the Batch window's text fields (⌘⌫ there means "delete to start of line").
     private func handle(_ press: KeyPress) -> KeyPress.Result {
-        // Arrow keys carry the numeric-pad/function flags, so only these modifiers rule a key out.
-        guard press.modifiers.isDisjoint(with: [.command, .control, .option, .shift, .capsLock]) else { return .ignored }
+        // Arrow keys carry the numeric-pad/function flags and Caps Lock changes nothing here,
+        // so only these modifiers count.
+        let modifiers = press.modifiers.intersection([.command, .control, .option, .shift])
+        if modifiers == .command, press.key == .delete {
+            model.moveCurrentToTrash()
+            return .handled
+        }
+        guard modifiers.isEmpty else { return .ignored }
         switch press.key {
         case .rightArrow, .space, .pageDown, .downArrow: model.next()
         case .leftArrow, .delete, .pageUp, .upArrow: model.previous()
@@ -77,7 +89,7 @@ struct ViewerView: View {
             guard model.isFullScreen else { return .ignored }
             model.toggleFullScreen()
         default:
-            switch press.characters {
+            switch press.characters.lowercased() {
             case "r": model.rotate(.clockwise)
             case "l": model.rotate(.counterClockwise)
             case "i": model.showInfo.toggle()
@@ -95,12 +107,21 @@ struct ViewerView: View {
 
 struct InfoPanel: View {
     let url: URL?
+    /// Changes when the file is rewritten (rotation), so the fields are read again.
+    let revision: Int
+    @State private var fields: [MetadataField] = []
 
     var body: some View {
         Form {
-            ForEach(url.map(MetadataReader.fields(for:)) ?? [], id: \.label) { field in
+            ForEach(fields, id: \.label) { field in
                 LabeledContent(field.label, value: field.value)
             }
+        }
+        // Reads the file off the main thread.
+        .task(id: "\(revision) \(url?.path ?? "")") {
+            guard let url else { return fields = [] }
+            let read = await Task.detached { MetadataReader.fields(for: url) }.value
+            if !Task.isCancelled { fields = read }
         }
         .textSelection(.enabled)
         .inspectorColumnWidth(min: 220, ideal: 260)
@@ -123,8 +144,8 @@ struct ViewerCommands: Commands {
             Button("Rotate Right  (R)") { model.rotate(.clockwise) }
             Button("Rotate Left  (L)") { model.rotate(.counterClockwise) }
             Divider()
-            Button("Move to Trash") { model.moveCurrentToTrash() }
-                .keyboardShortcut(.delete, modifiers: .command)
+            // ⌘⌫ is handled by the viewer, not as a menu shortcut (see ViewerView.handle).
+            Button("Move to Trash  (⌘⌫)") { model.moveCurrentToTrash() }
             Button("Show Info  (I)") { model.showInfo.toggle() }
             Divider()
             Button("Batch Convert…") { openWindow(id: "batch") }
