@@ -416,6 +416,8 @@ final class ViewerModel {
                     }.value
                     guard ImageFormats.isDecodable(target) else { return }
                     await cache.remove(target)  // it may have replaced a listed file
+                    await fullSizeCache.remove(target)
+                    fileRevision += 1  // the Info panel reloads even when the path stays the same
                     open(target)
                 } catch {
                     errorMessage = String(localized: "Couldn't save \(target.lastPathComponent)")
