@@ -9,6 +9,12 @@ import Testing
         #expect(RenamePattern("{n:2}").baseName(original: "a", index: 123) == "123")
     }
 
+    @Test func padWidthIsCapped() {
+        // A typo like {n:200000000} must not build a huge string for every file.
+        #expect(RenamePattern("{n:20}").baseName(original: "a", index: 1) == "0000000001")
+        #expect(RenamePattern("{n:200000000}").baseName(original: "a", index: 1).count == 10)
+    }
+
     @Test func cannotEscapeTheOutputFolder() {
         #expect(RenamePattern("a/b:c").baseName(original: "z", index: 1) == "a-b-c")
     }

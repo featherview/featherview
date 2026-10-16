@@ -1,7 +1,7 @@
 import Foundation
 
 /// Output file names for batch conversion.
-/// `{name}` = original base name, `{n}` = 1-based counter, `{n:3}` = counter zero-padded to 3 digits.
+/// `{name}` = original base name, `{n}` = 1-based counter, `{n:3}` = counter zero-padded to 3 digits (at most 10).
 /// Any other text is kept as typed.
 public struct RenamePattern: Equatable, Sendable {
     public let template: String
@@ -15,7 +15,7 @@ public struct RenamePattern: Equatable, Sendable {
         // Counter first: an original name that happens to contain "{n}" must stay literal.
         let numbered = template.replacing(/\{n(?::(\d+))?\}/) { match in
             let digits = String(index)
-            let width = match.1.flatMap { Int($0) } ?? 0
+            let width = min(match.1.flatMap { Int($0) } ?? 0, 10)  // a typo like {n:99999999} must not build a huge name
             return String(repeating: "0", count: max(0, width - digits.count)) + digits
         }
         let name = numbered
