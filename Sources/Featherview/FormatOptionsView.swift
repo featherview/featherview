@@ -68,6 +68,23 @@ struct FormatOptionsView: View {
             }
         case .keepAllPages:
             Toggle("Keep all pages", isOn: $options.keepAllPages)
+        case .effort:
+            LabeledContent("Effort:") {
+                Slider(value: Binding { Double(options.effort) } set: { options.effort = Int($0.rounded()) },
+                       in: 0...6, step: 1)
+                Text("\(options.effort)")
+                    .monospacedDigit()
+                    .frame(minWidth: 28, alignment: .trailing)
+            }
+            .help("Higher is slower and makes smaller files")
+        case .webpKind:
+            Picker("Preset:", selection: $options.webpKind) {
+                Text("Photo").tag(WebPPictureKind.photo)
+                Text("Picture").tag(WebPPictureKind.picture)
+                Text("Drawing").tag(WebPPictureKind.drawing)
+                Text("Icon").tag(WebPPictureKind.icon)
+                Text("Text").tag(WebPPictureKind.text)
+            }
         }
     }
 

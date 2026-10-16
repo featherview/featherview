@@ -306,7 +306,7 @@ the About window.
 | PDF | one page per image at the image's size; JPEG quality 1–100 for the image (default 95) or lossless (paper sizes later) |
 | GIF, TGA, BMP, PSD, OpenEXR, PBM | none |
 | ICO, ICNS | none; the image is scaled to fit a transparent square of 256 px (ICO) or 512 px (ICNS), or the next allowed size up for smaller images (16, 32, 128, 256, 512), never enlarged beyond it |
-| WebP | quality 1–100 (default 75), lossless, effort 0–6 (default 4), preset photo / picture / drawing / icon / text |
+| WebP | preset photo (default) / picture / drawing / icon / text, lossless, quality 1–100 (default 75), effort 0–6 (default 4) |
 
 After testing ImageIO on macOS 27: it can't write JPEG without chroma subsampling
 (except at quality 100), lossless HEIC/AVIF, PNG compression levels or interlaced GIF, so those

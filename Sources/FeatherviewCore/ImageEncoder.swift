@@ -20,6 +20,9 @@ public enum ImageEncoder {
         case .pgm: return NetpbmEncoder.pgm(try rgba(first))
         case .ppm: return NetpbmEncoder.ppm(try rgba(first))
         case .qoi: return QOICodec.encode(try rgba(first))
+        case .webp:
+            return try WebPEncoder.encode(try rgba(first), quality: options.quality, lossless: options.lossless,
+                                          effort: options.effort, kind: options.webpKind)
         case .pcx:  // PCX's header can't hold every size
             guard let data = try? PCXCodec.encode(try rgba(first)) else { throw EncodeError.failed }
             return data
