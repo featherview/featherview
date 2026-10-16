@@ -16,7 +16,10 @@ struct FeatherviewApp: App {
 
         Window("Batch Convert", id: "batch") {
             BatchView(model: batch, viewer: viewer)
-                .onAppear { appDelegate.isBusy = { batch.isRunning } }
+                .onAppear {
+                    appDelegate.isBusy = { batch.isRunning }
+                    appDelegate.onOpen = { viewer.open($0) }
+                }
         }
     }
 }

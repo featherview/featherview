@@ -131,7 +131,10 @@ final class ViewerModel {
             await previous?.value
             guard list.urls.contains(url) else { return }  // ⌘⌫ pressed twice before this ran
             do {
-                try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                // Off the main thread: on a network or slow disk, trashing can take seconds.
+                try await Task.detached(priority: .userInitiated) {
+                    try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                }.value
                 await cache.remove(url)
                 await fullSizeCache.remove(url)
                 let wasCurrent = list.current == url

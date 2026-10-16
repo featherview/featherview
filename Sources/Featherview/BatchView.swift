@@ -38,7 +38,10 @@ final class BatchModel {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image]
         panel.allowsMultipleSelection = true
-        if panel.runModal() == .OK { inputs += panel.urls }
+        guard panel.runModal() == .OK else { return }
+        // A file added twice would be converted twice.
+        let known = Set(inputs.map { $0.resolvingSymlinksInPath().path })
+        inputs += panel.urls.filter { !known.contains($0.resolvingSymlinksInPath().path) }
     }
 
     func chooseOutputFolder() {
@@ -53,6 +56,7 @@ final class BatchModel {
 struct BatchView: View {
     @Bindable var model: BatchModel
     let viewer: ViewerModel
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Form {
@@ -108,5 +112,7 @@ struct BatchView: View {
         }
         .formStyle(.grouped)
         .frame(minWidth: 460, minHeight: 420)
+        // The viewer window may never have appeared (e.g. only this window was restored).
+        .onAppear { viewer.revealWindow = { [openWindow] in openWindow(id: "viewer") } }
     }
 }
