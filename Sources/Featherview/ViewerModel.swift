@@ -20,7 +20,8 @@ final class ViewerModel {
     private(set) var zoom = Zoom.fit
     /// Bumped when the current file changes on disk (rotation), so views reading it refresh.
     private(set) var fileRevision = 0
-    /// For the image on screen: the previous image's until the next one is shown (or fails), read off the main thread.
+    /// For the image on screen, read off the main thread: the previous image's until the next one is shown,
+    /// then the new one's if it was read ahead, else none until its read lands (never another file's).
     private(set) var fileInfo: FileInfo?
     /// Page-0 reads for the image shown and its prefetched neighbours, so a swap sets the info with the image.
     @ObservationIgnored private var knownInfo: [URL: FileInfo] = [:]
@@ -160,6 +161,7 @@ final class ViewerModel {
         // Off the main actor: at launch the main thread is busy building the window, the decode needn't wait.
         let prefetch = isFolder || zoom != .fit ? nil : screenPixels
         ready = [:]
+        knownInfo = [:]
         let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache] in
             await cache.removeAll()
             await fullSizeCache.removeAll()
@@ -354,16 +356,15 @@ final class ViewerModel {
                 ready = ready.filter { wanted.contains($0.key) }
                 if let image, list.current == url { ready[url] = image }
                 for neighbor in neighbors {
-                    if ready[neighbor] == nil, let decoded = try? await cache.image(for: neighbor, maxPixelSize: size) {
-                        guard !Task.isCancelled else { return }
-                        ready[neighbor] = decoded
-                    }
+                    var decoded = ready[neighbor]
+                    if decoded == nil { decoded = try? await cache.image(for: neighbor, maxPixelSize: size) }
                     guard !Task.isCancelled else { return }
-                    if knownInfo[neighbor] == nil {
-                        let info = await Task.detached { FileInfo.read(url: neighbor, page: 0) }.value
-                        guard !Task.isCancelled else { return }
-                        knownInfo[neighbor] = info
-                    }
+                    var info = knownInfo[neighbor]
+                    if info == nil { info = await Task.detached { FileInfo.read(url: neighbor, page: 0) }.value }
+                    guard !Task.isCancelled else { return }
+                    // Stored together: a swap to an image without its info would keep the previous file's in the bar.
+                    knownInfo[neighbor] = info
+                    ready[neighbor] = decoded
                 }
             }
         }
@@ -372,7 +373,8 @@ final class ViewerModel {
     /// Puts a decoded image on screen with its file info, in the same update: the status bar would
     /// otherwise draw without size and date first.
     private func shown(_ decoded: CGImage, url: URL, page: Int, started: ContinuousClock.Instant) {
-        if page == 0, let known = knownInfo[url], known != fileInfo { fileInfo = known }
+        let info = FileInfo.shown(url: url, page: page, known: knownInfo[url], current: fileInfo)
+        if info != fileInfo { fileInfo = info }
         image = decoded
         errorMessage = nil
         let elapsed = started.duration(to: .now).components

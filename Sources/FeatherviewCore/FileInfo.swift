@@ -20,4 +20,19 @@ public struct FileInfo: Equatable, Sendable {
 
     /// A read for another page of the same file has another pixel size.
     public func isFor(_ url: URL?, page: Int) -> Bool { self.url == url && self.page == page }
+
+    /// The info to put on screen with an image of `url` / `page`: `known` is its prefetched page-0 read,
+    /// `current` the one on screen, kept only for another page > 0 decode of the same page (a zoom change).
+    /// Never another file's or page's, nor page 0's after a rotation dropped `known`: none is better than wrong.
+    public static func shown(url: URL, page: Int, known: FileInfo?, current: FileInfo?) -> FileInfo? {
+        let candidate = page == 0 ? known : current
+        return candidate?.isFor(url, page: page) == true ? candidate : nil
+    }
+
+    /// The info to show with a page just put on screen: page 0's read (nil if none yet, or dropped by a
+    /// rotation), else the current one only if it is for that very page. Never another file's or page's.
+    public static func shown(url: URL, page: Int, known: FileInfo?, current: FileInfo?) -> FileInfo? {
+        if page == 0 { return known }
+        return current?.isFor(url, page: page) == true ? current : nil
+    }
 }

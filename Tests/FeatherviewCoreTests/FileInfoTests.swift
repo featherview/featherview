@@ -23,4 +23,23 @@ import Testing
         _ = try Fixtures.writeImage(to: url, width: 4, height: 8)  // a rotation rewrites it
         #expect(FileInfo.read(url: url, page: 0) != first)
     }
+
+    /// A swap with no read for the new file (prefetch cancelled, a file not prefetched, another page)
+    /// must not leave the previous file's size, bytes, date and fit zoom % beside the new image.
+    @Test func shownInfoIsNeverAnotherFilesOrPages() throws {
+        let dir = try Fixtures.makeTempDir()
+        let a = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 4)
+        let b = try Fixtures.writeImage(to: dir.appendingPathComponent("b.jpg"), width: 4, height: 8)
+        let tiff = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("m.tif"), pages: 3)
+        let infoA = FileInfo.read(url: a, page: 0), infoB = FileInfo.read(url: b, page: 0)
+        let page0 = FileInfo.read(url: tiff, page: 0), page1 = FileInfo.read(url: tiff, page: 1)
+
+        #expect(FileInfo.shown(url: b, page: 0, known: infoB, current: infoA) == infoB)
+        #expect(FileInfo.shown(url: b, page: 0, known: nil, current: infoA) == nil)
+        #expect(FileInfo.shown(url: tiff, page: 1, known: nil, current: page0) == nil)
+        // The same page decoded again (a zoom change) keeps its read.
+        #expect(FileInfo.shown(url: tiff, page: 1, known: nil, current: page1) == page1)
+        // A rotation drops page 0's read: the one on screen has the old size.
+        #expect(FileInfo.shown(url: a, page: 0, known: nil, current: infoA) == nil)
+    }
 }
