@@ -152,7 +152,9 @@ folder list.
 ### Output
 
 - Output format: every format in "Formats" below that can be written. Each format has its own
-  options (see "Format options"); the same options appear when saving from the viewer.
+  options (see "Format options"); the same options appear when saving from the viewer. In both,
+  an "Options…" button next to the format opens them, so the window and save panel stay short
+  (decided 2026-10-16, as in the reference viewer).
 - Output folder chosen by the user (may be the input folder). `{folder}` in the output path
   stands for the input file's folder name.
 - Rename pattern: `{name}` original name, `{n}` counter, `{n:3}` zero-padded counter, `{date}`

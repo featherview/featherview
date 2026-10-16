@@ -110,6 +110,8 @@ Spec: "Batch window (⌘B)" (all of it).
   for the Mac before it's built — input list with thumbnails and drag and drop, settings
   grouped by step, live preview of output names, progress and log in the window. Mockups first
   (artifact), reviewed by the maintainer, then the plan.
+- Format options behind an "Options…" button in both the batch window and Save As (spec "Output",
+  decided 2026-10-16); milestone 3's Save As shows them inside the save panel until then.
 - **Observe first:** the sub-dialogs of canvas size, text overlay, watermark, border, and
   "more effects"; the batch preview image.
 
