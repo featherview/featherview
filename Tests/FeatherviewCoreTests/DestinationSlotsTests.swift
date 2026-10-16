@@ -23,4 +23,17 @@ import Testing
         #expect(loaded[2]?.path == "/Users/x/Pictures/Keep")
         #expect(DestinationSlots(lastUsed: 99).lastUsed == 13)
     }
+
+    /// Two holders of a stale copy (Settings, another viewer window) must not undo each other's slots.
+    @Test func updateKeepsChangesMadeMeanwhile() {
+        let name = "featherview-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        let keep = URL(fileURLWithPath: "/Users/x/Keep", isDirectory: true)
+        let other = URL(fileURLWithPath: "/Users/x/Other", isDirectory: true)
+        DestinationSlots.update(in: defaults) { $0[0] = keep }
+        let updated = DestinationSlots.update(in: defaults) { $0[1] = other; $0.lastUsed = 1 }
+        #expect(updated[0] == keep && updated[1] == other)
+        #expect(DestinationSlots(defaults: defaults) == updated)
+    }
 }

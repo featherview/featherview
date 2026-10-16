@@ -98,7 +98,7 @@ private struct MoveCopySettings: View {
                             .truncationMode(.middle)
                             .foregroundStyle(slots[slot] == nil ? .secondary : .primary)
                         Button("Choose…") { choose(slot) }
-                        Button("Clear") { slots[slot] = nil; slots.save(to: .standard) }
+                        Button("Clear") { slots = DestinationSlots.update(in: .standard) { $0[slot] = nil } }
                             .disabled(slots[slot] == nil)
                     }
                 }
@@ -114,8 +114,7 @@ private struct MoveCopySettings: View {
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        slots[slot] = url
-        slots.save(to: .standard)
+        slots = DestinationSlots.update(in: .standard) { $0[slot] = url }
     }
 }
 

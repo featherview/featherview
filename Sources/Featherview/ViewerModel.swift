@@ -360,16 +360,18 @@ final class ViewerModel {
     }
 
     func showDestinations(_ operation: FileOperation) {
-        if list.current != nil, !list.isHolding { destinationPanel = operation }
+        guard list.current != nil, !list.isHolding else { return }
+        slots = DestinationSlots(defaults: .standard)  // Settings or another window may have changed them
+        destinationPanel = operation
     }
 
     /// F7 / F8 with a slot picked: moves or copies the current file (and sidecars) there.
     /// A copy leaves the viewer as it is; a move removes the file from the list.
     func transfer(to slot: Int) {
-        guard let operation = destinationPanel, let url = list.current, !list.isHolding, let folder = slots[slot] else { return }
+        guard let operation = destinationPanel, let url = list.current, !list.isHolding else { return }
+        slots = DestinationSlots.update(in: .standard) { $0.lastUsed = slot }
+        guard let folder = slots[slot] else { return }
         destinationPanel = nil
-        slots.lastUsed = slot
-        slots.save(to: .standard)
         if AppSettings.askBeforeMoveCopy.value(), !confirm(operation, url, folder) { return }
         let withSidecars = AppSettings.moveSidecars.value()
         let previous = rotateTask
@@ -402,8 +404,7 @@ final class ViewerModel {
         panel.canCreateDirectories = true
         panel.directoryURL = slots[slot]
         guard panel.runModal() == .OK, let url = panel.url else { return false }
-        slots[slot] = url
-        slots.save(to: .standard)
+        slots = DestinationSlots.update(in: .standard) { $0[slot] = url }
         return true
     }
 
