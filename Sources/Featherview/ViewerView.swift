@@ -115,10 +115,7 @@ struct ViewerView: View {
         var values = ["name": url.lastPathComponent,
                       "folder": url.deletingLastPathComponent().lastPathComponent,
                       "index": "\(model.list.index + 1)", "count": "\(model.list.urls.count)"]
-        if let image = model.image { values["size"] = "\(image.width) × \(image.height)" }
-        if let date = try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate {
-            values["date"] = date.formatted(date: .abbreviated, time: .shortened)
-        }
+        if let file = model.fileValues, file.url == url { values.merge(file.values) { $1 } }
         return values
     }
 

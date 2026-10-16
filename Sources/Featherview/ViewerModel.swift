@@ -20,6 +20,8 @@ final class ViewerModel {
     private(set) var zoom = Zoom.fit
     /// Bumped when the current file changes on disk (rotation), so views reading it refresh.
     private(set) var fileRevision = 0
+    /// The overlay's `{size}` and `{date}` for the file shown, read off the main thread when it's shown.
+    private(set) var fileValues: (url: URL, values: [String: String])?
     /// The viewer area, kept up to date by the view; fit-mode zoom steps start from it.
     var viewSize = CGSize.zero
     var displayScale = 2.0
@@ -172,6 +174,9 @@ final class ViewerModel {
                     let launchMs = Int(Date().timeIntervalSince(start) * 1000)
                     Self.log.debug("first image \(launchMs) ms after launch")
                 }
+                // Read again on every show: a rotation changes both size and date.
+                let values = await Task.detached { OverlayTemplate.fileValues(of: url) }.value
+                if !Task.isCancelled { fileValues = (url, values) }
             } catch {
                 guard !Task.isCancelled else { return }
                 image = nil
