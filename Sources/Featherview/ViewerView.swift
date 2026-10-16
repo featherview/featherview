@@ -66,7 +66,10 @@ struct ViewerView: View {
         .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
         .toolbar(id: "viewer") { ViewerToolbar(model: model) }
         .toolbar(model.isFullScreen ? .hidden : .automatic, for: .windowToolbar)
-        .onGeometryChange(for: CGSize.self) { $0.size } action: { model.viewSize = $0 }
+        // Not onGeometryChange: it misses the restored window frame at launch, leaving fit at the 100×48 placeholder.
+        .background(GeometryReader { geo in
+            Color.clear.onChange(of: geo.size, initial: true) { model.viewSize = geo.size }
+        })
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         .navigationTitle(model.title)
         .inspector(isPresented: $model.showInfo) {
