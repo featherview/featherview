@@ -20,6 +20,8 @@ public struct ExtraWindow: Codable, Hashable, Sendable {
     private var extra: ((ExtraWindow) -> Void)?
     private var pendingReveal = false
     private var pendingExtras: [ExtraWindow] = []
+    /// Viewer windows on screen, counted by their views.
+    private var openViewers = 0
 
     public init() {}
 
@@ -40,4 +42,11 @@ public struct ExtraWindow: Codable, Hashable, Sendable {
         pendingExtras.forEach(openExtra)
         pendingExtras = []
     }
+
+    public func viewerOpened() { openViewers += 1 }
+    public func viewerClosed() { openViewers -= 1 }
+
+    /// Whether a file from Finder goes to the main viewer rather than a window of its own: while it is
+    /// still empty (launch), or when no viewer window is open (the main one closed keeps its list).
+    public func mainTakesFile(mainIsEmpty: Bool) -> Bool { mainIsEmpty || openViewers == 0 }
 }

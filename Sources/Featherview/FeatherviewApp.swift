@@ -76,9 +76,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let urls = (1...max(list.numberOfItems, 1)).compactMap {
             list.atIndex($0)?.coerce(toDescriptorType: typeFileURL)?.fileURLValue
         }
-        for url in urls {
-            // The main window takes the first file while it has none (launch); every other file gets a window.
-            if viewer.list.current == nil, !viewer.isOpening, viewer.emptyFolder == nil {
+        for (index, url) in urls.enumerated() {
+            // The main window takes the first file while it has none (launch) or no viewer window is open;
+            // every other file gets a window.
+            let mainIsEmpty = viewer.list.current == nil && !viewer.isOpening && viewer.emptyFolder == nil
+            if index == 0, ViewerModel.windows.mainTakesFile(mainIsEmpty: mainIsEmpty) {
                 viewer.open(url)
             } else {
                 ViewerModel.windows.openExtra(url)

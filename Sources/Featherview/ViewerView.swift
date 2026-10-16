@@ -58,7 +58,9 @@ struct ViewerView: View {
         .focused($focused)
         .onAppear {
             focused = true
+            ViewerModel.windows.viewerOpened()
         }
+        .onDisappear { ViewerModel.windows.viewerClosed() }
         .onKeyPress(action: handle)
         .frame(minWidth: 480, minHeight: 320)
     }

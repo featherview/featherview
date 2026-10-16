@@ -43,4 +43,16 @@ import Testing
         #expect(decoded == first)
         #expect(decoded.url == a)
     }
+
+    @Test func theMainViewerTakesAFileWhenEmptyOrNoViewerWindowIsOpen() {
+        let windows = ViewerWindows()
+        // Launch: no window yet, the main viewer is empty.
+        #expect(windows.mainTakesFile(mainIsEmpty: true))
+        windows.viewerOpened()
+        #expect(windows.mainTakesFile(mainIsEmpty: true))
+        #expect(!windows.mainTakesFile(mainIsEmpty: false))
+        // The main window closed (Batch still open): its list stays, but no viewer window is open.
+        windows.viewerClosed()
+        #expect(windows.mainTakesFile(mainIsEmpty: false))
+    }
 }
