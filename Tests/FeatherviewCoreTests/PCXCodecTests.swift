@@ -90,13 +90,13 @@ import Testing
         #expect(rgb(image, 2, 0) == [240, 241, 242, 255])
     }
 
-    @Test func encoderWritesGoldenBytes() {
+    @Test func encoderWritesGoldenBytes() throws {
         var image = RGBAImage(width: 2, height: 1)
         image[0, 0] = (10, 20, 30, 255)
         image[1, 0] = (200, 200, 0, 128)  // alpha is dropped
         let expected = header(bitsPerPixel: 8, planes: 3, width: 2, height: 1, bytesPerLine: 2)
             + [10, 0xC1, 200,  20, 0xC1, 200,  30, 0]  // a literal ≥ 0xC0 needs a run of one
-        #expect([UInt8](PCXCodec.encode(image)) == expected)
+        #expect([UInt8](try PCXCodec.encode(image)) == expected)
     }
 
     @Test func roundTrip() throws {
@@ -110,14 +110,14 @@ import Testing
                 image[x, y] = (c[0], c[1], c[2], 255)
             }
         }
-        #expect(try PCXCodec.decode(PCXCodec.encode(image)) == image)
+        #expect(try PCXCodec.decode(try PCXCodec.encode(image)) == image)
     }
 
     @Test func dcxPagesThroughImageDecoder() throws {
         OwnDecoders.register(PCXCodec.pcx)
         OwnDecoders.register(PCXCodec.dcx)
-        let first = PCXCodec.encode(RGBAImage(width: 3, height: 2))
-        let second = PCXCodec.encode(RGBAImage(width: 5, height: 4))
+        let first = try PCXCodec.encode(RGBAImage(width: 3, height: 2))
+        let second = try PCXCodec.encode(RGBAImage(width: 5, height: 4))
         func u32(_ v: Int) -> [UInt8] { (0..<4).map { UInt8(v >> ($0 * 8) & 0xFF) } }
         let table = u32(0x3ADE68B1) + u32(16) + u32(16 + first.count) + u32(0)
         let url = try Fixtures.makeTempDir().appendingPathComponent("pages.dcx")
@@ -131,8 +131,8 @@ import Testing
         #expect(throws: OwnDecodeError.corrupt) { try PCXCodec.dcxPage(Data(table + first + second), 2) }
     }
 
-    @Test func badInputThrows() {
-        let good = [UInt8](PCXCodec.encode(RGBAImage(width: 4, height: 4)))
+    @Test func badInputThrows() throws {
+        let good = [UInt8](try PCXCodec.encode(RGBAImage(width: 4, height: 4)))
         #expect(throws: OwnDecodeError.truncated) { try PCXCodec.decode(Data(good.dropLast(3))) }
         #expect(throws: OwnDecodeError.truncated) { try PCXCodec.decode(Data(good.prefix(60))) }
         #expect(throws: OwnDecodeError.notThisFormat) { try PCXCodec.decode(Data([0x0B] + good.dropFirst())) }
@@ -146,5 +146,22 @@ import Testing
         let cga = header(bitsPerPixel: 2, planes: 1, width: 4, height: 1, bytesPerLine: 2) + [0, 0]
         #expect(throws: OwnDecodeError.unsupported) { try PCXCodec.decode(Data(cga)) }
         #expect(PCXCodec.dcxPageCount(Data(good)) == 0)
+    }
+
+    @Test func dcxPageOffsetPastTheEndThrows() {
+        // magic, one page at 4096 or 0xFFFFFFFF, both past the end of the file
+        #expect(throws: OwnDecodeError.truncated) {
+            try PCXCodec.dcxPage(Data([0xB1, 0x68, 0xDE, 0x3A, 0x00, 0x10, 0x00, 0x00, 0, 0, 0, 0]), 0)
+        }
+        #expect(throws: OwnDecodeError.truncated) {
+            try PCXCodec.dcxPage(Data([0xB1, 0x68, 0xDE, 0x3A, 0xFF, 0xFF, 0xFF, 0xFF]), 0)
+        }
+    }
+
+    @Test func encoderRejectsSidesTheHeaderCantHold() throws {
+        // bytesPerLine is rounded up to even and must fit 16 bits; yMax = height - 1 must too
+        #expect(throws: OwnDecodeError.unsupported) { try PCXCodec.encode(RGBAImage(width: 65535, height: 1)) }
+        #expect(throws: OwnDecodeError.unsupported) { try PCXCodec.encode(RGBAImage(width: 1, height: 65537)) }
+        #expect(try PCXCodec.decode(PCXCodec.encode(RGBAImage(width: 65534, height: 1))).width == 65534)
     }
 }

@@ -130,15 +130,17 @@ public enum PCXCodec {
         let start = offsets[page]
         // A page ends where the next one starts (the table needn't be in order): the 256-colour palette is found from the end.
         let end = offsets.filter { $0 > start }.min() ?? data.count
-        guard end <= data.count else { throw OwnDecodeError.truncated }
+        guard start < end, end <= data.count else { throw OwnDecodeError.truncated }
         return Data(data[data.startIndex + start..<data.startIndex + end])
     }
 
     // MARK: Encoding
 
     /// Version 5, 24-bit (three 8-bit planes), RLE, 72 dpi. Alpha is dropped: PCX readers rarely know a fourth plane.
-    public static func encode(_ image: RGBAImage) -> Data {
+    /// Throws `.unsupported` for a side the 16-bit header fields can't hold.
+    public static func encode(_ image: RGBAImage) throws -> Data {
         let width = image.width, bytesPerLine = (width + 1) & ~1  // the reference asks for an even count
+        guard bytesPerLine <= 0xFFFF, image.height <= 0x10000 else { throw OwnDecodeError.unsupported }
         var out = [UInt8](repeating: 0, count: 128)
         func put16(_ value: Int, at i: Int) { out[i] = UInt8(value & 0xFF); out[i + 1] = UInt8(value >> 8 & 0xFF) }
         out[0] = 0x0A; out[1] = 5; out[2] = 1; out[3] = 8
