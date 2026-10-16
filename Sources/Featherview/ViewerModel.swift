@@ -159,6 +159,8 @@ final class ViewerModel {
     }
 
     private func pastEnd(forward: Bool) {
+        // While the folder is scanned the list isn't complete yet: its end isn't the folder's end.
+        guard !isOpening else { return }
         switch AppSettings.pastEndBehavior {
         case .stop: break
         case .loop:
