@@ -329,6 +329,8 @@ final class ViewerModel {
                 await fullSizeCache.remove(url)
                 let wasCurrent = list.current == url
                 list.remove(url)
+                // Keeps the folder known, so the view says it's empty and ← / → still reach the chooser.
+                if list.isEmpty { emptyFolder = url.deletingLastPathComponent() }
                 if wasCurrent { show() }
             } catch {
                 errorMessage = "Couldn't move \(url.lastPathComponent) to the Trash"
