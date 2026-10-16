@@ -79,7 +79,7 @@ Rule of thumb: if logic can be tested without a window, it belongs in Feathervie
 
 | Budget | Target |
 |---|---|
-| Cold launch with a file to first image on screen | < 350 ms (12 MP JPEG, Apple Silicon; AppKit + SwiftUI alone take ~300 ms to show the window; with Liquid Glass ~385 ms, accepted for milestone 3 until the own-look pass sets the budget again) |
+| Cold launch with a file to first image on screen | < 350 ms (12 MP JPEG, Apple Silicon; AppKit + SwiftUI alone take ~300 ms to show the window; with Liquid Glass ~385 ms, accepted for milestone 3 until the own-look pass sets the budget again). Measured after a normal quit (no window restored): ~520 ms, issue #2 |
 | Next/previous image when prefetched | no visible delay (≈ 20 ms to swap is fine; measured 11 ms median) |
 | Next/previous image, not prefetched | < 150 ms (12 MP JPEG) |
 | Opening a folder of 10,000 files | < 500 ms to first image, UI never blocks |
@@ -88,7 +88,8 @@ Rule of thumb: if logic can be tested without a window, it belongs in Feathervie
 How: decode off the main thread at screen size, rounded up to full, ½, ¼ or ⅛ size (any size in between costs a slow resample; see `ImageDecoder.decodeSize`), prefetch 2 neighbours each
 way, never touch file contents while scanning a folder. Measure: the app logs how long each image
 took to appear — `log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'`.
-Use Instruments (Time Profiler) to find where time goes.
+Use Instruments (Time Profiler) to find where time goes. Measure launches after a real quit (⌘Q), not after `pkill`: a killed app gets its window
+restored, which hides ~140 ms that every user who quit normally pays.
 
 ## Conventions
 
