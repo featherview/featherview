@@ -95,6 +95,9 @@ Lossless: only the EXIF orientation tag changes. Supported for JPEG, HEIC and TI
 formats show "Lossless rotation works with JPEG, HEIC and TIFF only". The file is rewritten
 through a temp file and swapped in, so a failure (e.g. read-only folder) leaves the original
 untouched and shows "Couldn't rotate <name>".
+In a multi-page TIFF only page 1 can be rotated: ImageIO can't change a later page's tag without
+re-encoding every page, so pages 2 and on show "Only page 1 of <name> can be rotated losslessly"
+and the file stays untouched (decided 2026-10-16).
 
 ### Move to Trash
 

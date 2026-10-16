@@ -341,6 +341,8 @@ final class ViewerModel {
                 await fullSizeCache.remove(url)
                 fileRevision += 1
                 if list.current == url { show(page: self.page) }
+            } catch RotateError.notFirstPage {
+                errorMessage = String(localized: "Only page 1 of \(url.lastPathComponent) can be rotated losslessly")
             } catch RotateError.unsupportedFormat {
                 errorMessage = "Lossless rotation works with JPEG, HEIC and TIFF only"
             } catch {
