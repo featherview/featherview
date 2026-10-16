@@ -55,7 +55,8 @@ public enum ImageDecoder {
     /// Never upscales. Pixels are decoded here, not lazily at first draw, so callers can run this
     /// off the main thread and the UI never stalls on display.
     /// `page` is a page of a multi-page TIFF (see `pageCount`).
-    /// `hdr` keeps an HDR image's extra range (more than 8 bits); SDR images stay 8 bits either way.
+    /// Display decodes (`halvingSteps`) come back at 8 bits, or with `hdr` an HDR image at up to 16
+    /// bits with its extra range; other decodes keep the file's depth.
     /// Ignored before macOS 15 (`supportsHDR`) and for own formats.
     public static func decode(_ url: URL, maxPixelSize: Int? = nil, halvingSteps: Bool = false, page: Int = 0, hdr: Bool = false) throws -> CGImage {
         if let own = OwnDecoders.format(for: url) {
@@ -82,13 +83,32 @@ public enum ImageDecoder {
         if wantsHDR { options[kCGImageSourceDecodeRequest] = kCGImageSourceDecodeToHDR }
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, page, options as CFDictionary)
         else { throw DecodeError.unreadable(url) }
-        // 16-bit PNG/TIFF and EXR decode deep even as SDR; callers treat > 8 bits as HDR and the
-        // cache budget assumes 8, so only a real HDR result (PQ/HLG or extended range) stays deep.
-        guard image.bitsPerComponent > 8, !(wantsHDR && isHDR(image.colorSpace)) else { return image }
+        // Display decodes only: batch and Save As keep every bit the file has.
+        guard halvingSteps, image.bitsPerComponent > 8 else { return image }
+        if wantsHDR, isHDR(image.colorSpace, type: CGImageSourceGetType(source)) {
+            // ImageIO gives EXR as 32-bit float; the spec budgets HDR at 16 bits (twice SDR).
+            guard image.bitsPerComponent > 16, let space = image.colorSpace, space.model == .rgb else { return image }
+            guard let half = redrawn(image, width: image.width, height: image.height, in: space, bitsPerComponent: 16)
+            else { throw DecodeError.unreadable(url) }
+            return half
+        }
+        // 16-bit PNG/TIFF, float TIFF and EXR decode deep even as SDR; callers treat > 8 bits as HDR
+        // and the cache budget assumes 8.
         guard let eight = redrawn(image, width: image.width, height: image.height,
                                   in: image.colorSpace.flatMap(sdrSpace) ?? CGColorSpace(name: CGColorSpace.sRGB)!)
         else { throw DecodeError.unreadable(url) }
         return eight
+    }
+
+    /// PQ/HLG (HDR photos, gain maps), or extended range from a format made for HDR. ImageIO gives
+    /// float TIFFs extended range even when every pixel is SDR, so those count as SDR.
+    /// shortcut: a float TIFF with real highlights shows clipped, scan its pixels if anyone has such files.
+    private static func isHDR(_ space: CGColorSpace?, type: CFString?) -> Bool {
+        guard let space else { return false }
+        if CGColorSpaceUsesITUR_2100TF(space) { return true }
+        let hdrFormats = ["com.ilm.openexr-image", "public.radiance"].compactMap { UTType($0) }
+        return CGColorSpaceUsesExtendedRange(space)
+            && type.flatMap { UTType($0 as String) }.map { t in hdrFormats.contains { t.conforms(to: $0) } } == true
     }
 
     private static func isHDR(_ space: CGColorSpace?) -> Bool {
@@ -111,13 +131,16 @@ public enum ImageDecoder {
                        in: CGColorSpace(name: CGColorSpace.sRGB)!)
     }
 
-    /// `image` drawn into an 8-bit RGB(A) bitmap of the given size and color space.
-    private static func redrawn(_ image: CGImage, width: Int, height: Int, in space: CGColorSpace) -> CGImage? {
+    /// `image` drawn into an RGB(A) bitmap of the given size and color space: 8-bit, or 16-bit half float.
+    private static func redrawn(_ image: CGImage, width: Int, height: Int, in space: CGColorSpace,
+                                bitsPerComponent: Int = 8) -> CGImage? {
         let hasAlpha = ![.none, .noneSkipFirst, .noneSkipLast].contains(image.alphaInfo)
+        let float = bitsPerComponent == 16
+            ? CGBitmapInfo.floatComponents.rawValue | CGBitmapInfo.byteOrder16Little.rawValue : 0
         guard let context = CGContext(
-            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+            data: nil, width: width, height: height, bitsPerComponent: bitsPerComponent, bytesPerRow: 0,
             space: space,
-            bitmapInfo: (hasAlpha ? CGImageAlphaInfo.premultipliedLast : .noneSkipLast).rawValue) else { return nil }
+            bitmapInfo: (hasAlpha ? CGImageAlphaInfo.premultipliedLast : .noneSkipLast).rawValue | float) else { return nil }
         context.interpolationQuality = .high
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
         return context.makeImage()

@@ -14,7 +14,7 @@ enum Fixtures {
 
     /// A solid red image. `orientation` is the EXIF orientation tag, 1...8.
     /// `properties` are extra ImageIO metadata dictionaries (EXIF, GPS, ...).
-    /// `bitsPerComponent` 16 makes a deep SDR image (16-bit PNG/TIFF, half-float EXR).
+    /// `bitsPerComponent` 16 makes a deep SDR image (16-bit PNG/TIFF, 32-bit float EXR); 32 a float TIFF.
     @discardableResult
     static func writeImage(to url: URL, width: Int, height: Int, type: UTType = .jpeg,
                            orientation: Int = 1, properties: [CFString: Any] = [:],
@@ -22,7 +22,8 @@ enum Fixtures {
         let context = CGContext(
             data: nil, width: width, height: height, bitsPerComponent: bitsPerComponent, bytesPerRow: 0,
             space: CGColorSpace(name: CGColorSpace.sRGB)!,
-            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+                | (bitsPerComponent == 32 ? CGBitmapInfo.floatComponents.rawValue | CGBitmapInfo.byteOrder32Little.rawValue : 0))!
         context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         guard let dest = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil)
