@@ -74,16 +74,51 @@ import Testing
         }
     }
 
-    // Batch encodes on every core at once; libwebp sets up its CPU-specific code on first use.
-    @Test func parallelEncodesMatchASerialOne() throws {
+    // Batch encodes on every core at once, and libwebp sets up its CPU-specific code on first use
+    // without a lock. That only shows in a process that has not encoded yet, so this runs a child.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment[Self.freshKey] == nil))
+    func firstEncodesInAFreshProcessRunInParallelSafely() throws {
+        let arguments = CommandLine.arguments
+        let bundle = try #require(arguments.firstIndex(of: "--test-bundle-path").map { arguments[$0 + 1] })
+        let child = Process()
+        child.executableURL = URL(fileURLWithPath: arguments[0])
+        child.arguments = ["--test-bundle-path", bundle, "--filter", "parallelFirstEncodesChild", bundle,
+                           "--testing-library", "swift-testing"]
+        child.environment = ProcessInfo.processInfo.environment.merging([Self.freshKey: "1"]) { $1 }
+        let pipe = Pipe()
+        child.standardOutput = pipe
+        child.standardError = pipe
+        try child.run()
+        let output = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        child.waitUntilExit()
+        #expect(child.terminationStatus == 0 && output.contains("parallelFirstEncodesChild()") && !output.contains("failed"),
+                "\(output)")
+    }
+
+    static let freshKey = "FEATHERVIEW_FRESH_WEBP_PROCESS"
+
+    /// libwebp's table, if it has been set up yet: a function pointer it fills in on first use.
+    static func dspTable(_ name: String, slot: Int = 0) -> UnsafeRawPointer? {
+        guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), name) else { return nil }  // RTLD_DEFAULT
+        return symbol.load(fromByteOffset: slot * MemoryLayout<UnsafeRawPointer?>.stride, as: UnsafeRawPointer?.self)
+    }
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment[Self.freshKey] != nil))
+    func parallelFirstEncodesChild() throws {
+        // Lossless, lossy alpha (VP8FiltersInit) and the lossless coder lossy alpha uses: all untouched yet.
+        let tables = [("VP8LCollectColorBlueTransforms", 0), ("WebPFilters", 1), ("VP8EncQuantizeBlock", 0)]
+        #expect(tables.allSatisfy { Self.dspTable($0.0, slot: $0.1) == nil }, "not a fresh process")
+
+        // Eight plain lossy encodes start at once; the first must set up every path, not just its own.
         let source = Self.image(256, 192)
-        let expected = try WebPEncoder.encode(source, quality: 75, lossless: false, effort: 4, kind: .photo)
         let results = UnsafeSendableBox([Data?](repeating: nil, count: 8))
         DispatchQueue.concurrentPerform(iterations: 8) { i in
             let data = try? WebPEncoder.encode(source, quality: 75, lossless: false, effort: 4, kind: .photo)
             results.lock.withLock { results.value[i] = data }
         }
-        #expect(results.value.allSatisfy { $0 == expected })
+        #expect(tables.allSatisfy { Self.dspTable($0.0, slot: $0.1) != nil }, "warm-up skipped a path")
+        let serial = try WebPEncoder.encode(source, quality: 75, lossless: false, effort: 4, kind: .photo)
+        #expect(results.value.allSatisfy { $0 == serial })
     }
 }
 

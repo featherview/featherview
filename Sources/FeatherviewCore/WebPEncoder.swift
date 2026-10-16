@@ -19,10 +19,15 @@ public enum WebPEncoder {
         return try encodeNow(image, quality: quality, lossless: lossless, effort: effort, kind: kind)
     }
 
-    /// libwebp picks its CPU-specific code on the first encode; batch starts one per core at once,
-    /// so that first encode happens once, alone (a static let runs exactly once, thread-safely).
+    /// libwebp picks its CPU-specific code on first use of each path, without a lock (it is built
+    /// without WEBP_USE_THREAD); batch starts one encode per core at once, so every path we use is
+    /// set up once, alone (a static let runs exactly once, thread-safely). Lossy with alpha reaches
+    /// the lossy, alpha filter and lossless code; plain lossless covers the rest of that coder.
     private static let warmUp: Void = {
-        _ = try? encodeNow(RGBAImage(width: 1, height: 1), quality: 75, lossless: false, effort: 0, kind: .photo)
+        let pixel = RGBAImage(width: 1, height: 1, pixels: [0, 0, 0, 128])
+        for lossless in [false, true] {
+            _ = try? encodeNow(pixel, quality: 75, lossless: lossless, effort: 0, kind: .photo)
+        }
     }()
 
     private static func encodeNow(_ image: RGBAImage, quality: Int, lossless: Bool, effort: Int,
