@@ -58,6 +58,14 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 - Double-click the image: toggle full screen.
 - Two-finger scroll (or a mouse wheel) pans a zoomed image; it never changes images.
 
+### Toolbar
+
+For mouse users, the viewer window has a standard macOS toolbar (decided 2026-10-16): previous,
+next, rotate left, rotate right, zoom out, zoom to fit, zoom in, info panel, Move to Trash. Each
+button does what its key does and has a tooltip naming that key. View › Hide Toolbar hides it
+(remembered), and View › Customize Toolbar… changes it, as in any Mac app. Hidden in full screen.
+Mac SF Symbols, never icons taken from another viewer.
+
 ### Menu commands
 
 ⌘O Open…, ⌘⌫ Move to Trash, ⌘B Batch Convert…, ⇧⌘S Save As… (the current image in any writable format, with that format's options, orientation

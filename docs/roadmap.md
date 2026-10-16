@@ -40,8 +40,11 @@ Spec: "Viewer" (all of it), "Settings", "Windows".
 - Sidecar files (`.xmp`, `.aae`, `.thm`) move, copy and trash with their image.
 - One viewer window per file opened from Finder (`WindowGroup(for: URL.self)`).
 - Settings window (⌘,) with every setting in the spec, persisted in `UserDefaults`.
+- Toolbar for mouse users (spec "Toolbar"), SwiftUI `.toolbar` calling the same model actions as
+  the keys.
 - **Observe first:** mouse dragging in the window, right-click in the window, opening a folder
-  directly, multi-page TIFF browsing.
+  directly, multi-page TIFF browsing, which functions the toolbar offers (functions only, not
+  layout or icons).
 
 ## 3. Formats and Save As
 
