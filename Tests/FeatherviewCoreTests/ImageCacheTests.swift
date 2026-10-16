@@ -65,4 +65,25 @@ import Testing
         #expect(try await cache.image(for: url, maxPixelSize: 100).width == 100)
         #expect(try await cache.image(for: url, maxPixelSize: 100).width == 100)
     }
+
+    @Test func cancelledCallerSkipsDecode() async throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("c.jpg"), width: 8, height: 8)
+        let cache = ImageCache()
+        let task = Task { try await cache.image(for: url, maxPixelSize: 100) }
+        task.cancel()
+        await #expect(throws: CancellationError.self) { try await task.value }
+        #expect(await cache.count == 0)
+        #expect(await !cache.isDecoding(url))
+    }
+
+    @Test func cancellingOneWaiterKeepsTheSharedDecode() async throws {
+        let url = try Fixtures.makeTempDir().appendingPathComponent("d.jpg")
+        try Fixtures.writeImage(to: url, width: 6000, height: 4000)
+        let cache = ImageCache()
+        let keeper = Task { try await cache.image(for: url, maxPixelSize: nil) }
+        while await !cache.isDecoding(url) { await Task.yield() }
+        let quitter = Task { try await cache.image(for: url, maxPixelSize: nil) }
+        quitter.cancel()
+        #expect(try await keeper.value.width == 6000)
+    }
 }
