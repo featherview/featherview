@@ -23,4 +23,10 @@ import Testing
     @Test func shiftedLettersAreNotShortcuts() {
         #expect(ViewerKey.action(characters: "R", shift: true) == nil)
     }
+
+    @Test func saveAsAndAbout() {
+        #expect(ViewerKey.action(characters: "s", shift: false) == .saveAs)
+        #expect(ViewerKey.action(characters: "a", shift: false) == .about)
+        #expect(ViewerKey.action(characters: "S", shift: true) == nil)
+    }
 }
