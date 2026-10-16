@@ -7,28 +7,47 @@ public actor ImageCache {
     private let capacity: Int
     private var images: [URL: CGImage] = [:]
     private var order: [URL] = []  // least recently used first
-    private var inFlight: [URL: (size: Int?, task: Task<CGImage, Error>)] = [:]
+    private var inFlight: [URL: (size: Int?, task: Task<CGImage, Error>, waiters: Int)] = [:]
 
     public init(capacity: Int = 8) {
         self.capacity = capacity
     }
 
     /// The cached image, or decodes it — once, even when several callers ask at the same time.
+    /// A decode that every caller has given up on (task cancelled) is skipped if it hasn't started.
     public func image(for url: URL, maxPixelSize: Int?) async throws -> CGImage {
+        try Task.checkCancellation()
         if let hit = images[url] {
             touch(url)
             return hit
         }
-        if let running = inFlight[url], running.size == maxPixelSize { return try await running.task.value }
-        let task = Task.detached(priority: .userInitiated) {
-            try ImageDecoder.decode(url, maxPixelSize: maxPixelSize)
+        let task: Task<CGImage, Error>
+        if let running = inFlight[url], running.size == maxPixelSize, !running.task.isCancelled {
+            task = running.task
+            inFlight[url]?.waiters += 1
+        } else {
+            task = Task.detached(priority: .userInitiated) {
+                try Task.checkCancellation()
+                return try ImageDecoder.decode(url, maxPixelSize: maxPixelSize)
+            }
+            inFlight[url] = (maxPixelSize, task, 1)
         }
-        inFlight[url] = (maxPixelSize, task)
         // Only the current decode may store: a remove or a newer request supersedes this one.
         defer { if inFlight[url]?.task == task { inFlight[url] = nil } }
-        let image = try await task.value
+        // shortcut: a decode already running is not interrupted (ImageIO can't be), only queued ones are skipped; fine while the pool is small.
+        let image = try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            Task { await self.leave(url, task) }
+        }
         if inFlight[url]?.task == task { store(image, for: url) }
         return image
+    }
+
+    private func leave(_ url: URL, _ task: Task<CGImage, Error>) {
+        guard inFlight[url]?.task == task else { return }
+        inFlight[url]?.waiters -= 1
+        if inFlight[url]?.waiters == 0 { task.cancel() }
     }
 
     /// Warms the cache in the background. Failures are ignored here; they surface when shown.

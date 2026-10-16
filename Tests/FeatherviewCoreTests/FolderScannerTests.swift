@@ -73,6 +73,16 @@ import Testing
         #expect(names == ["b.png", "img.jpg"])
     }
 
+    @Test func unlistableFolderStillOpensTheFile() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 4, height: 4)
+        try FileManager.default.setAttributes([.posixPermissions: 0o311], ofItemAtPath: dir.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path) }
+
+        #expect(try FolderScanner.images(around: url).map(\.lastPathComponent) == ["a.jpg"])
+        #expect(throws: (any Error).self) { try FolderScanner.images(around: dir) }
+    }
+
     @Test func missingFolderThrows() {
         #expect(throws: (any Error).self) {
             try FolderScanner.images(around: URL(fileURLWithPath: "/no/such/folder/a.jpg"))
