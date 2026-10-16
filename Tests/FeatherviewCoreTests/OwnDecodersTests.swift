@@ -98,4 +98,9 @@ import Testing
         #expect(try reader.u16be() == 0x0203)
         #expect(reader.isAtEnd)
     }
+
+    @Test func pixelCapKeepsOneDecodeAtAFewHundredMegabytes() {
+        #expect(throws: OwnDecodeError.corrupt) { try checkedSize(16384, 16384) }
+        #expect((try? checkedSize(8192, 8192)) != nil)
+    }
 }

@@ -1,5 +1,11 @@
 import CoreGraphics
 
+/// Keeps the pixel array alive for the CGDataProvider that reads it.
+private final class PixelStore: Sendable {
+    let pixels: [UInt8]
+    init(_ pixels: [UInt8]) { self.pixels = pixels }
+}
+
 /// 8-bit RGBA pixels, straight (not premultiplied) alpha, rows top to bottom: what our own decoders
 /// produce and our own encoders consume.
 public struct RGBAImage: Equatable, Sendable {
@@ -54,10 +60,22 @@ public struct RGBAImage: Equatable, Sendable {
     public var isOpaque: Bool { stride(from: 3, to: pixels.count, by: 4).allSatisfy { pixels[$0] == 255 } }
 
     /// A CGImage in sRGB. Opaque images get no alpha channel, so the viewer shows no checkerboard.
+    /// It reads `pixels` in place (no copy), so a decode never holds the RGBA twice.
     public func makeCGImage() -> CGImage? {
         let opaque = isOpaque
         let info: CGImageAlphaInfo = opaque ? .noneSkipLast : .last
-        guard let provider = CGDataProvider(data: Data(pixels) as CFData) else { return nil }
+        var callbacks = CGDataProviderDirectCallbacks(
+            version: 0, getBytePointer: nil, releaseBytePointer: nil,
+            getBytesAtPosition: { info, buffer, position, count in
+                let pixels = Unmanaged<PixelStore>.fromOpaque(info!).takeUnretainedValue().pixels
+                let start = min(Int(position), pixels.count), n = min(count, pixels.count - start)
+                pixels.withUnsafeBytes { buffer.copyMemory(from: $0.baseAddress! + start, byteCount: n) }
+                return n
+            },
+            releaseInfo: { info in Unmanaged<PixelStore>.fromOpaque(info!).release() })
+        guard let provider = CGDataProvider(
+            directInfo: Unmanaged.passRetained(PixelStore(pixels)).toOpaque(),
+            size: off_t(pixels.count), callbacks: &callbacks) else { return nil }
         return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
                        space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGBitmapInfo(rawValue: info.rawValue),
                        provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
@@ -105,9 +123,11 @@ struct ByteReader {
     mutating func skip(_ count: Int) throws { _ = try take(count) }
 }
 
-/// Pixel counts our decoders accept: a corrupt header can't make them allocate gigabytes.
-// shortcut: 256 megapixels, the largest of our formats' real files are far below; raise it if one isn't.
-let maxOwnPixels = 1 << 28
+/// Pixel counts our decoders accept: one decode holds at most 256 MiB of RGBA, and up to five run at
+/// once while prefetching. Decoders must also check the data is long enough for the size (allowing
+/// for their compression) before they allocate `RGBAImage`, so a 100-byte file can't claim 256 MiB.
+// shortcut: 64 megapixels, the largest of our formats' real files are far below; raise it if one isn't.
+let maxOwnPixels = 1 << 26
 
 func checkedSize(_ width: Int, _ height: Int) throws -> (Int, Int) {
     guard width > 0, height > 0, width <= 1 << 16, height <= 1 << 16, width * height <= maxOwnPixels
