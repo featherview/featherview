@@ -9,13 +9,18 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
 - Also reads formats macOS can't: QOI, PCX/DCX, XBM, XPM, WBMP, Sun Raster and IFF/LBM (including HAM)
 - HDR photos (iPhone HEIC and JPEG, HDR AVIF, OpenEXR) show their extra brightness on HDR screens
   (macOS 15 and later)
-- Saves and batch converts to JPEG, PNG, HEIC, AVIF, TIFF, GIF, BMP, JPEG 2000, PDF, PSD, TGA, ICO,
-  ICNS, OpenEXR, PBM, PGM, PPM, QOI and PCX
+- Saves and batch converts to JPEG, PNG, HEIC, AVIF, TIFF, WebP, GIF, BMP, JPEG 2000, PDF, PSD, TGA,
+  ICO, ICNS, OpenEXR, PBM, PGM, PPM, QOI and PCX
 - Lossless JPEG/HEIC/TIFF rotation
 - Batch convert, resize and rename
 - EXIF info panel; delete moves to Trash
 
 Status: early development. Requires macOS 14 or later.
+
+## Third-party code
+
+- [libwebp](https://chromium.googlesource.com/webm/libwebp) 1.6.0 (BSD-3-Clause), for writing WebP,
+  built from source through [libwebp-Xcode](https://github.com/SDWebImage/libwebp-Xcode).
 
 ## Install
 

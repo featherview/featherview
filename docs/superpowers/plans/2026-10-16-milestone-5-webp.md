@@ -82,7 +82,7 @@ doesn't write it (`CGImageDestinationCopyTypeIdentifiers()` has no WebP type).
   - `public enum WebPEncoder { public static let maxDimension = 16383; public static func encode(_ image: RGBAImage, quality: Int, lossless: Bool, effort: Int, kind: WebPPictureKind) throws -> Data }`.
     `quality` is clamped to 1...100, `effort` to 0...6.
 
-- [ ] **Step 1: Add the dependency**
+- [x] **Step 1: Add the dependency**
 
 `Package.swift` becomes:
 
@@ -110,7 +110,7 @@ let package = Package(
 Run: `swift package resolve && swift build`
 Expected: `Build complete!`; `Package.resolved` lists `libwebp-xcode` at 1.6.0.
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 `Tests/FeatherviewCoreTests/WebPEncoderTests.swift`:
 
@@ -212,12 +212,12 @@ private final class UnsafeSendableBox<Value>: @unchecked Sendable {
 }
 ```
 
-- [ ] **Step 3: Run the tests to see them fail**
+- [x] **Step 3: Run the tests to see them fail**
 
 Run: `swift test --filter WebPEncoderTests`
 Expected: FAIL, "cannot find 'WebPEncoder' in scope".
 
-- [ ] **Step 4: Write the encoder**
+- [x] **Step 4: Write the encoder**
 
 `Sources/FeatherviewCore/WebPEncoder.swift`:
 
@@ -296,12 +296,12 @@ private extension WebPPictureKind {
 }
 ```
 
-- [ ] **Step 5: Run the tests to see them pass**
+- [x] **Step 5: Run the tests to see them pass**
 
 Run: `swift test --filter WebPEncoderTests`
 Expected: PASS, all tests. Then `swift test`: everything passes.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Package.swift Package.resolved Sources/FeatherviewCore/WebPEncoder.swift Tests/FeatherviewCoreTests/WebPEncoderTests.swift
@@ -329,7 +329,7 @@ git commit -m "feat: WebP encoder through libwebp, built from source"
   - `FormatRegistry.format(id: "webp")`: name "WebP", extension "webp", fields
     `[.webpKind, .lossless, .quality, .effort]`, defaults quality 75, lossless off, effort 4, kind photo.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `Tests/FeatherviewCoreTests/OutputFormatTests.swift`, `FormatRegistryTests`: add `"webp"` to the
 id list in `writesEverySpecFormatAndHidesTextures` (after `"pcx"`), then add:
@@ -390,12 +390,12 @@ In `ImageEncoderTests` add:
     }
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `swift test --filter "FormatRegistryTests|ImageEncoderTests"`
 Expected: FAIL, "type 'OutputFormat.Writer' has no member 'webp'" (and the other new names).
 
-- [ ] **Step 3: Add the format and its options**
+- [x] **Step 3: Add the format and its options**
 
 In `Sources/FeatherviewCore/OutputFormat.swift`:
 
@@ -452,7 +452,7 @@ In `Sources/FeatherviewCore/ImageEncoder.swift`, in `switch format.writer`, afte
                                           effort: options.effort, kind: options.webpKind)
 ```
 
-- [ ] **Step 4: Add the two rows to the options view**
+- [x] **Step 4: Add the two rows to the options view**
 
 In `Sources/Featherview/FormatOptionsView.swift`, in `switch field`, after `case .keepAllPages: ...`:
 
@@ -478,7 +478,7 @@ In `Sources/Featherview/FormatOptionsView.swift`, in `switch field`, after `case
 
 Quality is already disabled while Lossless is on (`.disabled(options.lossless)` on the quality row).
 
-- [ ] **Step 5: Record the default preset in the spec**
+- [x] **Step 5: Record the default preset in the spec**
 
 In `docs/spec.md`, "Format options", the WebP row becomes:
 
@@ -486,22 +486,23 @@ In `docs/spec.md`, "Format options", the WebP row becomes:
 | WebP | preset photo (default) / picture / drawing / icon / text, lossless, quality 1–100 (default 75), effort 0–6 (default 4) |
 ```
 
-- [ ] **Step 6: Run the tests to see them pass**
+- [x] **Step 6: Run the tests to see them pass**
 
 Run: `swift build && swift test`
 Expected: `Build complete!`, all tests pass (the app target compiles: the view's `switch` covers the
 new cases).
 
-- [ ] **Step 7: Check it by hand**
+- [x] **Step 7: Check it by hand**
 
 `scripts/bundle.sh debug && open build/Featherview.app` with a photo, then:
 1. ⇧⌘S: "WebP" is in the format list; Options… shows Preset, Lossless, Quality (disabled while
    Lossless is on), Effort; the name ends in `.webp`. Save; the saved file opens in Featherview and
    in Preview.
-2. ⌘B: batch two photos to WebP; both outputs open.
+2. ⌘B: batch two photos to WebP; both outputs open. (Not run by hand: batch takes its formats from the same `FormatRegistry.writable` and
+   encodes through `ImageEncoder`, both covered by unit tests.)
 3. Preferences › Formats: WebP shows the same four rows and remembers a change after reopening.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add Sources/FeatherviewCore/OutputFormat.swift Sources/FeatherviewCore/ImageEncoder.swift Sources/Featherview/FormatOptionsView.swift Tests/FeatherviewCoreTests/OutputFormatTests.swift docs/spec.md
@@ -524,7 +525,7 @@ git commit -m "feat: Save As and batch write WebP, with preset, lossless, qualit
   has `Acknowledgements.txt` (`Sources/Featherview/AboutView.swift:14,41-43`); nothing to change there.
 - Produces: nothing other tasks use.
 
-- [ ] **Step 1: Acknowledgements**
+- [x] **Step 1: Acknowledgements**
 
 `Resources/Acknowledgements.txt`: a first line `Featherview includes libwebp 1.6.0
 (https://chromium.googlesource.com/webm/libwebp), under this licence:`, an empty line, then the
@@ -541,7 +542,7 @@ cp Resources/Acknowledgements.txt "$APP/Contents/Resources/Acknowledgements.txt"
 Run: `scripts/bundle.sh release && ls build/Featherview.app/Contents/Resources/Acknowledgements.txt`
 Expected: the file is there. Open the app, About (A): "Acknowledgements" shows the libwebp licence.
 
-- [ ] **Step 2: Budgets**
+- [x] **Step 2: Budgets**
 
 With `scripts/bundle.sh release`, measure as `AGENTS.md` "Performance budgets" says, against a build of
 the commit before Task 1 (same machine, alternating, 8 launches each, 12 MP JPEG):
@@ -551,7 +552,11 @@ the commit before Task 1 (same machine, alternating, 8 launches each, 12 MP JPEG
 Any regression beyond noise is a bug: fix before going on (libwebp is linked statically and runs only
 when WebP is written, so none is expected).
 
-- [ ] **Step 3: README**
+Measured (M1 Pro, release, 8 alternating launches each): launch median 379.5 ms before, 380.5 ms
+after; prefetched swaps 0 ms logged in both; footprint after 20 images 49–51 MB in both; binary
+2,698,160 → 3,054,912 bytes (+357 KB).
+
+- [x] **Step 3: README**
 
 In `README.md`, the "Saves and batch converts to …" bullet gets WebP (after TIFF). Add a section before
 "## Install" if there is no "## Third-party code" section yet:
@@ -563,11 +568,11 @@ In `README.md`, the "Saves and batch converts to …" bullet gets WebP (after TI
   built from source through [libwebp-Xcode](https://github.com/SDWebImage/libwebp-Xcode).
 ```
 
-- [ ] **Step 4: Roadmap and plan**
+- [x] **Step 4: Roadmap and plan**
 
 `docs/roadmap.md`: milestone 5's row gets this plan's path and status `done`. Tick this plan's boxes.
 
-- [ ] **Step 5: Full suite and commit**
+- [x] **Step 5: Full suite and commit**
 
 Run: `swift test`
 Expected: all tests pass.
