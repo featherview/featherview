@@ -15,6 +15,7 @@ struct ViewerView: View {
     @AppStorage(AppSettings.showOverlay.key) private var showOverlay = AppSettings.showOverlay.defaultValue
     @AppStorage(AppSettings.overlayTemplate.key) private var overlayTemplate = AppSettings.overlayTemplate.defaultValue
     @AppStorage(AppSettings.hidePointer.key) private var hidePointer = AppSettings.hidePointer.defaultValue
+    @AppStorage(toolbarHiddenKey) private var toolbarHidden = false
 
     private var background: Color { Color(nsColor: backgroundNSColor) }
     private var backgroundNSColor: NSColor {
@@ -64,7 +65,7 @@ struct ViewerView: View {
         .onChange(of: model.image) { hidePointerInFullScreen() }
         .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
         .toolbar(id: "viewer") { ViewerToolbar(model: model) }
-        .toolbar(model.isFullScreen ? .hidden : .automatic, for: .windowToolbar)
+        .toolbar(model.isFullScreen || toolbarHidden ? .hidden : .visible, for: .windowToolbar)
         // Not onGeometryChange: it misses the restored window frame at launch, leaving fit at the 100×48 placeholder.
         .background(GeometryReader { geo in
             Color.clear.onChange(of: geo.size, initial: true) { model.viewSize = geo.size }
@@ -333,9 +334,13 @@ struct InfoPanel: View {
     }
 }
 
+/// Whether viewer windows hide their toolbar (View › Hide Toolbar).
+private let toolbarHiddenKey = "toolbarHidden"
+
 struct ViewerCommands: Commands {
     @FocusedValue(\.viewer) private var model
     @Environment(\.openWindow) private var openWindow
+    @AppStorage(toolbarHiddenKey) private var toolbarHidden = false
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -381,6 +386,15 @@ struct ViewerCommands: Commands {
             Divider()
             Button("Batch Convert…  (B)") { openWindow(id: "batch") }
                 .keyboardShortcut("b")
+        }
+        // Not ToolbarCommands: SwiftUI shows its toolbar at every launch, so whether it's hidden is kept here.
+        CommandGroup(replacing: .toolbar) {
+            Button(toolbarHidden ? "Show Toolbar" : "Hide Toolbar") { toolbarHidden.toggle() }
+                .keyboardShortcut("t", modifiers: [.command, .option])
+            Button("Customize Toolbar…") {
+                NSApp.sendAction(#selector(NSWindow.runToolbarCustomizationPalette(_:)), to: nil, from: nil)
+            }
+            .disabled(model == nil || toolbarHidden)
         }
         CommandGroup(after: .toolbar) {
             Button("Zoom to Fit  (0)") { model?.setZoom(.fit) }
