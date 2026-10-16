@@ -24,6 +24,10 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
   icon), from ⌘O, or by dropping a file or folder onto the window.
 - Opening a file loads every decodable image in the same folder, in Finder order
   (img2 before img10), hidden files skipped. Opening a folder starts at its first image.
+  Decided 2026-10-16: images are recognised by file extension only (scanning never opens a
+  file); `.jfif`, `.jif` and `.jfi` count as JPEG; the file the user opened is always in the list,
+  even if hidden or of an unknown extension; symlinked folders are followed; folders and broken
+  links with image names are skipped.
 - Supported formats: everything ImageIO decodes on the user's Mac (JPEG, PNG, HEIC, WebP,
   TIFF, GIF first frame, BMP, camera RAW, …). PDF is not an image here.
 - Window title: `filename — 3 / 120`.
