@@ -31,7 +31,15 @@ public enum FileMover {
     private static func place(_ source: URL, at target: URL, _ operation: FileOperation) throws {
         let manager = FileManager.default
         let isLink = (try? source.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
-        if operation == .move, !isLink { return try manager.moveItem(at: source, to: target) }
+        if operation == .move, !isLink {
+            let targetExisted = (try? manager.attributesOfItem(atPath: target.path)) != nil
+            do { return try manager.moveItem(at: source, to: target) } catch {
+                // Across volumes moveItem copies, then deletes; if the delete failed, drop the copy.
+                // Only a target this call made: one that was there before is never touched.
+                if !targetExisted, manager.fileExists(atPath: source.path) { try? manager.removeItem(at: target) }
+                throw error
+            }
+        }
         try manager.copyItem(at: isLink ? source.resolvingSymlinksInPath() : source, to: target)
         guard operation == .move else { return }
         do { try manager.removeItem(at: source) } catch {

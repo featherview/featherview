@@ -153,6 +153,22 @@ import Testing
         #expect(throws: (any Error).self) { try FileMover.transfer(image, to: locked, operation: .move) }
         #expect(FileManager.default.fileExists(atPath: image.path))
     }
+
+    /// Across volumes a move is copy-then-delete; if the delete fails, the copy must not stay behind.
+    @Test func failedMoveToAnotherVolumeLeavesNoCopy() throws {
+        let volume = try CaseSensitiveVolume()
+        defer { volume.detach() }
+        let source = try Fixtures.makeTempDir().appendingPathComponent("src")
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        let image = try Fixtures.writeImage(to: source.appendingPathComponent("a.jpg"), width: 4, height: 4)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: source.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: source.path) }
+        let dest = volume.root.appendingPathComponent("dest")
+
+        #expect(throws: (any Error).self) { try FileMover.transfer(image, to: dest, operation: .move) }
+        #expect(FileManager.default.fileExists(atPath: image.path))
+        #expect(!FileManager.default.fileExists(atPath: dest.appendingPathComponent("a.jpg").path))
+    }
 }
 
 /// A small case-sensitive APFS disk image, mounted privately for one test.
