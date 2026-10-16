@@ -57,8 +57,6 @@ final class BatchModel {
 
 struct BatchView: View {
     @Bindable var model: BatchModel
-    let viewer: ViewerModel
-    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Form {
@@ -66,8 +64,8 @@ struct BatchView: View {
                 LabeledContent("Selected", value: "\(model.inputs.count)")
                 HStack {
                     Button("Add Files…") { model.addFiles() }
-                    Button("Use Viewer's Folder") { model.inputs = viewer.list.urls }
-                        .disabled(viewer.list.isEmpty)
+                    Button("Use Viewer's Folder") { model.inputs = ViewerModel.lastActive.current.list.urls }
+                        .disabled(ViewerModel.lastActive.current.list.isEmpty)
                     Button("Clear") { model.inputs = [] }
                 }
             }
@@ -114,7 +112,5 @@ struct BatchView: View {
         }
         .formStyle(.grouped)
         .frame(minWidth: 460, minHeight: 420)
-        // The viewer window may never have appeared (e.g. only this window was restored).
-        .onAppear { viewer.revealWindow = { [openWindow] in openWindow(id: "viewer") } }
     }
 }

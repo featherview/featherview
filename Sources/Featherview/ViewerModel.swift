@@ -23,8 +23,24 @@ final class ViewerModel {
     /// The viewer area, kept up to date by the view; fit-mode zoom steps start from it.
     var viewSize = CGSize.zero
     var displayScale = 2.0
-    /// Brings the viewer window back if it was closed; set by the view.
+    /// Brings this model's window back if it was closed. Only the main viewer sets it (AppDelegate):
+    /// an extra window opening a file must not raise or reopen the main one.
     var revealWindow: () -> Void = {}
+
+    /// Opens viewer windows for files from Finder; every window's view installs the openers.
+    static let windows = ViewerWindows()
+    /// The main viewer, owned here, not by a view, so a file from Finder starts decoding before any window exists.
+    static let main: ViewerModel = {
+        let viewer = ViewerModel()
+        viewer.revealWindow = { ViewerModel.windows.revealMain() }
+        return viewer
+    }()
+    /// The viewer the user last worked in, for ⌘O and "Use Viewer's Folder" from the batch window;
+    /// the main one until another is used, and again once that one's window closes.
+    static let lastActive = LastUsed(fallback: main)
+
+    /// A folder opened directly that has no images: the view says so, ← / → still leave it.
+    private(set) var emptyFolder: URL?
 
     /// Fit mode decodes at screen size (rounded up to a halving step): enough for any window, less memory than full size.
     private let screenPixels = Int(NSScreen.screens
@@ -85,7 +101,7 @@ final class ViewerModel {
                 list = ImageList(urls: urls, current: url)
                 if isFolder {
                     show()
-                } else if zoom == .fit {
+                } else if zoom == .fit, prefetchesNeighbors {
                     // show() ran before the neighbours were known; calling it again could restart the decode.
                     await cache.prefetch(list.neighbors(radius: 2), maxPixelSize: screenPixels)
                 }
@@ -159,8 +175,19 @@ final class ViewerModel {
                 image = nil
                 errorMessage = "Can't open \(url.lastPathComponent)"
             }
-            if let size { await cache.prefetch(neighbors, maxPixelSize: size) }
+            if let size, prefetchesNeighbors { await cache.prefetch(neighbors, maxPixelSize: size) }
         }
+    }
+
+    /// Only the viewer in use prefetches neighbours: windows in the background keep just what they
+    /// show, so many windows (30 files opened from Finder) don't each hold eight decoded images.
+    private var prefetchesNeighbors: Bool { ViewerModel.lastActive.current === self }
+
+    /// Called when this viewer's window becomes key: now its neighbours are worth decoding.
+    func becameActive() {
+        guard zoom == .fit, !list.isEmpty else { return }
+        let neighbors = list.neighbors(radius: 2)
+        Task { await cache.prefetch(neighbors, maxPixelSize: screenPixels) }
     }
 
     /// Queued behind rotations: one still running would write the file back after it was trashed.
@@ -213,11 +240,12 @@ final class ViewerModel {
         if panel.runModal() == .OK, let url = panel.url { open(url) }
     }
 
-    func toggleFullScreen() {
-        NSApp.keyWindow?.toggleFullScreen(nil)
-    }
+    /// The window showing this model; set by the view.
+    weak var window: NSWindow?
+    /// Kept up to date by the view from the window's full-screen notifications.
+    var isFullScreen = false
 
-    var isFullScreen: Bool {
-        NSApp.keyWindow?.styleMask.contains(.fullScreen) == true
+    func toggleFullScreen() {
+        window?.toggleFullScreen(nil)
     }
 }

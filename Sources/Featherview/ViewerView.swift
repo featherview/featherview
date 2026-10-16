@@ -7,6 +7,8 @@ struct ViewerView: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     @FocusState private var focused: Bool
+    @Environment(\.controlActiveState) private var activeState
+    @AppStorage(AppSettings.rememberWindowFrame.key) private var rememberFrame = AppSettings.rememberWindowFrame.defaultValue
 
     var body: some View {
         ZStack {
@@ -34,6 +36,24 @@ struct ViewerView: View {
         .inspector(isPresented: $model.showInfo) {
             InfoPanel(url: model.list.current, revision: model.fileRevision)
         }
+        .focusedSceneValue(\.viewer, model)
+        .onChange(of: activeState, initial: true) {
+            guard activeState == .key else { return }
+            ViewerModel.lastActive.use(model)
+            model.becameActive()
+        }
+        .background(WindowAccessor { window in
+            model.window = window
+            // A restored or reopened window may already be in full screen; no didEnter notification follows.
+            model.isFullScreen = window.styleMask.contains(.fullScreen)
+            if !rememberFrame, !model.isFullScreen { Self.place(window) }
+        })
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { note in
+            if note.object as? NSWindow === model.window { model.isFullScreen = true }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { note in
+            if note.object as? NSWindow === model.window { model.isFullScreen = false }
+        }
         .dropDestination(for: URL.self) { urls, _ in
             guard let url = urls.first else { return false }
             model.open(url)
@@ -44,8 +64,9 @@ struct ViewerView: View {
         .focused($focused)
         .onAppear {
             focused = true
-            model.revealWindow = { [openWindow] in openWindow(id: "viewer") }
+            ViewerModel.windows.viewerOpened()
         }
+        .onDisappear { ViewerModel.windows.viewerClosed() }
         .onKeyPress(action: handle)
         .frame(minWidth: 480, minHeight: 320)
     }
@@ -76,6 +97,19 @@ struct ViewerView: View {
     /// in the Batch window's text fields (⌘⌫ there means "delete to start of line").
     /// The Mac's ⌫ key sends U+007F; SwiftUI's `.delete` is U+0008 and never matches it.
     private static let backspace = KeyEquivalent("\u{7F}")
+
+    /// Where the next window goes when frames aren't remembered: the first is centred, the rest cascade from it.
+    private static var cascadePoint: NSPoint?
+
+    private static func place(_ window: NSWindow) {
+        window.setContentSize(NSSize(width: 960, height: 640))
+        if let point = cascadePoint {
+            cascadePoint = window.cascadeTopLeft(from: point)
+        } else {
+            window.center()
+            cascadePoint = window.cascadeTopLeft(from: .zero)
+        }
+    }
 
     private func handle(_ press: KeyPress) -> KeyPress.Result {
         // Arrow keys carry the numeric-pad/function flags and Caps Lock changes nothing here,
@@ -117,11 +151,29 @@ struct ViewerView: View {
         case .zoomOut: model.zoomOut()
         case .open: model.showOpenPanel()
         case .batch: openWindow(id: "batch")
-        case .minimize: NSApp.keyWindow?.miniaturize(nil)
+        case .minimize: model.window?.miniaturize(nil)
         case .settings: openSettings()
         }
         return .handled
     }
+}
+
+/// Reports the hosting window once it exists.
+struct WindowAccessor: NSViewRepresentable {
+    let onWindow: (NSWindow) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { if let window = view.window { onWindow(window) } }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+extension FocusedValues {
+    /// The viewer of the focused window; menu commands act on it.
+    @Entry var viewer: ViewerModel?
 }
 
 struct InfoPanel: View {
@@ -148,33 +200,33 @@ struct InfoPanel: View {
 }
 
 struct ViewerCommands: Commands {
-    let model: ViewerModel
+    @FocusedValue(\.viewer) private var model
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
-            Button("Open…  (O)") { model.showOpenPanel() }
+            Button("Open…  (O)") { (model ?? ViewerModel.lastActive.current).showOpenPanel() }
                 .keyboardShortcut("o")
         }
         CommandMenu("Image") {
-            Button("Next  (→ or Space)") { model.next() }
-            Button("Previous  (← or ⌫)") { model.previous() }
+            Button("Next  (→ or Space)") { model?.next() }
+            Button("Previous  (← or ⌫)") { model?.previous() }
             Divider()
-            Button("Rotate Right  (R)") { model.rotate(.clockwise) }
-            Button("Rotate Left  (L)") { model.rotate(.counterClockwise) }
+            Button("Rotate Right  (R)") { model?.rotate(.clockwise) }
+            Button("Rotate Left  (L)") { model?.rotate(.counterClockwise) }
             Divider()
             // ⌘⌫ is handled by the viewer, not as a menu shortcut (see ViewerView.handle).
-            Button("Move to Trash  (⌘⌫ or ⌦)") { model.moveCurrentToTrash() }
-            Button("Show Info  (I)") { model.showInfo.toggle() }
+            Button("Move to Trash  (⌘⌫ or ⌦)") { model?.moveCurrentToTrash() }
+            Button("Show Info  (I)") { model?.showInfo.toggle() }
             Divider()
             Button("Batch Convert…  (B)") { openWindow(id: "batch") }
                 .keyboardShortcut("b")
         }
         CommandGroup(after: .toolbar) {
-            Button("Zoom to Fit  (0)") { model.setZoom(.fit) }
-            Button("Actual Size  (1)") { model.setZoom(.factor(1)) }
-            Button("Zoom In  (+)") { model.zoomIn() }
-            Button("Zoom Out  (−)") { model.zoomOut() }
+            Button("Zoom to Fit  (0)") { model?.setZoom(.fit) }
+            Button("Actual Size  (1)") { model?.setZoom(.factor(1)) }
+            Button("Zoom In  (+)") { model?.zoomIn() }
+            Button("Zoom Out  (−)") { model?.zoomOut() }
         }
     }
 }
