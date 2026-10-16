@@ -231,6 +231,30 @@ import Testing
         #expect(ImageDecoder.displaySize(of: source) == CGSize(width: 10, height: 30))
     }
 
+    @Test func replacingASymlinkReplacesItsTarget() throws {
+        let dir = try Fixtures.makeTempDir()
+        let source = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 4)
+        let other = dir.appendingPathComponent("other")
+        try FileManager.default.createDirectory(at: other, withIntermediateDirectories: true)
+        let real = try Fixtures.writeImage(to: other.appendingPathComponent("real.png"), width: 2, height: 2)
+        let link = dir.appendingPathComponent("link.png")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+        try ImageSaver.save(source, page: 0, to: link, as: .png, options: FormatOptions())
+        #expect(ImageDecoder.displaySize(of: real) == CGSize(width: 8, height: 4))
+        #expect(try FileManager.default.destinationOfSymbolicLink(atPath: link.path) == real.path)  // still a link
+    }
+
+    @Test func refusesToReplaceAFolder() throws {
+        let dir = try Fixtures.makeTempDir()
+        let source = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let folder = dir.appendingPathComponent("x.png")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data("keep".utf8).write(to: folder.appendingPathComponent("inner.txt"))
+        #expect(throws: (any Error).self) { try ImageSaver.save(source, page: 0, to: folder, as: .png, options: FormatOptions()) }
+        #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("inner.txt").path))
+        #expect(Set(try FileManager.default.contentsOfDirectory(atPath: dir.path)) == ["a.jpg", "x.png"])  // no temp left
+    }
+
     @Test func pagesForTIFFAndPDF() throws {
         let dir = try Fixtures.makeTempDir()
         let tiff = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("p.tiff"), pages: 3)
@@ -239,5 +263,24 @@ import Testing
         #expect(try ImageSaver.pages(of: tiff, page: 1, for: .tiff, options: FormatOptions().with { $0.keepAllPages = false }).map(\.width) == [9])
         #expect(try ImageSaver.pages(of: tiff, page: 1, for: pdf, options: pdf.defaultOptions).count == 3)
         #expect(try ImageSaver.pages(of: tiff, page: 2, for: .png, options: FormatOptions()).map(\.width) == [10])
+    }
+}
+
+@Suite struct SaveNameTests {
+    // The save panel would otherwise use the UTType's preferred extension: .pbm for PGM/PPM, .jpeg for JPEG.
+    @Test func usesTheFormatsOwnExtension() throws {
+        let photo = URL(fileURLWithPath: "/tmp/photo.jpg")
+        for (id, name) in [("jpg", "photo.jpg"), ("pgm", "photo.pgm"), ("ppm", "photo.ppm"), ("png", "photo.png")] {
+            #expect(try #require(FormatRegistry.format(id: id)).fileName(for: photo) == name)
+        }
+        #expect(OutputFormat.jpeg.fileName(for: URL(fileURLWithPath: "/tmp/a.b.tif")) == "a.b.jpg")
+    }
+
+    @Test func extensionIsOneItsTypeAccepts() {
+        // Otherwise NSSavePanel appends the type's preferred extension to our name.
+        for format in FormatRegistry.writable {
+            let extensions = format.type?.tags[.filenameExtension] ?? []
+            #expect(extensions.contains(format.fileExtension), "\(format.id)")
+        }
     }
 }

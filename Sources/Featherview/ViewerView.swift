@@ -216,7 +216,7 @@ struct ViewerView: View {
         case .minimize: model.window?.miniaturize(nil)
         case .settings: openSettings()
         case .about: openWindow(id: "about")
-        case .saveAs: break  // wired by Task 13
+        case .saveAs: model.saveAs()
         }
         return .handled
     }
@@ -356,6 +356,11 @@ struct ViewerCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button("Open…  (O)") { (model ?? ViewerModel.lastActive.current).showOpenPanel() }
                 .keyboardShortcut("o")
+        }
+        CommandGroup(replacing: .saveItem) {
+            Button("Save As…  (S)") { model?.saveAs() }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+                .disabled(model?.list.current == nil || model?.list.isHolding == true)
         }
         CommandGroup(replacing: .pasteboard) {
             // Text fields and selected text (batch window, Info panel) keep their own Copy and Paste.

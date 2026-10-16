@@ -29,6 +29,12 @@ public struct OutputFormat: Hashable, Sendable, Identifiable {
         if case .imageIO(let identifier) = writer { return UTType(identifier) }
         return UTType(filenameExtension: fileExtension)
     }
+
+    /// `url`'s name with this format's extension, for Save As. Not the UTType's preferred one:
+    /// PGM and PPM share public.pbm (.pbm), and JPEG's is .jpeg where batch output writes .jpg.
+    public func fileName(for url: URL) -> String {
+        url.deletingPathExtension().appendingPathExtension(fileExtension).lastPathComponent
+    }
 }
 
 /// One option of spec "Format options".

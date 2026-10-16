@@ -18,6 +18,11 @@ public enum ImageSaver {
     /// written, so a failure leaves it as it was. Reads and writes files: call it off the main thread.
     public static func save(_ source: URL, page: Int, to destination: URL, as format: OutputFormat,
                             options: FormatOptions) throws {
+        let destination = destination.resolvingSymlinksInPath()  // replaceItemAt can't replace a link: replace what it points to
+        var isFolder: ObjCBool = false
+        if FileManager.default.fileExists(atPath: destination.path, isDirectory: &isFolder), isFolder.boolValue {
+            throw CocoaError(.fileWriteFileExists, userInfo: [NSFilePathErrorKey: destination.path])  // never replace a folder
+        }
         let data = try ImageEncoder.encode(pages(of: source, page: page, for: format, options: options),
                                            as: format, options: options, metadataFrom: source)
         let temp = destination.deletingLastPathComponent()
