@@ -84,6 +84,7 @@ has a German layout, so `+`/`−` were checked on the numpad and the German `+`/
 
 | Area | Observed behaviour | Featherview | Status |
 |---|---|---|---|
+| Input formats | The open dialog lists, besides audio and video: ANI/CUR, B3D, BMP/DIB/RLE, CAM, CDR/CMX (preview only), CLP, CPT, camera RAW (CRW/CR2/CR3, DCR, DNG, EFF, MRW, NEF, NRW, ORF, PEF, RAF, SRF, ARW, RWL, RW2, MPO, 3FR, IIQ, MOS, KDC), DICOM/ACR/IMA, DDS/BLP, DjVu, DPX/CIN, CAD (DWG, DXF, HPGL, CGM, SVG, PLT), ECW, PDF/EPS/PS/AI, icons in EXE/DLL/CPL, EXR, FLIF, FPX, G3 fax, JPEG XR (HDP/JXR/WDP), HEIC/AVIF, ICO, IFF/LBM, GEM IMG, JPEG-LS, JPEG 2000, JPEG, JPM, JPEG XL, MNG/JNG, PBM/PGM/PPM, PCD, PCX/DCX, PDN, PNG, PSD/PSB, PSP, QOI, Sun RAS, raw YUV, Utah RLE, SFF, SFW, SGI, MrSID, SWF/FLV, TGA, TIFF, TTF fonts, WBMP, WBZ/WBC, WebP, WMF/EMF, WSQ, XBM/XPM, XCF. Observed 2026-10-16 (open dialog's type list; many come from plugins the maintainer installed). | macOS 27 ImageIO reads 62 types (all of the RAW list but KDC, plus PSD, EXR, DDS, DICOM, HEIC/AVIF, WebP, JPEG XL, PBM family, SGI, TGA, ICO/CUR, PICT, Radiance HDR, ICNS, KTX/ASTC/PVR); AppKit also renders SVG. Not readable on macOS: QOI, PCX/DCX, XCF, PSB, PSP, PDN, JPEG XR, JPEG-LS, JPM, FLIF, DjVu, DPX/CIN, WMF/EMF, IFF/LBM, Sun RAS, XBM/XPM, WBMP, MNG, PCD, ANI and the rest. Open: which of these get own decoders. | open |
 | Output formats | 20 output formats: BMP, ECW, EMF, GIF, ICO, JLS, JPEG 2000, JPEG, JPEG XL, PCX, PBM, PDF, PGM, PNG, PPM, QOI, RAW, TGA, TIFF, WebP. No HEIC. | ImageIO formats + own PGM/PPM/QOI/PCX + WebP via libwebp; JPEG XL writing in v2; HEIC and AVIF beyond the reference. | v1 |
 | JPEG options | Quality (default 80), progressive, no chroma subsampling, keep EXIF/IPTC/XMP/comment (on), reset orientation (on), reuse original quality, target file size, profiles. | Spec "Format options". | v1 |
 | PNG options | Compression level 0–9 (default 6), custom transparent colour, optional extra optimiser. | Spec (effort levels). | v1 |
@@ -117,6 +118,6 @@ Observed 2026-10-16 on a 4000×3000 JPEG and a 3-page TIFF, default settings.
 
 ## Not checked yet
 
-Reading HEIC/AVIF/RAW in the reference, the meaning of X, options of
+the meaning of X, options of
 the remaining output formats, the advanced-options dialogs in detail, speed on a 10,000-file
 folder.
