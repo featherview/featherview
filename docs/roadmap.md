@@ -17,6 +17,8 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 4 | Batch complete | to write after 3 | — |
 | 5 | WebP output | to write after 3 (independent of 4) | — |
 | 6 | Languages | to write after 4 and 5 | — |
+| 7 | App formats | to write after 3 | — |
+| 8 | Finder previews | to write after 3 and 7 | — |
 
 ## 1. Core viewer and batch
 
@@ -62,8 +64,11 @@ Spec: "Formats", "Format options", ⇧⌘S Save As.
 - HDR display (spec "Formats"): HDR decode only for images that carry HDR data (macOS 15+),
   `allowedDynamicRange(.high)` in the viewer. Measure decode time and memory on an HDR iPhone
   photo against an SDR one.
-- **Observe first:** option dialogs of GIF, JPEG 2000, TGA, PDF output; HEIC/AVIF/RAW reading in
-  the reference viewer (for the parity record).
+- Own decoders (spec "Formats", decided 2026-10-16): SVG through AppKit; pure-Swift QOI, PCX/DCX,
+  XBM, XPM, WBMP, Sun RAS, IFF/LBM. One `OwnDecoders` registry consulted by `ImageFormats` and
+  `ImageDecoder`, each decoder unit-tested on hand-built files (fixtures generated in tests, the
+  same golden-byte approach as the encoders), corrupt and truncated input included.
+- **Observe first:** option dialogs of GIF, JPEG 2000, TGA, PDF output.
 
 ## 4. Batch complete
 
@@ -99,6 +104,22 @@ Spec: "Languages". Last, because by then every UI string exists. Move all user-f
 into `Localizable.xcstrings` (bundled by `scripts/bundle.sh`), translate into the 30 languages,
 check right-to-left layout (Arabic, Hebrew) and long strings (German) in the viewer, batch and
 settings windows. A test fails if a catalog key is missing a language.
+
+## 7. App formats
+
+Spec "Formats" (layered app formats). PSB (stored composite), XCF, PDN, PSP decoded in pure Swift
+and shown flattened, through the `OwnDecoders` registry from milestone 3. Each format gets its
+own task: these are large binary formats (XCF tiles and compression, PDN's serialized layers,
+PSP blocks). Test files: generated where the format is simple enough to write in a test,
+otherwise small files the maintainer exports from the real apps (licence-free, our own content),
+stored under `Tests/` only if the maintainer agrees to committed binaries.
+
+## 8. Finder previews
+
+Spec "Formats" (Finder previews). A Quick Look preview extension and a thumbnail extension
+(`.appex`, sandboxed) for the own-decoder formats, built and signed by `scripts/bundle.sh`
+(SwiftPM can't produce app extensions), sharing FeatherviewCore. Check: Finder icon thumbnails,
+Space preview, open panel preview; no effect on the app's launch time.
 
 ## v2 (not in v1)
 

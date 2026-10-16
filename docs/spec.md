@@ -251,6 +251,20 @@ the About window.
 - Read: everything ImageIO decodes, including JPEG, PNG, HEIC/HEIF, AVIF, JPEG XL, WebP, TIFF,
   GIF (first frame), BMP, ICO, ICNS, JPEG 2000, PSD, TGA, OpenEXR, Radiance HDR, SGI, PBM, DDS,
   DNG and camera RAW from all major makers. PDF is not an image here.
+- Read (decided 2026-10-16), formats macOS can't read, so Featherview decodes them itself:
+  - SVG through AppKit (`NSImage` renders it; ImageIO doesn't), rasterised at the size shown.
+  - Own decoders, pure Swift, no dependency (milestone 3): QOI, PCX (and multi-page DCX), XBM,
+    XPM, WBMP, Sun Raster (RAS), IFF/LBM (ILBM, incl. HAM and EHB).
+  - Layered app formats, shown flattened (own milestone after 3): PSB (its stored composite
+    image), XCF (GIMP), PDN (Paint.NET), PSP (Paint Shop Pro). Where the file stores a composite
+    or thumbnail at full size it is used; otherwise visible layers are composited with normal
+    blending and their opacity, and other blend modes are listed as a known limit.
+  - Every own decoder goes through the same paths as ImageIO's: folder listing by extension,
+    downsampled decode at screen size, batch input, info panel (dimensions only). A file it
+    can't read shows "Can't open <name>" like any other.
+- Finder previews (decided 2026-10-16, after the own decoders): a Quick Look preview and
+  thumbnail extension for the formats only Featherview reads, reusing its decoders, so Finder,
+  Quick Look (Space) and open panels show them too. Formats ImageIO reads are left to macOS.
 - Write (ImageIO): JPEG, PNG, HEIC, AVIF, TIFF, GIF, BMP, JPEG 2000, PDF, PSD, TGA, ICO, ICNS,
   OpenEXR, PBM.
 - Write (own encoders, pure Swift, no dependency): PGM, PPM, QOI, PCX.
