@@ -26,6 +26,16 @@ final class ViewerModel {
     /// Brings the viewer window back if it was closed; set by the view.
     var revealWindow: () -> Void = {}
 
+    /// Opens another viewer window for a file. Until a viewer view has appeared (launch with
+    /// several files) the files wait here; the view opens them when it sets this.
+    static var openWindow: (URL) -> Void = { pendingWindows.append($0) }
+    static var pendingWindows: [URL] = []
+    /// The viewer the user last worked in, for "Use Viewer's Folder" in the batch window.
+    static weak var lastActive: ViewerModel?
+
+    /// A folder opened directly that has no images: the view says so, ← / → still leave it.
+    private(set) var emptyFolder: URL?
+
     /// Fit mode decodes at screen size (rounded up to a halving step): enough for any window, less memory than full size.
     private let screenPixels = Int(NSScreen.screens
         .map { max($0.frame.width, $0.frame.height) * $0.backingScaleFactor }
@@ -213,11 +223,12 @@ final class ViewerModel {
         if panel.runModal() == .OK, let url = panel.url { open(url) }
     }
 
-    func toggleFullScreen() {
-        NSApp.keyWindow?.toggleFullScreen(nil)
-    }
+    /// The window showing this model; set by the view.
+    weak var window: NSWindow?
+    /// Kept up to date by the view from the window's full-screen notifications.
+    var isFullScreen = false
 
-    var isFullScreen: Bool {
-        NSApp.keyWindow?.styleMask.contains(.fullScreen) == true
+    func toggleFullScreen() {
+        window?.toggleFullScreen(nil)
     }
 }
