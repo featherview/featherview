@@ -104,6 +104,8 @@ Use Instruments (Time Profiler) to find where time goes.
 - Layout uses leading/trailing, never left/right, so right-to-left languages mirror the window.
 - Keep `shortcut:` comments for known limits, in the form `shortcut: <limit>, <when to upgrade>`.
 - Commit messages: conventional commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
+- No AI attribution in commits, PRs or issues: no `Claude-Session:`, `Co-Authored-By:` or session links
+  (decided 2026-10-16; applies to the website repo too).
 
 ## Out of scope for v1
 
