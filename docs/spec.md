@@ -281,15 +281,18 @@ the About window.
   thumbnail extension for the formats only Featherview reads, reusing its decoders, so Finder,
   Quick Look (Space) and open panels show them too. Formats ImageIO reads are left to macOS.
 - Write (ImageIO): JPEG, PNG, HEIC, AVIF, TIFF, GIF, BMP, JPEG 2000, PDF, PSD, TGA, ICO, ICNS,
-  OpenEXR, PBM.
-- Write (own encoders, pure Swift, no dependency): PGM, PPM, QOI, PCX.
+  OpenEXR.
+- Write (own encoders, pure Swift, no dependency): PBM, PGM, PPM, QOI, PCX. PBM is real 1-bit
+  binary PBM, black and white at a 50% threshold (decided 2026-10-16: ImageIO's PBM writer writes
+  colour ASCII PPM under the .pbm name).
 - Write (open-source encoder, per `AGENTS.md`): WebP (libwebp, BSD).
 - Writing JPEG XL is v2 (needs libjxl, a large C++ build). Reading JPEG XL works in v1 via ImageIO.
 - HDR display (decided 2026-10-16, milestone 3): images with HDR data (gain-map HEIC/JPEG from
   phones, HDR AVIF/HEIC, OpenEXR, Radiance HDR) show with their extra brightness on screens that
   support it, on macOS 15 and later. Only those images decode at 16 bits (twice the memory); all
   others stay 8-bit, so browsing speed and memory don't change. On macOS 14 or an SDR screen they
-  show as SDR. Batch output and Save As keep writing SDR unless the target format keeps the HDR data.
+  show as SDR. Batch output and Save As keep writing SDR unless the target format keeps the HDR data:
+  HEIC and AVIF output of an HDR photo keeps its HDR (gain map), decided 2026-10-16.
 
 ### Format options
 

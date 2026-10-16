@@ -110,6 +110,8 @@ Spec: "Batch window (⌘B)" (all of it).
   for the Mac before it's built — input list with thumbnails and drag and drop, settings
   grouped by step, live preview of output names, progress and log in the window. Mockups first
   (artifact), reviewed by the maintainer, then the plan.
+- HDR kept when an HDR photo is converted to HEIC or AVIF (spec "Formats", decided 2026-10-16);
+  milestone 3 writes 8-bit SDR there.
 - Format options behind an "Options…" button in the batch window (spec "Output", decided
   2026-10-16); Save As has had its button since milestone 3, and batch shows them inline until then.
 - **Observe first:** the sub-dialogs of canvas size, text overlay, watermark, border, and
