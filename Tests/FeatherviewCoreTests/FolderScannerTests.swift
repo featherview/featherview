@@ -28,6 +28,29 @@ import Testing
         #expect(try FolderScanner.images(around: dir).count == 3)
     }
 
+    // The scanner asks once per extension; case must not mix up a type with another.
+    @Test func extensionsInAnyCaseAreJudgedAlike() throws {
+        let dir = try Fixtures.makeTempDir()
+        for name in ["B.JPG", "a.jpg", "c.TXT", "d.txt", "e.Png"] {
+            try Fixtures.writeImage(to: dir.appendingPathComponent(name), width: 4, height: 4)
+        }
+        #expect(try FolderScanner.images(around: dir).map(\.lastPathComponent) == ["a.jpg", "B.JPG", "e.Png"])
+    }
+
+    // Opening a folder decodes its first image before the rest is sorted.
+    @Test func firstImageWithoutSortingMatchesTheSortedList() throws {
+        let dir = try Fixtures.makeTempDir()
+        for name in ["img10.jpg", "Img2.jpg", "img1b.jpg", "img1.jpg"] {
+            try Fixtures.writeImage(to: dir.appendingPathComponent(name), width: 4, height: 4)
+        }
+        let unsorted = try FolderScanner.images(around: dir, sorted: false)
+        let sorted = FolderScanner.inFinderOrder(unsorted)
+        #expect(sorted == (try FolderScanner.images(around: dir)))
+        #expect(sorted.map(\.lastPathComponent) == ["img1.jpg", "img1b.jpg", "Img2.jpg", "img10.jpg"])
+        #expect(FolderScanner.firstInFinderOrder(unsorted) == sorted.first)
+        #expect(FolderScanner.firstInFinderOrder([]) == nil)
+    }
+
     @Test func followsSymlinkToFolder() throws {
         let dir = try Fixtures.makeTempDir()
         try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 4, height: 4)

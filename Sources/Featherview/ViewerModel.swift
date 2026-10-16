@@ -159,26 +159,41 @@ final class ViewerModel {
         let isFolder = isFolderPath(url)
         openedFolder = isFolder ? url : url.deletingLastPathComponent()
         // Off the main actor: at launch the main thread is busy building the window, the decode needn't wait.
-        let prefetch = isFolder || zoom != .fit ? nil : screenPixels
+        let prefetch = zoom != .fit ? nil : screenPixels
         ready = [:]
         knownInfo = [:]
-        let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache] in
+        // A folder's first image is known only after its scan, so the scan runs here too, alongside the
+        // window build, and its first image starts decoding at once (it used to wait for both).
+        let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache] () -> Result<[URL], Error>? in
             await cache.removeAll()
             await fullSizeCache.removeAll()
-            if let prefetch { await cache.prefetch([url], maxPixelSize: prefetch) }
+            guard isFolder else {
+                if let prefetch { await cache.prefetch([url], maxPixelSize: prefetch) }
+                return nil
+            }
+            let scan = Result { try FolderScanner.images(around: url, includeHidden: includeHidden, sorted: false) }
+            if let prefetch, let first = FolderScanner.firstInFinderOrder((try? scan.get()) ?? []) {
+                await cache.prefetch([first], maxPixelSize: prefetch)
+            }
+            return scan.map(FolderScanner.inFinderOrder)
         }
         openTask = Task {
             defer { if !Task.isCancelled { isOpening = false } }
-            await prepare.value
+            let folderScan = await prepare.value
             guard !Task.isCancelled else { return }
             if !isFolder {
                 list = ImageList(urls: [url], current: url)
                 show()
             }
             do {
-                let urls = try await Task.detached(priority: .userInitiated) {
-                    try FolderScanner.images(around: url, includeHidden: includeHidden)
-                }.value
+                let urls: [URL]
+                if let folderScan {
+                    urls = try folderScan.get()
+                } else {
+                    urls = try await Task.detached(priority: .userInitiated) {
+                        try FolderScanner.images(around: url, includeHidden: includeHidden)
+                    }.value
+                }
                 guard !Task.isCancelled else { return }
                 list = ImageList(urls: urls, current: url)
                 if isFolder {
