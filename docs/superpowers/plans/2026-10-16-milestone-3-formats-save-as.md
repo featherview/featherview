@@ -216,7 +216,7 @@ Draft: `adb0150` (QOI), `12ddd32` (PCX/DCX).
 - Consumes: Task 1.
 - Produces: `QOICodec.format`, `QOICodec.encode(_ image: RGBAImage) -> Data` (public; 4 channels,
   colorspace 0, op order as the spec's reference encoder); `PCXCodec.pcx`, `PCXCodec.dcx`
-  (`hasPages: true`), `PCXCodec.encode(_:) -> Data` (public; version 5, 8 bits, 3 planes, RLE,
+  (`hasPages: true`), `PCXCodec.encode(_:) throws -> Data` (public; `.unsupported` past 65534 × 65536; version 5, 8 bits, 3 planes, RLE,
   even bytes per line, literal ≥ 0xC0 written as 0xC1 + byte).
 - Decoder coverage: QOI 3/4 channels, missing end marker tolerated if every pixel decoded; PCX
   1-bit 1–4 planes, 4-bit 1 plane, 8-bit palette (0x0C 769 bytes from the end, grey without it),
