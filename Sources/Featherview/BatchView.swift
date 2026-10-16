@@ -6,7 +6,7 @@ final class BatchModel {
     var inputs: [URL] = []
     var outputFolder: URL?
     var format = OutputFormat.jpeg
-    var quality = 0.85
+    var quality = BatchJob.defaultQuality
     var limitSize = false
     var maxDimension = 1920
     var useRename = false
@@ -70,8 +70,8 @@ struct BatchView: View {
                     ForEach(OutputFormat.allCases, id: \.self) { Text($0.rawValue.uppercased()) }
                 }
                 if model.format.isLossy {
-                    Slider(value: $model.quality, in: 0.1...1) {
-                        Text("Quality \(Int(model.quality * 100))")
+                    Slider(value: $model.quality, in: 0.01...1, step: 0.01) {
+                        Text("Quality \(Int((model.quality * 100).rounded()))")
                     }
                 }
                 Toggle("Limit size", isOn: $model.limitSize)

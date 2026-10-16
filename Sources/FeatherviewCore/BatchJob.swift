@@ -31,12 +31,14 @@ public struct BatchJob: Sendable {
     public var format: OutputFormat
     /// 0...1, lossy formats only.
     public var quality: Double
+    /// docs/spec.md: JPEG and HEIC quality default to 80.
+    public static let defaultQuality = 0.8
     /// Longest side in pixels; nil keeps the size. Never upscales.
     public var maxDimension: Int?
     /// nil keeps the original base name.
     public var rename: RenamePattern?
 
-    public init(inputs: [URL], outputFolder: URL, format: OutputFormat, quality: Double = 0.85,
+    public init(inputs: [URL], outputFolder: URL, format: OutputFormat, quality: Double = defaultQuality,
                 maxDimension: Int? = nil, rename: RenamePattern? = nil) {
         self.inputs = inputs
         self.outputFolder = outputFolder

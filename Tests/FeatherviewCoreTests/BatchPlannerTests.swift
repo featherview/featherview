@@ -94,3 +94,11 @@ import Testing
         #expect(BatchPlanner.outputURLs(for: job).first?.lastPathComponent == "x 2.jpg")
     }
 }
+
+@Suite struct BatchJobTests {
+    @Test func qualityDefaultsToSpec() {
+        // docs/spec.md: JPEG and HEIC quality 1-100, default 80.
+        #expect(BatchJob.defaultQuality == 0.8)
+        #expect(BatchJob(inputs: [], outputFolder: URL(fileURLWithPath: "/a"), format: .jpeg).quality == 0.8)
+    }
+}
