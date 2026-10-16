@@ -186,7 +186,10 @@ final class ViewerModel {
                     show()
                 } else if zoom == .fit, prefetchesNeighbors {
                     // show() ran before the neighbours were known; calling it again could restart the decode.
-                    await cache.prefetch(list.neighbors(radius: 2), maxPixelSize: screenPixels)
+                    let neighbors = list.neighbors(radius: 2)
+                    await cache.prefetch(neighbors, maxPixelSize: screenPixels)
+                    guard !Task.isCancelled else { return }
+                    await fillReady(neighbors, maxPixelSize: screenPixels)
                 }
             } catch {
                 guard !Task.isCancelled else { return }
@@ -357,18 +360,26 @@ final class ViewerModel {
                 knownInfo = knownInfo.filter { wanted.contains($0.key) }
                 ready = ready.filter { wanted.contains($0.key) }
                 if let image, list.current == url { ready[url] = image }
-                for neighbor in neighbors {
-                    var decoded = ready[neighbor]
-                    if decoded == nil { decoded = try? await cache.image(for: neighbor, maxPixelSize: size) }
-                    guard !Task.isCancelled else { return }
-                    var info = knownInfo[neighbor]
-                    if info == nil { info = await Task.detached { FileInfo.read(url: neighbor, page: 0) }.value }
-                    guard !Task.isCancelled else { return }
-                    // Stored together: a swap to an image without its info would keep the previous file's in the bar.
-                    knownInfo[neighbor] = info
-                    ready[neighbor] = decoded
-                }
+                await fillReady(neighbors, maxPixelSize: size)
             }
+        }
+    }
+
+    /// Decodes and reads `neighbors` ahead, so a swap to one is synchronous and its status bar complete.
+    private func fillReady(_ neighbors: [URL], maxPixelSize size: Int) async {
+        for neighbor in neighbors {
+            // A rotation while we wait would make what we read stale; it doesn't cancel this task.
+            let revision = fileRevision
+            var decoded = ready[neighbor]
+            if decoded == nil { decoded = try? await cache.image(for: neighbor, maxPixelSize: size) }
+            guard !Task.isCancelled else { return }
+            var info = knownInfo[neighbor]
+            if info == nil { info = await Task.detached { FileInfo.read(url: neighbor, page: 0) }.value }
+            guard !Task.isCancelled else { return }
+            guard fileRevision == revision else { continue }
+            // Stored together: a swap to an image without its info would keep the previous file's in the bar.
+            knownInfo[neighbor] = info
+            ready[neighbor] = decoded
         }
     }
 
