@@ -79,4 +79,23 @@ import Testing
         var reader = ByteReader([1, 2, 3])
         #expect(throws: OwnDecodeError.truncated) { _ = try reader.u32be() }
     }
+
+    @Test func byteReaderReadsTheDataWithoutCopyingIt() throws {
+        // A header read must touch only the mapped pages it reads, so the reader can't copy the file.
+        let count = 4096  // big enough that Data doesn't store it inline
+        let buffer = UnsafeMutableRawBufferPointer.allocate(byteCount: count, alignment: 1)
+        defer { buffer.deallocate() }
+        buffer.initializeMemory(as: UInt8.self, repeating: 7)
+        var reader = ByteReader(Data(bytesNoCopy: buffer.baseAddress!, count: count, deallocator: .none))
+        buffer[0] = 9
+        #expect(try reader.u8() == 9)
+        #expect(Array(try reader.take(2)) == [7, 7])
+        #expect(reader.remaining == count - 3)
+    }
+
+    @Test func byteReaderReadsASliceFromItsStart() throws {
+        var reader = ByteReader(Data([0, 1, 2, 3]).dropFirst(2))
+        #expect(try reader.u16be() == 0x0203)
+        #expect(reader.isAtEnd)
+    }
 }

@@ -72,20 +72,22 @@ public enum OwnDecodeError: Error, Equatable {
 }
 
 /// Reads a file's bytes front to back; every read past the end throws `.truncated` instead of trapping.
+/// Reads straight from the `Data` without copying it, so a header read of a mapped file touches only
+/// the pages it reads.
 struct ByteReader {
-    let bytes: [UInt8]
+    let data: Data
     var offset = 0
 
-    init(_ bytes: [UInt8]) { self.bytes = bytes }
-    init(_ data: Data) { self.bytes = [UInt8](data) }
+    init(_ bytes: [UInt8]) { self.data = Data(bytes) }
+    init(_ data: Data) { self.data = data }
 
-    var remaining: Int { bytes.count - offset }
-    var isAtEnd: Bool { offset >= bytes.count }
+    var remaining: Int { data.count - offset }
+    var isAtEnd: Bool { offset >= data.count }
 
     mutating func u8() throws -> UInt8 {
-        guard offset < bytes.count else { throw OwnDecodeError.truncated }
+        guard offset < data.count else { throw OwnDecodeError.truncated }
         defer { offset += 1 }
-        return bytes[offset]
+        return data[data.startIndex + offset]
     }
 
     mutating func u16le() throws -> Int { Int(try u8()) | Int(try u8()) << 8 }
@@ -96,7 +98,8 @@ struct ByteReader {
     mutating func take(_ count: Int) throws -> ArraySlice<UInt8> {
         guard count >= 0, count <= remaining else { throw OwnDecodeError.truncated }
         defer { offset += count }
-        return bytes[offset..<offset + count]
+        let start = data.startIndex + offset
+        return ArraySlice(data[start..<start + count])
     }
 
     mutating func skip(_ count: Int) throws { _ = try take(count) }
