@@ -59,6 +59,9 @@ Spec: "Formats", "Format options", ⇧⌘S Save As.
 - Own pure-Swift encoders: PGM, PPM, QOI, PCX (golden-file tests against hand-computed bytes).
 - Save As from the viewer with the format's options; options remembered per format, profiles.
 - Batch output uses the registry (replaces the fixed list from milestone 1).
+- HDR display (spec "Formats"): HDR decode only for images that carry HDR data (macOS 15+),
+  `allowedDynamicRange(.high)` in the viewer. Measure decode time and memory on an HDR iPhone
+  photo against an SDR one.
 - **Observe first:** option dialogs of GIF, JPEG 2000, TGA, PDF output; HEIC/AVIF/RAW reading in
   the reference viewer (for the parity record).
 
