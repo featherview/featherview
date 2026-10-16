@@ -217,9 +217,9 @@ final class ViewerModel {
     /// arrow keys feel instant.
     func show(page: Int = 0) {
         loadTask?.cancel()
-        if page == 0 { self.page = 0 }
+        // The old file's count would let ⌥→ ask a single-page file for page 2; it's read again below.
+        if page == 0 { self.page = 0; pageCount = 1 }
         guard let url = list.current else {
-            pageCount = 1
             image = nil
             errorMessage = nil  // an old file's error would hide the "Open an image" hint
             return
@@ -241,11 +241,6 @@ final class ViewerModel {
                         : try await cache.image(for: url, maxPixelSize: size)
                 }
                 guard !Task.isCancelled else { return }
-                if page == 0 {
-                    // Reads only the header; set before the image so the title never shows a stale count.
-                    pageCount = await Task.detached { ImageDecoder.pageCount(of: url) }.value
-                    guard !Task.isCancelled else { return }
-                }
                 image = decoded
                 errorMessage = nil
                 let elapsed = started.duration(to: .now).components
@@ -263,10 +258,16 @@ final class ViewerModel {
                     let values = await Task.detached { OverlayTemplate.fileValues(of: url) }.value
                     if list.current == url { fileValues = (url, values) }
                 }
+                // Not awaited either, and only for TIFFs: a cached image swaps in without another file read.
+                if page == 0, ImageFormats.mayHavePages(url) {
+                    Task {
+                        let count = await Task.detached { ImageDecoder.pageCount(of: url) }.value
+                        if list.current == url { pageCount = count }
+                    }
+                }
             } catch {
                 guard !Task.isCancelled else { return }
-                image = nil
-                pageCount = 1
+                image = nil  // pageCount stays: one bad page mustn't hide the file's other pages
                 errorMessage = "Can't open \(url.lastPathComponent)"
             }
             if let size, page == 0, prefetchesNeighbors { await cache.prefetch(neighbors, maxPixelSize: size) }

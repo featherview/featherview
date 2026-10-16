@@ -64,6 +64,14 @@ import Testing
         #expect(ImageDecoder.pageCount(of: dir.appendingPathComponent("missing.tif")) == 1)
     }
 
+    /// By extension only, so a cached JPEG swaps in without the header read that `pageCount` needs.
+    @Test func onlyTIFFNamesMayHavePages() {
+        #expect(ImageFormats.mayHavePages(URL(fileURLWithPath: "/x/a.tif")))
+        #expect(ImageFormats.mayHavePages(URL(fileURLWithPath: "/x/a.TIFF")))
+        #expect(!ImageFormats.mayHavePages(URL(fileURLWithPath: "/x/a.jpg")))
+        #expect(!ImageFormats.mayHavePages(URL(fileURLWithPath: "/x/a.gif")))
+    }
+
     @Test func decodesEachPage() throws {
         let dir = try Fixtures.makeTempDir()
         let tiff = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("m.tif"), pages: 3)
