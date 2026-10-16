@@ -26,4 +26,12 @@ import Testing
         #expect(ZoomSteps.step(16, by: 1.1) == 16)
         #expect(ZoomSteps.step(0.05, by: 1 / 1.1) == 0.05)
     }
+
+    @Test func pixelsShowFromTwiceTheirSizeOnScreen() {
+        // 1000 px drawn 1000 pt wide on Retina is 200 %: pixels show.
+        #expect(ZoomSteps.showsPixels(drawnWidth: 1000, imageWidth: 1000, displayScale: 2))
+        #expect(!ZoomSteps.showsPixels(drawnWidth: 999, imageWidth: 1000, displayScale: 2))
+        #expect(ZoomSteps.showsPixels(drawnWidth: 2000, imageWidth: 1000, displayScale: 1))
+        #expect(!ZoomSteps.showsPixels(drawnWidth: 1500, imageWidth: 1000, displayScale: 1))
+    }
 }

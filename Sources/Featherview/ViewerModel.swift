@@ -20,6 +20,8 @@ final class ViewerModel {
     private(set) var zoom = Zoom.fit
     /// Bumped when the current file changes on disk (rotation), so views reading it refresh.
     private(set) var fileRevision = 0
+    /// The overlay's `{size}` and `{date}` for the file shown, read off the main thread when it's shown.
+    private(set) var fileValues: (url: URL, values: [String: String])?
     /// The viewer area, kept up to date by the view; fit-mode zoom steps start from it.
     var viewSize = CGSize.zero
     var displayScale = 2.0
@@ -124,8 +126,10 @@ final class ViewerModel {
         if needsReload { show() }
     }
 
-    func zoomIn() { stepZoom(by: 1.1) }
-    func zoomOut() { stepZoom(by: 1 / 1.1) }
+    /// Settings › Viewer › zoom step, 10 % by default (×1.1).
+    private var zoomMultiplier: Double { 1 + Double(max(AppSettings.zoomStepPercent.value(), 1)) / 100 }
+    func zoomIn() { stepZoom(by: zoomMultiplier) }
+    func zoomOut() { stepZoom(by: 1 / zoomMultiplier) }
 
     /// From fit, steps from the scale the image is shown at, which needs its full pixel size.
     private func stepZoom(by multiplier: Double) {
@@ -169,6 +173,12 @@ final class ViewerModel {
                     // shortcut: measured when the image is set, the frame that draws it follows (~1 frame), fine for budgets.
                     let launchMs = Int(Date().timeIntervalSince(start) * 1000)
                     Self.log.debug("first image \(launchMs) ms after launch")
+                }
+                // Read again on every show: a rotation changes both size and date. Not awaited, so the
+                // prefetch below doesn't wait for another file read (slow on network or USB disks).
+                Task {
+                    let values = await Task.detached { OverlayTemplate.fileValues(of: url) }.value
+                    if list.current == url { fileValues = (url, values) }
                 }
             } catch {
                 guard !Task.isCancelled else { return }

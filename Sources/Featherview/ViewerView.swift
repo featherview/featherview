@@ -9,12 +9,26 @@ struct ViewerView: View {
     @FocusState private var focused: Bool
     @Environment(\.controlActiveState) private var activeState
     @AppStorage(AppSettings.rememberWindowFrame.key) private var rememberFrame = AppSettings.rememberWindowFrame.defaultValue
+    @State private var panController = PanController()
+    @AppStorage(AppSettings.backgroundColor.key) private var backgroundHex = AppSettings.backgroundColor.defaultValue
+    @AppStorage(AppSettings.checkerboard.key) private var checkerboard = AppSettings.checkerboard.defaultValue
+    @AppStorage(AppSettings.showOverlay.key) private var showOverlay = AppSettings.showOverlay.defaultValue
+    @AppStorage(AppSettings.overlayTemplate.key) private var overlayTemplate = AppSettings.overlayTemplate.defaultValue
+    @AppStorage(AppSettings.hidePointer.key) private var hidePointer = AppSettings.hidePointer.defaultValue
+
+    private var background: Color { Color(nsColor: backgroundNSColor) }
+    private var backgroundNSColor: NSColor {
+        guard let c = HexColor.parse(backgroundHex) else { return .black }
+        return NSColor(srgbRed: c.red, green: c.green, blue: c.blue, alpha: 1)
+    }
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            background.ignoresSafeArea()
             if let image = model.image {
-                canvas(image)
+                ImageCanvas(image: image, size: drawSize(image), displayScale: displayScale, background: backgroundNSColor,
+                            checkerboard: checkerboard, panController: panController,
+                            onDoubleClick: model.toggleFullScreen)
             } else if let message = model.errorMessage {
                 Text(message).foregroundStyle(.secondary)
             } else if !model.isOpening && model.list.current == nil {
@@ -30,6 +44,20 @@ struct ViewerView: View {
                     .padding()
             }
         }
+        .overlay(alignment: .bottomLeading) {
+            if model.isFullScreen, showOverlay, let url = model.list.current {
+                Text(OverlayTemplate.render(overlayTemplate, values: overlayValues(url)))
+                    .font(.callout)
+                    .foregroundStyle(.white)
+                    .padding(6)
+                    .background(.black.opacity(0.5), in: .rect(cornerRadius: 4))
+                    .padding()
+            }
+        }
+        // On a new image and on entering full screen (double-click, F or Return leave the image as is).
+        .onChange(of: model.image) { hidePointerInFullScreen() }
+        .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
+        .toolbar(model.isFullScreen ? .hidden : .automatic, for: .windowToolbar)
         .onGeometryChange(for: CGSize.self) { $0.size } action: { model.viewSize = $0 }
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         .navigationTitle(model.title)
@@ -71,26 +99,28 @@ struct ViewerView: View {
         .frame(minWidth: 480, minHeight: 320)
     }
 
-    @ViewBuilder
-    private func canvas(_ image: CGImage) -> some View {
-        let pointSize = CGSize(width: CGFloat(image.width) / displayScale,
-                               height: CGFloat(image.height) / displayScale)
+    /// Fit shrinks large images to the view and never enlarges small ones; a zoom factor scales the full-size decode.
+    private func drawSize(_ image: CGImage) -> CGSize {
+        let points = CGSize(width: CGFloat(image.width) / displayScale, height: CGFloat(image.height) / displayScale)
         switch model.zoom {
         case .fit:
-            // Shrinks large images to the window; small ones stay at their real size.
-            Image(decorative: image, scale: 1)
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-                .frame(maxWidth: pointSize.width, maxHeight: pointSize.height)
+            let scale = min(1, model.viewSize.width / max(points.width, 1), model.viewSize.height / max(points.height, 1))
+            return CGSize(width: (points.width * scale).rounded(), height: (points.height * scale).rounded())
         case .factor(let factor):
-            ScrollView([.horizontal, .vertical]) {
-                Image(decorative: image, scale: 1)
-                    .resizable()
-                    .interpolation(factor >= 2 ? .none : .high)
-                    .frame(width: pointSize.width * factor, height: pointSize.height * factor)
-            }
+            return CGSize(width: points.width * factor, height: points.height * factor)
         }
+    }
+
+    private func hidePointerInFullScreen() {
+        if model.isFullScreen, hidePointer { NSCursor.setHiddenUntilMouseMoves(true) }
+    }
+
+    private func overlayValues(_ url: URL) -> [String: String] {
+        var values = ["name": url.lastPathComponent,
+                      "folder": url.deletingLastPathComponent().lastPathComponent,
+                      "index": "\(model.list.index + 1)", "count": "\(model.list.urls.count)"]
+        if let file = model.fileValues, file.url == url { values.merge(file.values) { $1 } }
+        return values
     }
 
     /// Viewer shortcuts live here, not in the menus: a menu shortcut would also fire while typing
@@ -119,16 +149,18 @@ struct ViewerView: View {
             model.moveCurrentToTrash()
             return .handled
         }
-        if modifiers.isEmpty, press.key == .deleteForward {
-            model.moveCurrentToTrash()
-            return .handled
-        }
         if modifiers.isEmpty {
             switch press.key {
-            case .rightArrow, .space, .pageDown, .downArrow: model.next(); return .handled
-            case .leftArrow, Self.backspace, .pageUp, .upArrow: model.previous(); return .handled
+            case .rightArrow: if !panController.pan(dx: 1, dy: 0) { model.next() }; return .handled
+            case .leftArrow: if !panController.pan(dx: -1, dy: 0) { model.previous() }; return .handled
+            case .downArrow: if !panController.pan(dx: 0, dy: 1) { model.next() }; return .handled
+            case .upArrow: if !panController.pan(dx: 0, dy: -1) { model.previous() }; return .handled
+            case .space, .pageDown: model.next(); return .handled
+            case Self.backspace, .pageUp: model.previous(); return .handled
             case .home: model.first(); return .handled
             case .end: model.last(); return .handled
+            case .deleteForward: model.moveCurrentToTrash(); return .handled
+            case .return: model.toggleFullScreen(); return .handled
             case .escape:
                 guard model.isFullScreen else { return .ignored }
                 model.toggleFullScreen()
