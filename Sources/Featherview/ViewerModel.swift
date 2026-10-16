@@ -82,7 +82,9 @@ final class ViewerModel {
         guard let url = list.current else { return emptyFolder?.lastPathComponent ?? "Featherview" }
         // While the folder is listed the position isn't known yet; "1 / 1" would be wrong.
         if isOpening { return url.lastPathComponent }
-        if pageCount > 1 { return "\(url.lastPathComponent) — page \(page + 1) / \(pageCount) — \(list.position)" }
+        if pageCount > 1 {
+            return String(localized: "\(url.lastPathComponent) — page \(page + 1) / \(pageCount) — \(list.position)")
+        }
         return "\(url.lastPathComponent) — \(list.position)"
     }
 

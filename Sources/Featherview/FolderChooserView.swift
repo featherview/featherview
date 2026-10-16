@@ -43,7 +43,7 @@ struct FolderChooserView: View {
 
     private func label(_ entry: FolderChooser.Entry) -> String {
         switch entry {
-        case .again: "This folder again"
+        case .again: String(localized: "This folder again")
         case .parent(let url): url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
         case .subfolder(let url): url.lastPathComponent
         }
