@@ -6,9 +6,14 @@ public enum FolderScanner {
         let resolved = url.resolvingSymlinksInPath()
         let isFolder = (try? resolved.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
         let folder = isFolder ? resolved : url.deletingLastPathComponent()
-        let items = try FileManager.default.contentsOfDirectory(
-            at: folder, includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey],
-            options: [.skipsHiddenFiles])
+        let items: [URL]
+        do {
+            items = try FileManager.default.contentsOfDirectory(
+                at: folder, includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey],
+                options: [.skipsHiddenFiles])
+        } catch where !isFolder && FileManager.default.isReadableFile(atPath: url.path) {
+            return [url]  // folder not listable (permissions, privacy prompt denied): show just this file
+        }
         // shortcut: localizedStandardCompare sorts 10,000 names in ~220 ms (release), half the
         // folder-open budget; show the opened file first and sort later if that budget slips.
         var images = items.filter { ImageFormats.isDecodable($0) && isRegularFile($0) }
