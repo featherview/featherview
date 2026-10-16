@@ -28,6 +28,32 @@ import Testing
         #expect(try FolderScanner.images(around: dir).count == 3)
     }
 
+    @Test func followsSymlinkToFolder() throws {
+        let dir = try Fixtures.makeTempDir()
+        try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 4, height: 4)
+        let sub = dir.appendingPathComponent("sub")
+        try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: false)
+        try Fixtures.writeImage(to: sub.appendingPathComponent("s.jpg"), width: 4, height: 4)
+        let link = dir.appendingPathComponent("linkdir")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: sub)
+
+        #expect(try FolderScanner.images(around: link).map(\.lastPathComponent) == ["s.jpg"])
+    }
+
+    @Test func skipsFoldersAndBrokenLinksButKeepsLinkedImages() throws {
+        let dir = try Fixtures.makeTempDir()
+        try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 4, height: 4)
+        try FileManager.default.createDirectory(
+            at: dir.appendingPathComponent("Folder.jpg"), withIntermediateDirectories: false)
+        try FileManager.default.createSymbolicLink(
+            at: dir.appendingPathComponent("broken.jpg"),
+            withDestinationURL: dir.appendingPathComponent("gone.jpg"))
+        try FileManager.default.createSymbolicLink(
+            at: dir.appendingPathComponent("b.jpg"), withDestinationURL: dir.appendingPathComponent("a.jpg"))
+
+        #expect(try FolderScanner.images(around: dir).map(\.lastPathComponent) == ["a.jpg", "b.jpg"])
+    }
+
     @Test func missingFolderThrows() {
         #expect(throws: (any Error).self) {
             try FolderScanner.images(around: URL(fileURLWithPath: "/no/such/folder/a.jpg"))
