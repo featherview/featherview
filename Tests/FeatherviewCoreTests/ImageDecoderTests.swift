@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import Testing
+import UniformTypeIdentifiers
 @testable import FeatherviewCore
 
 @Suite struct ImageDecoderTests {
@@ -78,5 +79,66 @@ import Testing
         #expect(try ImageDecoder.decode(tiff, page: 2).width == 10)  // page n is 8 + n wide
         #expect(ImageDecoder.displaySize(of: tiff, page: 1)?.width == 9)
         #expect(throws: DecodeError.unreadable(tiff)) { try ImageDecoder.decode(tiff, page: 3) }
+    }
+    @Test func hdrImagesDecodeDeeperOnlyWhenAsked() throws {
+        guard #available(macOS 15, *) else { return }
+        let dir = try Fixtures.makeTempDir()
+        let hdr = try Fixtures.writeHDRGainMap(to: dir.appendingPathComponent("gm.heic"))
+        #expect(try ImageDecoder.decode(hdr, maxPixelSize: 64, halvingSteps: true, hdr: true).bitsPerComponent > 8)
+        #expect(try ImageDecoder.decode(hdr, maxPixelSize: 64, halvingSteps: true).bitsPerComponent == 8)
+    }
+
+    @Test func sdrImagesStayEightBitWithTheHDRRequest() throws {
+        let dir = try Fixtures.makeTempDir()
+        let sdr = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 64, height: 48)
+        #expect(try ImageDecoder.decode(sdr, maxPixelSize: 64, halvingSteps: true, hdr: true).bitsPerComponent == 8)
+    }
+
+    @Test(arguments: [UTType.png, .tiff], [true, false])
+    func deepSDRImagesDecodeAtEightBits(type: UTType, hdr: Bool) throws {
+        let dir = try Fixtures.makeTempDir()
+        let deep = try Fixtures.writeImage(to: dir.appendingPathComponent("deep.\(type.preferredFilenameExtension!)"),
+                                           width: 64, height: 48, type: type, bitsPerComponent: 16)
+        let image = try ImageDecoder.decode(deep, maxPixelSize: 64, halvingSteps: true, hdr: hdr)
+        #expect(image.bitsPerComponent == 8)
+        #expect(image.bitsPerPixel == 32)
+    }
+
+    @Test func exrDecodesAsEightBitSDRWithoutTheHDRRequest() throws {
+        let dir = try Fixtures.makeTempDir()
+        let exr = try Fixtures.writeImage(to: dir.appendingPathComponent("a.exr"), width: 64, height: 48,
+                                          type: UTType("com.ilm.openexr-image")!, bitsPerComponent: 16)
+        let image = try ImageDecoder.decode(exr, maxPixelSize: 64, halvingSteps: true)
+        #expect(image.bitsPerComponent == 8)
+        #expect(image.colorSpace.map(CGColorSpaceUsesExtendedRange) == false)
+    }
+
+    @Test func exrKeepsItsRangeAtSixteenBitsWithTheHDRRequest() throws {
+        guard #available(macOS 15, *) else { return }
+        let dir = try Fixtures.makeTempDir()
+        let exr = try Fixtures.writeImage(to: dir.appendingPathComponent("a.exr"), width: 64, height: 48,
+                                          type: UTType("com.ilm.openexr-image")!, bitsPerComponent: 16)
+        let image = try ImageDecoder.decode(exr, maxPixelSize: 64, halvingSteps: true, hdr: true)
+        #expect(image.bitsPerComponent == 16)  // ImageIO gives 32-bit float: twice the spec's HDR memory
+        #expect(image.bitsPerPixel == 64)
+        #expect(image.colorSpace.map(CGColorSpaceUsesExtendedRange) == true)
+    }
+
+    @Test func floatTIFFsDecodeAtEightBitsWithTheHDRRequest() throws {
+        let dir = try Fixtures.makeTempDir()
+        let tiff = try Fixtures.writeImage(to: dir.appendingPathComponent("f.tif"), width: 64, height: 48,
+                                           type: .tiff, bitsPerComponent: 32)
+        let image = try ImageDecoder.decode(tiff, maxPixelSize: 64, halvingSteps: true, hdr: true)
+        #expect(image.bitsPerComponent == 8)
+        #expect(image.bitsPerPixel == 32)
+    }
+
+    @Test(arguments: [UTType.png, .tiff])
+    func deepImagesKeepTheirDepthOutsideDisplayDecodes(type: UTType) throws {
+        let dir = try Fixtures.makeTempDir()
+        let deep = try Fixtures.writeImage(to: dir.appendingPathComponent("deep.\(type.preferredFilenameExtension!)"),
+                                           width: 64, height: 48, type: type, bitsPerComponent: 16)
+        #expect(try ImageDecoder.decode(deep, maxPixelSize: 32).bitsPerComponent == 16)  // batch and Save As
+        #expect(try ImageDecoder.decode(deep).bitsPerComponent == 16)
     }
 }
