@@ -1762,7 +1762,8 @@ Run each check with `build/Featherview.app` built in **release** mode (`scripts/
 - [ ] **Step 6: Typing safety** — in the batch window, typing "rl0f" into the rename field changes only the text, not the viewer.
 - [ ] **Step 7: Batch** — 20 mixed images (JPEG/HEIC/PNG + one corrupt) → JPEG, limit 1920, rename `{name}_{n:3}`, output = input folder: 19 converted, 1 failed, nothing overwritten, outputs upright.
 - [ ] **Step 8: Performance** — in one terminal: `log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'`. Make a 10,000-file folder: `mkdir /tmp/fv-10k && for i in $(seq 1 10000); do cp /tmp/fv-smoke/$(ls /tmp/fv-smoke | head -1) /tmp/fv-10k/img$i.jpg; done`. Open `img5000.jpg` from Finder; hold →. Check against the budgets in `AGENTS.md`: first image < 500 ms, logged `show` times < 150 ms for non-prefetched images and near 0 for prefetched ones, Activity Monitor memory stays flat while holding →.
-- [ ] **Step 9: Commit any spec updates**
+- [ ] **Step 9: Website numbers** — the site (`~/Web/mx/featherview.github.io/index.html`, the three `.stat` blocks) shows the budgets (300 ms launch, 16 ms swap, 10,000 files in 0.5 s). Replace each with the median measured in Step 8 (5 runs, release build, name the Mac model and photo size in a footnote), never a number better than measured. Ask the maintainer before pushing (pushes go live).
+- [ ] **Step 10: Commit any spec updates**
 
 ```bash
 git add docs/spec.md
