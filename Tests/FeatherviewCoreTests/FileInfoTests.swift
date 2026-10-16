@@ -13,4 +13,14 @@ import Testing
         #expect(!info.isFor(tiff, page: 2))
         #expect(!info.isFor(dir.appendingPathComponent("other.tif"), page: 1))
     }
+
+    /// The viewer assigns a re-read only when it differs: each assignment redraws the status bar.
+    @Test func readsCompareEqualUntilTheFileChanges() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 4)
+        let first = FileInfo.read(url: url, page: 0)
+        #expect(FileInfo.read(url: url, page: 0) == first)
+        _ = try Fixtures.writeImage(to: url, width: 4, height: 8)  // a rotation rewrites it
+        #expect(FileInfo.read(url: url, page: 0) != first)
+    }
 }

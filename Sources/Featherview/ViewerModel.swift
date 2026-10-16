@@ -22,6 +22,8 @@ final class ViewerModel {
     private(set) var fileRevision = 0
     /// For the file shown, read off the main thread when it's shown.
     private(set) var fileInfo: FileInfo?
+    /// Page-0 reads for the image shown and its prefetched neighbours, so a swap sets the info with the image.
+    @ObservationIgnored private var knownInfo: [URL: FileInfo] = [:]
     var fileValues: (url: URL, values: [String: String])? { fileInfo.map { ($0.url, $0.values) } }
 
     /// The scale the image is shown at, from its full pixel size (not the screen-size decode).
@@ -310,6 +312,8 @@ final class ViewerModel {
                         : try await cache.image(for: url, maxPixelSize: size)
                 }
                 guard !Task.isCancelled else { return }
+                // In the same update as the image: the status bar would otherwise draw without size and date first.
+                if page == 0, let known = knownInfo[url], known != fileInfo { fileInfo = known }
                 image = decoded
                 errorMessage = nil
                 let elapsed = started.duration(to: .now).components
@@ -325,8 +329,9 @@ final class ViewerModel {
                 // prefetch below doesn't wait for another file read (slow on network or USB disks).
                 Task {
                     let info = await Task.detached { FileInfo.read(url: url, page: page) }.value
-                    // A slower read for another page of this file may finish last.
-                    if info.isFor(list.current, page: self.page) { fileInfo = info }
+                    if page == 0 { knownInfo[url] = info }
+                    // A slower read for another page of this file may finish last. Unchanged: no second redraw.
+                    if info.isFor(list.current, page: self.page), info != fileInfo { fileInfo = info }
                 }
                 // Not awaited either, and only for TIFFs: a cached image swaps in without another file read.
                 if page == 0, ImageFormats.mayHavePages(url) {
@@ -340,7 +345,16 @@ final class ViewerModel {
                 image = nil  // pageCount stays: one bad page mustn't hide the file's other pages
                 errorMessage = "Can't open \(url.lastPathComponent)"
             }
-            if let size, page == 0, prefetchesNeighbors { await cache.prefetch(neighbors, maxPixelSize: size) }
+            if let size, page == 0, prefetchesNeighbors {
+                await cache.prefetch(neighbors, maxPixelSize: size)
+                let wanted = Set(neighbors + [url])
+                knownInfo = knownInfo.filter { wanted.contains($0.key) }
+                for neighbor in neighbors where knownInfo[neighbor] == nil {
+                    let info = await Task.detached { FileInfo.read(url: neighbor, page: 0) }.value
+                    guard !Task.isCancelled else { return }
+                    knownInfo[neighbor] = info
+                }
+            }
         }
     }
 
@@ -466,6 +480,7 @@ final class ViewerModel {
                 try await Task.detached(priority: .userInitiated) { try OrientationRotator.rotate(url, rotation, page: page) }.value
                 await cache.remove(url)
                 await fullSizeCache.remove(url)
+                knownInfo[url] = nil
                 fileRevision += 1
                 if list.current == url { show(page: self.page) }
             } catch RotateError.notFirstPage {

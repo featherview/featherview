@@ -1,7 +1,7 @@
 import Foundation
 
 /// What the status bar and the overlay show about a file's page: its pixel size, bytes and date.
-public struct FileInfo: Sendable {
+public struct FileInfo: Equatable, Sendable {
     public let url: URL
     public let page: Int
     public let pixelSize: CGSize?
