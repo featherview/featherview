@@ -20,7 +20,7 @@ final class ViewerModel {
     private(set) var zoom = Zoom.fit
     /// Bumped when the current file changes on disk (rotation), so views reading it refresh.
     private(set) var fileRevision = 0
-    /// For the file shown, read off the main thread when it's shown.
+    /// For the image on screen: the previous image's until the next one is shown (or fails), read off the main thread.
     private(set) var fileInfo: FileInfo?
     /// Page-0 reads for the image shown and its prefetched neighbours, so a swap sets the info with the image.
     @ObservationIgnored private var knownInfo: [URL: FileInfo] = [:]
@@ -31,7 +31,7 @@ final class ViewerModel {
         switch zoom {
         case .factor(let factor): return Int((factor * 100).rounded())
         case .fit:
-            guard let info = fileInfo, info.isFor(list.current, page: page), let size = info.pixelSize else { return nil }
+            guard let size = fileInfo?.pixelSize else { return nil }
             return Int((ZoomSteps.fitFactor(image: size, view: viewSize, displayScale: displayScale) * 100).rounded())
         }
     }
@@ -342,6 +342,7 @@ final class ViewerModel {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
+                fileInfo = nil
                 image = nil  // pageCount stays: one bad page mustn't hide the file's other pages
                 errorMessage = "Can't open \(url.lastPathComponent)"
             }

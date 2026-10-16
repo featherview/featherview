@@ -24,8 +24,9 @@ struct StatusBar: View {
 
     private var fields: [String] {
         // While the folder is listed the position isn't known yet; "1 / 1" would be wrong.
-        guard let url = model.list.current, !model.isOpening else { return [] }
-        let info = model.fileInfo?.isFor(url, page: model.page) == true ? model.fileInfo : nil
+        guard model.list.current != nil, !model.isOpening else { return [] }
+        // The image still on screen until the next one is shown: dropping its fields would shift the bar each swap.
+        let info = model.fileInfo
         return StatusLine.make(pixelSize: info?.pixelSize, zoomPercent: model.zoomPercent, fileBytes: info?.bytes,
                                index: model.list.index, count: model.list.urls.count,
                                page: model.page, pageCount: model.pageCount, modified: info?.modified).fields
