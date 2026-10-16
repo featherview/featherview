@@ -22,27 +22,26 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 
 - Opens a file from Finder (double-click if set as default, "Open With", drag onto the Dock
   icon), from ⌘O, or by dropping a file or folder onto the window.
-- A folder without images shows "No images in <folder>"; ← / → still go to other folders
-  (decided 2026-10-16).
+- A folder without images shows "No images in <folder>"; ← / → still go to other folders.
 - Opening a file loads every decodable image in the same folder, in Finder order
   (img2 before img10), hidden files skipped. Opening a folder starts at its first image.
-  Decided 2026-10-16: images are recognised by file extension only (scanning never opens a
+  Images are recognised by file extension only (scanning never opens a
   file); `.jfif`, `.jif` and `.jfi` count as JPEG; the file the user opened is always in the list,
   even if hidden or of an unknown extension; symlinked folders are followed; folders and broken
   links with image names are skipped.
 - Supported formats: everything ImageIO decodes on the user's Mac (JPEG, PNG, HEIC, WebP,
   TIFF, GIF first frame, BMP, camera RAW, …), plus PDF (see "Formats").
 - Window title: `filename — 3 / 120`; for a multi-page file `filename — page 2 / 3 — 3 / 120`.
-  A multi-page file always opens on page 1 (decided 2026-10-16).
+  A multi-page file always opens on page 1.
 - Black background. Fit mode shrinks large images to the window and never enlarges small ones.
 - The window keeps its size and position when the image changes; it never resizes itself to the
   image. Zoom changes the image inside the window, not the window.
 - EXIF orientation is always applied.
-- Status bar (decided 2026-10-16, milestone 3): one line along the bottom of the window, on by
+- Status bar (milestone 3): one line along the bottom of the window, on by
   default, showing the image's pixel size, zoom %, file size, position N / M and the file's
   modification date. View › Hide Status Bar hides it (remembered). Hidden in full screen. Our own
   order, wording and layout (leading-aligned, system small font).
-- Liquid Glass (decided 2026-10-16, milestone 3): on macOS 26 and later the folder chooser, the
+- Liquid Glass (milestone 3): on macOS 26 and later the folder chooser, the
   F7/F8 panel and on-image messages use Liquid Glass; earlier systems keep the current material.
   Minimum macOS stays 14.
 - A file that can't be decoded shows "Can't open <name>"; browsing continues normally.
@@ -67,22 +66,20 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 | O / B / M | Open… / Batch Convert… / minimise the window (as ⌘O / ⌘B / ⌘M) |
 | P / A / S | Preferences / About / Save As…, each added with its feature (milestones 2–3) |
 
-Single keys for commands match the reference viewer, for people switching over (decided
-2026-10-16); the ⌘ shortcuts stay for Mac users.
+Single keys for commands match the reference viewer, for people switching over; the ⌘ shortcuts stay for Mac users.
 
 ### Mouse and trackpad
 
 - Double-click the image: toggle full screen.
 - Dragging pans a zoomed image (the image follows the pointer); it does nothing when the image
-  fits. No selection rectangle (decided 2026-10-16).
+  fits. No selection rectangle.
 - Right-click (or Control-click) opens a context menu with the window's actions: Copy, Rotate
-  Left / Right, Move to Folder…, Copy to Folder…, Move to Trash, Show in Finder, Open With
-  (decided 2026-10-16).
+  Left / Right, Move to Folder…, Copy to Folder…, Move to Trash, Show in Finder, Open With.
 - Two-finger scroll (or a mouse wheel) pans a zoomed image; it never changes images.
 
 ### Toolbar
 
-For mouse users, the viewer window has a standard macOS toolbar (decided 2026-10-16): previous,
+For mouse users, the viewer window has a standard macOS toolbar: previous,
 next, rotate left, rotate right, zoom out, zoom to fit, zoom in, info panel, Move to Trash, plus previous / next page
 for a multi-page file only. Each button does what its key does and has a tooltip naming that key. View › Hide Toolbar hides it
 (remembered), and View › Customize Toolbar… changes it, as in any Mac app. Hidden in full screen.
@@ -91,10 +88,10 @@ Mac SF Symbols, never icons taken from another viewer.
 ### Menu commands
 
 ⌘O Open…, ⌘⌫ Move to Trash, ⌘B Batch Convert…, ⇧⌘S Save As… (the current image in any writable format, with that format's options, orientation
-applied, never overwriting without the standard Mac replace prompt; afterwards the window shows the saved file in its folder, decided 2026-10-16; if Featherview can't read the format it saved, the window stays on the original), ⌘C Copy (the current image, full resolution,
+applied, never overwriting without the standard Mac replace prompt; afterwards the window shows the saved file in its folder; if Featherview can't read the format it saved, the window stays on the original), ⌘C Copy (the current image, full resolution,
 orientation applied), ⌘Q Quit. Menus also list the single-key commands
 (the single key in the shortcut column, also for commands that have a ⌘ shortcut, which keeps
-working; decided 2026-10-16) so they are discoverable. Single keys are menu shortcuts only while a
+working) so they are discoverable. Single keys are menu shortcuts only while a
 menu is open, so typing in the batch window's text fields never triggers viewer actions.
 
 ### Rotate
@@ -105,7 +102,7 @@ through a temp file and swapped in, so a failure (e.g. read-only folder) leaves 
 untouched and shows "Couldn't rotate <name>".
 In a multi-page TIFF only page 1 can be rotated: ImageIO can't change a later page's tag without
 re-encoding every page, so pages 2 and on show "Only page 1 of <name> can be rotated losslessly"
-and the file stays untouched (decided 2026-10-16).
+and the file stays untouched.
 
 ### Move to Trash
 
@@ -146,7 +143,7 @@ folder list.
   "Include subfolders", Remove, Clear, Sort (by name, Finder order), Move up/down, and
   "Save List…"/"Load List…" (plain text, one path per line). Hidden and non-image files are
   skipped when adding folders.
-- Order (decided 2026-10-16, like the reference viewer): each add appends to the end of the list,
+- Order (like the reference viewer): each add appends to the end of the list,
   the added files in Finder order; earlier entries keep their place. Output numbers follow the
   list order.
 
@@ -155,7 +152,7 @@ folder list.
 - Output format: every format in "Formats" below that can be written. Each format has its own
   options (see "Format options"); the same options appear when saving from the viewer. In both,
   an "Options…" button next to the format opens them, so the window and save panel stay short
-  (decided 2026-10-16, as in the reference viewer).
+  (as in the reference viewer).
 - Output folder chosen by the user (may be the input folder). `{folder}` in the output path
   stands for the input file's folder name.
 - Rename pattern: `{name}` original name, `{n}` counter, `{n:3}` zero-padded counter, `{date}`
@@ -196,7 +193,7 @@ Settings can be saved as named presets and loaded later.
 
 ## Preferences (⌘,)
 
-The menu calls it "Preferences…", not macOS's "Settings…", so it matches its single key P (decided 2026-10-16).
+The menu calls it "Preferences…", not macOS's "Settings…", so it matches its single key P.
 
 A standard Mac settings window with tabs. Every setting below has the default shown.
 
@@ -213,7 +210,7 @@ A standard Mac settings window with tabs. Every setting below has the default sh
 
 ## About window
 
-Decided 2026-10-16: our own About window replaces the plain standard panel. Mac-like, one small
+Our own About window replaces the plain standard panel. Mac-like, one small
 window, nothing to configure.
 
 - The feather icon, "Featherview", version and build (`0.1.0 (1)`), the one-line description.
@@ -227,7 +224,7 @@ window, nothing to configure.
 
 ## Languages
 
-Decided 2026-10-16: the UI is translated into the 30 most widely spoken languages that macOS
+The UI is translated into the 30 most widely spoken languages that macOS
 offers. The app follows the system language, and System Settings › Language & Region › Applications
 can set it per app (no setting of our own).
 
@@ -263,10 +260,10 @@ the About window.
 - Read: everything ImageIO decodes, including JPEG, PNG, HEIC/HEIF, AVIF, JPEG XL, WebP, TIFF,
   GIF (first frame), BMP, ICO, ICNS, JPEG 2000, PSD, TGA, OpenEXR, Radiance HDR, SGI, PBM, DDS,
   DNG and camera RAW from all major makers.
-- PDF (decided 2026-10-16, milestone 3, like the reference viewer): a PDF is browsed like a
+- PDF (milestone 3, like the reference viewer): a PDF is browsed like a
   multi-page image. Core Graphics renders each page on white at 144 dpi (an A4 page is
   1190 × 1684 pixels; fit mode renders it straight at the window's size), opening on page 1; ⌥← / ⌥→ step pages and the page shows in the title and status bar.
-- Read (decided 2026-10-16), formats macOS can't read, so Featherview decodes them itself:
+- Read, formats ImageIO can't read, which Featherview decodes itself:
   - SVG through AppKit (`NSImage` renders it; ImageIO doesn't), rasterised at the size shown.
   - Own decoders, pure Swift, no dependency (milestone 3): QOI, PCX (and multi-page DCX), XBM,
     XPM, WBMP, Sun Raster (RAS), IFF/LBM (ILBM, incl. HAM and EHB).
@@ -277,22 +274,22 @@ the About window.
   - Every own decoder goes through the same paths as ImageIO's: folder listing by extension,
     downsampled decode at screen size, batch input, info panel (dimensions only). A file it
     can't read shows "Can't open <name>" like any other.
-- Finder previews (decided 2026-10-16, after the own decoders): a Quick Look preview and
+- Finder previews (after the own decoders): a Quick Look preview and
   thumbnail extension for the formats only Featherview reads, reusing its decoders, so Finder,
   Quick Look (Space) and open panels show them too. Formats ImageIO reads are left to macOS.
 - Write (ImageIO): JPEG, PNG, HEIC, AVIF, TIFF, GIF, BMP, JPEG 2000, PDF, PSD, TGA, ICO, ICNS,
   OpenEXR.
 - Write (own encoders, pure Swift, no dependency): PBM, PGM, PPM, QOI, PCX. PBM is real 1-bit
-  binary PBM, black and white at a 50% threshold (decided 2026-10-16: ImageIO's PBM writer writes
+  binary PBM, black and white at a 50% threshold (ImageIO's PBM writer writes
   colour ASCII PPM under the .pbm name).
 - Write (open-source encoder, per `AGENTS.md`): WebP (libwebp, BSD).
 - Writing JPEG XL is v2 (needs libjxl, a large C++ build). Reading JPEG XL works in v1 via ImageIO.
-- HDR display (decided 2026-10-16, milestone 3): images with HDR data (gain-map HEIC/JPEG from
+- HDR display (milestone 3): images with HDR data (gain-map HEIC/JPEG from
   phones, HDR AVIF/HEIC, OpenEXR, Radiance HDR) show with their extra brightness on screens that
   support it, on macOS 15 and later. Only those images decode at 16 bits (twice the memory); all
   others stay 8-bit, so browsing speed and memory don't change. On macOS 14 or an SDR screen they
   show as SDR. Batch output and Save As keep writing SDR unless the target format keeps the HDR data:
-  HEIC and AVIF output of an HDR photo keeps its HDR (gain map), decided 2026-10-16.
+  HEIC and AVIF output of an HDR photo keeps its HDR (gain map).
 
 ### Format options
 
@@ -303,12 +300,12 @@ the About window.
 | PNG | interlaced |
 | TIFF | compression none / LZW / PackBits / JPEG / ZIP, keep all pages |
 | JPEG 2000 | quality 1–100 (default 90), lossless (default) |
-| PDF | one page per image at the image's size; JPEG quality 1–100 for the image (default 95) or lossless (decided 2026-10-16; paper sizes later) |
+| PDF | one page per image at the image's size; JPEG quality 1–100 for the image (default 95) or lossless (paper sizes later) |
 | GIF, TGA, BMP, PSD, OpenEXR, PBM | none |
 | ICO, ICNS | none; the image is scaled to fit a transparent square of 256 px (ICO) or 512 px (ICNS), or the next allowed size up for smaller images (16, 32, 128, 256, 512), never enlarged beyond it |
 | WebP | quality 1–100 (default 75), lossless, effort 0–6 (default 4), preset photo / picture / drawing / icon / text |
 
-Decided 2026-10-16 after testing ImageIO on macOS 27: it can't write JPEG without chroma subsampling
+After testing ImageIO on macOS 27: it can't write JPEG without chroma subsampling
 (except at quality 100), lossless HEIC/AVIF, PNG compression levels or interlaced GIF, so those
 options are not offered. ImageIO's GPU texture formats (KTX, KTX2, ASTC, PVR, ATX, DDS) and HEIC
 sequences are not offered for writing; any other type a newer macOS adds appears automatically.
@@ -322,11 +319,11 @@ See "Out of scope for v1" in `AGENTS.md`.
 
 ## Distribution
 
-Decided 2026-10-16: releases are ad-hoc signed and not notarized (no paid Apple Developer
+Releases are ad-hoc signed and not notarized (no paid Apple Developer
 account). README.md tells users how to open the app the first time. Revisit if someone sponsors
 the $99/year Apple Developer Program; then sign with Developer ID and notarize.
 
 ## App icon
 
-Decided 2026-10-16: the feather mark, `Resources/AppIcon.svg` (source of `AppIcon.icns` and the
+The feather mark, `Resources/AppIcon.svg` (source of `AppIcon.icns` and the
 website favicon). No cat imagery.

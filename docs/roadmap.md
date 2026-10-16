@@ -11,8 +11,8 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 
 | # | Milestone | Plan | Status |
 |---|---|---|---|
-| 1 | Core viewer and batch | `docs/superpowers/plans/2026-10-15-featherview-v1.md` | done 2026-10-16 |
-| 2 | Viewer complete | `docs/superpowers/plans/2026-10-16-milestone-2-viewer-complete.md` | done 2026-10-16 |
+| 1 | Core viewer and batch | `docs/superpowers/plans/2026-10-15-featherview-v1.md` | done |
+| 2 | Viewer complete | `docs/superpowers/plans/2026-10-16-milestone-2-viewer-complete.md` | done |
 | 3 | Formats and Save As | `docs/superpowers/plans/2026-10-16-milestone-3-formats-save-as.md` | planned |
 | 4 | Batch complete | to write after 3 | — |
 | 5 | WebP output | to write after 3 (independent of 4) | — |
@@ -46,7 +46,7 @@ Spec: "Viewer" (all of it), "Settings", "Windows".
   the keys.
 - Dragging pans a zoomed image; right-click context menu; multi-page files (⌥← / ⌥→, page in
   the title, page toolbar buttons); "No images in <folder>" for an imageless folder.
-  Observed 2026-10-16 (`docs/parity.md` "Mouse, pages and toolbar").
+  (`docs/parity.md` "Mouse, pages and toolbar").
 
 ## 3. Formats and Save As
 
@@ -64,23 +64,23 @@ Spec: "Formats", "Format options", ⇧⌘S Save As.
 - HDR display (spec "Formats"): HDR decode only for images that carry HDR data (macOS 15+),
   `allowedDynamicRange(.high)` in the viewer. Measure decode time and memory on an HDR iPhone
   photo against an SDR one.
-- Own decoders (spec "Formats", decided 2026-10-16): SVG through AppKit; pure-Swift QOI, PCX/DCX,
+- Own decoders (spec "Formats"): SVG through AppKit; pure-Swift QOI, PCX/DCX,
   XBM, XPM, WBMP, Sun RAS, IFF/LBM. One `OwnDecoders` registry consulted by `ImageFormats` and
   `ImageDecoder`, each decoder unit-tested on hand-built files (fixtures generated in tests, the
   same golden-byte approach as the encoders), corrupt and truncated input included.
-- Finder's Open With (maintainer, 2026-10-16): Featherview listed for every format it reads, so it
+- Finder's Open With: Featherview listed for every format it reads, so it
   shows in Open With and its suggested apps. `Info.plist` declares document types for
   `public.image`, PDF and each own-decoder format, with imported type declarations (UTIs and
   extensions) for the ones macOS doesn't know (QOI, PCX/DCX, XBM, XPM, WBMP, RAS, IFF/LBM). Rank
   Alternate, never taking over as default. Check with `lsregister -dump` and Finder's Open With.
-- Option dialogs of GIF, JPEG 2000, TGA, PDF observed 2026-10-16 (`docs/parity.md`); PDF options
+- Option dialogs of GIF, JPEG 2000, TGA, PDF (`docs/parity.md`); PDF options
   decided in spec "Format options".
-- Viewer look (maintainer, 2026-10-16): closer to the reference viewer's density while following
+- Viewer look: closer to the reference viewer's density while following
   Apple's HIG and Liquid Glass. Candidates, each to accept into the spec first: a status bar
   (dimensions, zoom %, file size, index, date), a compact toolbar, zoom % in the title, Liquid
   Glass on the chooser, F7/F8 panel and messages (macOS 26+, material below). Clean-room: our
-  own icons, order and labels. Status bar and Liquid Glass decided 2026-10-16 (spec "Viewer").
-- Swap speed (measured 2026-10-16, milestone 3 Task 15): a prefetched next image is back under the
+  own icons, order and labels. Status bar and Liquid Glass (spec "Viewer").
+- Swap speed (milestone 3 Task 15): a prefetched next image is back under the
   16 ms budget. The toolbar wasn't why. 80 12 MP JPEGs, auto-advance every 150 ms, release build,
   time from the key to the main thread going idle after the frame is committed: median 64 ms /
   p90 115 before, 11 / 12 after. Two causes, both fixed: Core Animation colour-converted each new
@@ -106,14 +106,13 @@ Spec: "Batch window (⌘B)" (all of it).
 - Presets; Replace existing (to Trash), Move originals to Trash, Keep file dates, Recreate
   subfolders.
 - Stop, Pause / Resume, Copy Log.
-- Nicer batch window (maintainer request 2026-10-16; milestone 1's is a plain form): designed
+- Nicer batch window (milestone 1's is a plain form): designed
   for the Mac before it's built — input list with thumbnails and drag and drop, settings
   grouped by step, live preview of output names, progress and log in the window. Mockups first
   (artifact), reviewed by the maintainer, then the plan.
-- HDR kept when an HDR photo is converted to HEIC or AVIF (spec "Formats", decided 2026-10-16);
+- HDR kept when an HDR photo is converted to HEIC or AVIF (spec "Formats");
   milestone 3 writes 8-bit SDR there.
-- Format options behind an "Options…" button in the batch window (spec "Output", decided
-  2026-10-16); Save As has had its button since milestone 3, and batch shows them inline until then.
+- Format options behind an "Options…" button in the batch window (spec "Output"); Save As has had its button since milestone 3, and batch shows them inline until then.
 - **Observe first:** the sub-dialogs of canvas size, text overlay, watermark, border, and
   "more effects"; the batch preview image.
 
@@ -148,13 +147,13 @@ Space preview, open panel preview; no effect on the app's launch time.
 
 ## Own look (any time before the v1 release)
 
-Maintainer, 2026-10-16: the app looks like a stock macOS app; Featherview's own taste and feel is
+The app looks like a stock macOS app; Featherview's own taste and feel is
 missing. Give it a design pass of its own (identity, colour, typography, motion, the small
 touches that make a viewer feel crafted), mockups first as an artifact, reviewed by the
 maintainer, then planned. Coordinate with milestone 4's batch-window mockups so both share one
 visual language. Clean-room rules still apply.
 
-Questions for this pass (maintainer, 2026-10-16), with what Apple's guidelines say:
+Questions for this pass, with what Apple's guidelines say:
 - Liquid Glass and the canvas: since 78f4e39 the app links against the real SDK, so macOS 26+
   shows glass toolbars. On our black band below them they look flat. The guidelines put glass
   over content ("use the content layer to inform the color and appearance of the toolbar",
@@ -167,9 +166,8 @@ Questions for this pass (maintainer, 2026-10-16), with what Apple's guidelines s
   hide-on-hover in a window, and every toolbar item must also be in the menu bar. Decide whether
   windowed viewing hides the toolbar after the pointer rests (a media-player style) or only full
   screen does, as now.
-- Settings window: doesn't look like a macOS 26 (Tahoe) settings window yet (maintainer,
-  2026-10-16). Mock it in the current system style along with the rest.
-- Launch time: the toolbar and canvas decide it (2026-10-16: ~385 ms with glass, 350 ms without;
+- Settings window: doesn't look like a macOS 26 (Tahoe) settings window yet. Mock it in the current system style along with the rest.
+- Launch time: the toolbar and canvas decide it (~385 ms with glass, 350 ms without;
   the window's first glass draw is macOS's cost). Measure launch again after this pass and set the
   budget in `AGENTS.md` then. If the toolbar may start hidden, try showing it only after the first
   image (saved 16 ms in a test; today it would make the image jump when the toolbar arrives).

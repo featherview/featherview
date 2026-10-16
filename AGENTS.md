@@ -43,7 +43,7 @@ It must never derive from another product's code or assets. Its *behaviour* may 
 | Bundle ID | `net.mynetx.featherview` — never change it: macOS keys settings and permissions to it |
 | Public URL | `featherview.mynetx.net` — any future update feed (Sparkle appcast) lives here, never on github.io |
 | Repo | github.com/mynetx/featherview (may move to the `featherview` org later; GitHub redirects) |
-| License | MIT (decided 2026-10-16), see `LICENSE` |
+| License | MIT, see `LICENSE` |
 
 ## Commands
 
@@ -79,14 +79,13 @@ Rule of thumb: if logic can be tested without a window, it belongs in Feathervie
 
 | Budget | Target |
 |---|---|
-| Cold launch with a file to first image on screen | < 350 ms (12 MP JPEG, Apple Silicon; AppKit + SwiftUI alone take ~300 ms to show the window, decided 2026-10-16; with Liquid Glass ~385 ms, accepted for milestone 3 until the own-look pass sets the budget again) |
-| Next/previous image when prefetched | no visible delay (≈ 20 ms to swap is fine, decided 2026-10-16; measured 11 ms median) |
+| Cold launch with a file to first image on screen | < 350 ms (12 MP JPEG, Apple Silicon; AppKit + SwiftUI alone take ~300 ms to show the window; with Liquid Glass ~385 ms, accepted for milestone 3 until the own-look pass sets the budget again) |
+| Next/previous image when prefetched | no visible delay (≈ 20 ms to swap is fine; measured 11 ms median) |
 | Next/previous image, not prefetched | < 150 ms (12 MP JPEG) |
 | Opening a folder of 10,000 files | < 500 ms to first image, UI never blocks |
 | Memory while browsing | bounded by the 8-image cache, decoded at screen size (rounded up to JPEG's next halving step, at most 2× per side) |
 
-How: decode off the main thread at screen size, rounded up to full, ½, ¼ or ⅛ size (decided
-2026-10-16: any size in between costs a slow resample; see `ImageDecoder.decodeSize`), prefetch 2 neighbours each
+How: decode off the main thread at screen size, rounded up to full, ½, ¼ or ⅛ size (any size in between costs a slow resample; see `ImageDecoder.decodeSize`), prefetch 2 neighbours each
 way, never touch file contents while scanning a folder. Measure: the app logs how long each image
 took to appear — `log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'`.
 Use Instruments (Time Profiler) to find where time goes.
@@ -105,7 +104,7 @@ Use Instruments (Time Profiler) to find where time goes.
 - Keep `shortcut:` comments for known limits, in the form `shortcut: <limit>, <when to upgrade>`.
 - Commit messages: conventional commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
 - No AI attribution in commits, PRs or issues: no `Claude-Session:`, `Co-Authored-By:` or session links
-  (decided 2026-10-16; applies to the website repo too).
+  (applies to the website repo too).
 
 ## Out of scope for v1
 

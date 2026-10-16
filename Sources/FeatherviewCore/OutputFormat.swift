@@ -85,7 +85,7 @@ public struct FormatOptions: Codable, Equatable, Sendable {
 
 /// The formats this Mac can write, built at launch from ImageIO plus our own (spec "Formats").
 public enum FormatRegistry {
-    /// GPU texture formats and image sequences: ImageIO writes them, nobody saves photos as them (decided 2026-10-16).
+    /// GPU texture formats and image sequences: ImageIO writes them, nobody saves photos as them.
     static let hidden: Set<String> = [
         "com.apple.atx", "org.khronos.ktx", "org.khronos.ktx2", "org.khronos.astc",
         "com.microsoft.dds", "public.pvr", "public.heics",
