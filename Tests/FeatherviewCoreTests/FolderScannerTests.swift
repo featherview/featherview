@@ -89,3 +89,13 @@ import Testing
         }
     }
 }
+
+@Suite struct HiddenFilesTests {
+    @Test func hiddenFilesAreListedWhenAsked() throws {
+        let dir = try Fixtures.makeTempDir()
+        try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 4, height: 4)
+        try Fixtures.writeImage(to: dir.appendingPathComponent(".b.jpg"), width: 4, height: 4)
+        #expect(try FolderScanner.images(around: dir).map(\.lastPathComponent) == ["a.jpg"])
+        #expect(try FolderScanner.images(around: dir, includeHidden: true).map(\.lastPathComponent) == [".b.jpg", "a.jpg"])
+    }
+}
