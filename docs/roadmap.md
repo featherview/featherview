@@ -77,6 +77,10 @@ Spec: "Batch window (⌘B)" (all of it).
 - Presets; Replace existing (to Trash), Move originals to Trash, Keep file dates, Recreate
   subfolders.
 - Stop, Pause / Resume, Copy Log.
+- Nicer batch window (maintainer request 2026-10-16; milestone 1's is a plain form): designed
+  for the Mac before it's built — input list with thumbnails and drag and drop, settings
+  grouped by step, live preview of output names, progress and log in the window. Mockups first
+  (artifact), reviewed by the maintainer, then the plan.
 - **Observe first:** the sub-dialogs of canvas size, text overlay, watermark, border, and
   "more effects"; the batch preview image.
 
