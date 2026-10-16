@@ -1068,35 +1068,45 @@ git commit -m "feat: page count and page decoding for multi-page TIFFs"
 - Modify: `Sources/Featherview/BatchView.swift`
 - Create: `Sources/Featherview/SettingsView.swift`
 - Create: `Sources/FeatherviewCore/ViewerWindows.swift`, `Tests/FeatherviewCoreTests/ViewerWindowsTests.swift`
+- Create: `Sources/FeatherviewCore/LastUsed.swift`, `Tests/FeatherviewCoreTests/LastUsedTests.swift`
 
 **Interfaces:**
 - Consumes: `AppSettings` (Task 1), `DestinationSlots` (Task 4), `PastEndBehavior`, `HexColor`.
 - Produces (later tasks use these):
   - `ViewerWindows` (Core: `revealMain()`, `openExtra(_:)`, `install(revealMain:openExtra:)`; requests
-    made before any window installs the openers wait and are sent on install), `ExtraWindow` (Core:
-    the extra window's value, a URL plus a fresh id per open), `ViewerModel.windows: ViewerWindows` (static),
-    `ViewerModel.lastActive: ViewerModel?` (static, weak), `ViewerModel.window: NSWindow?` (weak),
-    `ViewerModel.isFullScreen: Bool` (stored, set by the view), `ViewerModel.emptyFolder: URL?`
+    made before any window installs the openers wait and are sent on install; `viewerOpened()` /
+    `viewerClosed()` count viewer windows on screen, `mainTakesFile(mainIsEmpty:)` says whether a file
+    from Finder goes to the main viewer), `ExtraWindow` (Core: the extra window's value, a URL plus a
+    fresh id per open), `LastUsed<Item>` (Core, `@Observable`: `current` is the item last `use(_:)`d,
+    or `fallback` once that one is `close(_:)`d; strong until closed), `ViewerModel.windows: ViewerWindows`
+    (static), `ViewerModel.main: ViewerModel` (static, the main viewer; `AppDelegate.viewer` is it),
+    `ViewerModel.lastActive: LastUsed<ViewerModel>` (static `let`, falls back to `main`; read
+    `lastActive.current`), `ViewerModel.window: NSWindow?` (weak),
+    `ViewerModel.isFullScreen: Bool` (stored, set by the view, seeded from the window's style mask), `ViewerModel.emptyFolder: URL?`
     (declared here as `private(set) var emptyFolder: URL?`, set in Task 8).
   - `FocusedValues.viewer: ViewerModel?`; `ViewerCommands` with no stored model (uses `@FocusedValue`).
   - `WindowAccessor(onWindow: (NSWindow) -> Void)`.
   - Scenes: `Window` id `"viewer"`, `WindowGroup` id `"viewer-extra"` for `ExtraWindow`, `Window` id `"batch"`, `Settings`.
 
-Behaviour: the main viewer window takes the file at launch; any later file from Finder (or several
-at once) opens its own viewer window with its own folder list (spec "Windows"). ⌘O, O and drag and
+Behaviour: the main viewer window takes the file at launch, or when no viewer window is open (it
+reopens); any later file from Finder (or several at once) opens its own viewer window with its own folder list (spec "Windows"). ⌘O, O and drag and
 drop keep opening in the window they're used in: only the main viewer's `revealWindow` is set (by
 the AppDelegate), so an extra window never raises or reopens the main one. Every window (main,
 extra, Batch) installs the window openers when it appears, because state restoration may bring
 back only one of them. Opening the same file twice gives two windows (each `ExtraWindow` has its
 own id; SwiftUI only raises a window whose value is open). Menu commands act on the focused viewer
-window; ⌘O with none focused uses the viewer used last, at first the main one.
+window; ⌘O with none focused uses the viewer used last, the main one at first and again once that
+one's window closes.
 "Use Viewer's Folder" in the batch window takes the viewer used last.
 
 - [ ] **Step 0: `ViewerWindows` and `ExtraWindow` in FeatherviewCore, test first**
 
 Tests: requests before install are sent once on install (a reveal once, extras in order); requests
 after install go straight through; two `ExtraWindow`s for one URL differ, and one survives a JSON
-round trip. Then `Sources/FeatherviewCore/ViewerWindows.swift` (see the file).
+round trip; `mainTakesFile` is true while the main viewer is empty or no viewer window is open.
+Then `Sources/FeatherviewCore/ViewerWindows.swift` (see the file).
+`LastUsed` tests: starts with the fallback; closing the one used last falls back; closing another
+keeps it; views reading `current` are told when it changes. Then `Sources/FeatherviewCore/LastUsed.swift`.
 
 - [ ] **Step 1: Replace `Sources/Featherview/FeatherviewApp.swift`**
 
@@ -1155,24 +1165,18 @@ struct ExtraViewer: View {
     var body: some View {
         ViewerView(model: model)
             .onAppear { if let url, model.list.current == nil { model.open(url) } }
+            .onDisappear { ViewerModel.lastActive.close(model) }
     }
 }
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// Owned here, not by a view, so a file from Finder starts decoding before any window exists.
-    let viewer: ViewerModel = {
-        let viewer = ViewerModel()
-        viewer.revealWindow = { ViewerModel.windows.revealMain() }
-        return viewer
-    }()
+    let viewer = ViewerModel.main
     /// True while a batch runs: quitting then would stop it part-way. Set by the Batch window.
     var isBusy: () -> Bool = { false }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         AppSettings.registerDefaults()
-        // ⌘O from the Batch window before any viewer was used opens in the main one.
-        ViewerModel.lastActive = viewer
         // AppKit hands Finder's files to application(_:open:) only after SwiftUI built the window
         // (~50 ms later); taking the open event here lets the image decode meanwhile.
         NSAppleEventManager.shared().setEventHandler(
@@ -1185,9 +1189,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let urls = (1...max(list.numberOfItems, 1)).compactMap {
             list.atIndex($0)?.coerce(toDescriptorType: typeFileURL)?.fileURLValue
         }
-        for url in urls {
-            // The main window takes the first file while it has none (launch); every other file gets a window.
-            if viewer.list.current == nil, !viewer.isOpening, viewer.emptyFolder == nil {
+        for (index, url) in urls.enumerated() {
+            // The main window takes the first file while it has none (launch) or no viewer window is open;
+            // every other file gets a window.
+            let mainIsEmpty = viewer.list.current == nil && !viewer.isOpening && viewer.emptyFolder == nil
+            if index == 0, ViewerModel.windows.mainTakesFile(mainIsEmpty: mainIsEmpty) {
                 viewer.open(url)
             } else {
                 ViewerModel.windows.openExtra(url)
@@ -1211,8 +1217,15 @@ Change `revealWindow`'s comment and add after it:
 
     /// Opens viewer windows for files from Finder; every window's view installs the openers.
     static let windows = ViewerWindows()
-    /// The viewer the user last worked in, for "Use Viewer's Folder" in the batch window.
-    static weak var lastActive: ViewerModel?
+    /// The main viewer, owned here, not by a view, so a file from Finder starts decoding before any window exists.
+    static let main: ViewerModel = {
+        let viewer = ViewerModel()
+        viewer.revealWindow = { ViewerModel.windows.revealMain() }
+        return viewer
+    }()
+    /// The viewer the user last worked in, for ⌘O and "Use Viewer's Folder" from the batch window;
+    /// the main one until another is used, and again once that one's window closes.
+    static let lastActive = LastUsed(fallback: main)
 
     /// A folder opened directly that has no images: the view says so, ← / → still leave it.
     private(set) var emptyFolder: URL?
@@ -1245,9 +1258,11 @@ Add these modifiers to the body chain (after `.inspector { … }`):
 
 ```swift
         .focusedSceneValue(\.viewer, model)
-        .onChange(of: activeState, initial: true) { if activeState == .key { ViewerModel.lastActive = model } }
+        .onChange(of: activeState, initial: true) { if activeState == .key { ViewerModel.lastActive.use(model) } }
         .background(WindowAccessor { window in
             model.window = window
+            // A restored or reopened window may already be in full screen; no didEnter notification follows.
+            model.isFullScreen = window.styleMask.contains(.fullScreen)
             if !rememberFrame { window.setContentSize(NSSize(width: 960, height: 640)); window.center() }
         })
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { note in
@@ -1258,8 +1273,9 @@ Add these modifiers to the body chain (after `.inspector { … }`):
         }
 ```
 
-In `.onAppear`, remove `model.revealWindow = …` (the AppDelegate sets it for the main viewer only;
-`OpensViewerWindows` installs the window openers).
+In `.onAppear`, remove `model.revealWindow = …` (`ViewerModel.main` sets it for the main viewer only;
+`OpensViewerWindows` installs the window openers) and add `ViewerModel.windows.viewerOpened()`; add
+`.onDisappear { ViewerModel.windows.viewerClosed() }` after it.
 
 In `handle(_:)`, minimise this window, not whichever is key: `case .minimize: model.window?.miniaturize(nil)`.
 
@@ -1294,7 +1310,7 @@ struct ViewerCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
-            Button("Open…  (O)") { (model ?? ViewerModel.lastActive)?.showOpenPanel() }
+            Button("Open…  (O)") { (model ?? ViewerModel.lastActive.current).showOpenPanel() }
                 .keyboardShortcut("o")
         }
         CommandMenu("Image") {
@@ -1328,8 +1344,8 @@ In `Sources/Featherview/BatchView.swift`: remove `let viewer: ViewerModel`, the
 its comment (`OpensViewerWindows` on the Batch window covers that case now). Replace the button:
 
 ```swift
-                    Button("Use Viewer's Folder") { model.inputs = ViewerModel.lastActive?.list.urls ?? [] }
-                        .disabled(ViewerModel.lastActive?.list.isEmpty ?? true)
+                    Button("Use Viewer's Folder") { model.inputs = ViewerModel.lastActive.current.list.urls }
+                        .disabled(ViewerModel.lastActive.current.list.isEmpty)
 ```
 
 - [ ] **Step 5: The Settings window**
