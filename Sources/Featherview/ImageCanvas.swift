@@ -40,6 +40,8 @@ struct ImageCanvas: NSViewRepresentable {
     let onDoubleClick: () -> Void
     /// Any click on the image: the viewer takes the keyboard back (e.g. from the Info panel's text).
     var onClick: () -> Void = {}
+    /// Called once the first image this canvas shows is committed to the screen.
+    var onFirstDraw: @MainActor () -> Void = {}
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -58,6 +60,7 @@ struct ImageCanvas: NSViewRepresentable {
         guard let view = scrollView.documentView as? ImageLayerView else { return }
         view.onDoubleClick = onDoubleClick
         view.onClick = onClick
+        view.onFirstDraw = onFirstDraw
         let oldSize = view.frame.size
         let visible = scrollView.contentView.bounds
         // Keep the point at the centre of the view where it was, so zooming doesn't jump to a corner.
@@ -94,6 +97,7 @@ private final class CenteringClipView: NSClipView {
 private final class ImageLayerView: NSView {
     var onDoubleClick: () -> Void = {}
     var onClick: () -> Void = {}
+    var onFirstDraw: @MainActor () -> Void = {}
     private let imageLayer = CALayer()
     private var dragStart: (mouse: NSPoint, origin: NSPoint)?
 
@@ -112,6 +116,7 @@ private final class ImageLayerView: NSView {
     func show(_ image: CGImage, checkerboard: Bool, smooth: Bool) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)  // no fade between images
+        if imageLayer.contents == nil { ViewerModel.afterFrame(onFirstDraw) }
         if (imageLayer.contents as AnyObject?) !== image { imageLayer.contents = image }
         // Same transaction as `contents`, so an SDR image after an HDR one never flashes bright.
         let isHDR = image.bitsPerComponent > 8  // display decodes are 8-bit unless HDR

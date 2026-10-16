@@ -10,8 +10,8 @@ struct ViewerView: View {
     @Environment(\.controlActiveState) private var activeState
     @AppStorage(AppSettings.rememberWindowFrame.key) private var rememberFrame = AppSettings.rememberWindowFrame.defaultValue
     @State private var panController = PanController()
-    /// Toolbar buttons are built only once there's something to show: building them takes ~100 ms of
-    /// the main thread, which would otherwise delay the first image at launch (budget 350 ms).
+    /// Toolbar buttons are built only after the first image (or message) is on screen: building them takes
+    /// ~130 ms of the main thread, and in the same update they'd hold back that frame at launch (budget 350 ms).
     @State private var toolbarReady = false
     @AppStorage(AppSettings.backgroundColor.key) private var backgroundHex = AppSettings.backgroundColor.defaultValue
     @AppStorage(AppSettings.checkerboard.key) private var checkerboard = AppSettings.checkerboard.defaultValue
@@ -33,7 +33,8 @@ struct ViewerView: View {
             if let image = model.image {
                 ImageCanvas(image: image, size: drawSize(image), displayScale: displayScale, background: backgroundNSColor,
                             checkerboard: checkerboard, panController: panController,
-                            onDoubleClick: model.toggleFullScreen, onClick: { focused = true })
+                            onDoubleClick: model.toggleFullScreen, onClick: { focused = true },
+                            onFirstDraw: { toolbarReady = true; model.firstImageDrawn() })
                     .contextMenu { ImageContextMenu(model: model) }
             } else if let message = model.errorMessage {
                 Text(message).messageBox()
@@ -78,7 +79,7 @@ struct ViewerView: View {
         .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
         .toolbar(id: "viewer") { ViewerToolbar(model: model, ready: toolbarReady) }
         .onChange(of: model.image != nil || model.errorMessage != nil || model.emptyFolder != nil || !model.isOpening,
-                  initial: true) { if $1 { toolbarReady = true } }
+                  initial: true) { if $1, model.image == nil { ViewerModel.afterFrame { toolbarReady = true } } }
         .toolbar(model.isFullScreen || toolbarHidden ? .hidden : .visible, for: .windowToolbar)
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         // Not set on the window directly: SwiftUI puts the scene's title back on its next update.

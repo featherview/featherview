@@ -394,12 +394,23 @@ final class ViewerModel {
         let elapsed = started.duration(to: .now).components
         let ms = elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000
         Self.log.debug("show \(url.lastPathComponent, privacy: .public): \(ms) ms")
-        if !loggedLaunch, let start = Self.processStart {
-            loggedLaunch = true
-            // shortcut: measured when the image is set, the frame that draws it follows (~1 frame), fine for budgets.
-            let launchMs = Int(Date().timeIntervalSince(start) * 1000)
-            Self.log.debug("first image \(launchMs) ms after launch")
+    }
+
+    /// Called by the canvas once its first image is committed to the screen: launch is measured to here.
+    func firstImageDrawn() {
+        guard !loggedLaunch, let start = Self.processStart else { return }
+        loggedLaunch = true
+        let launchMs = Int(Date().timeIntervalSince(start) * 1000)
+        Self.log.debug("first image \(launchMs) ms after launch")
+    }
+
+    /// Runs `body` after the frame being built now is committed (Core Animation commits it before the run
+    /// loop sleeps), so slow work in `body` doesn't hold that frame back.
+    static func afterFrame(_ body: @escaping @MainActor () -> Void) {
+        let observer = CFRunLoopObserverCreateWithHandler(nil, CFRunLoopActivity.beforeWaiting.rawValue, false, Int.max) { _, _ in
+            DispatchQueue.main.async { body() }
         }
+        CFRunLoopAddObserver(CFRunLoopGetMain(), observer, .commonModes)
     }
 
     /// Only the viewer in use prefetches neighbours: windows in the background keep just what they
