@@ -259,8 +259,8 @@ the About window.
   GIF (first frame), BMP, ICO, ICNS, JPEG 2000, PSD, TGA, OpenEXR, Radiance HDR, SGI, PBM, DDS,
   DNG and camera RAW from all major makers.
 - PDF (decided 2026-10-16, milestone 3, like the reference viewer): a PDF is browsed like a
-  multi-page image. Core Graphics renders each page on white at the size shown (sharp at any
-  zoom), opening on page 1; ⌥← / ⌥→ step pages and the page shows in the title and status bar.
+  multi-page image. Core Graphics renders each page on white at 144 dpi (an A4 page is
+  1190 × 1684 pixels; fit mode renders it straight at the window's size), opening on page 1; ⌥← / ⌥→ step pages and the page shows in the title and status bar.
 - Read (decided 2026-10-16), formats macOS can't read, so Featherview decodes them itself:
   - SVG through AppKit (`NSImage` renders it; ImageIO doesn't), rasterised at the size shown.
   - Own decoders, pure Swift, no dependency (milestone 3): QOI, PCX (and multi-page DCX), XBM,
