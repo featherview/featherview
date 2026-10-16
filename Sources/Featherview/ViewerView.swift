@@ -10,6 +10,9 @@ struct ViewerView: View {
     @Environment(\.controlActiveState) private var activeState
     @AppStorage(AppSettings.rememberWindowFrame.key) private var rememberFrame = AppSettings.rememberWindowFrame.defaultValue
     @State private var panController = PanController()
+    /// Toolbar buttons are built only once there's something to show: building them takes ~100 ms of
+    /// the main thread, which would otherwise delay the first image at launch (budget 350 ms).
+    @State private var toolbarReady = false
     @AppStorage(AppSettings.backgroundColor.key) private var backgroundHex = AppSettings.backgroundColor.defaultValue
     @AppStorage(AppSettings.checkerboard.key) private var checkerboard = AppSettings.checkerboard.defaultValue
     @AppStorage(AppSettings.showOverlay.key) private var showOverlay = AppSettings.showOverlay.defaultValue
@@ -64,7 +67,9 @@ struct ViewerView: View {
         // On a new image and on entering full screen (double-click, F or Return leave the image as is).
         .onChange(of: model.image) { hidePointerInFullScreen() }
         .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
-        .toolbar(id: "viewer") { ViewerToolbar(model: model) }
+        .toolbar(id: "viewer") { ViewerToolbar(model: model, ready: toolbarReady) }
+        .onChange(of: model.image != nil || model.errorMessage != nil || model.emptyFolder != nil || !model.isOpening,
+                  initial: true) { if $1 { toolbarReady = true } }
         .toolbar(model.isFullScreen || toolbarHidden ? .hidden : .visible, for: .windowToolbar)
         // Not onGeometryChange: it misses the restored window frame at launch, leaving fit at the 100×48 placeholder.
         .background(GeometryReader { geo in
