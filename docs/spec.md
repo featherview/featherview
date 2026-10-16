@@ -239,6 +239,7 @@ Decided 2026-10-16: releases are ad-hoc signed and not notarized (no paid Apple 
 account). README.md tells users how to open the app the first time. Revisit if someone sponsors
 the $99/year Apple Developer Program; then sign with Developer ID and notarize.
 
-## Open decisions for the maintainer
+## App icon
 
-- App icon (no cat imagery).
+Decided 2026-10-16: the feather mark, `Resources/AppIcon.svg` (source of `AppIcon.icns` and the
+website favicon). No cat imagery.
