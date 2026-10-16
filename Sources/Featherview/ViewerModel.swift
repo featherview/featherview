@@ -322,8 +322,10 @@ final class ViewerModel {
     func moveCurrentToTrash() {
         guard let url = list.current, !list.isHolding else { return }
         let previous = rotateTask
+        let scan = openTask
         rotateTask = Task {
             await previous?.value
+            await scan?.value  // the scan's list would bring the file back
             guard list.urls.contains(url) else { return }  // ⌘⌫ pressed twice before this ran
             let withSidecars = AppSettings.moveSidecars.value()
             do {
@@ -371,8 +373,10 @@ final class ViewerModel {
         if AppSettings.askBeforeMoveCopy.value(), !confirm(operation, url, folder) { return }
         let withSidecars = AppSettings.moveSidecars.value()
         let previous = rotateTask
+        let scan = openTask
         rotateTask = Task {
             await previous?.value
+            await scan?.value  // the scan's list would bring the file back
             guard list.urls.contains(url) else { return }
             do {
                 let target = try await Task.detached(priority: .userInitiated) {
