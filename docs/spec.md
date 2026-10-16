@@ -241,5 +241,4 @@ the $99/year Apple Developer Program; then sign with Developer ID and notarize.
 
 ## Open decisions for the maintainer
 
-- License (MIT, Apache-2.0 or GPL-3.0).
 - App icon (no cat imagery).

@@ -43,7 +43,7 @@ It must never derive from another product's code or assets. Its *behaviour* may 
 | Bundle ID | `net.mynetx.featherview` — never change it: macOS keys settings and permissions to it |
 | Public URL | `featherview.mynetx.net` — any future update feed (Sparkle appcast) lives here, never on github.io |
 | Repo | github.com/mynetx/featherview (may move to the `featherview` org later; GitHub redirects) |
-| License | Not chosen yet — ask the maintainer; do not add a LICENSE file on your own |
+| License | MIT (decided 2026-10-16), see `LICENSE` |
 
 ## Commands
 

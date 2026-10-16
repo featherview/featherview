@@ -37,6 +37,10 @@ scripts/bundle.sh
 open build/Featherview.app
 ```
 
+## License
+
+MIT, see [LICENSE](LICENSE).
+
 ## Disclaimer
 
 Featherview is an independent, clean-room project inspired by the workflow of classic Windows
