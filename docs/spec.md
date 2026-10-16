@@ -274,6 +274,10 @@ the About window.
     image), XCF (GIMP), PDN (Paint.NET), PSP (Paint Shop Pro). Where the file stores a composite
     or thumbnail at full size it is used; otherwise visible layers are composited with normal
     blending and their opacity, and other blend modes are listed as a known limit.
+    PSB goes through ImageIO, with its limits: multichannel files and a zip-compressed composite
+    can't be opened, and a composite GIMP stored with premultiplied alpha shows dark antialiased
+    edges (ImageIO reads it as straight alpha). CMYK and grey PSB colours go through ImageIO's
+    colour management, so they differ slightly from a plain conversion.
   - Every own decoder goes through the same paths as ImageIO's: folder listing by extension,
     downsampled decode at screen size, batch input, info panel (dimensions only). A file it
     can't read shows "Can't open <name>" like any other.

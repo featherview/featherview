@@ -37,10 +37,8 @@ import Testing
         let folder = try #require(SampleCorpus.root).appendingPathComponent("psb")
         let knownLimits: Set = ["kimg_mch3-8bits.psb", "kimg_mch3-16bits.psb", "gen_im_rgba8_zip.psb"]
         // ImageIO and ImageMagick (which made the references) render these differently, not wrongly:
-        // CMYK through a CMYK profile vs. a naive formula, grey with a different gamma, and darker
-        // antialiased edges on the matted composite.
-        let tolerance = ["gen_im_cmyk8_rle.psb": 8.0, "gen_im_cmyk16_raw.psb": 8, "psdtools_gray0.psb": 3,
-                         "psdtools_transparentbg-gimp.psb": 11]
+        // CMYK through a CMYK profile vs. a naive formula, grey with a different gamma (spec: PSB).
+        let tolerance = ["gen_im_cmyk8_rle.psb": 8.0, "gen_im_cmyk16_raw.psb": 8, "psdtools_gray0.psb": 3]
         let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
             .filter { $0.pathExtension.lowercased() == "psb" }
         #expect(!files.isEmpty)
@@ -55,6 +53,12 @@ import Testing
             let image = try #require(RGBAImage(decoded))
             let reference = try #require(RGBAImage(try ImageDecoder.decode(SampleCorpus.reference(for: file))))
             let difference = SampleCorpus.difference(image, reference)
+            if name == "psdtools_transparentbg-gimp.psb" {
+                // Known limit (spec: PSB): ImageIO reads GIMP's premultiplied composite as straight
+                // alpha, so antialiased edges come out dark. Passing here means ImageIO fixed it.
+                #expect(difference >= 2, "\(name) no longer has dark edges, compare it like the rest")
+                continue
+            }
             #expect(difference < tolerance[name, default: 2], "\(name): \(difference)")
         }
     }
