@@ -9,6 +9,7 @@ public enum ImageFormats {
 
     /// Decided by file extension only, so scanning a 10k-file folder never opens a file.
     public static func isDecodable(_ url: URL) -> Bool {
+        if OwnDecoders.format(for: url) != nil { return true }
         // macOS has no UTType for these JPEG extensions (browsers save .jfif), ImageIO reads them.
         let ext = ["jfif", "jif", "jfi"].contains(url.pathExtension.lowercased()) ? "jpg" : url.pathExtension
         guard let type = UTType(filenameExtension: ext),
@@ -16,9 +17,11 @@ public enum ImageFormats {
         return decodable.contains { type.conforms(to: $0) }
     }
 
-    /// Only a TIFF can have pages (`ImageDecoder.pageCount`); by extension, so other files skip that header read.
+    /// Only a TIFF or a multi-page own format (DCX) can have pages (`ImageDecoder.pageCount`); by
+    /// extension, so other files skip that header read.
     // shortcut: a TIFF saved under another extension shows its first page only, read the type from the decode if that comes up.
     public static func mayHavePages(_ url: URL) -> Bool {
-        UTType(filenameExtension: url.pathExtension)?.conforms(to: .tiff) == true
+        if let own = OwnDecoders.format(for: url) { return own.hasPages }
+        return UTType(filenameExtension: url.pathExtension)?.conforms(to: .tiff) == true
     }
 }

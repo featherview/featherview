@@ -10,6 +10,13 @@ public enum MetadataReader {
     public static func fields(for url: URL) -> [MetadataField] {
         // .fileSizeKey does not follow symlinks; resolve first so a link shows the image's size.
         let fileSize = (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.fileSizeKey]))?.fileSize
+        if OwnDecoders.format(for: url) != nil {  // ImageIO can't read it; own decoders give dimensions only
+            let size = ImageDecoder.displaySize(of: url)
+            let props: [CFString: Any] = size.map {
+                [kCGImagePropertyPixelWidth: Int($0.width), kCGImagePropertyPixelHeight: Int($0.height)]
+            } ?? [:]
+            return fields(from: props, fileSize: fileSize)
+        }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
         else { return fileSize.map { [MetadataField(label: "File size", value: format(bytes: $0))] } ?? [] }
