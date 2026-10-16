@@ -117,7 +117,7 @@ the next image shows. Never overwrites: a clash gets " 2", " 3", … appended.
 Opening a file from Finder while a viewer window is open opens a new viewer window with its own
 folder list.
 
-## Batch window (⌘B)
+## Batch window (B, ⌘B)
 
 ### Mode and inputs
 
@@ -126,6 +126,9 @@ folder list.
   "Include subfolders", Remove, Clear, Sort (by name, Finder order), Move up/down, and
   "Save List…"/"Load List…" (plain text, one path per line). Hidden and non-image files are
   skipped when adding folders.
+- Order (decided 2026-10-16, like the reference viewer): each add appends to the end of the list,
+  the added files in Finder order; earlier entries keep their place. Output numbers follow the
+  list order.
 
 ### Output
 

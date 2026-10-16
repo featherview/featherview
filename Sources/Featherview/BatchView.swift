@@ -41,7 +41,9 @@ final class BatchModel {
         guard panel.runModal() == .OK else { return }
         // A file added twice would be converted twice.
         let known = Set(inputs.map { $0.resolvingSymlinksInPath().path })
+        // Each selection is appended in Finder order; the open panel's own order is arbitrary.
         inputs += panel.urls.filter { !known.contains($0.resolvingSymlinksInPath().path) }
+            .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
     }
 
     func chooseOutputFolder() {
