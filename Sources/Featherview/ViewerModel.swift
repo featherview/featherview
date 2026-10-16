@@ -63,6 +63,8 @@ final class ViewerModel {
     /// Full-size decodes for zoom: one kept, and ones nobody waits for any more are skipped.
     private let fullSizeCache = ImageCache(capacity: 1)
     private var loadTask: Task<Void, Never>?
+    /// The page decode running, if any: ImageIO can't stop one, so the next waits for it (see show).
+    private var pageDecode: Task<CGImage, Error>?
     private var openTask: Task<Void, Never>?
     private var rotateTask: Task<Void, Never>?
     /// Read timings with: log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'
@@ -242,9 +244,15 @@ final class ViewerModel {
                 let decoded: CGImage
                 if page > 0 {
                     // shortcut: pages after the first aren't cached or prefetched; cache them if people browse long TIFFs.
-                    decoded = try await Task.detached(priority: .userInitiated) {
+                    // One at a time, and one superseded while it waits is skipped: holding ⌥→ on a big TIFF
+                    // would otherwise run a full-size decode per key press at once.
+                    _ = await pageDecode?.result
+                    guard !Task.isCancelled else { return }
+                    let decode = Task.detached(priority: .userInitiated) {
                         try ImageDecoder.decode(url, maxPixelSize: size, halvingSteps: true, page: page)
-                    }.value
+                    }
+                    pageDecode = decode
+                    decoded = try await decode.value
                 } else {
                     decoded = size == nil
                         ? try await fullSizeCache.image(for: url, maxPixelSize: nil)
