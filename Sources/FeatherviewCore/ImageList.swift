@@ -5,11 +5,17 @@ public struct ImageList: Equatable, Sendable {
     public private(set) var urls: [URL]
     public private(set) var index: Int
 
-    /// Selects `current` if it is in `urls` (compared by `pathKey`), else the first image.
+    /// Selects `current` if it is in `urls`, else the first image. Compares by name within the
+    /// list's folder (resolved once, not per entry), so a symlink and its target stay separate.
+    /// An exact name wins over one differing only in case (case-sensitive volumes).
     public init(urls: [URL], current: URL? = nil) {
         self.urls = urls
-        let target = current.map(pathKey)
-        self.index = urls.firstIndex { pathKey($0) == target } ?? 0
+        guard let current, let first = urls.first,
+              pathKey(current.deletingLastPathComponent()) == pathKey(first.deletingLastPathComponent())
+        else { self.index = 0; return }
+        let name = current.lastPathComponent
+        self.index = urls.firstIndex { $0.lastPathComponent == name }
+            ?? urls.firstIndex { $0.lastPathComponent.lowercased() == name.lowercased() } ?? 0
     }
 
     public var current: URL? { urls.indices.contains(index) ? urls[index] : nil }

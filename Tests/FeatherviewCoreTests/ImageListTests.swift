@@ -23,6 +23,30 @@ import Testing
         #expect(list.current?.lastPathComponent == "Photo.jpg")
     }
 
+    @Test func symlinkAndItsTargetStaySeparate() throws {
+        let dir = try Fixtures.makeTempDir()
+        let target = try Fixtures.writeImage(to: dir.appendingPathComponent("m.jpg"), width: 4, height: 4)
+        for name in ["a-link.jpg", "z-link.jpg"] {
+            try FileManager.default.createSymbolicLink(
+                at: dir.appendingPathComponent(name), withDestinationURL: target)
+        }
+        let scanned = try FolderScanner.images(around: target)
+        for name in ["a-link.jpg", "m.jpg", "z-link.jpg"] {
+            let list = ImageList(urls: scanned, current: dir.appendingPathComponent(name))
+            #expect(list.current?.lastPathComponent == name)
+        }
+    }
+
+    @Test func namesDifferingOnlyInCaseStaySeparate() {
+        let pair = ["IMG.jpg", "img.jpg"].map { URL(fileURLWithPath: "/x/\($0)") }
+        #expect(ImageList(urls: pair, current: pair[1]).index == 1)
+        #expect(ImageList(urls: pair, current: pair[0]).index == 0)
+    }
+
+    @Test func sameNameInOtherFolderIsNotCurrent() {
+        #expect(ImageList(urls: urls, current: URL(fileURLWithPath: "/y/c.jpg")).index == 0)
+    }
+
     @Test func navigationStopsAtTheEnds() {
         var list = ImageList(urls: urls, current: urls[2])
         // #expect can't call mutating methods, so each result is captured first.
