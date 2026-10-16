@@ -215,7 +215,8 @@ struct ViewerView: View {
         case .batch: openWindow(id: "batch")
         case .minimize: model.window?.miniaturize(nil)
         case .settings: openSettings()
-        case .saveAs, .about: break  // wired by Tasks 13 and 11
+        case .about: openWindow(id: "about")
+        case .saveAs: break  // wired by Task 13
         }
         return .handled
     }
@@ -349,6 +350,9 @@ struct ViewerCommands: Commands {
     @AppStorage(toolbarHiddenKey) private var toolbarHidden = false
 
     var body: some Commands {
+        CommandGroup(replacing: .appInfo) {
+            Button("About Featherview") { openWindow(id: "about") }
+        }
         CommandGroup(replacing: .newItem) {
             Button("Open…  (O)") { (model ?? ViewerModel.lastActive.current).showOpenPanel() }
                 .keyboardShortcut("o")

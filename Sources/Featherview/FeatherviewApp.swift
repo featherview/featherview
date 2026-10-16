@@ -25,6 +25,11 @@ struct FeatherviewApp: App {
                 .modifier(OpensViewerWindows())
         }
 
+        Window("About Featherview", id: "about") {
+            AboutView()
+        }
+        .windowResizability(.contentSize)
+
         Settings {
             SettingsView()
         }
