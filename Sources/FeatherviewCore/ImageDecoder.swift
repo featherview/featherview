@@ -1,16 +1,26 @@
 import CoreGraphics
 import Foundation
 import ImageIO
+import UniformTypeIdentifiers
 
 public enum DecodeError: Error, Equatable {
     case unreadable(URL)
 }
 
 public enum ImageDecoder {
-    /// Pixel size as displayed, with EXIF orientation applied. nil if the file isn't a readable image.
-    public static func displaySize(of url: URL) -> CGSize? {
+    /// Pages of a multi-page TIFF; 1 for every other file, so GIF frames and HEIC image sequences
+    /// are not browsed as pages (spec: GIF shows its first frame).
+    public static func pageCount(of url: URL) -> Int {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let type = CGImageSourceGetType(source),
+              UTType(type as String)?.conforms(to: .tiff) == true else { return 1 }
+        return max(CGImageSourceGetCount(source), 1)
+    }
+
+    /// Pixel size as displayed, with EXIF orientation applied. nil if the file isn't a readable image.
+    public static func displaySize(of url: URL, page: Int = 0) -> CGSize? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(source, page, nil) as? [CFString: Any],
               let width = props[kCGImagePropertyPixelWidth] as? Int,
               let height = props[kCGImagePropertyPixelHeight] as? Int else { return nil }
         let orientation = props[kCGImagePropertyOrientation] as? Int ?? 1
@@ -34,8 +44,9 @@ public enum ImageDecoder {
     /// or with `halvingSteps` to the faster step at or above it (see `decodeSize`), for display.
     /// Never upscales. Pixels are decoded here, not lazily at first draw, so callers can run this
     /// off the main thread and the UI never stalls on display.
-    public static func decode(_ url: URL, maxPixelSize: Int? = nil, halvingSteps: Bool = false) throws -> CGImage {
-        guard let size = displaySize(of: url),
+    /// `page` is a page of a multi-page TIFF (see `pageCount`).
+    public static func decode(_ url: URL, maxPixelSize: Int? = nil, halvingSteps: Bool = false, page: Int = 0) throws -> CGImage {
+        guard let size = displaySize(of: url, page: page),
               let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary)
         else { throw DecodeError.unreadable(url) }
         let full = Int(max(size.width, size.height))
@@ -47,7 +58,7 @@ public enum ImageDecoder {
                 ? decodeSize(full: full, target: maxPixelSize ?? full)
                 : min(maxPixelSize ?? full, full),
         ]
-        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, page, options as CFDictionary)
         else { throw DecodeError.unreadable(url) }
         return image
     }
