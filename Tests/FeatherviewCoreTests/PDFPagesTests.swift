@@ -40,6 +40,17 @@ import Testing
         #expect(full[399, 0] == (255, 255, 255, 255))  // elsewhere: white paper, not transparent
     }
 
+    @Test func hugePagesRenderFullSizeWithinTheDecodeLimits() throws {
+        // A poster: ×2 would be 20000 px a side, 400 MP, over the 256 MP limit; reported and rendered smaller instead.
+        let poster = try pdf([CGSize(width: 10000, height: 10000)])
+        #expect(ImageDecoder.displaySize(of: poster) == CGSize(width: 16384, height: 16384))
+        // A banner: ×2 would be 80000 px wide, over 65,536 px a side.
+        let banner = try pdf([CGSize(width: 40000, height: 10)])
+        #expect(ImageDecoder.displaySize(of: banner) == CGSize(width: 65536, height: 16))
+        let full = try ImageDecoder.decode(banner)
+        #expect(full.width == 65536 && full.height == 16)
+    }
+
     @Test func rotatedPagesTurnClockwise() throws {
         let url = try pdf([CGSize(width: 200, height: 100)], rotate: 90)
         #expect(ImageDecoder.displaySize(of: url) == CGSize(width: 200, height: 400))
