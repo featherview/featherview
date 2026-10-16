@@ -13,9 +13,10 @@ enum Fixtures {
     }
 
     /// A solid red image. `orientation` is the EXIF orientation tag, 1...8.
+    /// `properties` are extra ImageIO metadata dictionaries (EXIF, GPS, ...).
     @discardableResult
-    static func writeImage(to url: URL, width: Int, height: Int,
-                           type: UTType = .jpeg, orientation: Int = 1) throws -> URL {
+    static func writeImage(to url: URL, width: Int, height: Int, type: UTType = .jpeg,
+                           orientation: Int = 1, properties: [CFString: Any] = [:]) throws -> URL {
         let context = CGContext(
             data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
             space: CGColorSpace(name: CGColorSpace.sRGB)!,
@@ -24,7 +25,9 @@ enum Fixtures {
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         guard let dest = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil)
         else { throw CocoaError(.fileWriteUnknown) }
-        CGImageDestinationAddImage(dest, context.makeImage()!, [kCGImagePropertyOrientation: orientation] as CFDictionary)
+        var props = properties
+        props[kCGImagePropertyOrientation] = orientation
+        CGImageDestinationAddImage(dest, context.makeImage()!, props as CFDictionary)
         guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
         return url
     }
