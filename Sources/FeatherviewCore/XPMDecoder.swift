@@ -23,10 +23,10 @@ enum XPMDecoder {
             guard line.count >= cpp else { throw OwnDecodeError.corrupt }
             palette[key(line[0..<cpp])] = color(String(decoding: line[cpp...], as: UTF8.self))
         }
+        let rows = lines[(1 + colors)...].prefix(height)
+        guard rows.allSatisfy({ $0.count >= width * cpp }) else { throw OwnDecodeError.truncated }  // before allocating
         var image = RGBAImage(width: width, height: height)
-        for y in 0..<height {
-            let row = lines[1 + colors + y]
-            guard row.count >= width * cpp else { throw OwnDecodeError.truncated }
+        for (y, row) in rows.enumerated() {
             for x in 0..<width {
                 guard let pixel = palette[key(row[x * cpp..<(x + 1) * cpp])] else { throw OwnDecodeError.corrupt }
                 image[x, y] = pixel

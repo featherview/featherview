@@ -14,6 +14,7 @@ enum WBMPDecoder {
         var reader = ByteReader(data)
         let (width, height) = try header(&reader)
         let rowBytes = (width + 7) / 8
+        guard reader.remaining >= rowBytes * height else { throw OwnDecodeError.truncated }  // before allocating
         var image = RGBAImage(width: width, height: height)
         for y in 0..<height {
             let row = try reader.take(rowBytes)

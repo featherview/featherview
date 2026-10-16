@@ -61,4 +61,12 @@ import Testing
         let overflow = Self.file.replacingOccurrences(of: "3 2 5 1", with: "99999999999999999999 2 5 1")
         #expect(throws: OwnDecodeError.corrupt) { try XPMDecoder.size(Data(overflow.utf8)) }
     }
+
+    /// 65536×4096 claimed with empty rows: must throw before allocating 1 GiB of RGBA.
+    @Test func hugeClaimWithShortRowsFailsFast() {
+        let text = #""65536 4096 1 1", "a c black", "# + String(repeating: #""", "#, count: 4096)
+        let start = ContinuousClock.now
+        #expect(throws: OwnDecodeError.truncated) { try XPMDecoder.decode(Data(text.utf8)) }
+        #expect(ContinuousClock.now - start < .milliseconds(200))
+    }
 }

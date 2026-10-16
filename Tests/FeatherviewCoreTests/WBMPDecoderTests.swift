@@ -32,4 +32,11 @@ import Testing
         #expect(throws: OwnDecodeError.corrupt) { try WBMPDecoder.size(Data([0, 0, 0, 2])) }
         #expect(throws: OwnDecodeError.corrupt) { try WBMPDecoder.size(Data([0, 0] + [UInt8](repeating: 0xFF, count: 20))) }
     }
+
+    /// 65536×4096 claimed with no pixel data: must throw before allocating 1 GiB of RGBA.
+    @Test func hugeClaimWithoutDataFailsFast() {
+        let start = ContinuousClock.now
+        #expect(throws: OwnDecodeError.truncated) { try WBMPDecoder.decode(Data([0, 0, 0x84, 0x80, 0x00, 0xA0, 0x00])) }
+        #expect(ContinuousClock.now - start < .milliseconds(200))
+    }
 }
