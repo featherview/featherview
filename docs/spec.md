@@ -52,6 +52,12 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 | 1 | actual size (1 image pixel = 1 screen pixel) |
 | + / − | zoom in / out (×1.1 steps, 5 %–1600 %) |
 | F7 / F8 | move / copy the current file to a folder (see below) |
+| ⌦ (forward delete) | Move to Trash, like ⌘⌫ |
+| O / B / M | Open… / Batch Convert… / minimise the window (as ⌘O / ⌘B / ⌘M) |
+| P / A / S | Settings / About / Save As…, each added with its feature (milestones 2–3) |
+
+Single keys for commands match the reference viewer, for people switching over (decided
+2026-10-16); the ⌘ shortcuts stay for Mac users.
 
 ### Mouse and trackpad
 

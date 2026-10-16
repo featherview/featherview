@@ -84,6 +84,10 @@ struct ViewerView: View {
             model.moveCurrentToTrash()
             return .handled
         }
+        if modifiers.isEmpty, press.key == .deleteForward {
+            model.moveCurrentToTrash()
+            return .handled
+        }
         if modifiers.isEmpty {
             switch press.key {
             case .rightArrow, .space, .pageDown, .downArrow: model.next(); return .handled
@@ -110,6 +114,9 @@ struct ViewerView: View {
         case .actualSize: model.setZoom(.factor(1))
         case .zoomIn: model.zoomIn()
         case .zoomOut: model.zoomOut()
+        case .open: model.showOpenPanel()
+        case .batch: openWindow(id: "batch")
+        case .minimize: NSApp.keyWindow?.miniaturize(nil)
         }
         return .handled
     }
@@ -144,7 +151,7 @@ struct ViewerCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
-            Button("Open…") { model.showOpenPanel() }
+            Button("Open…  (O)") { model.showOpenPanel() }
                 .keyboardShortcut("o")
         }
         CommandMenu("Image") {
@@ -155,10 +162,10 @@ struct ViewerCommands: Commands {
             Button("Rotate Left  (L)") { model.rotate(.counterClockwise) }
             Divider()
             // ⌘⌫ is handled by the viewer, not as a menu shortcut (see ViewerView.handle).
-            Button("Move to Trash  (⌘⌫)") { model.moveCurrentToTrash() }
+            Button("Move to Trash  (⌘⌫ or ⌦)") { model.moveCurrentToTrash() }
             Button("Show Info  (I)") { model.showInfo.toggle() }
             Divider()
-            Button("Batch Convert…") { openWindow(id: "batch") }
+            Button("Batch Convert…  (B)") { openWindow(id: "batch") }
                 .keyboardShortcut("b")
         }
         CommandGroup(after: .toolbar) {

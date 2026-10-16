@@ -15,6 +15,11 @@ import Testing
         #expect(ViewerKey.action(characters: characters, shift: true) == action)
     }
 
+    @Test(arguments: [("o", ViewerKey.open), ("b", .batch), ("m", .minimize)])
+    func commandsHaveSingleKeysLikeTheReferenceViewer(_ characters: String, _ action: ViewerKey) {
+        #expect(ViewerKey.action(characters: characters, shift: false) == action)
+    }
+
     @Test func shiftedLettersAreNotShortcuts() {
         #expect(ViewerKey.action(characters: "R", shift: true) == nil)
     }
