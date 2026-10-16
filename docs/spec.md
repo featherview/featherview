@@ -179,7 +179,11 @@ Malayalam, Malay, Dutch, Romanian.
 
 - One String Catalog (`Localizable.xcstrings`); every user-facing string goes through it,
   including error messages and the batch log.
-- Arabic and Urdu lay out right to left (SwiftUI mirrors the layout; images are never mirrored).
+- Arabic and Urdu mirror the whole window layout: info panel, toolbars, sidebars, batch window
+  columns, lists, progress bars and direction-bearing symbols (chevrons, back/forward) all flip
+  to right to left. Use leading/trailing, never left/right, in layout code; AppKit views use
+  `userInterfaceLayoutDirection`. Never mirrored: the image itself, rotate symbols and their
+  direction (rotate left stays counter-clockwise), crop coordinates.
 - Numbers, sizes, dates and units use system formatters, never hand-built strings.
 - Keyboard shortcuts stay the same in every language.
 - File names produced by rename templates are not translated.

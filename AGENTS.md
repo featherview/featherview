@@ -100,6 +100,7 @@ Use Instruments (Time Profiler) to find where time goes.
   raw error dumps; one bad file never stops browsing or a batch.
 - User-facing text is translatable (spec "Languages"): SwiftUI string literals already are; anything
   else uses `String(localized:)`. Never build sentences by concatenating pieces.
+- Layout uses leading/trailing, never left/right, so right-to-left languages mirror the window.
 - Keep `shortcut:` comments for known limits, in the form `shortcut: <limit>, <when to upgrade>`.
 - Commit messages: conventional commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
 
