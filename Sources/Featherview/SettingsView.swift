@@ -138,6 +138,8 @@ private struct FormatsSettings: View {
                 FormatSettings.save($0, for: format)
             })
         }
+        // Save As and batch save these options too; never write back a stale copy.
+        .onReceive(defaultsChanged) { _ in options = FormatSettings.options(for: format) }
     }
 }
 

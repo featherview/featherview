@@ -22,6 +22,7 @@ struct FormatOptionsView: View {
         profilesMenu
             .onAppear(perform: reloadProfiles)
             .onChange(of: format) { reloadProfiles() }
+            .onReceive(defaultsChanged) { _ in reloadProfiles() }  // profiles saved in another window
             .sheet(isPresented: $namingProfile) { nameSheet }
     }
 
@@ -118,3 +119,7 @@ struct FormatOptionsView: View {
 
     private func reloadProfiles() { profiles = FormatSettings.profiles(for: format) }
 }
+
+/// Settings changes from any window, delivered on the main thread.
+@MainActor let defaultsChanged = NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+    .receive(on: DispatchQueue.main)
