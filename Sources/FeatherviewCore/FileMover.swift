@@ -33,7 +33,11 @@ public enum FileMover {
         let isLink = (try? source.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
         if operation == .move, !isLink { return try manager.moveItem(at: source, to: target) }
         try manager.copyItem(at: isLink ? source.resolvingSymlinksInPath() : source, to: target)
-        if operation == .move { try manager.removeItem(at: source) }
+        guard operation == .move else { return }
+        do { try manager.removeItem(at: source) } catch {
+            try? manager.removeItem(at: target)  // a failed move leaves no duplicate behind
+            throw error
+        }
     }
 
     /// The first of "IMG_1", "IMG_1 2", "IMG_1 3", … free for the image and every sidecar.
@@ -53,10 +57,12 @@ public enum FileMover {
     }
 
     /// Asks the volume, so `Pics` and `pics` are one folder only where the volume ignores case.
+    /// Links are resolved first: resource values describe a link itself, not the folder it points to.
     static func sameItem(_ a: URL, _ b: URL) -> Bool {
         let key: Set<URLResourceKey> = [.fileResourceIdentifierKey]
-        guard let x = try? a.resourceValues(forKeys: key).fileResourceIdentifier,
-              let y = try? b.resourceValues(forKeys: key).fileResourceIdentifier else { return false }
+        guard let x = try? a.resolvingSymlinksInPath().resourceValues(forKeys: key).fileResourceIdentifier,
+              let y = try? b.resolvingSymlinksInPath().resourceValues(forKeys: key).fileResourceIdentifier
+        else { return false }
         return x.isEqual(y)
     }
 

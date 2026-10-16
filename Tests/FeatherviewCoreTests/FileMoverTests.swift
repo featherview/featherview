@@ -96,6 +96,38 @@ import Testing
         #expect(try FolderScanner.images(around: dir).count == 1)
     }
 
+    @Test func movingIntoItsOwnFolderThroughALinkChangesNothing() throws {
+        let dir = try Fixtures.makeTempDir()
+        let pics = dir.appendingPathComponent("pics")
+        try FileManager.default.createDirectory(at: pics, withIntermediateDirectories: true)
+        let linked = dir.appendingPathComponent("linked")
+        try FileManager.default.createSymbolicLink(atPath: linked.path, withDestinationPath: "pics")
+        let image = try Fixtures.writeImage(to: pics.appendingPathComponent("a.jpg"), width: 4, height: 4)
+        let xmp = pics.appendingPathComponent("a.xmp")
+        try Data("x".utf8).write(to: xmp)
+
+        #expect(try FileMover.transfer(image, to: linked, operation: .move, sidecars: [xmp]) == image)
+        let viaLink = linked.appendingPathComponent("a.jpg")
+        #expect(try FileMover.transfer(viaLink, to: pics, operation: .move) == viaLink)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: pics.path).sorted() == ["a.jpg", "a.xmp"])
+    }
+
+    @Test func linkThatCannotBeRemovedLeavesNoCopyBehind() throws {
+        let dir = try Fixtures.makeTempDir()
+        let real = try Fixtures.writeImage(to: dir.appendingPathComponent("real.jpg"), width: 4, height: 4)
+        let locked = dir.appendingPathComponent("locked")
+        try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: true)
+        let link = locked.appendingPathComponent("a.jpg")
+        try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: real.path)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) }
+        let dest = dir.appendingPathComponent("dest")
+
+        #expect(throws: (any Error).self) { try FileMover.transfer(link, to: dest, operation: .move) }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: dest.path).isEmpty)
+        #expect((try? FileManager.default.attributesOfItem(atPath: link.path)) != nil)
+    }
+
     @Test func folderDifferingOnlyInCaseIsAnotherFolderOnCaseSensitiveVolumes() throws {
         let volume = try CaseSensitiveVolume()
         defer { volume.detach() }
