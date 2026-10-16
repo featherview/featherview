@@ -1,5 +1,5 @@
 import Foundation
-import ImageIO
+import CoreGraphics
 
 public struct BatchResult: Sendable {
     public let input: URL
@@ -59,20 +59,18 @@ public enum BatchConverter {
     }
 
     static func convert(_ input: URL, to output: URL, job: BatchJob) -> BatchResult {
-        let image: CGImage
-        do { image = try ImageDecoder.decode(input, maxPixelSize: job.maxDimension) }
+        let pages: [CGImage]
+        do { pages = try ImageSaver.pages(of: input, for: job.format, options: job.options, maxPixelSize: job.maxDimension) }
         catch { return BatchResult(input: input, output: output, error: "Can't read this image") }
-        // Encode to a hidden temp file, then move it in without replacing: a kill mid-write never
+        let data: Data
+        do { data = try ImageEncoder.encode(pages, as: job.format, options: job.options, metadataFrom: input) }
+        catch { return BatchResult(input: input, output: output, error: "Can't write \(job.format.name)") }
+        // Write a hidden temp file, then move it in without replacing: a kill mid-write never
         // leaves a partial file under the real name, and a file that appeared there is never touched.
         let temp = output.deletingLastPathComponent().appendingPathComponent(".featherview-\(UUID().uuidString).tmp")
         defer { try? FileManager.default.removeItem(at: temp) }
-        guard let dest = CGImageDestinationCreateWithURL(
-            temp as CFURL, job.format.type.identifier as CFString, 1, nil)
-        else { return BatchResult(input: input, output: output, error: "Can't write \(job.format.rawValue.uppercased())") }
-        CGImageDestinationAddImage(dest, image, properties(of: input, job: job) as CFDictionary)
-        guard CGImageDestinationFinalize(dest) else {
-            return BatchResult(input: input, output: output, error: "Writing failed")
-        }
+        do { try data.write(to: temp) }
+        catch { return BatchResult(input: input, output: output, error: "Writing failed") }
         let base = output.deletingPathExtension().lastPathComponent
         var target = output
         // shortcut: no 255-byte trim on the retry names, so a near-limit name fails instead; trim if anyone hits it.
@@ -102,27 +100,5 @@ public enum BatchConverter {
         let renameErr = errno
         unlink(to)
         return renameErr
-    }
-
-    /// Keeps TIFF (camera make/model), EXIF, GPS and IPTC; drops what no longer matches the new pixels.
-    static func properties(of input: URL, job: BatchJob) -> [CFString: Any] {
-        var props: [CFString: Any] = [:]
-        if let source = CGImageSourceCreateWithURL(input as CFURL, nil),
-           let original = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any] {
-            if var tiff = original[kCGImagePropertyTIFFDictionary] as? [CFString: Any] {
-                tiff[kCGImagePropertyTIFFOrientation] = nil  // camera make/model, copyright, ...
-                props[kCGImagePropertyTIFFDictionary] = tiff
-            }
-            if var exif = original[kCGImagePropertyExifDictionary] as? [CFString: Any] {
-                exif[kCGImagePropertyExifPixelXDimension] = nil
-                exif[kCGImagePropertyExifPixelYDimension] = nil
-                props[kCGImagePropertyExifDictionary] = exif
-            }
-            props[kCGImagePropertyGPSDictionary] = original[kCGImagePropertyGPSDictionary]
-            props[kCGImagePropertyIPTCDictionary] = original[kCGImagePropertyIPTCDictionary]
-        }
-        props[kCGImagePropertyOrientation] = 1  // decode already rotated the pixels upright
-        if job.format.isLossy { props[kCGImageDestinationLossyCompressionQuality] = job.quality }
-        return props
     }
 }

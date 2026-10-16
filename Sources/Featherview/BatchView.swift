@@ -6,7 +6,6 @@ final class BatchModel {
     var inputs: [URL] = []
     var outputFolder: URL?
     var format = OutputFormat.jpeg
-    var quality = BatchJob.defaultQuality
     var limitSize = false
     var maxDimension = 1920
     var useRename = false
@@ -20,7 +19,7 @@ final class BatchModel {
     func run() {
         guard let outputFolder, !inputs.isEmpty, !isRunning else { return }
         let job = BatchJob(
-            inputs: inputs, outputFolder: outputFolder, format: format, quality: quality,
+            inputs: inputs, outputFolder: outputFolder, format: format,
             maxDimension: limitSize ? max(16, maxDimension) : nil,
             rename: useRename ? RenamePattern(renameTemplate) : nil)
         isRunning = true
@@ -71,12 +70,7 @@ struct BatchView: View {
             }
             Section("Output") {
                 Picker("Format", selection: $model.format) {
-                    ForEach(OutputFormat.allCases, id: \.self) { Text($0.rawValue.uppercased()) }
-                }
-                if model.format.isLossy {
-                    Slider(value: $model.quality, in: 0.01...1, step: 0.01) {
-                        Text("Quality \(Int((model.quality * 100).rounded()))")
-                    }
+                    ForEach(FormatRegistry.writable) { Text($0.name).tag($0) }
                 }
                 Toggle("Limit size", isOn: $model.limitSize)
                 if model.limitSize {
