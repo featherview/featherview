@@ -108,7 +108,7 @@ import Testing
 
     @Test func builtInDecodersCoverTheSpec() {
         let extensions = Set(OwnDecoders.builtIn.flatMap(\.extensions))
-        for ext in ["qoi", "pcx", "dcx", "xbm", "xpm", "wbmp", "ras", "iff", "lbm", "pdf"] {
+        for ext in ["qoi", "pcx", "dcx", "xbm", "xpm", "wbmp", "ras", "iff", "lbm", "pdf", "xcf"] {
             #expect(extensions.contains(ext), "\(ext)")
         }
     }
