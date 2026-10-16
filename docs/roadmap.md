@@ -85,7 +85,7 @@ launch time and memory budgets. Record libwebp and its licence in README.md.
 
 Spec: "Languages". Last, because by then every UI string exists. Move all user-facing strings
 into `Localizable.xcstrings` (bundled by `scripts/bundle.sh`), translate into the 30 languages,
-check right-to-left layout (Arabic, Urdu) and long strings (German) in the viewer, batch and
+check right-to-left layout (Arabic, Hebrew) and long strings (German) in the viewer, batch and
 settings windows. A test fails if a catalog key is missing a language.
 
 ## v2 (not in v1)

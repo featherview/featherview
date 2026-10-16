@@ -173,13 +173,17 @@ offers. The app follows the system language, and System Settings › Language & 
 can set it per app (no setting of our own).
 
 English (source), Chinese Simplified, Chinese Traditional, Hindi, Spanish, Arabic, French,
-Bengali, Portuguese (Brazil), Russian, Indonesian, Urdu, German, Japanese, Marathi, Telugu,
-Turkish, Tamil, Vietnamese, Korean, Italian, Gujarati, Thai, Polish, Ukrainian, Kannada,
-Malayalam, Malay, Dutch, Romanian.
+Portuguese (Brazil), Russian, Indonesian, German, Japanese, Turkish, Vietnamese, Korean, Italian,
+Thai, Polish, Ukrainian, Malay, Dutch, Romanian, Greek, Hungarian, Swedish, Czech, Catalan,
+Hebrew, Danish, Finnish.
+
+"Offers" means a macOS system language (checked against Finder's localizations on macOS 27):
+of the Indian languages only Hindi qualifies; Bengali, Urdu, Marathi, Telugu, Tamil, Gujarati,
+Kannada and Malayalam are iOS-only.
 
 - One String Catalog (`Localizable.xcstrings`); every user-facing string goes through it,
   including error messages and the batch log.
-- Arabic and Urdu mirror the whole window layout: info panel, toolbars, sidebars, batch window
+- Arabic and Hebrew mirror the whole window layout: info panel, toolbars, sidebars, batch window
   columns, lists, progress bars and direction-bearing symbols (chevrons, back/forward) all flip
   to right to left. Use leading/trailing, never left/right, in layout code; AppKit views use
   `userInterfaceLayoutDirection`. Never mirrored: the image itself, rotate symbols and their
