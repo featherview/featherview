@@ -121,7 +121,12 @@ struct BatchView: View {
                 if model.isRunning {
                     ProgressView(value: Double(model.done), total: Double(max(model.inputs.count, 1)))
                 }
-                Button("Convert") { model.run() }
+                Button("Convert") {
+                    // A clicked button doesn't take focus, so a number field still being edited
+                    // (target size, longest side) hasn't written its value yet: end editing first.
+                    NSApp.keyWindow?.makeFirstResponder(nil)
+                    model.run()
+                }
                     .keyboardShortcut(.defaultAction)
                     .disabled(model.isRunning || model.inputs.isEmpty || model.outputFolder == nil)
                 if !model.results.isEmpty {
