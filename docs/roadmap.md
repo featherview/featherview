@@ -68,6 +68,11 @@ Spec: "Formats", "Format options", ⇧⌘S Save As.
   XBM, XPM, WBMP, Sun RAS, IFF/LBM. One `OwnDecoders` registry consulted by `ImageFormats` and
   `ImageDecoder`, each decoder unit-tested on hand-built files (fixtures generated in tests, the
   same golden-byte approach as the encoders), corrupt and truncated input included.
+- Finder's Open With (maintainer, 2026-10-16): Featherview listed for every format it reads, so it
+  shows in Open With and its suggested apps. `Info.plist` declares document types for
+  `public.image`, PDF and each own-decoder format, with imported type declarations (UTIs and
+  extensions) for the ones macOS doesn't know (QOI, PCX/DCX, XBM, XPM, WBMP, RAS, IFF/LBM). Rank
+  Alternate, never taking over as default. Check with `lsregister -dump` and Finder's Open With.
 - Option dialogs of GIF, JPEG 2000, TGA, PDF observed 2026-10-16 (`docs/parity.md`); PDF options
   decided in spec "Format options".
 - Viewer look (maintainer, 2026-10-16): closer to the reference viewer's density while following
