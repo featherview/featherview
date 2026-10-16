@@ -16,6 +16,7 @@ struct FeatherviewApp: App {
 
         Window("Batch Convert", id: "batch") {
             BatchView(model: batch, viewer: viewer)
+                .onAppear { appDelegate.isBusy = { batch.isRunning } }
         }
     }
 }
@@ -32,11 +33,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private var pending: URL?
+    /// True while a batch runs: quitting then would stop it part-way. Set by the Batch window.
+    var isBusy: () -> Bool = { false }
 
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first else { return }
         if let onOpen { onOpen(url) } else { pending = url }
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    // shortcut: once the batch ends with no window open the app stays running, until the user quits; fine for v1.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { !isBusy() }
 }
