@@ -63,4 +63,16 @@ import Testing
         #expect(throws: RotateError.unsupportedFormat) { try OrientationRotator.rotate(url, .clockwise) }
         #expect(try Data(contentsOf: url) == original)
     }
+
+    @Test func rotatesTheGivenPageOfAMultiPageTIFF() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("m.tif"), pages: 3)
+
+        try OrientationRotator.rotate(url, .clockwise, page: 1)
+
+        #expect(ImageDecoder.pageCount(of: url) == 3)
+        #expect(ImageDecoder.displaySize(of: url, page: 0) == CGSize(width: 8, height: 4))
+        #expect(ImageDecoder.displaySize(of: url, page: 1) == CGSize(width: 4, height: 9))
+        #expect(ImageDecoder.displaySize(of: url, page: 2) == CGSize(width: 10, height: 4))
+    }
 }

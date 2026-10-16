@@ -343,15 +343,16 @@ final class ViewerModel {
     /// Rewrites the file off the main thread. Rotations and trashing run one at a time so none is lost.
     func rotate(_ rotation: Rotation) {
         guard let url = list.current else { return }
+        let page = page
         let previous = rotateTask
         rotateTask = Task {
             await previous?.value
             do {
-                try await Task.detached(priority: .userInitiated) { try OrientationRotator.rotate(url, rotation) }.value
+                try await Task.detached(priority: .userInitiated) { try OrientationRotator.rotate(url, rotation, page: page) }.value
                 await cache.remove(url)
                 await fullSizeCache.remove(url)
                 fileRevision += 1
-                if list.current == url { show() }
+                if list.current == url { show(page: self.page) }
             } catch RotateError.unsupportedFormat {
                 errorMessage = "Lossless rotation works with JPEG, HEIC and TIFF only"
             } catch {
