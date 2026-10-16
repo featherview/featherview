@@ -48,7 +48,7 @@ public enum OwnDecoders {
     /// Pure-Swift decoders in FeatherviewCore. The app adds the ones that need AppKit (SVG) with `register`.
     static let builtIn: [OwnFormat] = [
         QOICodec.format, PCXCodec.pcx, PCXCodec.dcx,
-        // Task 3
+        XBMDecoder.format, XPMDecoder.format, WBMPDecoder.format,
         // Task 4
         // Task 5
     ]
