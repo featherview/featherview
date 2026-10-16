@@ -37,4 +37,22 @@ enum Fixtures {
         try Data("not an image".utf8).write(to: url)
         return url
     }
+
+    /// A TIFF with `pages` solid red pages; page n is `width + n`×`height`, so tests can tell pages apart.
+    @discardableResult
+    static func writeMultiPageTIFF(to url: URL, pages: Int, width: Int = 8, height: Int = 4) throws -> URL {
+        guard let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.tiff.identifier as CFString, pages, nil)
+        else { throw CocoaError(.fileWriteUnknown) }
+        for page in 0..<pages {
+            let context = CGContext(
+                data: nil, width: width + page, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+            context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
+            context.fill(CGRect(x: 0, y: 0, width: width + page, height: height))
+            CGImageDestinationAddImage(dest, context.makeImage()!, nil)
+        }
+        guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
+        return url
+    }
 }

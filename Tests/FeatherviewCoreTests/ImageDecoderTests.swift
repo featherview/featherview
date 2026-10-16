@@ -53,3 +53,22 @@ import Testing
         #expect(ImageDecoder.displaySize(of: dir.appendingPathComponent("missing.jpg")) == nil)
     }
 }
+
+@Suite struct PageTests {
+    @Test func multiPageTIFFHasPagesOthersHaveOne() throws {
+        let dir = try Fixtures.makeTempDir()
+        let tiff = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("m.tif"), pages: 3)
+        let jpeg = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 4, height: 4)
+        #expect(ImageDecoder.pageCount(of: tiff) == 3)
+        #expect(ImageDecoder.pageCount(of: jpeg) == 1)
+        #expect(ImageDecoder.pageCount(of: dir.appendingPathComponent("missing.tif")) == 1)
+    }
+
+    @Test func decodesEachPage() throws {
+        let dir = try Fixtures.makeTempDir()
+        let tiff = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("m.tif"), pages: 3)
+        #expect(try ImageDecoder.decode(tiff, page: 2).width == 10)  // page n is 8 + n wide
+        #expect(ImageDecoder.displaySize(of: tiff, page: 1)?.width == 9)
+        #expect(throws: DecodeError.unreadable(tiff)) { try ImageDecoder.decode(tiff, page: 3) }
+    }
+}
