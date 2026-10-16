@@ -11,23 +11,14 @@ struct FolderChooserView: View {
                 Text(chooser.folder.lastPathComponent)
                     .font(.headline)
                     .padding(.bottom, 6)
-                ForEach(Array(chooser.entries.enumerated()), id: \.offset) { index, entry in
-                    HStack {
-                        Image(systemName: symbol(entry))
-                        Text(label(entry))
-                        Spacer()
-                        if let count = model.chooserCounts[entry.url] {
-                            Text(count, format: .number).foregroundStyle(.secondary).monospacedDigit()
-                        }
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(index == chooser.selection ? Color.accentColor.opacity(0.35) : .clear,
-                                in: .rect(cornerRadius: 4))
-                    .contentShape(.rect)
-                    .onTapGesture {
-                        model.chooserMove(index - chooser.selection)
-                        model.chooserOpen()
+                if chooser.entries.count <= 8 {
+                    rows(chooser)
+                } else {
+                    // Long lists (1,000 subfolders) scroll, built lazily, keeping the selection in view.
+                    ScrollViewReader { proxy in
+                        ScrollView { LazyVStack(spacing: 0) { rows(chooser) } }
+                            .frame(maxHeight: 400)
+                            .onChange(of: chooser.selection, initial: true) { proxy.scrollTo(chooser.selection) }
                     }
                 }
                 Text("→ open folder · ← up · Return show images · Esc cancel")
@@ -38,6 +29,28 @@ struct FolderChooserView: View {
             .padding()
             .frame(width: 360)
             .background(.regularMaterial, in: .rect(cornerRadius: 10))
+        }
+    }
+
+    private func rows(_ chooser: FolderChooser) -> some View {
+        ForEach(Array(chooser.entries.enumerated()), id: \.offset) { index, entry in
+            HStack {
+                Image(systemName: symbol(entry))
+                Text(label(entry))
+                Spacer()
+                if let count = model.chooserCounts[entry.url] {
+                    Text(count, format: .number).foregroundStyle(.secondary).monospacedDigit()
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(index == chooser.selection ? Color.accentColor.opacity(0.35) : .clear,
+                        in: .rect(cornerRadius: 4))
+            .contentShape(.rect)
+            .onTapGesture {
+                model.chooserMove(index - chooser.selection)
+                model.chooserOpen()
+            }
         }
     }
 
