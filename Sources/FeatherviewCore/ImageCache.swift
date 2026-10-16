@@ -7,13 +7,16 @@ import Foundation
 public actor ImageCache {
     private let capacity: Int
     private let hdr: Bool
+    private let colorSpace: CGColorSpace?
     private var images: [URL: CGImage] = [:]
     private var order: [URL] = []  // least recently used first
     private var inFlight: [URL: (size: Int?, task: Task<CGImage, Error>, waiters: Int)] = [:]
 
-    public init(capacity: Int = 8, hdr: Bool = false) {
+    /// `colorSpace`: the screen's, see `ImageDecoder.decode`.
+    public init(capacity: Int = 8, hdr: Bool = false, colorSpace: CGColorSpace? = nil) {
         self.capacity = capacity
         self.hdr = hdr
+        self.colorSpace = colorSpace
     }
 
     /// The cached image, or decodes it — once, even when several callers ask at the same time.
@@ -29,10 +32,10 @@ public actor ImageCache {
             task = running.task
             inFlight[url]?.waiters += 1
         } else {
-            let hdr = hdr
+            let hdr = hdr, colorSpace = colorSpace
             task = Task.detached(priority: .userInitiated) {
                 try Task.checkCancellation()
-                return try ImageDecoder.decode(url, maxPixelSize: maxPixelSize, halvingSteps: true, hdr: hdr)
+                return try ImageDecoder.decode(url, maxPixelSize: maxPixelSize, halvingSteps: true, hdr: hdr, colorSpace: colorSpace)
             }
             inFlight[url] = (maxPixelSize, task, 1)
         }

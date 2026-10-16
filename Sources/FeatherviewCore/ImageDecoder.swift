@@ -58,7 +58,16 @@ public enum ImageDecoder {
     /// Display decodes (`halvingSteps`) come back at 8 bits, or with `hdr` an HDR image at up to 16
     /// bits with its extra range; other decodes keep the file's depth.
     /// Ignored before macOS 15 (`supportsHDR`) and for own formats.
-    public static func decode(_ url: URL, maxPixelSize: Int? = nil, halvingSteps: Bool = false, page: Int = 0, hdr: Bool = false) throws -> CGImage {
+    /// `colorSpace` (the screen's) applies to 8-bit display decodes: Core Animation would otherwise
+    /// convert each image on the main thread when it's first shown (≈18 ms for 12 MP).
+    public static func decode(_ url: URL, maxPixelSize: Int? = nil, halvingSteps: Bool = false, page: Int = 0,
+                              hdr: Bool = false, colorSpace: CGColorSpace? = nil) throws -> CGImage {
+        let image = try decodeFile(url, maxPixelSize: maxPixelSize, halvingSteps: halvingSteps, page: page, hdr: hdr)
+        guard halvingSteps, let colorSpace, image.bitsPerComponent == 8, image.colorSpace != colorSpace else { return image }
+        return redrawn(image, width: image.width, height: image.height, in: colorSpace) ?? image
+    }
+
+    private static func decodeFile(_ url: URL, maxPixelSize: Int?, halvingSteps: Bool, page: Int, hdr: Bool) throws -> CGImage {
         if let own = OwnDecoders.format(for: url) {
             do {
                 let image = try own.decode(try Data(contentsOf: url, options: .mappedIfSafe), page, maxPixelSize)

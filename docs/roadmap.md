@@ -80,10 +80,16 @@ Spec: "Formats", "Format options", ⇧⌘S Save As.
   (dimensions, zoom %, file size, index, date), a compact toolbar, zoom % in the title, Liquid
   Glass on the chooser, F7/F8 panel and messages (macOS 26+, material below). Clean-room: our
   own icons, order and labels. Status bar and Liquid Glass decided 2026-10-16 (spec "Viewer").
-- Toolbar speed, part of the redesign: a prefetched next image takes ≈20 ms, over the 16 ms
-  budget (milestone 1: ≈12 ms). The title changes on every image and AppKit re-lays out the nine
-  SwiftUI toolbar items. Native `NSToolbarItem`s or a title outside the toolbar should fix it;
-  measure before and after. Miss accepted until then (maintainer, 2026-10-16).
+- Swap speed (measured 2026-10-16, milestone 3 Task 15): a prefetched next image is back under the
+  16 ms budget. The toolbar wasn't why. 80 12 MP JPEGs, auto-advance every 150 ms, release build,
+  time from the key to the main thread going idle after the frame is committed: median 64 ms /
+  p90 115 before, 11 / 12 after. Two causes, both fixed: Core Animation colour-converted each new
+  image on the main thread (`CA::Render::prepare_image`; display decodes now come in the screen's
+  colour space, converted off the main thread), and awaiting the cache actor drew a frame with the
+  new position before the image (prefetched images now swap in synchronously). The `show … ms` log
+  line reads 0 ms for a prefetched swap now; it never counted the commit. Setting `window.title`
+  directly instead of `.navigationTitle` doesn't work: SwiftUI puts the scene title back on its
+  next update.
 
 ## 4. Batch complete
 

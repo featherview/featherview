@@ -19,6 +19,7 @@ struct ViewerView: View {
     @AppStorage(AppSettings.overlayTemplate.key) private var overlayTemplate = AppSettings.overlayTemplate.defaultValue
     @AppStorage(AppSettings.hidePointer.key) private var hidePointer = AppSettings.hidePointer.defaultValue
     @AppStorage(toolbarHiddenKey) private var toolbarHidden = false
+    @AppStorage(statusBarHiddenKey) private var statusBarHidden = false
 
     private var background: Color { Color(nsColor: backgroundNSColor) }
     private var backgroundNSColor: NSColor {
@@ -64,6 +65,14 @@ struct ViewerView: View {
                     .padding()
             }
         }
+        // Not onGeometryChange: it misses the restored window frame at launch, leaving fit at the 100×48 placeholder.
+        // Inside the status bar's inset, so fit and its zoom % use the area above the bar.
+        .background(GeometryReader { geo in
+            Color.clear.onChange(of: geo.size, initial: true) { model.viewSize = geo.size }
+        })
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !statusBarHidden, !model.isFullScreen { StatusBar(model: model) }
+        }
         // On a new image and on entering full screen (double-click, F or Return leave the image as is).
         .onChange(of: model.image) { hidePointerInFullScreen() }
         .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
@@ -71,11 +80,8 @@ struct ViewerView: View {
         .onChange(of: model.image != nil || model.errorMessage != nil || model.emptyFolder != nil || !model.isOpening,
                   initial: true) { if $1 { toolbarReady = true } }
         .toolbar(model.isFullScreen || toolbarHidden ? .hidden : .visible, for: .windowToolbar)
-        // Not onGeometryChange: it misses the restored window frame at launch, leaving fit at the 100×48 placeholder.
-        .background(GeometryReader { geo in
-            Color.clear.onChange(of: geo.size, initial: true) { model.viewSize = geo.size }
-        })
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
+        // Not set on the window directly: SwiftUI puts the scene's title back on its next update.
         .navigationTitle(model.title)
         .inspector(isPresented: $model.showInfo) {
             InfoPanel(url: model.list.current, revision: model.fileRevision)
@@ -343,11 +349,14 @@ struct InfoPanel: View {
 
 /// Whether viewer windows hide their toolbar (View › Hide Toolbar).
 private let toolbarHiddenKey = "toolbarHidden"
+/// Whether viewer windows hide their status bar (View › Hide Status Bar).
+private let statusBarHiddenKey = "statusBarHidden"
 
 struct ViewerCommands: Commands {
     @FocusedValue(\.viewer) private var model
     @Environment(\.openWindow) private var openWindow
     @AppStorage(toolbarHiddenKey) private var toolbarHidden = false
+    @AppStorage(statusBarHiddenKey) private var statusBarHidden = false
 
     var body: some Commands {
         CommandGroup(replacing: .appInfo) {
@@ -381,23 +390,33 @@ struct ViewerCommands: Commands {
                 .keyboardShortcut("a")
         }
         CommandMenu("Image") {
-            Button("Next  (→ or Space)") { model?.next() }
-            Button("Previous  (← or ⌫)") { model?.previous() }
-            Button("Next Page  (⌥→)") { model?.nextPage() }
-                .disabled((model?.pageCount ?? 1) < 2)
-            Button("Previous Page  (⌥←)") { model?.previousPage() }
-                .disabled((model?.pageCount ?? 1) < 2)
+            // Disabled as the toolbar buttons are, so menu and toolbar agree.
+            Group {
+                Button("Next  (→ or Space)") { model?.next() }
+                Button("Previous  (← or ⌫)") { model?.previous() }
+            }
+            .disabled(model?.availability.canBrowse != true)
+            Group {
+                Button("Next Page  (⌥→)") { model?.nextPage() }
+                Button("Previous Page  (⌥←)") { model?.previousPage() }
+            }
+            .disabled(model?.availability.hasPages != true)
             Divider()
-            Button("Rotate Right  (R)") { model?.rotate(.clockwise) }
-            Button("Rotate Left  (L)") { model?.rotate(.counterClockwise) }
-            Divider()
-            // ⌘⌫ is handled by the viewer, not as a menu shortcut (see ViewerView.handle).
-            Button("Move to Folder…  (F7)") { model?.showDestinations(.move) }
-            Button("Copy to Folder…  (F8)") { model?.showDestinations(.copy) }
-            Button("Move to Trash  (⌘⌫ or ⌦)") { model?.moveCurrentToTrash() }
+            Group {
+                Button("Rotate Right  (R)") { model?.rotate(.clockwise) }
+                Button("Rotate Left  (L)") { model?.rotate(.counterClockwise) }
+                Divider()
+                // ⌘⌫ is handled by the viewer, not as a menu shortcut (see ViewerView.handle).
+                Button("Move to Folder…  (F7)") { model?.showDestinations(.move) }
+                Button("Copy to Folder…  (F8)") { model?.showDestinations(.copy) }
+                Button("Move to Trash  (⌘⌫ or ⌦)") { model?.moveCurrentToTrash() }
+            }
+            .disabled(model?.availability.canChangeFile != true)
             Button("Show in Finder") { model?.showInFinder() }
+                .disabled(model?.availability.hasCurrent != true)
             OpenWithMenu(model: model)
             Button("Show Info  (I)") { model?.showInfo.toggle() }
+                .disabled(model?.availability.hasCurrent != true)
             Divider()
             Button("Batch Convert…  (B)") { openWindow(id: "batch") }
                 .keyboardShortcut("b")
@@ -410,12 +429,16 @@ struct ViewerCommands: Commands {
                 NSApp.sendAction(#selector(NSWindow.runToolbarCustomizationPalette(_:)), to: nil, from: nil)
             }
             .disabled(model == nil || toolbarHidden)
+            Button(statusBarHidden ? "Show Status Bar" : "Hide Status Bar") { statusBarHidden.toggle() }
         }
         CommandGroup(after: .toolbar) {
-            Button("Zoom to Fit  (0)") { model?.setZoom(.fit) }
-            Button("Actual Size  (1)") { model?.setZoom(.factor(1)) }
-            Button("Zoom In  (+)") { model?.zoomIn() }
-            Button("Zoom Out  (−)") { model?.zoomOut() }
+            Group {
+                Button("Zoom to Fit  (0)") { model?.setZoom(.fit) }
+                Button("Actual Size  (1)") { model?.setZoom(.factor(1)) }
+                Button("Zoom In  (+)") { model?.zoomIn() }
+                Button("Zoom Out  (−)") { model?.zoomOut() }
+            }
+            .disabled(model?.availability.hasCurrent != true)
         }
     }
 }
@@ -423,6 +446,17 @@ struct ViewerCommands: Commands {
 private extension View {
     /// Readable on any background colour the user picks (grey text vanishes on black).
     func messageBox() -> some View {
-        padding(8).background(.regularMaterial, in: .rect(cornerRadius: 6))
+        padding(8).panelBackground(cornerRadius: 6)
+    }
+}
+
+extension View {
+    /// Liquid Glass on macOS 26+ (spec "Viewer"); the material before.
+    @ViewBuilder func panelBackground(cornerRadius: CGFloat) -> some View {
+        if #available(macOS 26, *) {
+            glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+        } else {
+            background(.regularMaterial, in: .rect(cornerRadius: cornerRadius))
+        }
     }
 }
