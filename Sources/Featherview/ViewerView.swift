@@ -31,12 +31,12 @@ struct ViewerView: View {
                             onDoubleClick: model.toggleFullScreen, onClick: { focused = true })
                     .contextMenu { ImageContextMenu(model: model) }
             } else if let message = model.errorMessage {
-                Text(message).foregroundStyle(.secondary)
+                Text(message).messageBox()
             } else if let folder = model.emptyFolder {
-                Text("No images in \(folder.lastPathComponent)").foregroundStyle(.secondary)
+                Text("No images in \(folder.lastPathComponent)").messageBox()
             } else if !model.isOpening && model.list.current == nil {
                 // Only when nothing is on its way: a loading image shows black, not the hint.
-                Text("Open an image with ⌘O, or drop one here").foregroundStyle(.secondary)
+                Text("Open an image with ⌘O, or drop one here").messageBox()
             }
         }
         .overlay {
@@ -46,8 +46,7 @@ struct ViewerView: View {
         .overlay(alignment: .bottom) {
             if let message = model.errorMessage, model.image != nil {
                 Text(message)
-                    .padding(8)
-                    .background(.regularMaterial, in: .rect(cornerRadius: 6))
+                    .messageBox()
                     .padding()
             }
         }
@@ -389,5 +388,12 @@ struct ViewerCommands: Commands {
             Button("Zoom In  (+)") { model?.zoomIn() }
             Button("Zoom Out  (−)") { model?.zoomOut() }
         }
+    }
+}
+
+private extension View {
+    /// Readable on any background colour the user picks (grey text vanishes on black).
+    func messageBox() -> some View {
+        padding(8).background(.regularMaterial, in: .rect(cornerRadius: 6))
     }
 }
