@@ -150,7 +150,7 @@ struct ViewerView: View {
         // Arrow keys carry the numeric-pad/function flags and Caps Lock changes nothing here,
         // so only these modifiers count.
         let modifiers = press.modifiers.intersection([.command, .control, .option, .shift])
-        if model.chooser != nil { return handleChooser(press, modifiers) }
+        if model.isChooserOpen { return handleChooser(press, modifiers) }
         if modifiers == .option {
             switch press.key {
             case .rightArrow: model.nextPage(); return .handled

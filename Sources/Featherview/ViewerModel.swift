@@ -44,10 +44,10 @@ final class ViewerModel {
     /// A folder opened directly that has no images: the view says so, ← / → still leave it.
     private(set) var emptyFolder: URL?
     /// Shown past either end of the folder (spec "Moving past the end of a folder").
-    private(set) var chooser: FolderChooser?
-    /// Bumped when the chooser closes, so a listing still running for it is dropped.
-    private var chooserGeneration = 0
-    private var chooserTask: Task<Void, Never>?
+    private let chooserSession = ChooserSession()
+    var chooser: FolderChooser? { chooserSession.chooser }
+    /// Also true while the chooser's first listing runs, so keys go to it and Esc cancels it.
+    var isChooserOpen: Bool { chooserSession.isOpen }
     /// Image counts of the chooser's folders, filled in off the main thread as they are counted.
     private(set) var chooserCounts: [URL: Int] = [:]
     private var countTask: Task<Void, Never>?
@@ -77,6 +77,10 @@ final class ViewerModel {
         return Date(timeIntervalSince1970: Double(start.tv_sec) + Double(start.tv_usec) / 1_000_000)
     }()
     private var loggedLaunch = false
+
+    init() {
+        chooserSession.onListed = { [weak self] in self?.countImages() }
+    }
 
     var title: String {
         guard let url = list.current else { return emptyFolder?.lastPathComponent ?? "Featherview" }
@@ -163,42 +167,18 @@ final class ViewerModel {
             guard let folder else { break }
             let includeHidden = AppSettings.showHiddenFiles.value()
             chooserCounts = [:]  // folders may have changed since the last chooser
-            updateChooser { $0 = FolderChooser(folder: folder, includeHidden: includeHidden) }
+            chooserSession.start(folder: folder, includeHidden: includeHidden)
         }
     }
 
     /// Chooser keys: ↑ ↓ select, → / Space enter, ← up, Return opens, Esc cancels.
-    func chooserMove(_ delta: Int) { chooser?.moveSelection(by: delta) }
-    func chooserEnter() { updateChooser { $0?.enter() } }
-    func chooserUp() { updateChooser { $0?.up() } }
-    func chooserOpen() {
-        guard let url = chooser?.selected.url else { return }
-        open(url)
-    }
+    func chooserMove(_ delta: Int) { chooserSession.move(delta) }
+    func chooserEnter() { chooserSession.enter() }
+    func chooserUp() { chooserSession.up() }
+    func chooserOpen() { chooserSession.open { [weak self] in self?.open($0) } }
     func closeChooser() {
-        chooserGeneration += 1
         countTask?.cancel()
-        chooser = nil
-    }
-
-    /// Listing a folder reads the disk (slow on a share or in a big folder), so it runs off the main
-    /// thread; key presses queue up and apply in order.
-    private func updateChooser(_ change: @escaping @Sendable (inout FolderChooser?) -> Void) {
-        let previous = chooserTask
-        let generation = chooserGeneration
-        chooserTask = Task {
-            await previous?.value
-            guard generation == chooserGeneration else { return }
-            let current = chooser
-            let updated = await Task.detached(priority: .userInitiated) {
-                var chooser = current
-                change(&chooser)
-                return chooser
-            }.value
-            guard generation == chooserGeneration else { return }
-            chooser = updated
-            countImages()
-        }
+        chooserSession.close()
     }
 
     /// Counts the listed folders' images one by one, off the main thread; a big folder takes a while.
