@@ -40,6 +40,8 @@ struct ViewerView: View {
         .onChange(of: activeState, initial: true) { if activeState == .key { ViewerModel.lastActive.use(model) } }
         .background(WindowAccessor { window in
             model.window = window
+            // A restored or reopened window may already be in full screen; no didEnter notification follows.
+            model.isFullScreen = window.styleMask.contains(.fullScreen)
             if !rememberFrame { window.setContentSize(NSSize(width: 960, height: 640)); window.center() }
         })
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { note in
