@@ -94,8 +94,14 @@ final class ViewerModel {
         return "\(url.lastPathComponent) — \(list.position)"
     }
 
-    /// The folder being browsed, also when it has no images.
-    var folder: URL? { list.current?.deletingLastPathComponent() ?? emptyFolder }
+    /// The folder being browsed, also when it has no images. It's the path the folder was opened by:
+    /// the scanner lists a symlinked folder under its target, and the chooser must go back the way the user came.
+    var folder: URL? { openedFolder ?? list.current?.deletingLastPathComponent() ?? emptyFolder }
+    private var openedFolder: URL?
+
+    private func isFolderPath(_ url: URL) -> Bool {
+        (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+    }
 
     /// A file shows at once; its folder is scanned off the main thread meanwhile, because a big
     /// folder takes longer to list and sort than the image takes to decode.
@@ -106,7 +112,8 @@ final class ViewerModel {
         closeChooser()
         emptyFolder = nil
         let includeHidden = AppSettings.showHiddenFiles.value()
-        let isFolder = (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+        let isFolder = isFolderPath(url)
+        openedFolder = isFolder ? url : url.deletingLastPathComponent()
         // Off the main actor: at launch the main thread is busy building the window, the decode needn't wait.
         let prefetch = isFolder || zoom != .fit ? nil : screenPixels
         let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache] in
@@ -324,7 +331,7 @@ final class ViewerModel {
                 let wasCurrent = list.current == url
                 list.remove(url)
                 // Keeps the folder known, so the view says it's empty and ← / → still reach the chooser.
-                if list.isEmpty { emptyFolder = url.deletingLastPathComponent() }
+                if list.isEmpty { emptyFolder = openedFolder ?? url.deletingLastPathComponent() }
                 if wasCurrent { show() }
             } catch {
                 errorMessage = "Couldn't move \(url.lastPathComponent) to the Trash"
