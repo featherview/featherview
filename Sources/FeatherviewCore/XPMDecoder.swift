@@ -9,12 +9,12 @@ enum XPMDecoder {
     typealias Pixel = (r: UInt8, g: UInt8, b: UInt8, a: UInt8)
 
     static func size(_ data: Data) throws -> (width: Int, height: Int) {
-        let header = try values(strings(in: [UInt8](data)))
+        let header = try values(data.withUnsafeBytes { strings(in: $0, limit: 1) })  // header only: no full copy or parse
         return (header.width, header.height)
     }
 
     static func decode(_ data: Data) throws -> RGBAImage {
-        let lines = strings(in: [UInt8](data))
+        let lines = data.withUnsafeBytes { strings(in: $0) }
         let (width, height, colors, cpp) = try values(lines)
         // Not `1 + colors + height`: a huge colour count would overflow.
         guard lines.count - 1 - height >= colors else { throw OwnDecodeError.truncated }
@@ -47,10 +47,10 @@ enum XPMDecoder {
 
     private static func key(_ chars: ArraySlice<UInt8>) -> UInt64 { chars.reduce(0) { $0 << 8 | UInt64($1) } }
 
-    /// The contents of every C string literal, skipping comments.
-    private static func strings(in bytes: [UInt8]) -> [[UInt8]] {
+    /// The contents of the first `limit` C string literals, skipping comments.
+    private static func strings(in bytes: UnsafeRawBufferPointer, limit: Int = .max) -> [[UInt8]] {
         var result: [[UInt8]] = [], i = 0
-        while i < bytes.count {
+        while i < bytes.count, result.count < limit {
             if bytes[i] == UInt8(ascii: "/"), i + 1 < bytes.count, bytes[i + 1] == UInt8(ascii: "*") {
                 i += 2
                 while i + 1 < bytes.count, !(bytes[i] == UInt8(ascii: "*") && bytes[i + 1] == UInt8(ascii: "/")) { i += 1 }

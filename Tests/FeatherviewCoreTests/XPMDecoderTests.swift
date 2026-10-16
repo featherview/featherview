@@ -69,4 +69,13 @@ import Testing
         #expect(throws: OwnDecodeError.truncated) { try XPMDecoder.decode(Data(text.utf8)) }
         #expect(ContinuousClock.now - start < .milliseconds(200))
     }
+
+    @Test func sizeReadsOnlyTheHeader() throws {
+        let row = "\"" + String(repeating: "..", count: 4096) + "\",\n"
+        let text = "static char *big[] = {\n\"4096 4096 1 2\",\n\".. c #FF0000\",\n" + String(repeating: row, count: 4096) + "};\n"
+        let data = Data(text.utf8)  // 33 MB
+        let start = ContinuousClock.now
+        #expect(try XPMDecoder.size(data) == (4096, 4096))
+        #expect(ContinuousClock.now - start < .milliseconds(50))
+    }
 }
