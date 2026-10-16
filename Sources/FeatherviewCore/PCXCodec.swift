@@ -38,7 +38,9 @@ public enum PCXCodec {
         case (1, 1...4), (4, 1), (8, 1), (8, 3), (8, 4): break
         default: throw OwnDecodeError.unsupported
         }
-        guard bytesPerLine * 8 >= width * bitsPerPixel else { throw OwnDecodeError.corrupt }
+        // Writers pad a line to an even (some to a 4-byte) count; more would let a tiny image claim a huge scanline buffer.
+        let needed = (width * bitsPerPixel + 7) / 8
+        guard bytesPerLine >= needed, bytesPerLine <= needed + 4 else { throw OwnDecodeError.corrupt }
         return Header(width: width, height: height, bitsPerPixel: bitsPerPixel, planes: planes,
                       bytesPerLine: bytesPerLine, compressed: encoding == 1, ega: ega)
     }
@@ -57,7 +59,7 @@ public enum PCXCodec {
         var raw: [UInt8]
         if h.compressed {
             raw = []
-            raw.reserveCapacity(min(total, bytes.count * 63))  // a lying header can't reserve more than the data can expand to
+            raw.reserveCapacity(min(total, bytes.count / 2 * 63))  // two bytes expand to at most 63, so a lying header can't reserve more
             // Decoded as one stream: some writers let runs cross scanline and plane boundaries.
             while raw.count < total {
                 let byte = try reader.u8()
@@ -71,8 +73,8 @@ public enum PCXCodec {
             raw = Array(try reader.take(total))
         }
 
-        var palette: [UInt8]? = nil  // 256 colours after a 0x0C marker at the very end
-        if h.bitsPerPixel == 8, h.planes == 1, bytes.count - 769 >= 128, bytes[bytes.count - 769] == 0x0C {
+        var palette: [UInt8]? = nil  // 256 colours after a 0x0C marker at the very end, past the pixel data
+        if h.bitsPerPixel == 8, h.planes == 1, reader.offset <= bytes.count - 769, bytes[bytes.count - 769] == 0x0C {
             palette = Array(bytes[(bytes.count - 768)...])
         }
 

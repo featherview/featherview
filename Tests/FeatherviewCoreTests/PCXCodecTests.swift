@@ -148,6 +148,24 @@ import Testing
         #expect(PCXCodec.dcxPageCount(Data(good)) == 0)
     }
 
+    @Test func bytesPerLineFarAboveTheWidthIsCorrupt() {
+        // 1 pixel wide but 65535 bytes per line: would make the scanline buffer gigabytes for a tiny image
+        let data = header(bitsPerPixel: 8, planes: 4, width: 1, height: 4096, bytesPerLine: 65535)
+            + [UInt8](repeating: 0xFF, count: 64)
+        #expect(throws: OwnDecodeError.corrupt) { try PCXCodec.decode(Data(data)) }
+    }
+
+    @Test func pixelBytesAreNotReadAsAPalette() throws {
+        // Uncompressed 8-bit grey, no palette; the pixel byte 769 from the end happens to be 0x0C.
+        var data = header(bitsPerPixel: 8, planes: 1, width: 30, height: 30, bytesPerLine: 30)
+        data[2] = 0
+        var pixels = (0..<900).map { UInt8($0 % 200 + 20) }
+        pixels[900 - 769] = 0x0C
+        data += pixels
+        let image = try PCXCodec.decode(Data(data))
+        #expect(rgb(image, 0, 0) == [20, 20, 20, 255])
+    }
+
     @Test func dcxPageOffsetPastTheEndThrows() {
         // magic, one page at 4096 or 0xFFFFFFFF, both past the end of the file
         #expect(throws: OwnDecodeError.truncated) {
