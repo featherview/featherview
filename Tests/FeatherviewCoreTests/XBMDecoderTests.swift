@@ -58,4 +58,23 @@ import Testing
         let image = try XBMDecoder.decode(Data(text.utf8))
         #expect(image[0, 0].r == 0 && image[15, 0].r == 255 && image[0, 1].r == 255 && image[15, 1].r == 0)
     }
+
+    /// A width × height bitmap with every other pixel set, as `0x55, ` tokens.
+    static func bigFile(width: Int, height: Int) -> Data {
+        let bits = String(repeating: "0x55, ", count: (width + 7) / 8 * height)
+        return Data("#define big_width \(width)\n#define big_height \(height)\nstatic unsigned char big_bits[] = {\n\(bits)};\n".utf8)
+    }
+
+    @Test func sizeReadsOnlyTheHeader() throws {
+        let data = Self.bigFile(width: 4096, height: 4096)  // 12 MB
+        let start = ContinuousClock.now
+        #expect(try XBMDecoder.size(data) == (4096, 4096))
+        #expect(ContinuousClock.now - start < .milliseconds(50))
+    }
+
+    @Test func decodesALargeFile() throws {
+        let image = try XBMDecoder.decode(Self.bigFile(width: 2048, height: 2048))  // 3 MB
+        #expect(image.width == 2048 && image.height == 2048)
+        #expect(image[0, 0].r == 0 && image[1, 0].r == 255)
+    }
 }

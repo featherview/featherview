@@ -7,37 +7,65 @@ enum XBMDecoder {
                                          size: { data, _ in try size(data) }, decode: { data, _ in try decode(data) })
 
     static func size(_ data: Data) throws -> (width: Int, height: Int) {
-        try header(stripCComments(String(decoding: data, as: UTF8.self)))
+        try header(stripCComments(data, upTo: UInt8(ascii: "{")))
     }
 
     static func decode(_ data: Data) throws -> RGBAImage {
-        let text = stripCComments(String(decoding: data, as: UTF8.self))
-        let (width, height) = try header(text)
-        guard let open = text.firstIndex(of: "{") else { throw OwnDecodeError.truncated }
-        // The C type word, not a substring: names like `short_arrow_bits` are X11 too.
-        let unitBits = text[..<open].contains(/\bshort\b/) ? 16 : 8
-        let body = text[text.index(after: open)...].prefix { $0 != "}" }
-        var units: [Int] = []
-        for token in body.split(separator: ",") {
-            let token = token.trimmingCharacters(in: .whitespacesAndNewlines)
-            if token.isEmpty { continue }
-            guard let value = cInteger(token), value < 1 << unitBits else { throw OwnDecodeError.corrupt }
-            units.append(value)
+        let bytes = stripCComments(data)
+        guard let open = bytes.firstIndex(of: UInt8(ascii: "{")) else {
+            _ = try header(bytes)
+            throw OwnDecodeError.truncated
         }
+        let (width, height) = try header(bytes[..<open])
+        // The C type word, not a substring: names like `short_arrow_bits` are X11 too.
+        let unitBits = String(decoding: bytes[..<open], as: UTF8.self).contains(/\bshort\b/) ? 16 : 8
+        let body = bytes[(open + 1)...].prefix { $0 != UInt8(ascii: "}") }
         let unitsPerRow = (width + unitBits - 1) / unitBits
+        var units: [UInt16] = []
+        units.reserveCapacity(unitsPerRow * height)
+        for token in body.split(separator: UInt8(ascii: ","), omittingEmptySubsequences: false) {
+            guard let first = token.firstIndex(where: { !isSpace($0) }) else { continue }
+            let last = token.lastIndex(where: { !isSpace($0) })!
+            guard let value = unit(token[first...last]), value < 1 << unitBits else { throw OwnDecodeError.corrupt }
+            units.append(UInt16(value))
+        }
         guard units.count >= unitsPerRow * height else { throw OwnDecodeError.truncated }
         var image = RGBAImage(width: width, height: height)
         for y in 0..<height {
-            for x in 0..<width where units[y * unitsPerRow + x / unitBits] >> (x % unitBits) & 1 == 0 {
+            for x in 0..<width where Int(units[y * unitsPerRow + x / unitBits]) >> (x % unitBits) & 1 == 0 {
                 image[x, y] = (255, 255, 255, 255)
             }
         }
         return image
     }
 
-    private static func header(_ text: String) throws -> (width: Int, height: Int) {
+    /// A C integer literal in bytes, decimal or 0x hex, up to 16 bits; nil if malformed or larger.
+    private static func unit(_ token: ArraySlice<UInt8>) -> Int? {
+        var digits = token[...], radix = 10
+        if digits.count > 2, digits.first == UInt8(ascii: "0"), digits.dropFirst().first! | 0x20 == UInt8(ascii: "x") {
+            digits = digits.dropFirst(2)
+            radix = 16
+        }
+        var value = 0
+        for byte in digits {
+            let digit: Int
+            switch byte {
+            case UInt8(ascii: "0")...UInt8(ascii: "9"): digit = Int(byte) - 48
+            case UInt8(ascii: "a")...UInt8(ascii: "f"), UInt8(ascii: "A")...UInt8(ascii: "F"): digit = Int(byte | 0x20) - 87
+            default: return nil
+            }
+            guard digit < radix else { return nil }
+            value = value * radix + digit
+            if value > 0xFFFF { return nil }
+        }
+        return value
+    }
+
+    private static func isSpace(_ byte: UInt8) -> Bool { byte == 0x20 || (0x09...0x0D).contains(byte) }
+
+    private static func header(_ bytes: some Collection<UInt8>) throws -> (width: Int, height: Int) {
         var width: Int?, height: Int?
-        for line in text.split(whereSeparator: \.isNewline) {
+        for line in String(decoding: bytes, as: UTF8.self).split(whereSeparator: \.isNewline) {
             let words = line.split(whereSeparator: \.isWhitespace)
             guard words.count >= 3, words[0] == "#define" else { continue }
             if words[1].hasSuffix("_width") { width = cInteger(String(words[2])) ?? -1 }
@@ -54,24 +82,28 @@ func cInteger(_ token: String) -> Int? {
     return lower.hasPrefix("0x") ? Int(lower.dropFirst(2), radix: 16) : Int(lower)
 }
 
-/// Replaces `/* */` and `//` comments with a space, leaving string literals alone.
-func stripCComments(_ text: String) -> String {
-    var out = "", chars = Array(text), i = 0, inString = false
-    while i < chars.count {
-        let c = chars[i], next = i + 1 < chars.count ? chars[i + 1] : nil
+/// Replaces `/* */` and `//` comments with a space, leaving string literals alone; bytes, not Characters,
+/// so a large file costs one copy. With `stop`, ends before the first `stop` byte outside comments and strings.
+func stripCComments(_ data: Data, upTo stop: UInt8? = nil) -> [UInt8] {
+    let slash = UInt8(ascii: "/"), star = UInt8(ascii: "*"), quote = UInt8(ascii: "\""), backslash = UInt8(ascii: "\\")
+    var out: [UInt8] = [], i = data.startIndex, inString = false
+    if stop == nil { out.reserveCapacity(data.count) }
+    while i < data.endIndex {
+        let c = data[i], next = i + 1 < data.endIndex ? data[i + 1] : nil
         if inString {
             out.append(c)
-            if c == "\\", let next { out.append(next); i += 1 } else if c == "\"" { inString = false }
+            if c == backslash, let next { out.append(next); i += 1 } else if c == quote { inString = false }
             i += 1
-        } else if c == "/", next == "*" {
+        } else if c == slash, next == star {
             i += 2
-            while i < chars.count, !(chars[i] == "*" && i + 1 < chars.count && chars[i + 1] == "/") { i += 1 }
+            while i < data.endIndex, !(data[i] == star && i + 1 < data.endIndex && data[i + 1] == slash) { i += 1 }
             i += 2
-            out.append(" ")
-        } else if c == "/", next == "/" {
-            while i < chars.count, !chars[i].isNewline { i += 1 }
+            out.append(0x20)
+        } else if c == slash, next == slash {
+            while i < data.endIndex, data[i] != 0x0A, data[i] != 0x0D { i += 1 }
         } else {
-            if c == "\"" { inString = true }
+            if c == stop { break }
+            if c == quote { inString = true }
             out.append(c)
             i += 1
         }
