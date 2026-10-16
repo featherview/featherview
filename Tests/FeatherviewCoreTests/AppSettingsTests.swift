@@ -67,4 +67,12 @@ import Testing
     @Test func missingValuesBecomeEmptyAndUnknownPlaceholdersStay() {
         #expect(OverlayTemplate.render("{name} {date} {iso}", values: ["name": "a.jpg"]) == "a.jpg  {iso}")
     }
+
+    @Test func valuesThatLookLikePlaceholdersAreNotReplacedAgain() {
+        let values = ["name": "{count} photos.jpg", "folder": "{date}", "index": "3", "count": "9",
+                      "date": "16.10.2026"]
+        #expect(OverlayTemplate.render("{name} — {index} / {count}", values: values) == "{count} photos.jpg — 3 / 9")
+        #expect(OverlayTemplate.render("{folder}", values: values) == "{date}")
+        #expect(OverlayTemplate.render("{name}", values: ["name": "{date}.jpg", "date": "16.10.2026"]) == "{date}.jpg")
+    }
 }

@@ -4,10 +4,10 @@ public enum OverlayTemplate {
     public static let placeholders = ["name", "folder", "index", "count", "size", "date"]
 
     public static func render(_ template: String, values: [String: String]) -> String {
-        var result = template
-        for key in placeholders {
-            result = result.replacingOccurrences(of: "{\(key)}", with: values[key] ?? "")
+        // One pass over the template, so a value such as a file named "{date}.jpg" is never replaced again.
+        template.replacing(/\{(\w+)\}/) { match in
+            let key = String(match.1)
+            return placeholders.contains(key) ? values[key] ?? "" : String(match.0)
         }
-        return result
     }
 }
