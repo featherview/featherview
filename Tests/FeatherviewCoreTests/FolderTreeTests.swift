@@ -84,6 +84,24 @@ private func makeTree() throws -> URL {
         #expect(chooser.selected.url.lastPathComponent == "link")
     }
 
+    @Test func upFromASymlinkedFolderReturnsToTheLinksFolder() throws {
+        // pics/link -> elsewhere/deep/photos (with a subfolder "x")
+        let base = try Fixtures.makeTempDir()
+        let pics = base.appendingPathComponent("pics"), photos = base.appendingPathComponent("elsewhere/deep/photos")
+        try FileManager.default.createDirectory(at: photos.appendingPathComponent("x"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: pics, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: pics.appendingPathComponent("link"), withDestinationURL: photos)
+        var chooser = FolderChooser(folder: pics)
+        #expect(chooser.selected.url.lastPathComponent == "link")
+        chooser.enter()
+        chooser.enter()  // into x, below the link
+        chooser.up()
+        #expect(chooser.folder.lastPathComponent == "link")
+        chooser.up()
+        #expect(pathKey(chooser.folder) == pathKey(pics))
+        #expect(chooser.selected.url.lastPathComponent == "link")
+    }
+
     @Test func rootHasNoParentEntry() {
         var chooser = FolderChooser(folder: URL(fileURLWithPath: "/"))
         #expect(!chooser.entries.contains { if case .parent = $0 { true } else { false } })

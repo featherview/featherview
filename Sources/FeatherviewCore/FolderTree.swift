@@ -5,17 +5,25 @@ public enum FolderTree {
     /// Subfolders of `folder` in Finder order. Symlinked folders are followed; packages (`.app`,
     /// `.photoslibrary`) are skipped, as Finder shows them as files. Unreadable folders have none.
     public static func subfolders(of folder: URL, includeHidden: Bool = false) -> [URL] {
-        let keys: [URLResourceKey] = [.isDirectoryKey, .isPackageKey]
+        let keys: [URLResourceKey] = [.isDirectoryKey, .isPackageKey, .isSymbolicLinkKey]
+        // Foundation won't list through a symlink, hence the resolved path; results are rebased onto
+        // `folder` so they keep the path the user came by and `parent(of:)` leads back the same way.
         guard let items = try? FileManager.default.contentsOfDirectory(
             at: folder.resolvingSymlinksInPath(), includingPropertiesForKeys: keys,
             options: includeHidden ? [] : [.skipsHiddenFiles])
         else { return [] }
         return items
             .filter { item in
-                // resourceValues on a symlink describes the link; resolve it to see a folder behind it.
-                let values = try? item.resolvingSymlinksInPath().resourceValues(forKeys: Set(keys))
-                return values?.isDirectory == true && values?.isPackage != true
+                // Keys come from the listing; only a symlink needs resolving to see the folder behind it.
+                guard var values = try? item.resourceValues(forKeys: Set(keys)) else { return false }
+                if values.isSymbolicLink == true {
+                    guard let target = try? item.resolvingSymlinksInPath().resourceValues(forKeys: Set(keys))
+                    else { return false }
+                    values = target
+                }
+                return values.isDirectory == true && values.isPackage != true
             }
+            .map { folder.appendingPathComponent($0.lastPathComponent, isDirectory: true) }
             .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
     }
 
@@ -27,10 +35,10 @@ public enum FolderTree {
         return (try? FolderScanner.images(around: folder, includeHidden: includeHidden).count) ?? 0
     }
 
-    /// The parent folder, or nil at the root of the file system.
+    /// The folder `folder` sits in, by its own path (not a symlink's target), or nil at the root.
     public static func parent(of folder: URL) -> URL? {
-        let resolved = folder.resolvingSymlinksInPath().standardizedFileURL
-        let parent = resolved.deletingLastPathComponent().standardizedFileURL
-        return parent.path == resolved.path ? nil : parent
+        let folder = folder.standardizedFileURL
+        let parent = folder.deletingLastPathComponent().standardizedFileURL
+        return parent.path == folder.path ? nil : parent
     }
 }
