@@ -87,10 +87,10 @@ struct ViewerView: View {
             model.isFullScreen = window.styleMask.contains(.fullScreen)
             if !rememberFrame, !model.isFullScreen { Self.place(window) }
         })
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { note in
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willEnterFullScreenNotification)) { note in
             if note.object as? NSWindow === model.window { model.isFullScreen = true }
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { note in
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willExitFullScreenNotification)) { note in
             if note.object as? NSWindow === model.window { model.isFullScreen = false }
         }
         .dropDestination(for: URL.self) { urls, _ in
