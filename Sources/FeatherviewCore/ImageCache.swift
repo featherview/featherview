@@ -6,12 +6,14 @@ import Foundation
 /// clear it when the decode size they need changes. Running decodes are joined only at the same size.
 public actor ImageCache {
     private let capacity: Int
+    private let hdr: Bool
     private var images: [URL: CGImage] = [:]
     private var order: [URL] = []  // least recently used first
     private var inFlight: [URL: (size: Int?, task: Task<CGImage, Error>, waiters: Int)] = [:]
 
-    public init(capacity: Int = 8) {
+    public init(capacity: Int = 8, hdr: Bool = false) {
         self.capacity = capacity
+        self.hdr = hdr
     }
 
     /// The cached image, or decodes it — once, even when several callers ask at the same time.
@@ -27,9 +29,10 @@ public actor ImageCache {
             task = running.task
             inFlight[url]?.waiters += 1
         } else {
+            let hdr = hdr
             task = Task.detached(priority: .userInitiated) {
                 try Task.checkCancellation()
-                return try ImageDecoder.decode(url, maxPixelSize: maxPixelSize, halvingSteps: true)
+                return try ImageDecoder.decode(url, maxPixelSize: maxPixelSize, halvingSteps: true, hdr: hdr)
             }
             inFlight[url] = (maxPixelSize, task, 1)
         }

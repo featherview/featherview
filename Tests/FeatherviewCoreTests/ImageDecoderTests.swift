@@ -79,4 +79,17 @@ import Testing
         #expect(ImageDecoder.displaySize(of: tiff, page: 1)?.width == 9)
         #expect(throws: DecodeError.unreadable(tiff)) { try ImageDecoder.decode(tiff, page: 3) }
     }
+    @Test func hdrImagesDecodeDeeperOnlyWhenAsked() throws {
+        guard #available(macOS 15, *) else { return }
+        let dir = try Fixtures.makeTempDir()
+        let hdr = try Fixtures.writeHDRGainMap(to: dir.appendingPathComponent("gm.heic"))
+        #expect(try ImageDecoder.decode(hdr, maxPixelSize: 64, halvingSteps: true, hdr: true).bitsPerComponent > 8)
+        #expect(try ImageDecoder.decode(hdr, maxPixelSize: 64, halvingSteps: true).bitsPerComponent == 8)
+    }
+
+    @Test func sdrImagesStayEightBitWithTheHDRRequest() throws {
+        let dir = try Fixtures.makeTempDir()
+        let sdr = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 64, height: 48)
+        #expect(try ImageDecoder.decode(sdr, maxPixelSize: 64, halvingSteps: true, hdr: true).bitsPerComponent == 8)
+    }
 }

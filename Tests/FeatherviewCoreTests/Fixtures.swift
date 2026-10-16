@@ -55,4 +55,23 @@ enum Fixtures {
         guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
         return url
     }
+    /// A gain-map image: left half 4× SDR white, right half a dark colour. macOS 15+ only.
+    @available(macOS 15, *)
+    @discardableResult
+    static func writeHDRGainMap(to url: URL, type: UTType = .heic) throws -> URL {
+        let space = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3)!
+        let context = CGContext(data: nil, width: 64, height: 48, bitsPerComponent: 16, bytesPerRow: 0, space: space,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                                    | CGBitmapInfo.floatComponents.rawValue | CGBitmapInfo.byteOrder16Little.rawValue)!
+        context.setFillColor(CGColor(colorSpace: space, components: [4, 4, 4, 1])!)
+        context.fill(CGRect(x: 0, y: 0, width: 32, height: 48))
+        context.setFillColor(CGColor(colorSpace: space, components: [0.5, 0.2, 0.1, 1])!)
+        context.fill(CGRect(x: 32, y: 0, width: 32, height: 48))
+        guard let dest = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil)
+        else { throw CocoaError(.fileWriteUnknown) }
+        CGImageDestinationAddImage(dest, context.makeImage()!,
+                                   [kCGImageDestinationEncodeRequest: kCGImageDestinationEncodeToISOGainmap] as CFDictionary)
+        guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
+        return url
+    }
 }

@@ -8,6 +8,9 @@ public enum DecodeError: Error, Equatable {
 }
 
 public enum ImageDecoder {
+    /// HDR display needs macOS 15 (spec "Formats").
+    public static var supportsHDR: Bool { if #available(macOS 15, *) { true } else { false } }
+
     /// Pages of a multi-page TIFF; 1 for every other file, so GIF frames and HEIC image sequences
     /// are not browsed as pages (spec: GIF shows its first frame).
     public static func pageCount(of url: URL) -> Int {
@@ -52,7 +55,9 @@ public enum ImageDecoder {
     /// Never upscales. Pixels are decoded here, not lazily at first draw, so callers can run this
     /// off the main thread and the UI never stalls on display.
     /// `page` is a page of a multi-page TIFF (see `pageCount`).
-    public static func decode(_ url: URL, maxPixelSize: Int? = nil, halvingSteps: Bool = false, page: Int = 0) throws -> CGImage {
+    /// `hdr` keeps an HDR image's extra range (more than 8 bits); SDR images stay 8 bits either way.
+    /// Ignored before macOS 15 (`supportsHDR`) and for own formats.
+    public static func decode(_ url: URL, maxPixelSize: Int? = nil, halvingSteps: Bool = false, page: Int = 0, hdr: Bool = false) throws -> CGImage {
         if let own = OwnDecoders.format(for: url) {
             do {
                 let image = try own.decode(try Data(contentsOf: url, options: .mappedIfSafe), page, maxPixelSize)
@@ -65,7 +70,7 @@ public enum ImageDecoder {
               let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary)
         else { throw DecodeError.unreadable(url) }
         let full = Int(max(size.width, size.height))
-        let options: [CFString: Any] = [
+        var options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
             kCGImageSourceShouldCacheImmediately: true,
@@ -73,6 +78,7 @@ public enum ImageDecoder {
                 ? decodeSize(full: full, target: maxPixelSize ?? full)
                 : min(maxPixelSize ?? full, full),
         ]
+        if hdr && supportsHDR { options[kCGImageSourceDecodeRequest] = kCGImageSourceDecodeToHDR }
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, page, options as CFDictionary)
         else { throw DecodeError.unreadable(url) }
         return image
