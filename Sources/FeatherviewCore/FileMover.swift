@@ -17,20 +17,23 @@ public enum FileMover {
         try manager.createDirectory(at: folder, withIntermediateDirectories: true)
         let stem = freeStem(for: file, sidecars: sidecars, in: folder)
         let target = folder.appendingPathComponent(name(stem, file.pathExtension))
-        // move/copyItem fail if the target exists, so a file created meanwhile is never overwritten.
-        switch operation {
-        case .move: try manager.moveItem(at: file, to: target)
-        case .copy: try manager.copyItem(at: file, to: target)
-        }
+        try place(file, at: target, operation)
         for sidecar in sidecars {
-            let sidecarTarget = folder.appendingPathComponent(name(stem, sidecar.pathExtension))
             // shortcut: a sidecar that fails to move stays behind silently; surface it if users report lost edits.
-            switch operation {
-            case .move: try? manager.moveItem(at: sidecar, to: sidecarTarget)
-            case .copy: try? manager.copyItem(at: sidecar, to: sidecarTarget)
-            }
+            try? place(sidecar, at: folder.appendingPathComponent(name(stem, sidecar.pathExtension)), operation)
         }
         return target
+    }
+
+    /// move/copyItem fail if the target exists, so a file created meanwhile is never overwritten.
+    /// A symlink arrives as the file it points to: a moved or copied link could point at nothing there.
+    /// Moving one removes only the link; the linked-to file stays where it is.
+    private static func place(_ source: URL, at target: URL, _ operation: FileOperation) throws {
+        let manager = FileManager.default
+        let isLink = (try? source.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
+        if operation == .move, !isLink { return try manager.moveItem(at: source, to: target) }
+        try manager.copyItem(at: isLink ? source.resolvingSymlinksInPath() : source, to: target)
+        if operation == .move { try manager.removeItem(at: source) }
     }
 
     /// The first of "IMG_1", "IMG_1 2", "IMG_1 3", … free for the image and every sidecar.
@@ -41,7 +44,8 @@ public enum FileMover {
         while true {
             let stem = number == 1 ? base : "\(base) \(number)"
             let taken = extensions.contains { ext in
-                FileManager.default.fileExists(atPath: folder.appendingPathComponent(name(stem, ext)).path)
+                // attributesOfItem doesn't follow symlinks, so a dangling link still counts as taken.
+                (try? FileManager.default.attributesOfItem(atPath: folder.appendingPathComponent(name(stem, ext)).path)) != nil
             }
             if !taken { return stem }
             number += 1

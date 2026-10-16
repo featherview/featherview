@@ -63,6 +63,32 @@ import Testing
         #expect(try FileMover.transfer(image, to: dest, operation: .move).lastPathComponent == "a 2.jpg")
     }
 
+    @Test func danglingLinkAtTheTargetNameCountsAsTaken() throws {
+        let dir = try Fixtures.makeTempDir()
+        let dest = dir.appendingPathComponent("dest")
+        try FileManager.default.createDirectory(at: dest, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(atPath: dest.appendingPathComponent("a.jpg").path,
+                                                   withDestinationPath: "nowhere.jpg")
+        let image = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 4, height: 4)
+        #expect(try FileMover.transfer(image, to: dest, operation: .move).lastPathComponent == "a 2.jpg")
+    }
+
+    @Test func linkedImageArrivesAsTheImageNotAsALink() throws {
+        for operation in [FileOperation.copy, .move] {
+            let dir = try Fixtures.makeTempDir()
+            let real = try Fixtures.writeImage(to: dir.appendingPathComponent("real.jpg"), width: 4, height: 4)
+            let link = dir.appendingPathComponent("a.jpg")
+            try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: "real.jpg")
+
+            let placed = try FileMover.transfer(link, to: dir.appendingPathComponent("dest"), operation: operation)
+            #expect(try Data(contentsOf: placed) == Data(contentsOf: real))
+            #expect(try placed.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink == false)
+            #expect(FileManager.default.fileExists(atPath: real.path))  // the linked-to file is never touched
+            let linkKept = (try? FileManager.default.attributesOfItem(atPath: link.path)) != nil
+            #expect(linkKept == (operation == .copy))
+        }
+    }
+
     @Test func movingIntoItsOwnFolderChangesNothing() throws {
         let dir = try Fixtures.makeTempDir()
         let image = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 4, height: 4)
