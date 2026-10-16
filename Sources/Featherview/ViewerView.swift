@@ -270,12 +270,16 @@ struct ImageContextMenu: View {
 /// The apps set in Settings › Open With, by name.
 struct OpenWithMenu: View {
     let model: ViewerModel?
+    // Observed, so the menu follows Settings › Open With at once.
+    @AppStorage(AppSettings.openWith[0].key) private var app1 = ""
+    @AppStorage(AppSettings.openWith[1].key) private var app2 = ""
+    @AppStorage(AppSettings.openWith[2].key) private var app3 = ""
 
     var body: some View {
         Menu("Open With") {
             ForEach(0..<3, id: \.self) { index in
-                let path = AppSettings.openWith[index].value()
-                Button(path.isEmpty ? "App \(index + 1) not set" : FileManager.default.displayName(atPath: path)) {
+                let path = [app1, app2, app3][index]
+                Button(path.isEmpty ? String(localized: "App \(index + 1) not set") : FileManager.default.displayName(atPath: path)) {
                     model?.openWith(index)
                 }
                 .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .option)
@@ -336,9 +340,9 @@ struct ViewerCommands: Commands {
                 .keyboardShortcut("o")
         }
         CommandGroup(replacing: .pasteboard) {
-            // Text fields (batch window) keep their own Copy and Paste: this group only acts on a viewer.
+            // Text fields and selected text (batch window, Info panel) keep their own Copy and Paste.
             Button("Copy") {
-                if let model { model.copyImage() } else { NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil) }
+                if let model, !(NSApp.keyWindow?.firstResponder is NSText) { model.copyImage() } else { NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil) }
             }
             .keyboardShortcut("c")
             Button("Cut") { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }
