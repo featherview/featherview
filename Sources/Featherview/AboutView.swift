@@ -5,6 +5,7 @@ import SwiftUI
 /// Spec "About window": icon, name, version, links, supported formats, licence and bug-report text.
 struct AboutView: View {
     @Environment(\.openURL) private var openURL
+    @Environment(\.dismiss) private var dismiss
     @State private var sheetText: String?
 
     private static let info = Bundle.main.infoDictionary ?? [:]
@@ -53,6 +54,8 @@ struct AboutView: View {
         }
         .padding(24)
         .frame(width: 420)
+        // Esc closes the window, wherever the focus is (a hidden button's shortcut doesn't need focus).
+        .background { Button("Close") { dismiss() }.keyboardShortcut(.cancelAction).opacity(0) }
         .sheet(isPresented: Binding(get: { sheetText != nil }, set: { if !$0 { sheetText = nil } })) {
             VStack(alignment: .trailing) {
                 ScrollView {
