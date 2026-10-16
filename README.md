@@ -3,7 +3,14 @@
 A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversion.
 
 - Opens instantly and flips through every image in the folder with the arrow keys
-- Shows JPEG, PNG, HEIC, WebP, TIFF, GIF and camera RAW, upright and colour-managed
+- Opens everything macOS can read (JPEG, PNG, HEIC, AVIF, JPEG XL, WebP, TIFF, GIF, BMP, PSD,
+  JPEG 2000, TGA, OpenEXR, DNG and camera RAW), upright and colour-managed
+- Also reads formats macOS can't: SVG, PDF (pages like a multi-page image), QOI, PCX/DCX, XBM, XPM,
+  WBMP, Sun Raster and IFF/LBM (including HAM)
+- HDR photos (iPhone HEIC and JPEG, HDR AVIF, OpenEXR) show their extra brightness on HDR screens
+  (macOS 15 and later)
+- Saves and batch converts to JPEG, PNG, HEIC, AVIF, TIFF, GIF, BMP, JPEG 2000, PDF, PSD, TGA, ICO,
+  ICNS, OpenEXR, PGM, PPM, QOI and PCX
 - Lossless JPEG/HEIC/TIFF rotation
 - Batch convert, resize and rename
 - EXIF info panel; delete moves to Trash
