@@ -12,7 +12,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | # | Milestone | Plan | Status |
 |---|---|---|---|
 | 1 | Core viewer and batch | `docs/superpowers/plans/2026-10-15-featherview-v1.md` | done 2026-10-16 |
-| 2 | Viewer complete | `docs/superpowers/plans/2026-10-16-milestone-2-viewer-complete.md` | planned |
+| 2 | Viewer complete | `docs/superpowers/plans/2026-10-16-milestone-2-viewer-complete.md` | done 2026-10-16 |
 | 3 | Formats and Save As | to write after 2 | — |
 | 4 | Batch complete | to write after 3 | — |
 | 5 | WebP output | to write after 3 (independent of 4) | — |
@@ -69,6 +69,15 @@ Spec: "Formats", "Format options", ⇧⌘S Save As.
   `ImageDecoder`, each decoder unit-tested on hand-built files (fixtures generated in tests, the
   same golden-byte approach as the encoders), corrupt and truncated input included.
 - **Observe first:** option dialogs of GIF, JPEG 2000, TGA, PDF output.
+- Viewer look (maintainer, 2026-10-16): closer to the reference viewer's density while following
+  Apple's HIG and Liquid Glass. Candidates, each to accept into the spec first: a status bar
+  (dimensions, zoom %, file size, index, date), a compact toolbar, zoom % in the title, Liquid
+  Glass on the chooser, F7/F8 panel and messages (macOS 26+, material below). Clean-room: our
+  own icons, order and labels. **Observe first:** what the reference viewer's status bar shows.
+- Toolbar speed, part of the redesign: a prefetched next image takes ≈20 ms, over the 16 ms
+  budget (milestone 1: ≈12 ms). The title changes on every image and AppKit re-lays out the nine
+  SwiftUI toolbar items. Native `NSToolbarItem`s or a title outside the toolbar should fix it;
+  measure before and after. Miss accepted until then (maintainer, 2026-10-16).
 
 ## 4. Batch complete
 

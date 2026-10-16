@@ -92,7 +92,7 @@ Code shown as **Add** goes into the named type at a sensible place; **Replace** 
 text first. Line numbers aren't given because earlier tasks move them.
 
 ---
-### Task 1: Settings keys and defaults, overlay text, the P key
+### Task 1: Settings keys and defaults, overlay text, the P key — DONE (2026-10-16)
 
 **Files:**
 - Create: `Sources/FeatherviewCore/AppSettings.swift`
@@ -115,7 +115,7 @@ text first. Line numbers aren't given because earlier tasks move them.
 
 The name is `AppSettings`, not `Settings`: SwiftUI's `Settings` scene would clash in the app target.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `Tests/FeatherviewCoreTests/AppSettingsTests.swift`:
 
@@ -199,12 +199,12 @@ In `Tests/FeatherviewCoreTests/ViewerKeyTests.swift`, extend the arguments of
     @Test(arguments: [("o", ViewerKey.open), ("b", .batch), ("m", .minimize), ("p", .settings)])
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `swift test --filter 'AppSettingsTests|OverlayTemplateTests|ViewerKeyTests'`
 Expected: compile errors (`AppSettings`, `OverlayTemplate`, `.settings` not found).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `Sources/FeatherviewCore/AppSettings.swift`:
 
@@ -333,12 +333,12 @@ and to the `switch action` in `handle(_:)`:
 
 (Until Task 6 adds the Settings scene, P does nothing visible. That's expected.)
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `swift test --filter 'AppSettingsTests|OverlayTemplateTests|ViewerKeyTests' && swift build`
 Expected: all pass; the app builds.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Sources/FeatherviewCore/AppSettings.swift Sources/FeatherviewCore/OverlayTemplate.swift \
@@ -349,7 +349,7 @@ git commit -m "feat: settings keys with the spec's defaults, overlay text templa
 
 ---
 
-### Task 2: Hidden files, folder tree and the folder chooser state
+### Task 2: Hidden files, folder tree and the folder chooser state — DONE (2026-10-16)
 
 **Files:**
 - Modify: `Sources/FeatherviewCore/FolderScanner.swift`
@@ -371,7 +371,7 @@ Decided here (spec is silent): the chooser opens with its first subfolder select
 the usual next step), else the parent, else "this folder again"; after ← the folder we came from
 is selected.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `Tests/FeatherviewCoreTests/FolderScannerTests.swift`:
 
@@ -485,12 +485,12 @@ private func makeTree() throws -> URL {
 }
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `swift test --filter 'HiddenFilesTests|FolderTreeTests|FolderChooserTests'`
 Expected: compile errors (`includeHidden`, `FolderTree`, `FolderChooser` not found).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `Sources/FeatherviewCore/FolderScanner.swift`, give `images(around:)` the parameter and pass it to the listing:
 
@@ -617,12 +617,12 @@ public struct FolderChooser: Equatable, Sendable {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `swift test --filter 'FolderScannerTests|HiddenFilesTests|FolderTreeTests|FolderChooserTests|ImageListTests'`
 Expected: all pass (the milestone-1 scanner and list tests too: the default skips hidden files as before).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Sources/FeatherviewCore/FolderScanner.swift Sources/FeatherviewCore/FolderTree.swift \
@@ -633,7 +633,7 @@ git commit -m "feat: folder tree and folder chooser state, optional hidden files
 
 ---
 
-### Task 3: Sidecar files and never-overwrite move / copy
+### Task 3: Sidecar files and never-overwrite move / copy — DONE (2026-10-16)
 
 **Files:**
 - Create: `Sources/FeatherviewCore/Sidecars.swift`
@@ -647,7 +647,7 @@ git commit -m "feat: folder tree and folder chooser state, optional hidden files
   `FileMover.transfer(_ file: URL, to folder: URL, operation: FileOperation, sidecars: [URL] = []) throws -> URL`
   (`@discardableResult`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `Tests/FeatherviewCoreTests/FileMoverTests.swift`:
 
@@ -731,12 +731,12 @@ import Testing
 }
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `swift test --filter 'SidecarsTests|FileMoverTests'`
 Expected: compile errors (`Sidecars`, `FileMover` not found).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `Sources/FeatherviewCore/Sidecars.swift`:
 
@@ -821,12 +821,12 @@ public enum FileMover {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `swift test --filter 'SidecarsTests|FileMoverTests'`
 Expected: all pass. `unwritableDestinationThrowsAndKeepsTheOriginal` fails when run as root; run as the user.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Sources/FeatherviewCore/Sidecars.swift Sources/FeatherviewCore/FileMover.swift \
@@ -836,7 +836,7 @@ git commit -m "feat: move and copy with sidecar files, never overwriting"
 
 ---
 
-### Task 4: The 14 destination slots
+### Task 4: The 14 destination slots — DONE (2026-10-16)
 
 **Files:**
 - Create: `Sources/FeatherviewCore/DestinationSlots.swift`
@@ -848,7 +848,7 @@ git commit -m "feat: move and copy with sidecar files, never overwriting"
   `static slot(forKey: Character) -> Int?`, `folders: [URL?]`, `lastUsed: Int`, `subscript(slot) -> URL?`
   (get/set), `init(folders:lastUsed:)`, `init(defaults: UserDefaults)`, `save(to: UserDefaults)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `Tests/FeatherviewCoreTests/DestinationSlotsTests.swift`:
 
@@ -881,12 +881,12 @@ import Testing
 }
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `swift test --filter DestinationSlotsTests`
 Expected: compile error (`DestinationSlots` not found).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `Sources/FeatherviewCore/DestinationSlots.swift`:
 
@@ -934,12 +934,12 @@ public struct DestinationSlots: Equatable, Sendable {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `swift test --filter DestinationSlotsTests`
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Sources/FeatherviewCore/DestinationSlots.swift Tests/FeatherviewCoreTests/DestinationSlotsTests.swift
@@ -948,7 +948,7 @@ git commit -m "feat: 14 remembered destination folders picked by a single key"
 
 ---
 
-### Task 5: Pages of multi-page TIFFs
+### Task 5: Pages of multi-page TIFFs — DONE (2026-10-16)
 
 **Files:**
 - Modify: `Sources/FeatherviewCore/ImageDecoder.swift`
@@ -962,7 +962,7 @@ git commit -m "feat: 14 remembered destination folders picked by a single key"
   `ImageDecoder.decode(_:maxPixelSize:halvingSteps:page:)` with `page: Int = 0`;
   `Fixtures.writeMultiPageTIFF(to:pages:width:height:) throws -> URL` (page n is `width + n` wide).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `Fixtures` in `Tests/FeatherviewCoreTests/Fixtures.swift`:
 
@@ -1009,12 +1009,12 @@ Append to `Tests/FeatherviewCoreTests/ImageDecoderTests.swift`:
 }
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `swift test --filter PageTests`
 Expected: compile errors (`pageCount`, `page:` not found).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `Sources/FeatherviewCore/ImageDecoder.swift`: `import UniformTypeIdentifiers`; add `pageCount`; give
 `displaySize` and `decode` a `page` parameter and use it instead of index `0`:
@@ -1045,12 +1045,12 @@ In `Sources/FeatherviewCore/ImageDecoder.swift`: `import UniformTypeIdentifiers`
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, page, options as CFDictionary)
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `swift test --filter 'ImageDecoderTests|PageTests|ImageCacheTests'`
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Sources/FeatherviewCore/ImageDecoder.swift Tests/FeatherviewCoreTests/Fixtures.swift \
@@ -1059,7 +1059,7 @@ git commit -m "feat: page count and page decoding for multi-page TIFFs"
 ```
 
 ---
-### Task 6: One window per file, menus for the focused window, the Settings window
+### Task 6: One window per file, menus for the focused window, the Settings window — DONE (2026-10-16)
 
 **Files:**
 - Modify: `Sources/Featherview/FeatherviewApp.swift` (whole file below)
@@ -1099,7 +1099,7 @@ window; ⌘O with none focused uses the viewer used last, the main one at first 
 one's window closes.
 "Use Viewer's Folder" in the batch window takes the viewer used last.
 
-- [ ] **Step 0: `ViewerWindows` and `ExtraWindow` in FeatherviewCore, test first**
+- [x] **Step 0: `ViewerWindows` and `ExtraWindow` in FeatherviewCore, test first**
 
 Tests: requests before install are sent once on install (a reveal once, extras in order); requests
 after install go straight through; two `ExtraWindow`s for one URL differ, and one survives a JSON
@@ -1108,7 +1108,7 @@ Then `Sources/FeatherviewCore/ViewerWindows.swift` (see the file).
 `LastUsed` tests: starts with the fallback; closing the one used last falls back; closing another
 keeps it; views reading `current` are told when it changes. Then `Sources/FeatherviewCore/LastUsed.swift`.
 
-- [ ] **Step 1: Replace `Sources/Featherview/FeatherviewApp.swift`**
+- [x] **Step 1: Replace `Sources/Featherview/FeatherviewApp.swift`**
 
 ```swift
 import FeatherviewCore
@@ -1206,7 +1206,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 ```
 
-- [ ] **Step 2: ViewerModel: window plumbing**
+- [x] **Step 2: ViewerModel: window plumbing**
 
 Change `revealWindow`'s comment and add after it:
 
@@ -1245,7 +1245,7 @@ wrong with several windows):
     }
 ```
 
-- [ ] **Step 3: ViewerView: focused value, window, full-screen state**
+- [x] **Step 3: ViewerView: focused value, window, full-screen state**
 
 In `ViewerView`, add:
 
@@ -1337,7 +1337,7 @@ struct ViewerCommands: Commands {
 }
 ```
 
-- [ ] **Step 4: BatchView uses the last active viewer**
+- [x] **Step 4: BatchView uses the last active viewer**
 
 In `Sources/Featherview/BatchView.swift`: remove `let viewer: ViewerModel`, the
 `@Environment(\.openWindow)` line and the `.onAppear { viewer.revealWindow = … }` modifier with
@@ -1348,7 +1348,7 @@ its comment (`OpensViewerWindows` on the Batch window covers that case now). Rep
                         .disabled(ViewerModel.lastActive.current.list.isEmpty)
 ```
 
-- [ ] **Step 5: The Settings window**
+- [x] **Step 5: The Settings window**
 
 `Sources/Featherview/SettingsView.swift` (every setting from spec "Settings" except Formats; the
 tabs' controls take effect in Tasks 7–10, which read the same keys):
@@ -1505,7 +1505,7 @@ private struct OpenWithSettings: View {
 }
 ```
 
-- [ ] **Step 6: Build and check**
+- [x] **Step 6: Build and check**
 
 Run: `swift build && swift test && scripts/bundle.sh debug`
 Expected: builds, all tests pass. Then by hand: `open -a build/Featherview.app <a.jpg>` shows it in
@@ -1513,7 +1513,7 @@ the main window; `open -a build/Featherview.app <b.jpg in another folder>` opens
 with its own title and position; ⌘, and P open Settings; ⌘B and "Use Viewer's Folder" take the
 images of the window used last.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Sources/Featherview
@@ -1522,7 +1522,7 @@ git commit -m "feat: a viewer window per file from Finder, menus for the focused
 
 ---
 
-### Task 7: The image canvas: drag and arrow keys pan, Return and double-click, viewer settings
+### Task 7: The image canvas: drag and arrow keys pan, Return and double-click, viewer settings — DONE (2026-10-16)
 
 **Files:**
 - Create: `Sources/Featherview/ImageCanvas.swift`
@@ -1541,7 +1541,7 @@ double-click toggle full screen; background colour, checkerboard behind transpar
 step, remember window frame (Task 6), overlay text and hidden pointer in full screen; the toolbar
 hides in full screen (Task 10 adds the toolbar).
 
-- [ ] **Step 1: Create `Sources/Featherview/ImageCanvas.swift`**
+- [x] **Step 1: Create `Sources/Featherview/ImageCanvas.swift`**
 
 ```swift
 import AppKit
@@ -1699,7 +1699,7 @@ private final class ImageLayerView: NSView {
 }
 ```
 
-- [ ] **Step 2: ViewerView draws the canvas**
+- [x] **Step 2: ViewerView draws the canvas**
 
 Add to `ViewerView`:
 
@@ -1774,7 +1774,7 @@ Add to the body chain (after the existing error overlay):
         .toolbar(model.isFullScreen ? .hidden : .automatic, for: .windowToolbar)
 ```
 
-- [ ] **Step 3: Keys: arrows pan, Return toggles full screen**
+- [x] **Step 3: Keys: arrows pan, Return toggles full screen**
 
 In `handle(_:)`, replace the no-modifier `switch press.key` with:
 
@@ -1802,7 +1802,7 @@ In `handle(_:)`, replace the no-modifier `switch press.key` with:
 
 (and delete the separate `if modifiers.isEmpty, press.key == .deleteForward` block above it).
 
-- [ ] **Step 4: Zoom step from Settings**
+- [x] **Step 4: Zoom step from Settings**
 
 In `ViewerModel`, replace `zoomIn()` / `zoomOut()`:
 
@@ -1813,7 +1813,7 @@ In `ViewerModel`, replace `zoomIn()` / `zoomOut()`:
     func zoomOut() { stepZoom(by: 1 / zoomMultiplier) }
 ```
 
-- [ ] **Step 5: Build and check**
+- [x] **Step 5: Build and check**
 
 Run: `swift build && swift test && scripts/bundle.sh debug`
 Expected: builds, tests pass. By hand on a 4000×3000 JPEG: `1` then drag → the image follows the
@@ -1822,7 +1822,7 @@ double-click toggle full screen; a small image sits centred; a transparent PNG s
 checkerboard; Settings › Viewer background colour applies at once; full screen with "Show text"
 shows the overlay; the pointer hides when the image changes in full screen.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Sources/Featherview
@@ -1830,7 +1830,7 @@ git commit -m "feat: drag and arrow keys pan, Return toggles full screen, viewer
 ```
 
 ---
-### Task 8: Past the end of a folder, folders without images, pages, hidden files
+### Task 8: Past the end of a folder, folders without images, pages, hidden files — DONE (2026-10-16)
 
 **Files:**
 - Create: `Sources/Featherview/FolderChooserView.swift`
@@ -1851,7 +1851,7 @@ appear as they're counted. A folder without images shows "No images in <folder>"
 open the chooser. ⌥→ / ⌥← step pages of a multi-page TIFF; the title shows
 `name — page 2 / 3 — 3 / 120`; every file opens on page 1.
 
-- [ ] **Step 1: ViewerModel state**
+- [x] **Step 1: ViewerModel state**
 
 Add after `emptyFolder`:
 
@@ -1881,7 +1881,7 @@ Replace `title`:
     var folder: URL? { list.current?.deletingLastPathComponent() ?? emptyFolder }
 ```
 
-- [ ] **Step 2: open() resets the chooser, honours hidden files, notices empty folders**
+- [x] **Step 2: open() resets the chooser, honours hidden files, notices empty folders**
 
 In `open(_:)`, after `isOpening = true`:
 
@@ -1903,7 +1903,7 @@ pass it to the scanner, and remember an empty folder:
                     show()
 ```
 
-- [ ] **Step 3: Past the end, the chooser, pages**
+- [x] **Step 3: Past the end, the chooser, pages**
 
 Replace `next()` / `previous()` (and the "Milestone 2" comment above them):
 
@@ -1974,7 +1974,7 @@ the page shown:
             let size = await Task.detached { ImageDecoder.displaySize(of: url, page: page) }.value
 ```
 
-- [ ] **Step 4: show(page:) decodes pages and counts them**
+- [x] **Step 4: show(page:) decodes pages and counts them**
 
 Change the signature and start of `show()`:
 
@@ -2014,7 +2014,7 @@ Replace the decode in the load task:
 In its `catch`, add `pageCount = 1` after `image = nil`; prefetch only for page 0:
 `if let size, page == 0 { await cache.prefetch(neighbors, maxPixelSize: size) }`.
 
-- [ ] **Step 5: The chooser view and its keys**
+- [x] **Step 5: The chooser view and its keys**
 
 `Sources/Featherview/FolderChooserView.swift`:
 
@@ -2141,7 +2141,7 @@ Add to the "Image" menu in `ViewerCommands`, after Previous:
 In `AppDelegate.openDocuments` (Task 6) the main window counts as busy when it shows an empty
 folder: the condition already reads `viewer.emptyFolder == nil`.
 
-- [ ] **Step 6: Build and check**
+- [x] **Step 6: Build and check**
 
 Run: `swift build && swift test && scripts/bundle.sh debug`
 Expected: builds, tests pass. By hand, with a tree like `root/{a (2 images), b_empty, c/sub}`:
@@ -2152,7 +2152,7 @@ folders. Settings › Browsing "Start this folder again" loops, "Stop" does noth
 (make one with `Fixtures.writeMultiPageTIFF`'s code or Preview) steps with ⌥→ / ⌥← and the title shows the page;
 an animated GIF shows no page. "Show hidden files" lists dot-files after reopening the folder.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Sources/Featherview
@@ -2161,7 +2161,7 @@ git commit -m "feat: folder chooser past either end, empty folders, multi-page T
 
 ---
 
-### Task 9: F7 / F8 move and copy, sidecars, what shows after a removal
+### Task 9: F7 / F8 move and copy, sidecars, what shows after a removal — DONE (2026-10-16)
 
 **Files:**
 - Create: `Sources/Featherview/DestinationPanel.swift`
@@ -2182,7 +2182,7 @@ is; a move — and Move to Trash — removes the file from the list and shows th
 "show the next image" off keeps the removed image on screen until the next key. "Ask before each
 move or copy" confirms first.
 
-- [ ] **Step 1: ViewerModel state and removal**
+- [x] **Step 1: ViewerModel state and removal**
 
 Add:
 
@@ -2248,7 +2248,7 @@ Replace the `do { … }` body in `moveCurrentToTrash()`:
             } catch {
 ```
 
-- [ ] **Step 2: ViewerModel move / copy**
+- [x] **Step 2: ViewerModel move / copy**
 
 ```swift
     func showDestinations(_ operation: FileOperation) {
@@ -2309,7 +2309,7 @@ Replace the `do { … }` body in `moveCurrentToTrash()`:
 
 The move runs on `rotateTask`'s queue, like Trash, so a rotation still writing the file finishes first.
 
-- [ ] **Step 3: The panel and its keys**
+- [x] **Step 3: The panel and its keys**
 
 `Sources/Featherview/DestinationPanel.swift`:
 
@@ -2414,7 +2414,7 @@ Add to the "Image" menu, before Move to Trash:
             Button("Copy to Folder…  (F8)") { model?.showDestinations(.copy) }
 ```
 
-- [ ] **Step 4: Build and check**
+- [x] **Step 4: Build and check**
 
 Run: `swift build && swift test && scripts/bundle.sh debug`
 Expected: builds, tests pass. By hand: F7, `1` on an empty slot asks for a folder, then the image
@@ -2423,7 +2423,7 @@ image with the same name arrives as `name 2.jpg`; `IMG.xmp` travels with `IMG.jp
 the viewer stays; a read-only destination says "Couldn't move …" and the file stays; "Ask before"
 confirms; "show the next image" off keeps the moved image until →.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Sources/Featherview
@@ -2432,7 +2432,7 @@ git commit -m "feat: F7 / F8 move and copy to 14 remembered folders, with sideca
 
 ---
 
-### Task 10: Toolbar, context menu, ⌘C, Show in Finder, Open With
+### Task 10: Toolbar, context menu, ⌘C, Show in Finder, Open With — DONE (2026-10-16)
 
 **Files:**
 - Create: `Sources/Featherview/ViewerToolbar.swift`
@@ -2451,7 +2451,7 @@ opens Copy, Rotate, Move / Copy to Folder, Move to Trash, Show in Finder, Open W
 image at full resolution, upright; in other windows ⌘C / ⌘X / ⌘V / ⌘A keep working in text fields.
 ⌥1–⌥3 open the file in the apps set in Settings.
 
-- [ ] **Step 1: ViewerModel actions**
+- [x] **Step 1: ViewerModel actions**
 
 ```swift
     /// ⌘C: the current image at full resolution, upright, decoded off the main thread.
@@ -2485,7 +2485,7 @@ image at full resolution, upright; in other windows ⌘C / ⌘X / ⌘V / ⌘A ke
     }
 ```
 
-- [ ] **Step 2: Toolbar**
+- [x] **Step 2: Toolbar**
 
 `Sources/Featherview/ViewerToolbar.swift`:
 
@@ -2544,7 +2544,7 @@ In `ViewerView.body`, before the `.toolbar(… for: .windowToolbar)` line from T
         .toolbar(id: "viewer") { ViewerToolbar(model: model) }
 ```
 
-- [ ] **Step 3: Context menu and Open With menu**
+- [x] **Step 3: Context menu and Open With menu**
 
 On the canvas in `ViewerView.body`:
 
@@ -2597,7 +2597,7 @@ If Task 11 finds that a right-click over the canvas doesn't open the menu (AppKi
 before SwiftUI), set the menu in AppKit instead: override `menu(for:)` in `ImageLayerView` and build
 an `NSMenu` from the same actions, passed in through `ImageCanvas` like `onDoubleClick`.
 
-- [ ] **Step 4: Menus: Copy, Show in Finder, Open With**
+- [x] **Step 4: Menus: Copy, Show in Finder, Open With**
 
 In `ViewerCommands.body`, add the pasteboard group (it replaces the standard one so ⌘C copies the
 image in a viewer; elsewhere every item sends the standard action down the responder chain):
@@ -2625,7 +2625,7 @@ and to the "Image" menu, after Move to Trash:
             OpenWithMenu(model: model)
 ```
 
-- [ ] **Step 5: Build and check**
+- [x] **Step 5: Build and check**
 
 Run: `swift build && swift test && scripts/bundle.sh debug`
 Expected: builds, tests pass. By hand: toolbar buttons work, page buttons appear on a 3-page TIFF
@@ -2634,7 +2634,7 @@ Hide Toolbar is remembered; right-click shows the menu and each item works; ⌘C
 › New from Clipboard shows the full-size upright image; ⌘C / ⌘V in the batch window's pattern field
 copy and paste text; ⌥1 opens the file in the app set in Settings › Open With.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Sources/Featherview
@@ -2643,7 +2643,7 @@ git commit -m "feat: toolbar, context menu, copy image, Show in Finder, Open Wit
 
 ---
 
-### Task 11: Manual QA against the spec and the performance budgets
+### Task 11: Manual QA against the spec and the performance budgets — DONE (2026-10-16)
 
 **Files:** `docs/roadmap.md`, this plan (status), `docs/spec.md` only if the maintainer changes a
 decision.
@@ -2651,23 +2651,34 @@ decision.
 Run with the maintainer (the `run-featherview` skill covers building, sample folders and timings;
 measure with a release build, `scripts/bundle.sh`).
 
-- [ ] **Step 1:** Every "Build and check" list of Tasks 6–10 again on the release build.
-- [ ] **Step 2:** Budgets (`AGENTS.md`): cold launch with a 12 MP JPEG < 350 ms; prefetched next
+- [x] **Step 1:** Every "Build and check" list of Tasks 6–10 again on the release build.
+- [x] **Step 2:** Budgets (`AGENTS.md`): cold launch with a 12 MP JPEG < 350 ms; prefetched next
   < 16 ms; not prefetched < 150 ms; 10,000-file folder < 500 ms to first image. Compare with
   milestone 1's numbers (320 ms, 9 ms, 314 ms); a regression is a bug. The AppKit canvas is the
   likeliest cause if swap times grow: check with Instruments (Time Profiler).
-- [ ] **Step 3:** Memory while browsing stays bounded (Activity Monitor, 100 images forward and back).
-- [ ] **Step 4:** Folder chooser on a folder with 1,000 subfolders and on `/`: appears at once,
+- [x] **Step 3:** Memory while browsing stays bounded (Activity Monitor, 100 images forward and back).
+- [x] **Step 4:** Folder chooser on a folder with 1,000 subfolders and on `/`: appears at once,
   counts fill in, keys stay responsive.
-- [ ] **Step 5:** Two windows on the same folder: trash an image in one; in the other, reaching it
+- [x] **Step 5:** Two windows on the same folder: trash an image in one; in the other, reaching it
   says "Can't open <name>" and browsing continues.
-- [ ] **Step 6:** Launch by opening three files from Finder at once: three windows, each on its file.
-- [ ] **Step 7:** Batch window: ⌘C, ⌘X, ⌘V, ⌘A in the rename pattern field act on the text; R, L,
+- [x] **Step 6:** Launch by opening three files from Finder at once: three windows, each on its file.
+- [x] **Step 7:** Batch window: ⌘C, ⌘X, ⌘V, ⌘A in the rename pattern field act on the text; R, L,
   F, space typed there go into the field, not to a viewer.
-- [ ] **Step 8:** Settings window: same for the overlay text field; every setting takes effect
+- [x] **Step 8:** Settings window: same for the overlay text field; every setting takes effect
   without a relaunch (folder-related ones on the next folder opened).
-- [ ] **Step 8b:** Info panel: select a value, ⌘C, paste in TextEdit → the text, not the image.
+- [x] **Step 8b:** Info panel: select a value, ⌘C, paste in TextEdit → the text, not the image.
   Click the image → single keys (→, R, I) work again, and ⌘C copies the image.
-- [ ] **Step 9:** Right-to-left check is milestone 6; skip.
-- [ ] **Step 10:** Mark this plan done and milestone 2 done in `docs/roadmap.md`; commit
+- [x] **Step 9:** Right-to-left check is milestone 6; skip.
+- [x] **Step 10:** Mark this plan done and milestone 2 done in `docs/roadmap.md`; commit
   `docs: milestone 2 done after manual QA`.
+
+**QA result (2026-10-16, release build, same Mac and method as a re-measured milestone 1):**
+launch to first image ≈310 ms (milestone 1 ≈330 ms); next image not prefetched 62 ms; 10,000-file
+folder 314–344 ms; memory flat at 831 MB over three rounds of 100 12 MP images (issue #1);
+prefetched next ≈20 ms (milestone 1 ≈12 ms) — **over the 16 ms budget**. Cause: the window
+title changes on every image and AppKit re-lays out the nine SwiftUI toolbar items (+6–7 ms).
+The maintainer accepted the miss until the toolbar redesign (roadmap, milestone 3). QA fixed
+seven bugs (fit size at launch, empty title bar in full screen, unreadable messages, clipped
+Settings, missing Hide/Customize Toolbar, unbounded folder chooser, toolbar delaying launch by
+~100 ms). Known, accepted: a window keeps showing its cached copy of a file trashed in another
+window on the same folder.
