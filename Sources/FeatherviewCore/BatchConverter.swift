@@ -77,14 +77,31 @@ public enum BatchConverter {
         var target = output
         // shortcut: no 255-byte trim on the retry names, so a near-limit name fails instead; trim if anyone hits it.
         for counter in 2...10_000 {
-            if renamex_np(temp.path, target.path, UInt32(RENAME_EXCL)) == 0 {
-                return BatchResult(input: input, output: target, error: nil)
-            }
-            guard errno == EEXIST else { break }
+            let err = moveExclusive(temp.path, target.path)
+            if err == 0 { return BatchResult(input: input, output: target, error: nil) }
+            guard err == EEXIST else { break }
             target = output.deletingLastPathComponent().appendingPathComponent("\(base) \(counter)")
                 .appendingPathExtension(output.pathExtension)
         }
         return BatchResult(input: input, output: output, error: "Writing failed")
+    }
+
+    /// Moves `from` to `to` without replacing anything; returns 0 or an errno. `renameExcl` is a seam for tests.
+    static func moveExclusive(
+        _ from: String, _ to: String,
+        renameExcl: (String, String) -> Int32 = { renamex_np($0, $1, UInt32(RENAME_EXCL)) == 0 ? 0 : errno }
+    ) -> Int32 {
+        let err = renameExcl(from, to)
+        guard err == ENOTSUP || err == EINVAL else { return err }
+        // exFAT and some shares lack RENAME_EXCL (and hard links): claim the name with an exclusive
+        // create, then rename over our own empty placeholder.
+        let fd = open(to, O_CREAT | O_EXCL | O_WRONLY, 0o644)
+        guard fd >= 0 else { return errno }
+        close(fd)
+        if rename(from, to) == 0 { return 0 }
+        let renameErr = errno
+        unlink(to)
+        return renameErr
     }
 
     /// Keeps TIFF (camera make/model), EXIF, GPS and IPTC; drops what no longer matches the new pixels.

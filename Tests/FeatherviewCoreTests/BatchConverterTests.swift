@@ -110,6 +110,20 @@ import Testing
         #expect(!labels.all.contains { $0.contains("cooperative") })
     }
 
+    // exFAT (camera cards, USB sticks) answers RENAME_EXCL with ENOTSUP.
+    @Test func movesWithoutRenameExclWhereTheVolumeLacksIt() throws {
+        let dir = try Fixtures.makeTempDir()
+        let temp = dir.appendingPathComponent("a.tmp"), target = dir.appendingPathComponent("a.png")
+        try Data("new".utf8).write(to: temp)
+        #expect(BatchConverter.moveExclusive(temp.path, target.path) { _, _ in ENOTSUP } == 0)
+        #expect(try Data(contentsOf: target) == Data("new".utf8))
+        #expect(!FileManager.default.fileExists(atPath: temp.path))
+
+        try Data("new".utf8).write(to: temp)
+        #expect(BatchConverter.moveExclusive(temp.path, target.path) { _, _ in ENOTSUP } == EEXIST)
+        #expect(try Data(contentsOf: target) == Data("new".utf8))  // existing file untouched
+    }
+
     final class Labels: @unchecked Sendable {
         private let lock = NSLock()
         private var values: [String] = []
