@@ -2,7 +2,8 @@ import Foundation
 
 public enum FolderScanner {
     /// Decodable images next to `url` (or inside it, if it is a folder), in Finder order.
-    public static func images(around url: URL) throws -> [URL] {
+    /// Hidden files are skipped unless `includeHidden` (Settings › Browsing).
+    public static func images(around url: URL, includeHidden: Bool = false) throws -> [URL] {
         let resolved = url.resolvingSymlinksInPath()
         let isFolder = (try? resolved.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
         let folder = isFolder ? resolved : url.deletingLastPathComponent()
@@ -10,7 +11,7 @@ public enum FolderScanner {
         do {
             items = try FileManager.default.contentsOfDirectory(
                 at: folder, includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey],
-                options: [.skipsHiddenFiles])
+                options: includeHidden ? [] : [.skipsHiddenFiles])
         } catch where !isFolder && FileManager.default.isReadableFile(atPath: url.path) {
             return [url]  // folder not listable (permissions, privacy prompt denied): show just this file
         }
