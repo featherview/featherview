@@ -49,7 +49,7 @@ public enum OwnDecoders {
     static let builtIn: [OwnFormat] = [
         // Task 2
         // Task 3
-        // Task 4
+        SunRasterDecoder.format, ILBMDecoder.format,
         // Task 5
     ]
 
