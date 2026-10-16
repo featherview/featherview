@@ -41,6 +41,21 @@ import UniformTypeIdentifiers
         #expect(ImageDecoder.decodeSize(full: full, target: target) == expected)
     }
 
+    /// Core Animation colour-converts an image on the main thread when it's first shown (≈18 ms for
+    /// 12 MP); a display decode in the screen's colour space skips that.
+    @Test func displayDecodeComesInTheScreensColorSpace() async throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("s.jpg"), width: 40, height: 20)
+        let p3 = CGColorSpace(name: CGColorSpace.displayP3)!
+        let image = try ImageDecoder.decode(url, maxPixelSize: 40, halvingSteps: true, colorSpace: p3)
+        #expect(image.colorSpace?.name == CGColorSpace.displayP3)
+        #expect(image.width == 40)
+        let cache = ImageCache(capacity: 1, colorSpace: p3)
+        #expect(try await cache.image(for: url, maxPixelSize: 40).colorSpace?.name == CGColorSpace.displayP3)
+        // Batch and Save As keep the file's colour space.
+        #expect(try ImageDecoder.decode(url).colorSpace?.name == CGColorSpace.sRGB)
+    }
+
     @Test func neverUpscales() throws {
         let dir = try Fixtures.makeTempDir()
         let url = try Fixtures.writeImage(to: dir.appendingPathComponent("s.jpg"), width: 40, height: 20)

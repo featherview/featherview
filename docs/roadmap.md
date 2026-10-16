@@ -80,16 +80,16 @@ Spec: "Formats", "Format options", ⇧⌘S Save As.
   (dimensions, zoom %, file size, index, date), a compact toolbar, zoom % in the title, Liquid
   Glass on the chooser, F7/F8 panel and messages (macOS 26+, material below). Clean-room: our
   own icons, order and labels. Status bar and Liquid Glass decided 2026-10-16 (spec "Viewer").
-- Swap speed (measured 2026-10-16, milestone 3 Task 15): a prefetched next image still misses the
-  16 ms budget, but the toolbar isn't why. 20 12 MP JPEGs, auto-advance every 150 ms, release
-  build: `show` median 15.0 ms / p90 26.0 before the status bar, 16.7 / 26.4 after. Sampling the
-  main thread: toolbar item layout and the title setter take < 1 ms per swap; Core Animation
-  colour-converting each new image when it is first committed (`CA::Render::prepare_image`) takes
-  ≈18 ms. Next step: hand the canvas images already in the display's colour space (convert off
-  the main thread when decoding or prefetching), then measure again. Setting `window.title`
+- Swap speed (measured 2026-10-16, milestone 3 Task 15): a prefetched next image is back under the
+  16 ms budget. The toolbar wasn't why. 80 12 MP JPEGs, auto-advance every 150 ms, release build,
+  time from the key to the main thread going idle after the frame is committed: median 64 ms /
+  p90 115 before, 11 / 12 after. Two causes, both fixed: Core Animation colour-converted each new
+  image on the main thread (`CA::Render::prepare_image`; display decodes now come in the screen's
+  colour space, converted off the main thread), and awaiting the cache actor drew a frame with the
+  new position before the image (prefetched images now swap in synchronously). The `show … ms` log
+  line reads 0 ms for a prefetched swap now; it never counted the commit. Setting `window.title`
   directly instead of `.navigationTitle` doesn't work: SwiftUI puts the scene title back on its
-  next update. The maintainer accepted the earlier, toolbar-based miss (≈20 ms) on
-  2026-10-16; this cause and next step aren't accepted yet.
+  next update.
 
 ## 4. Batch complete
 

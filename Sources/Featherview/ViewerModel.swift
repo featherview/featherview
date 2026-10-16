@@ -24,6 +24,9 @@ final class ViewerModel {
     private(set) var fileInfo: FileInfo?
     /// Page-0 reads for the image shown and its prefetched neighbours, so a swap sets the info with the image.
     @ObservationIgnored private var knownInfo: [URL: FileInfo] = [:]
+    /// Fit-size decodes of the image shown and its neighbours, also in `cache`: one swaps in with the
+    /// position, in one update. Awaiting the cache actor would draw a frame in between (≈15 ms).
+    @ObservationIgnored private var ready: [URL: CGImage] = [:]
     var fileValues: (url: URL, values: [String: String])? { fileInfo.map { ($0.url, $0.values) } }
 
     /// The scale the image is shown at, from its full pixel size (not the screen-size decode).
@@ -93,9 +96,13 @@ final class ViewerModel {
     private let screenPixels = Int(NSScreen.screens
         .map { max($0.frame.width, $0.frame.height) * $0.backingScaleFactor }
         .max() ?? 2560)
-    private let cache = ImageCache(capacity: 8)
+    /// Display decodes come in it, so Core Animation doesn't colour-convert each image on the main thread.
+    /// shortcut: the main screen's at launch; on another display CA converts again (slower, and clipped to the first
+    /// display's gamut), follow the window's screen if people browse on two displays.
+    private static let screenSpace = NSScreen.main?.colorSpace?.cgColorSpace
+    private let cache = ImageCache(capacity: 8, colorSpace: screenSpace)
     /// Full-size decodes for zoom: one kept, and ones nobody waits for any more are skipped.
-    private let fullSizeCache = ImageCache(capacity: 1)
+    private let fullSizeCache = ImageCache(capacity: 1, colorSpace: screenSpace)
     private var loadTask: Task<Void, Never>?
     /// The page decode running, if any: ImageIO can't stop one, so the next waits for it (see show).
     private var pageDecode: Task<CGImage, Error>?
@@ -152,6 +159,7 @@ final class ViewerModel {
         openedFolder = isFolder ? url : url.deletingLastPathComponent()
         // Off the main actor: at launch the main thread is busy building the window, the decode needn't wait.
         let prefetch = isFolder || zoom != .fit ? nil : screenPixels
+        ready = [:]
         let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache] in
             await cache.removeAll()
             await fullSizeCache.removeAll()
@@ -290,17 +298,22 @@ final class ViewerModel {
         let size: Int? = zoom == .fit ? screenPixels : nil
         let neighbors = list.neighbors(radius: 2)
         let started = ContinuousClock.now
+        let prefetched = page == 0 && size != nil ? ready[url] : nil
+        if let prefetched { shown(prefetched, url: url, page: page, started: started) }
         loadTask = Task {
             do {
                 let decoded: CGImage
-                if page > 0 {
+                if let prefetched {
+                    decoded = prefetched
+                } else if page > 0 {
                     // shortcut: pages after the first aren't cached or prefetched; cache them if people browse long TIFFs.
                     // One at a time, and one superseded while it waits is skipped: holding ⌥→ on a big TIFF
                     // would otherwise run a full-size decode per key press at once.
                     _ = await pageDecode?.result
                     guard !Task.isCancelled else { return }
+                    let space = Self.screenSpace
                     let decode = Task.detached(priority: .userInitiated) {
-                        try ImageDecoder.decode(url, maxPixelSize: size, halvingSteps: true, page: page)
+                        try ImageDecoder.decode(url, maxPixelSize: size, halvingSteps: true, page: page, colorSpace: space)
                     }
                     pageDecode = decode
                     // A finished decode would otherwise keep its page in memory, outside both caches.
@@ -312,19 +325,7 @@ final class ViewerModel {
                         : try await cache.image(for: url, maxPixelSize: size)
                 }
                 guard !Task.isCancelled else { return }
-                // In the same update as the image: the status bar would otherwise draw without size and date first.
-                if page == 0, let known = knownInfo[url], known != fileInfo { fileInfo = known }
-                image = decoded
-                errorMessage = nil
-                let elapsed = started.duration(to: .now).components
-                let ms = elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000
-                Self.log.debug("show \(url.lastPathComponent, privacy: .public): \(ms) ms")
-                if !loggedLaunch, let start = Self.processStart {
-                    loggedLaunch = true
-                    // shortcut: measured when the image is set, the frame that draws it follows (~1 frame), fine for budgets.
-                    let launchMs = Int(Date().timeIntervalSince(start) * 1000)
-                    Self.log.debug("first image \(launchMs) ms after launch")
-                }
+                if prefetched == nil { shown(decoded, url: url, page: page, started: started) }
                 // Read again on every show: a rotation changes both size and date. Not awaited, so the
                 // prefetch below doesn't wait for another file read (slow on network or USB disks).
                 Task {
@@ -350,12 +351,38 @@ final class ViewerModel {
                 await cache.prefetch(neighbors, maxPixelSize: size)
                 let wanted = Set(neighbors + [url])
                 knownInfo = knownInfo.filter { wanted.contains($0.key) }
-                for neighbor in neighbors where knownInfo[neighbor] == nil {
-                    let info = await Task.detached { FileInfo.read(url: neighbor, page: 0) }.value
+                ready = ready.filter { wanted.contains($0.key) }
+                if let image, list.current == url { ready[url] = image }
+                for neighbor in neighbors {
+                    if ready[neighbor] == nil, let decoded = try? await cache.image(for: neighbor, maxPixelSize: size) {
+                        guard !Task.isCancelled else { return }
+                        ready[neighbor] = decoded
+                    }
                     guard !Task.isCancelled else { return }
-                    knownInfo[neighbor] = info
+                    if knownInfo[neighbor] == nil {
+                        let info = await Task.detached { FileInfo.read(url: neighbor, page: 0) }.value
+                        guard !Task.isCancelled else { return }
+                        knownInfo[neighbor] = info
+                    }
                 }
             }
+        }
+    }
+
+    /// Puts a decoded image on screen with its file info, in the same update: the status bar would
+    /// otherwise draw without size and date first.
+    private func shown(_ decoded: CGImage, url: URL, page: Int, started: ContinuousClock.Instant) {
+        if page == 0, let known = knownInfo[url], known != fileInfo { fileInfo = known }
+        image = decoded
+        errorMessage = nil
+        let elapsed = started.duration(to: .now).components
+        let ms = elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000
+        Self.log.debug("show \(url.lastPathComponent, privacy: .public): \(ms) ms")
+        if !loggedLaunch, let start = Self.processStart {
+            loggedLaunch = true
+            // shortcut: measured when the image is set, the frame that draws it follows (~1 frame), fine for budgets.
+            let launchMs = Int(Date().timeIntervalSince(start) * 1000)
+            Self.log.debug("first image \(launchMs) ms after launch")
         }
     }
 
@@ -398,6 +425,7 @@ final class ViewerModel {
     /// After Trash or a move: the image leaves the list. With "show the next image" on (default) the
     /// next one shows; off, the removed image stays until the next key, which then shows the one after it.
     private func removeFromList(_ url: URL) async {
+        ready[url] = nil
         await cache.remove(url)
         await fullSizeCache.remove(url)
         let wasCurrent = list.current == url
@@ -482,6 +510,7 @@ final class ViewerModel {
                 await cache.remove(url)
                 await fullSizeCache.remove(url)
                 knownInfo[url] = nil
+                ready[url] = nil
                 fileRevision += 1
                 if list.current == url { show(page: self.page) }
             } catch RotateError.notFirstPage {
