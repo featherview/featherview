@@ -70,6 +70,23 @@ import Testing
         #expect(rgb(image, 1, 0) == [160, 161, 162, 255])
     }
 
+    @Test func versionThreeUsesTheDefaultEGAPalette() throws {
+        // Version 3 has no palette in the header (it's zero): indices are the standard 16 EGA colours.
+        var nibbles = header(bitsPerPixel: 4, planes: 1, width: 4, height: 1, bytesPerLine: 2)
+        nibbles[1] = 3; nibbles[2] = 0
+        nibbles += [0x16, 0xF9]  // indices 1, 6, 15, 9
+        let image = try PCXCodec.decode(Data(nibbles))
+        #expect(rgb(image, 0, 0) == [0, 0, 170, 255])
+        #expect(rgb(image, 1, 0) == [170, 85, 0, 255])
+        #expect(rgb(image, 2, 0) == [255, 255, 255, 255])
+        #expect(rgb(image, 3, 0) == [85, 85, 255, 255])
+
+        var planar = header(bitsPerPixel: 1, planes: 4, width: 1, height: 1, bytesPerLine: 2)
+        planar[1] = 3; planar[2] = 0
+        planar += [0x80, 0, 0, 0, 0x80, 0, 0, 0]  // index 5 (planes 0 and 2)
+        #expect(rgb(try PCXCodec.decode(Data(planar)), 0, 0) == [170, 0, 170, 255])
+    }
+
     @Test func thirtyTwoBitFromFourPlanes() throws {
         // Planes R [10 20] G [30 40] B [50 60] A [255 128]; 255 needs a run of one.
         let data = header(bitsPerPixel: 8, planes: 4, width: 2, height: 1, bytesPerLine: 2)

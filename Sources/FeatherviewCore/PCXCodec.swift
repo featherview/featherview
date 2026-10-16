@@ -19,15 +19,25 @@ public enum PCXCodec {
         let ega: [UInt8]
     }
 
+    /// The 16 standard EGA colours: 0xAA for a set colour bit, 0x55 for the intensity bit, colour 6 brown.
+    private static let defaultEGA: [UInt8] = [
+        0x00, 0x00, 0x00, 0x00, 0x00, 0xAA, 0x00, 0xAA, 0x00, 0x00, 0xAA, 0xAA,
+        0xAA, 0x00, 0x00, 0xAA, 0x00, 0xAA, 0xAA, 0x55, 0x00, 0xAA, 0xAA, 0xAA,
+        0x55, 0x55, 0x55, 0x55, 0x55, 0xFF, 0x55, 0xFF, 0x55, 0x55, 0xFF, 0xFF,
+        0xFF, 0x55, 0x55, 0xFF, 0x55, 0xFF, 0xFF, 0xFF, 0x55, 0xFF, 0xFF, 0xFF,
+    ]
+
     private static func header(_ bytes: [UInt8]) throws -> Header {
         var reader = ByteReader(bytes)
         guard try reader.u8() == 0x0A else { throw OwnDecodeError.notThisFormat }
-        try reader.skip(1)  // version: the fields we read mean the same in all of them
+        let version = try reader.u8()  // the fields we read mean the same in all versions, bar the palette
         let encoding = try reader.u8()
         let bitsPerPixel = Int(try reader.u8())
         let xMin = try reader.u16le(), yMin = try reader.u16le(), xMax = try reader.u16le(), yMax = try reader.u16le()
         try reader.skip(4)  // dpi
-        let ega = Array(try reader.take(48))
+        // Version 3 (Paintbrush 2.8 without palette) leaves the header palette undefined: use the default EGA one.
+        let headerPalette = Array(try reader.take(48))
+        let ega = version == 3 ? defaultEGA : headerPalette
         try reader.skip(1)
         let planes = Int(try reader.u8())
         let bytesPerLine = try reader.u16le()
