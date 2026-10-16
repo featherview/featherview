@@ -71,6 +71,20 @@ import Testing
         #expect(try FolderScanner.images(around: dir).count == 1)
     }
 
+    @Test func folderDifferingOnlyInCaseIsAnotherFolderOnCaseSensitiveVolumes() throws {
+        let volume = try CaseSensitiveVolume()
+        defer { volume.detach() }
+        let pics = volume.root.appendingPathComponent("Pics")
+        try FileManager.default.createDirectory(at: pics, withIntermediateDirectories: true)
+        let image = try Fixtures.writeImage(to: pics.appendingPathComponent("a.jpg"), width: 4, height: 4)
+        let lower = volume.root.appendingPathComponent("pics")
+
+        let moved = try FileMover.transfer(image, to: lower, operation: .move)
+        #expect(moved.path == lower.appendingPathComponent("a.jpg").path)
+        #expect(FileManager.default.fileExists(atPath: moved.path))
+        #expect(!FileManager.default.fileExists(atPath: image.path))
+    }
+
     @Test func unwritableDestinationThrowsAndKeepsTheOriginal() throws {
         let dir = try Fixtures.makeTempDir()
         let image = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 4, height: 4)
@@ -81,5 +95,33 @@ import Testing
 
         #expect(throws: (any Error).self) { try FileMover.transfer(image, to: locked, operation: .move) }
         #expect(FileManager.default.fileExists(atPath: image.path))
+    }
+}
+
+/// A small case-sensitive APFS disk image, mounted privately for one test.
+private struct CaseSensitiveVolume {
+    let image: URL
+    let root: URL
+
+    init() throws {
+        let dir = try Fixtures.makeTempDir()
+        image = dir.appendingPathComponent("cs.dmg")
+        root = dir.appendingPathComponent("mnt")
+        try Self.hdiutil(["create", "-size", "8m", "-fs", "Case-sensitive APFS", "-volname", "FVTest", image.path])
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Self.hdiutil(["attach", "-nobrowse", "-mountpoint", root.path, image.path])
+    }
+
+    func detach() { try? Self.hdiutil(["detach", "-force", root.path]) }
+
+    private static func hdiutil(_ arguments: [String]) throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
+        process.arguments = arguments
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { throw CocoaError(.fileWriteUnknown) }
     }
 }

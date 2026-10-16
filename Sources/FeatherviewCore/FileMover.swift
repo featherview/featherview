@@ -13,7 +13,7 @@ public enum FileMover {
     public static func transfer(_ file: URL, to folder: URL, operation: FileOperation,
                                 sidecars: [URL] = []) throws -> URL {
         let manager = FileManager.default
-        if operation == .move, pathKey(folder) == pathKey(file.deletingLastPathComponent()) { return file }
+        if operation == .move, sameItem(folder, file.deletingLastPathComponent()) { return file }
         try manager.createDirectory(at: folder, withIntermediateDirectories: true)
         let stem = freeStem(for: file, sidecars: sidecars, in: folder)
         let target = folder.appendingPathComponent(name(stem, file.pathExtension))
@@ -46,6 +46,14 @@ public enum FileMover {
             if !taken { return stem }
             number += 1
         }
+    }
+
+    /// Asks the volume, so `Pics` and `pics` are one folder only where the volume ignores case.
+    static func sameItem(_ a: URL, _ b: URL) -> Bool {
+        let key: Set<URLResourceKey> = [.fileResourceIdentifierKey]
+        guard let x = try? a.resourceValues(forKeys: key).fileResourceIdentifier,
+              let y = try? b.resourceValues(forKeys: key).fileResourceIdentifier else { return false }
+        return x.isEqual(y)
     }
 
     private static func name(_ stem: String, _ ext: String) -> String {
