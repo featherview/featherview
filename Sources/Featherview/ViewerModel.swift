@@ -457,4 +457,34 @@ final class ViewerModel {
     func toggleFullScreen() {
         window?.toggleFullScreen(nil)
     }
+
+    /// ⌘C: the current image at full resolution, upright, decoded off the main thread.
+    func copyImage() {
+        guard let url = list.current else { return }
+        let page = page
+        Task {
+            do {
+                let image = try await Task.detached(priority: .userInitiated) {
+                    try ImageDecoder.decode(url, page: page)
+                }.value
+                let pasteboard = NSPasteboard.general
+                pasteboard.clearContents()
+                pasteboard.writeObjects([NSImage(cgImage: image, size: .zero)])
+            } catch {
+                errorMessage = "Couldn't copy \(url.lastPathComponent)"
+            }
+        }
+    }
+
+    /// ⌥1–⌥3: opens the current file in the app set in Settings › Open With.
+    func openWith(_ index: Int) {
+        let path = AppSettings.openWith[index].value()
+        guard let url = list.current, !path.isEmpty else { return }
+        NSWorkspace.shared.open([url], withApplicationAt: URL(fileURLWithPath: path),
+                                configuration: NSWorkspace.OpenConfiguration())
+    }
+
+    func showInFinder() {
+        if let url = list.current { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+    }
 }

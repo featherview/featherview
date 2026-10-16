@@ -29,6 +29,7 @@ struct ViewerView: View {
                 ImageCanvas(image: image, size: drawSize(image), displayScale: displayScale, background: backgroundNSColor,
                             checkerboard: checkerboard, panController: panController,
                             onDoubleClick: model.toggleFullScreen)
+                    .contextMenu { ImageContextMenu(model: model) }
             } else if let message = model.errorMessage {
                 Text(message).foregroundStyle(.secondary)
             } else if let folder = model.emptyFolder {
@@ -63,6 +64,7 @@ struct ViewerView: View {
         // On a new image and on entering full screen (double-click, F or Return leave the image as is).
         .onChange(of: model.image) { hidePointerInFullScreen() }
         .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
+        .toolbar(id: "viewer") { ViewerToolbar(model: model) }
         .toolbar(model.isFullScreen ? .hidden : .automatic, for: .windowToolbar)
         .onGeometryChange(for: CGSize.self) { $0.size } action: { model.viewSize = $0 }
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
@@ -247,6 +249,42 @@ struct ViewerView: View {
     }
 }
 
+struct ImageContextMenu: View {
+    let model: ViewerModel
+
+    var body: some View {
+        Button("Copy") { model.copyImage() }
+        Divider()
+        Button("Rotate Left") { model.rotate(.counterClockwise) }
+        Button("Rotate Right") { model.rotate(.clockwise) }
+        Divider()
+        Button("Move to Folder…") { model.showDestinations(.move) }
+        Button("Copy to Folder…") { model.showDestinations(.copy) }
+        Button("Move to Trash") { model.moveCurrentToTrash() }
+        Divider()
+        Button("Show in Finder") { model.showInFinder() }
+        OpenWithMenu(model: model)
+    }
+}
+
+/// The apps set in Settings › Open With, by name.
+struct OpenWithMenu: View {
+    let model: ViewerModel?
+
+    var body: some View {
+        Menu("Open With") {
+            ForEach(0..<3, id: \.self) { index in
+                let path = AppSettings.openWith[index].value()
+                Button(path.isEmpty ? "App \(index + 1) not set" : FileManager.default.displayName(atPath: path)) {
+                    model?.openWith(index)
+                }
+                .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .option)
+                .disabled(path.isEmpty || model?.list.current == nil)
+            }
+        }
+    }
+}
+
 /// Reports the hosting window once it exists.
 struct WindowAccessor: NSViewRepresentable {
     let onWindow: (NSWindow) -> Void
@@ -297,6 +335,19 @@ struct ViewerCommands: Commands {
             Button("Open…  (O)") { (model ?? ViewerModel.lastActive.current).showOpenPanel() }
                 .keyboardShortcut("o")
         }
+        CommandGroup(replacing: .pasteboard) {
+            // Text fields (batch window) keep their own Copy and Paste: this group only acts on a viewer.
+            Button("Copy") {
+                if let model { model.copyImage() } else { NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil) }
+            }
+            .keyboardShortcut("c")
+            Button("Cut") { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }
+                .keyboardShortcut("x")
+            Button("Paste") { NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil) }
+                .keyboardShortcut("v")
+            Button("Select All") { NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil) }
+                .keyboardShortcut("a")
+        }
         CommandMenu("Image") {
             Button("Next  (→ or Space)") { model?.next() }
             Button("Previous  (← or ⌫)") { model?.previous() }
@@ -312,6 +363,8 @@ struct ViewerCommands: Commands {
             Button("Move to Folder…  (F7)") { model?.showDestinations(.move) }
             Button("Copy to Folder…  (F8)") { model?.showDestinations(.copy) }
             Button("Move to Trash  (⌘⌫ or ⌦)") { model?.moveCurrentToTrash() }
+            Button("Show in Finder") { model?.showInFinder() }
+            OpenWithMenu(model: model)
             Button("Show Info  (I)") { model?.showInfo.toggle() }
             Divider()
             Button("Batch Convert…  (B)") { openWindow(id: "batch") }
