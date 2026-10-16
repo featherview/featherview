@@ -12,8 +12,8 @@ public enum ImageFormats {
         if OwnDecoders.format(for: url) != nil { return true }
         // macOS has no UTType for these JPEG extensions (browsers save .jfif), ImageIO reads them.
         let ext = ["jfif", "jif", "jfi"].contains(url.pathExtension.lowercased()) ? "jpg" : url.pathExtension
-        guard let type = UTType(filenameExtension: ext),
-              !type.conforms(to: .pdf) else { return false }
+        // PDF is read by our own decoder above; ImageIO would give only its first page, without pages.
+        guard let type = UTType(filenameExtension: ext), !type.conforms(to: .pdf) else { return false }
         return decodable.contains { type.conforms(to: $0) }
     }
 

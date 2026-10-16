@@ -50,7 +50,7 @@ public enum OwnDecoders {
         // Task 2
         // Task 3
         // Task 4
-        // Task 5
+        PDFPages.format,
     ]
 
     private static let formats = OSAllocatedUnfairLock(initialState: builtIn)
