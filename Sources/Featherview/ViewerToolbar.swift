@@ -10,10 +10,16 @@ struct ViewerToolbar: CustomizableToolbarContent {
     let ready: Bool
 
     var body: some CustomizableToolbarContent {
-        if ready {
-            ToolbarItem(id: "previous", placement: .navigation) {
+        // Always one item, a blank one until ready: with none the window starts with a plain title bar,
+        // which then grows and moves the image when the buttons arrive.
+        ToolbarItem(id: "previous", placement: .navigation) {
+            if ready {
                 ToolbarButton("Previous", "chevron.backward", "Previous image (←)", enabled: { $0.availability.canBrowse }, model) { $0.previous() }
+            } else {
+                Color.clear.frame(width: 1, height: 1)
             }
+        }
+        if ready {
             ToolbarItem(id: "next", placement: .navigation) {
                 ToolbarButton("Next", "chevron.forward", "Next image (→)", enabled: { $0.availability.canBrowse }, model) { $0.next() }
             }
