@@ -48,7 +48,9 @@ Spec: "Viewer" (all of it), "Settings", "Windows".
 Spec: "Formats", "Format options", ⇧⌘S Save As.
 
 - Runtime format registry from `CGImageSourceCopyTypeIdentifiers` /
-  `CGImageDestinationCopyTypeIdentifiers`; shown in About.
+  `CGImageDestinationCopyTypeIdentifiers`.
+- About window (spec "About window"): icon, version, links, supported formats from the
+  registry, licence and acknowledgements, Copy for bug reports.
 - Per-format option models and encoders for every ImageIO-writable format (JPEG target file
   size by binary search on quality).
 - Own pure-Swift encoders: PGM, PPM, QOI, PCX (golden-file tests against hand-computed bytes).

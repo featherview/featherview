@@ -170,6 +170,20 @@ A standard Mac settings window with tabs. Every setting below has the default sh
 - Open with: up to 3 external apps, opened with ⌥1, ⌥2, ⌥3 on the current file.
 - Formats: per-format defaults (see "Format options"), saved profiles.
 
+## About window
+
+Decided 2026-10-16: our own About window replaces the plain standard panel. Mac-like, one small
+window, nothing to configure.
+
+- The feather icon, "Featherview", version and build (`0.1.0 (1)`), the one-line description.
+- Links: website, source code on GitHub, report a problem (GitHub issue), all opening the browser.
+- "Supported formats": two lists, read and write, built at runtime from ImageIO plus our own
+  encoders (see "Formats"), with the macOS version they come from.
+- "MIT License" and "Acknowledgements": the licence text of every bundled library (libwebp), each
+  in a scrollable sheet. Copyright line.
+- A "Copy" button copies version, macOS version and Mac model as text, for bug reports.
+- Translated like the rest of the UI; no third-party names except in the acknowledgements.
+
 ## Languages
 
 Decided 2026-10-16: the UI is translated into the 30 most widely spoken languages that macOS
