@@ -65,7 +65,7 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 | F7 / F8 | move / copy the current file to a folder (see below) |
 | ⌦ (forward delete) | Move to Trash, like ⌘⌫ |
 | O / B / M | Open… / Batch Convert… / minimise the window (as ⌘O / ⌘B / ⌘M) |
-| P / A / S | Settings / About / Save As…, each added with its feature (milestones 2–3) |
+| P / A / S | Preferences / About / Save As…, each added with its feature (milestones 2–3) |
 
 Single keys for commands match the reference viewer, for people switching over (decided
 2026-10-16); the ⌘ shortcuts stay for Mac users.
@@ -194,7 +194,9 @@ Settings can be saved as named presets and loaded later.
   more), Pause/Resume, and "Copy Log".
 - A failing file never stops the batch and never leaves a partial output file.
 
-## Settings (⌘,)
+## Preferences (⌘,)
+
+The menu calls it "Preferences…", not macOS's "Settings…", so it matches its single key P (decided 2026-10-16).
 
 A standard Mac settings window with tabs. Every setting below has the default shown.
 
