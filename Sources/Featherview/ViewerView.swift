@@ -1,0 +1,140 @@
+import FeatherviewCore
+import SwiftUI
+
+struct ViewerView: View {
+    @Bindable var model: ViewerModel
+    @Environment(\.displayScale) private var displayScale
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if let image = model.image {
+                canvas(image)
+            } else {
+                Text(model.errorMessage ?? "Open an image with ⌘O, or drop one here")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if let message = model.errorMessage, model.image != nil {
+                Text(message)
+                    .padding(8)
+                    .background(.regularMaterial, in: .rect(cornerRadius: 6))
+                    .padding()
+            }
+        }
+        .navigationTitle(model.title)
+        .inspector(isPresented: $model.showInfo) {
+            InfoPanel(url: model.list.current)
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            guard let url = urls.first else { return false }
+            model.open(url)
+            return true
+        }
+        .focusable()
+        .focusEffectDisabled()
+        .focused($focused)
+        .onAppear { focused = true }
+        .onKeyPress(action: handle)
+        .frame(minWidth: 480, minHeight: 320)
+    }
+
+    @ViewBuilder
+    private func canvas(_ image: CGImage) -> some View {
+        let pointSize = CGSize(width: CGFloat(image.width) / displayScale,
+                               height: CGFloat(image.height) / displayScale)
+        switch model.zoom {
+        case .fit:
+            // Shrinks large images to the window; small ones stay at their real size.
+            Image(decorative: image, scale: 1)
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(maxWidth: pointSize.width, maxHeight: pointSize.height)
+        case .factor(let factor):
+            ScrollView([.horizontal, .vertical]) {
+                Image(decorative: image, scale: 1)
+                    .resizable()
+                    .interpolation(factor >= 2 ? .none : .high)
+                    .frame(width: pointSize.width * factor, height: pointSize.height * factor)
+            }
+        }
+    }
+
+    /// Single-key shortcuts live here, not in the menus: a plain-letter menu shortcut would also
+    /// fire while typing in the Batch window's text fields.
+    private func handle(_ press: KeyPress) -> KeyPress.Result {
+        // Arrow keys carry the numeric-pad/function flags, so only these modifiers rule a key out.
+        guard press.modifiers.isDisjoint(with: [.command, .control, .option, .shift, .capsLock]) else { return .ignored }
+        switch press.key {
+        case .rightArrow, .space, .pageDown, .downArrow: model.next()
+        case .leftArrow, .delete, .pageUp, .upArrow: model.previous()
+        case .home: model.first()
+        case .end: model.last()
+        case .escape:
+            guard model.isFullScreen else { return .ignored }
+            model.toggleFullScreen()
+        default:
+            switch press.characters {
+            case "r": model.rotate(.clockwise)
+            case "l": model.rotate(.counterClockwise)
+            case "i": model.showInfo.toggle()
+            case "f": model.toggleFullScreen()
+            case "0": model.setZoom(.fit)
+            case "1": model.setZoom(.factor(1))
+            case "+", "=": model.zoomIn()
+            case "-": model.zoomOut()
+            default: return .ignored
+            }
+        }
+        return .handled
+    }
+}
+
+struct InfoPanel: View {
+    let url: URL?
+
+    var body: some View {
+        Form {
+            ForEach(url.map(MetadataReader.fields(for:)) ?? [], id: \.label) { field in
+                LabeledContent(field.label, value: field.value)
+            }
+        }
+        .textSelection(.enabled)
+        .inspectorColumnWidth(min: 220, ideal: 260)
+    }
+}
+
+struct ViewerCommands: Commands {
+    let model: ViewerModel
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Button("Open…") { model.showOpenPanel() }
+                .keyboardShortcut("o")
+        }
+        CommandMenu("Image") {
+            Button("Next  (→ or Space)") { model.next() }
+            Button("Previous  (← or ⌫)") { model.previous() }
+            Divider()
+            Button("Rotate Right  (R)") { model.rotate(.clockwise) }
+            Button("Rotate Left  (L)") { model.rotate(.counterClockwise) }
+            Divider()
+            Button("Move to Trash") { model.moveCurrentToTrash() }
+                .keyboardShortcut(.delete, modifiers: .command)
+            Button("Show Info  (I)") { model.showInfo.toggle() }
+            Divider()
+            Button("Batch Convert…") { openWindow(id: "batch") }
+                .keyboardShortcut("b")
+        }
+        CommandGroup(after: .toolbar) {
+            Button("Zoom to Fit  (0)") { model.setZoom(.fit) }
+            Button("Actual Size  (1)") { model.setZoom(.factor(1)) }
+            Button("Zoom In  (+)") { model.zoomIn() }
+            Button("Zoom Out  (−)") { model.zoomOut() }
+        }
+    }
+}
