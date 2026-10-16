@@ -1747,23 +1747,23 @@ git commit -m "feat: viewer window, keys, info panel, trash, batch window"
 
 ---
 
-### Task 11: Manual QA against the spec and performance budgets
+### Task 11: Manual QA against the spec and performance budgets — DONE (2026-10-16)
 
 **Files:**
 - Modify: `docs/spec.md` (only if QA reveals a spec gap; record the decision)
 
 Run each check with `build/Featherview.app` built in **release** mode (`scripts/bundle.sh`). Record failures as GitHub issues (`gh issue create`) or fix them; do not mark a step done while it fails.
 
-- [ ] **Step 1: Viewer basics** — open a file from Finder via "Open With"; title shows position; →/←/Space/Backspace/Home/End navigate and stop at the ends (the folder chooser is Milestone 2); a folder opened with ⌘O starts at its first image; dropping a file onto the window opens it.
-- [ ] **Step 2: Bad files** — add `bad.jpg` (`echo x > bad.jpg`) to a folder; browsing over it shows "Can't open bad.jpg" and continues.
-- [ ] **Step 3: Orientation** — a phone photo taken in portrait shows upright; R then L returns to the original; `md5 -q` of the pixel data via `sips -s format png file --out /tmp/a.png` is unchanged after R,R,R,R. Rotate a PNG → message, file unchanged.
-- [ ] **Step 4: Trash** — ⌘⌫ moves the file to the Trash (check Finder), next image shows.
-- [ ] **Step 5: Info and zoom** — I shows the panel with camera data on a camera JPEG; 0/1/+/− behave as in the spec; F and Esc toggle full screen.
-- [ ] **Step 6: Typing safety** — in the batch window, typing "rl0f" into the rename field changes only the text, not the viewer.
-- [ ] **Step 7: Batch** — 20 mixed images (JPEG/HEIC/PNG + one corrupt) → JPEG, limit 1920, rename `{name}_{n:3}`, output = input folder: 19 converted, 1 failed, nothing overwritten, outputs upright.
-- [ ] **Step 8: Performance** — in one terminal: `log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'`. Make a 10,000-file folder: `mkdir /tmp/fv-10k && for i in $(seq 1 10000); do cp /tmp/fv-smoke/$(ls /tmp/fv-smoke | head -1) /tmp/fv-10k/img$i.jpg; done`. Open `img5000.jpg` from Finder; hold →. Check against the budgets in `AGENTS.md`: first image < 500 ms, logged `show` times < 150 ms for non-prefetched images and near 0 for prefetched ones, Activity Monitor memory stays flat while holding →.
-- [ ] **Step 9: Website numbers** — the site (`~/Web/mx/featherview.github.io/index.html`, the three `.stat` blocks) shows the budgets (300 ms launch, 16 ms swap, 10,000 files in 0.5 s). Replace each with the median measured in Step 8 (5 runs, release build, name the Mac model and photo size in a footnote), never a number better than measured. Ask the maintainer before pushing (pushes go live).
-- [ ] **Step 10: Commit any spec updates**
+- [x] **Step 1: Viewer basics** — open a file from Finder via "Open With"; title shows position; →/←/Space/Backspace/Home/End navigate and stop at the ends (the folder chooser is Milestone 2); a folder opened with ⌘O starts at its first image; dropping a file onto the window opens it.
+- [x] **Step 2: Bad files** — add `bad.jpg` (`echo x > bad.jpg`) to a folder; browsing over it shows "Can't open bad.jpg" and continues.
+- [x] **Step 3: Orientation** — a phone photo taken in portrait shows upright; R then L returns to the original; `md5 -q` of the pixel data via `sips -s format png file --out /tmp/a.png` is unchanged after R,R,R,R. Rotate a PNG → message, file unchanged.
+- [x] **Step 4: Trash** — ⌘⌫ moves the file to the Trash (check Finder), next image shows.
+- [x] **Step 5: Info and zoom** — I shows the panel with camera data on a camera JPEG; 0/1/+/− behave as in the spec; F and Esc toggle full screen.
+- [x] **Step 6: Typing safety** — in the batch window, typing "rl0f" into the rename field changes only the text, not the viewer.
+- [x] **Step 7: Batch** — 20 mixed images (JPEG/HEIC/PNG + one corrupt) → JPEG, limit 1920, rename `{name}_{n:3}`, output = input folder: 19 converted, 1 failed, nothing overwritten, outputs upright.
+- [x] **Step 8: Performance** — in one terminal: `log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'`. Make a 10,000-file folder: `mkdir /tmp/fv-10k && for i in $(seq 1 10000); do cp /tmp/fv-smoke/$(ls /tmp/fv-smoke | head -1) /tmp/fv-10k/img$i.jpg; done`. Open `img5000.jpg` from Finder; hold →. Check against the budgets in `AGENTS.md`: first image < 500 ms, logged `show` times < 150 ms for non-prefetched images and near 0 for prefetched ones, Activity Monitor memory stays flat while holding →.
+- [x] **Step 9: Website numbers** — the site (`~/Web/mx/featherview.github.io/index.html`, the three `.stat` blocks) shows the budgets (300 ms launch, 16 ms swap, 10,000 files in 0.5 s). Replace each with the median measured in Step 8 (5 runs, release build, name the Mac model and photo size in a footnote), never a number better than measured. Ask the maintainer before pushing (pushes go live).
+- [x] **Step 10: Commit any spec updates**
 
 ```bash
 git add docs/spec.md
