@@ -320,6 +320,19 @@ struct PSPBuilder {
         #expect(throws: OwnDecodeError.corrupt) { try PSPDecoder.decode(Data(bytes)) }
     }
 
+    @Test(arguments: [0, 16]) func compositeBitDepthOtherThanTheKnownOnesThrows(depth: Int) throws {
+        var file = PSPBuilder(width: 4, height: 3)
+        file.composites = [.init(pixels: Self.pattern(4, 3))]
+        var bytes = file.bytes()
+        func block(_ id: UInt8) throws -> Int {
+            try #require((0..<bytes.count - 6).first { bytes[$0..<$0 + 6] == [0x7E, 0x42, 0x4B, 0, id, 0] })
+        }
+        bytes.replaceSubrange(try block(17) + 22..<(try block(17)) + 24, with: PSPBuilder.le16(depth))
+        // The red plane as a (bitmap 8, channel 0) one, the plane a non-24-bit composite is read from.
+        bytes.replaceSubrange(try block(5) + 24..<(try block(5)) + 26, with: PSPBuilder.le16(0))
+        #expect(throws: OwnDecodeError.corrupt) { try PSPDecoder.decode(Data(bytes)) }
+    }
+
     @Test func lz77BombThrows() {
         var file = PSPBuilder(width: 4, height: 4)
         file.compression = 2

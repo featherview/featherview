@@ -146,6 +146,8 @@ enum PSPDecoder {
             index += 1
         }
         guard let chosen else { return nil }
+        // `assemble` sizes rows by this depth, so any other value would index past the planes.
+        guard [1, 4, 8, 24].contains(chosen.bitDepth) else { throw OwnDecodeError.corrupt }
         for _ in 0..<chosen.index { reader.offset = try blockHeader(&reader, end: end).end }
         let (id, imageEnd) = try blockHeader(&reader, end: end)
         if chosen.compression == Compression.jpeg {
