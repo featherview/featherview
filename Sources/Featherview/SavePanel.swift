@@ -2,7 +2,8 @@ import AppKit
 import FeatherviewCore
 import SwiftUI
 
-/// Save As (spec "Menu commands"): the Mac save sheet with a format picker and that format's options.
+/// Save As (spec "Menu commands"): the Mac save sheet with a format picker and an Options… button
+/// that shows that format's options.
 @MainActor
 enum SavePanel {
     /// Shows the sheet on `window` (a modal panel without one). The panel's own replace prompt is the
@@ -21,7 +22,7 @@ enum SavePanel {
         setType(choice.format, url)
         let accessory = NSHostingView(rootView: Accessory(choice: choice) { setType($0, URL(fileURLWithPath: panel.nameFieldStringValue)) })
         accessory.sizingOptions = [.intrinsicContentSize]
-        // Auto Layout, not a fixed frame: the panel then grows when another format shows more options.
+        // Auto Layout, not a fixed frame: the panel sizes itself to the accessory.
         accessory.translatesAutoresizingMaskIntoConstraints = false
         panel.accessoryView = accessory
 
@@ -46,13 +47,27 @@ enum SavePanel {
     struct Accessory: View {
         @Bindable var choice: Choice
         let formatChanged: (OutputFormat) -> Void
+        @State private var showingOptions = false
 
         var body: some View {
-            Form {
+            // The options sit behind a button (maintainer, 2026-10-16), so the panel keeps one size.
+            HStack {
                 Picker("Format:", selection: $choice.format) {
                     ForEach(FormatRegistry.writable) { Text($0.name).tag($0) }
                 }
-                FormatOptionsView(format: choice.format, options: $choice.options)
+                Button("Options…") { showingOptions = true }
+                    .disabled(choice.format.optionFields.isEmpty)
+            }
+            .sheet(isPresented: $showingOptions) {
+                VStack(alignment: .trailing) {
+                    Form {
+                        FormatOptionsView(format: choice.format, options: $choice.options)
+                    }
+                    Button("Done") { showingOptions = false }
+                        .keyboardShortcut(.defaultAction)
+                }
+                .padding()
+                .frame(width: 420)
             }
             .onChange(of: choice.format) { _, format in
                 choice.options = FormatSettings.options(for: format)
