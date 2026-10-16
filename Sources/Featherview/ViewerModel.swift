@@ -38,6 +38,16 @@ final class ViewerModel {
     private var rotateTask: Task<Void, Never>?
     /// Read timings with: log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'
     private static let log = Logger(subsystem: "net.mynetx.featherview", category: "viewer")
+    /// When the process started, so the first image's log line covers launch and folder scan too.
+    private static let processStart: Date? = {
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.size
+        var mib = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+        guard sysctl(&mib, 4, &info, &size, nil, 0) == 0 else { return nil }
+        let start = info.kp_proc.p_starttime
+        return Date(timeIntervalSince1970: Double(start.tv_sec) + Double(start.tv_usec) / 1_000_000)
+    }()
+    private var loggedLaunch = false
 
     var title: String {
         list.current.map { "\($0.lastPathComponent) — \(list.position)" } ?? "Featherview"
@@ -118,6 +128,12 @@ final class ViewerModel {
                 let elapsed = started.duration(to: .now).components
                 let ms = elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000
                 Self.log.debug("show \(url.lastPathComponent, privacy: .public): \(ms) ms")
+                if !loggedLaunch, let start = Self.processStart {
+                    loggedLaunch = true
+                    // shortcut: measured when the image is set, the frame that draws it follows (~1 frame), fine for budgets.
+                    let launchMs = Int(Date().timeIntervalSince(start) * 1000)
+                    Self.log.debug("first image \(launchMs) ms after launch")
+                }
             } catch {
                 guard !Task.isCancelled else { return }
                 image = nil
