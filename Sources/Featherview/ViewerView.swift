@@ -28,7 +28,7 @@ struct ViewerView: View {
             if let image = model.image {
                 ImageCanvas(image: image, size: drawSize(image), displayScale: displayScale, background: backgroundNSColor,
                             checkerboard: checkerboard, panController: panController,
-                            onDoubleClick: model.toggleFullScreen)
+                            onDoubleClick: model.toggleFullScreen, onClick: { focused = true })
                     .contextMenu { ImageContextMenu(model: model) }
             } else if let message = model.errorMessage {
                 Text(message).foregroundStyle(.secondary)
@@ -98,6 +98,7 @@ struct ViewerView: View {
         .focusable()
         .focusEffectDisabled()
         .focused($focused)
+        .onChange(of: focused, initial: true) { model.hasKeyboardFocus = focused }
         .onAppear {
             focused = true
             ViewerModel.windows.viewerOpened()
@@ -342,7 +343,12 @@ struct ViewerCommands: Commands {
         CommandGroup(replacing: .pasteboard) {
             // Text fields and selected text (batch window, Info panel) keep their own Copy and Paste.
             Button("Copy") {
-                if let model, !(NSApp.keyWindow?.firstResponder is NSText) { model.copyImage() } else { NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil) }
+                // Selected text in the Info panel isn't an NSText, but it takes SwiftUI focus from the viewer.
+                if let model, model.hasKeyboardFocus, !(NSApp.keyWindow?.firstResponder is NSText) {
+                    model.copyImage()
+                } else {
+                    NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)
+                }
             }
             .keyboardShortcut("c")
             Button("Cut") { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }

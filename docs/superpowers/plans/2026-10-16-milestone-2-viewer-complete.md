@@ -2666,6 +2666,8 @@ measure with a release build, `scripts/bundle.sh`).
   F, space typed there go into the field, not to a viewer.
 - [ ] **Step 8:** Settings window: same for the overlay text field; every setting takes effect
   without a relaunch (folder-related ones on the next folder opened).
+- [ ] **Step 8b:** Info panel: select a value, ⌘C, paste in TextEdit → the text, not the image.
+  Click the image → single keys (→, R, I) work again, and ⌘C copies the image.
 - [ ] **Step 9:** Right-to-left check is milestone 6; skip.
 - [ ] **Step 10:** Mark this plan done and milestone 2 done in `docs/roadmap.md`; commit
   `docs: milestone 2 done after manual QA`.

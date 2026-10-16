@@ -455,6 +455,9 @@ final class ViewerModel {
     weak var window: NSWindow?
     /// Kept up to date by the view from the window's full-screen notifications.
     var isFullScreen = false
+    /// True while the viewer itself has the keyboard, not a text field or selected text beside it;
+    /// ⌘C copies the image only then. Kept up to date by the view.
+    var hasKeyboardFocus = false
 
     func toggleFullScreen() {
         window?.toggleFullScreen(nil)
