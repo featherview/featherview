@@ -49,7 +49,7 @@ public enum OwnDecoders {
     static let builtIn: [OwnFormat] = [
         QOICodec.format, PCXCodec.pcx, PCXCodec.dcx,
         XBMDecoder.format, XPMDecoder.format, WBMPDecoder.format,
-        // Task 4
+        SunRasterDecoder.format, ILBMDecoder.format,
         // Task 5
     ]
 
