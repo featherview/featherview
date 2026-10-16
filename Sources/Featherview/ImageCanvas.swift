@@ -1,4 +1,5 @@
 import AppKit
+import FeatherviewCore
 import SwiftUI
 
 /// Lets the viewer pan the canvas with the arrow keys; the canvas registers its scroll view here.
@@ -32,6 +33,7 @@ struct ImageCanvas: NSViewRepresentable {
     let image: CGImage
     /// Size in points the image is drawn at.
     let size: CGSize
+    let displayScale: Double
     let background: NSColor
     let checkerboard: Bool
     let panController: PanController
@@ -58,7 +60,8 @@ struct ImageCanvas: NSViewRepresentable {
         // Keep the point at the centre of the view where it was, so zooming doesn't jump to a corner.
         let centre = CGPoint(x: oldSize.width > 0 ? visible.midX / oldSize.width : 0.5,
                              y: oldSize.height > 0 ? visible.midY / oldSize.height : 0.5)
-        view.show(image, checkerboard: checkerboard && image.hasAlpha, smooth: size.width < CGFloat(image.width) * 2)
+        view.show(image, checkerboard: checkerboard && image.hasAlpha, 
+                  smooth: !ZoomSteps.showsPixels(drawnWidth: size.width, imageWidth: image.width, displayScale: displayScale))
         if oldSize != size {
             view.frame.size = size
             moveVisibleOrigin(scrollView, to: CGPoint(x: centre.x * size.width - visible.width / 2,

@@ -26,7 +26,7 @@ struct ViewerView: View {
         ZStack {
             background.ignoresSafeArea()
             if let image = model.image {
-                ImageCanvas(image: image, size: drawSize(image), background: backgroundNSColor,
+                ImageCanvas(image: image, size: drawSize(image), displayScale: displayScale, background: backgroundNSColor,
                             checkerboard: checkerboard, panController: panController,
                             onDoubleClick: model.toggleFullScreen)
             } else if let message = model.errorMessage {
