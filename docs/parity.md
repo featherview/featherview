@@ -123,6 +123,18 @@ On a 4000×3000 JPEG and a 3-page TIFF, default settings.
 | Multi-page | A multi-page TIFF opens on page 1. Ctrl+Page Down / Ctrl+Page Up go to the next / previous page; at the last page nothing happens. The page shows as "n / m" at the end of the status bar; the title doesn't change. Plain Space / Page Down leave the file for the next one; coming back starts on page 1 again. | Not in spec (spec reads the first frame). Suggest: ⌥→ / ⌥← (Mac keyboards often lack Page keys) step pages, title `name — page 2 / 3 — 3 / 120` only for multi-page files, always start at page 1. | v1 |
 | Toolbar | A row of small buttons under the menu: open, slideshow, save as, print, delete, cut, copy, paste, undo, info, a zoom-level dropdown, zoom in, zoom out, previous file, next file, previous page, next page (greyed out unless the file has pages), settings, help. Tooltips name the function. | Spec "Toolbar" (decided). Candidates to add: a zoom-level menu, page buttons for multi-page files. Skip slideshow, print, cut / paste / undo (out of scope). | open |
 
+## Layered app formats
+
+Our own sample files (Paint.NET, GIMP and PaintShop Pro files from open-licence projects, plus
+GIMP-generated XCFs), opened with the viewer's PDN and XCF plugins enabled by hand (both ship
+switched off with a warning that they are old; until then opening such a file shows a decode error).
+
+| Area | Observed behaviour | Featherview | Status |
+|---|---|---|---|
+| PDN | Opens at the full canvas size (800 × 600, 694 × 424), not the small thumbnail in the file. Page 1 is the flattened image, matching Paint.NET's own thumbnail including layers with other blend modes; pages 2 … n are the layers one by one, bottom layer first ("1 / 15" for 14 layers). The status bar says 24 bits per pixel. | Spec: flattened image. Open: layers as extra pages (⌥→), like the reference. | open |
+| XCF | Opens flattened at the canvas size, hidden layers left out. A Multiply layer looks applied; a layer group set to Screen is drawn as if Normal. No pages. | Spec: visible layers, normal blending with opacity, other modes a known limit. | v1 |
+| PSP | A one-layer file whose only stored composite is a 300 × 225 thumbnail opens at the full 800 × 600 from its layer. No pages. | Spec: full-size composite when stored, else the layers. | v1 |
+
 ## Not checked yet
 
 the meaning of X, options of
