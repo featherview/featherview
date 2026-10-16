@@ -23,13 +23,12 @@ final class ViewerModel {
     /// The viewer area, kept up to date by the view; fit-mode zoom steps start from it.
     var viewSize = CGSize.zero
     var displayScale = 2.0
-    /// Brings the viewer window back if it was closed; set by the view.
+    /// Brings this model's window back if it was closed. Only the main viewer sets it (AppDelegate):
+    /// an extra window opening a file must not raise or reopen the main one.
     var revealWindow: () -> Void = {}
 
-    /// Opens another viewer window for a file. Until a viewer view has appeared (launch with
-    /// several files) the files wait here; the view opens them when it sets this.
-    static var openWindow: (URL) -> Void = { pendingWindows.append($0) }
-    static var pendingWindows: [URL] = []
+    /// Opens viewer windows for files from Finder; every window's view installs the openers.
+    static let windows = ViewerWindows()
     /// The viewer the user last worked in, for "Use Viewer's Folder" in the batch window.
     static weak var lastActive: ViewerModel?
 

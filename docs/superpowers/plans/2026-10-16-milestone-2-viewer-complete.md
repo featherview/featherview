@@ -1067,22 +1067,36 @@ git commit -m "feat: page count and page decoding for multi-page TIFFs"
 - Modify: `Sources/Featherview/ViewerView.swift`
 - Modify: `Sources/Featherview/BatchView.swift`
 - Create: `Sources/Featherview/SettingsView.swift`
+- Create: `Sources/FeatherviewCore/ViewerWindows.swift`, `Tests/FeatherviewCoreTests/ViewerWindowsTests.swift`
 
 **Interfaces:**
 - Consumes: `AppSettings` (Task 1), `DestinationSlots` (Task 4), `PastEndBehavior`, `HexColor`.
 - Produces (later tasks use these):
-  - `ViewerModel.openWindow: (URL) -> Void` (static), `ViewerModel.pendingWindows: [URL]` (static),
+  - `ViewerWindows` (Core: `revealMain()`, `openExtra(_:)`, `install(revealMain:openExtra:)`; requests
+    made before any window installs the openers wait and are sent on install), `ExtraWindow` (Core:
+    the extra window's value, a URL plus a fresh id per open), `ViewerModel.windows: ViewerWindows` (static),
     `ViewerModel.lastActive: ViewerModel?` (static, weak), `ViewerModel.window: NSWindow?` (weak),
     `ViewerModel.isFullScreen: Bool` (stored, set by the view), `ViewerModel.emptyFolder: URL?`
     (declared here as `private(set) var emptyFolder: URL?`, set in Task 8).
   - `FocusedValues.viewer: ViewerModel?`; `ViewerCommands` with no stored model (uses `@FocusedValue`).
   - `WindowAccessor(onWindow: (NSWindow) -> Void)`.
-  - Scenes: `Window` id `"viewer"`, `WindowGroup` id `"viewer-extra"` for `URL`, `Window` id `"batch"`, `Settings`.
+  - Scenes: `Window` id `"viewer"`, `WindowGroup` id `"viewer-extra"` for `ExtraWindow`, `Window` id `"batch"`, `Settings`.
 
 Behaviour: the main viewer window takes the file at launch; any later file from Finder (or several
 at once) opens its own viewer window with its own folder list (spec "Windows"). ⌘O, O and drag and
-drop keep opening in the window they're used in. Menu commands act on the focused viewer window.
+drop keep opening in the window they're used in: only the main viewer's `revealWindow` is set (by
+the AppDelegate), so an extra window never raises or reopens the main one. Every window (main,
+extra, Batch) installs the window openers when it appears, because state restoration may bring
+back only one of them. Opening the same file twice gives two windows (each `ExtraWindow` has its
+own id; SwiftUI only raises a window whose value is open). Menu commands act on the focused viewer
+window; ⌘O with none focused uses the viewer used last, at first the main one.
 "Use Viewer's Folder" in the batch window takes the viewer used last.
+
+- [ ] **Step 0: `ViewerWindows` and `ExtraWindow` in FeatherviewCore, test first**
+
+Tests: requests before install are sent once on install (a reveal once, extras in order); requests
+after install go straight through; two `ExtraWindow`s for one URL differ, and one survives a JSON
+round trip. Then `Sources/FeatherviewCore/ViewerWindows.swift` (see the file).
 
 - [ ] **Step 1: Replace `Sources/Featherview/FeatherviewApp.swift`**
 
@@ -1098,21 +1112,37 @@ struct FeatherviewApp: App {
     var body: some Scene {
         Window("Featherview", id: "viewer") {
             ViewerView(model: appDelegate.viewer)
+                .modifier(OpensViewerWindows())
         }
         .commands { ViewerCommands() }
 
         // Files opened from Finder while the main viewer shows an image, each with its own folder list.
-        WindowGroup("Featherview", id: "viewer-extra", for: URL.self) { $url in
-            ExtraViewer(url: url)
+        WindowGroup("Featherview", id: "viewer-extra", for: ExtraWindow.self) { $window in
+            ExtraViewer(url: window?.url)
+                .modifier(OpensViewerWindows())
         }
 
         Window("Batch Convert", id: "batch") {
             BatchView(model: batch)
                 .onAppear { appDelegate.isBusy = { batch.isRunning } }
+                .modifier(OpensViewerWindows())
         }
 
         Settings {
             SettingsView()
+        }
+    }
+}
+
+/// Any window can open viewer windows: state restoration may bring back only the Batch window
+/// or an extra viewer, and files from Finder still need the main window.
+struct OpensViewerWindows: ViewModifier {
+    @Environment(\.openWindow) private var openWindow
+
+    func body(content: Content) -> some View {
+        content.onAppear {
+            ViewerModel.windows.install(revealMain: { [openWindow] in openWindow(id: "viewer") },
+                                        openExtra: { [openWindow] in openWindow(id: "viewer-extra", value: $0) })
         }
     }
 }
@@ -1131,12 +1161,18 @@ struct ExtraViewer: View {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Owned here, not by a view, so a file from Finder starts decoding before any window exists.
-    let viewer = ViewerModel()
+    let viewer: ViewerModel = {
+        let viewer = ViewerModel()
+        viewer.revealWindow = { ViewerModel.windows.revealMain() }
+        return viewer
+    }()
     /// True while a batch runs: quitting then would stop it part-way. Set by the Batch window.
     var isBusy: () -> Bool = { false }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         AppSettings.registerDefaults()
+        // ⌘O from the Batch window before any viewer was used opens in the main one.
+        ViewerModel.lastActive = viewer
         // AppKit hands Finder's files to application(_:open:) only after SwiftUI built the window
         // (~50 ms later); taking the open event here lets the image decode meanwhile.
         NSAppleEventManager.shared().setEventHandler(
@@ -1154,7 +1190,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if viewer.list.current == nil, !viewer.isOpening, viewer.emptyFolder == nil {
                 viewer.open(url)
             } else {
-                ViewerModel.openWindow(url)
+                ViewerModel.windows.openExtra(url)
             }
         }
     }
@@ -1166,13 +1202,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 - [ ] **Step 2: ViewerModel: window plumbing**
 
-Add to `ViewerModel`, after `revealWindow`:
+Change `revealWindow`'s comment and add after it:
 
 ```swift
-    /// Opens another viewer window for a file. Until a viewer view has appeared (launch with
-    /// several files) the files wait here; the view opens them when it sets this.
-    static var openWindow: (URL) -> Void = { pendingWindows.append($0) }
-    static var pendingWindows: [URL] = []
+    /// Brings this model's window back if it was closed. Only the main viewer sets it (AppDelegate):
+    /// an extra window opening a file must not raise or reopen the main one.
+    var revealWindow: () -> Void = {}
+
+    /// Opens viewer windows for files from Finder; every window's view installs the openers.
+    static let windows = ViewerWindows()
     /// The viewer the user last worked in, for "Use Viewer's Folder" in the batch window.
     static weak var lastActive: ViewerModel?
 
@@ -1220,13 +1258,8 @@ Add these modifiers to the body chain (after `.inspector { … }`):
         }
 ```
 
-In `.onAppear`, after `model.revealWindow = …`:
-
-```swift
-            ViewerModel.openWindow = { [openWindow] url in openWindow(id: "viewer-extra", value: url) }
-            ViewerModel.pendingWindows.forEach(ViewerModel.openWindow)
-            ViewerModel.pendingWindows = []
-```
+In `.onAppear`, remove `model.revealWindow = …` (the AppDelegate sets it for the main viewer only;
+`OpensViewerWindows` installs the window openers).
 
 In `handle(_:)`, minimise this window, not whichever is key: `case .minimize: model.window?.miniaturize(nil)`.
 
@@ -1292,7 +1325,7 @@ struct ViewerCommands: Commands {
 
 In `Sources/Featherview/BatchView.swift`: remove `let viewer: ViewerModel`, the
 `@Environment(\.openWindow)` line and the `.onAppear { viewer.revealWindow = … }` modifier with
-its comment (the main viewer view sets `revealWindow` itself). Replace the button:
+its comment (`OpensViewerWindows` on the Batch window covers that case now). Replace the button:
 
 ```swift
                     Button("Use Viewer's Folder") { model.inputs = ViewerModel.lastActive?.list.urls ?? [] }

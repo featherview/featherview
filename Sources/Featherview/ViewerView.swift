@@ -58,10 +58,6 @@ struct ViewerView: View {
         .focused($focused)
         .onAppear {
             focused = true
-            model.revealWindow = { [openWindow] in openWindow(id: "viewer") }
-            ViewerModel.openWindow = { [openWindow] url in openWindow(id: "viewer-extra", value: url) }
-            ViewerModel.pendingWindows.forEach(ViewerModel.openWindow)
-            ViewerModel.pendingWindows = []
         }
         .onKeyPress(action: handle)
         .frame(minWidth: 480, minHeight: 320)
