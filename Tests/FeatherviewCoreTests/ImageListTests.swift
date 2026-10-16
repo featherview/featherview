@@ -127,6 +127,14 @@ import Testing
         back.previous()
         #expect(back.current == urls[1])
 
+        // ← from a held first image is the start: it keeps holding, so ⌦ can't reach an unseen file.
+        var start = ImageList(urls: urls, current: urls[0])
+        start.remove(urls[0], hold: true)
+        let movedBack = start.previous()
+        #expect(!movedBack)
+        #expect(start.current == urls[0])
+        #expect(start.isHolding)
+
         var released = ImageList(urls: urls, current: urls[1])
         released.remove(urls[1], hold: true)
         released.release()

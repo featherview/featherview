@@ -38,8 +38,8 @@ public struct ImageList: Equatable, Sendable {
 
     @discardableResult
     public mutating func previous() -> Bool {
+        guard index > 0, !isEmpty else { return false }  // a held first image stays held
         held = nil
-        guard index > 0, !isEmpty else { return false }
         index -= 1
         return true
     }
