@@ -12,15 +12,14 @@ enum SavePanel {
         panel.canCreateDirectories = true
         panel.directoryURL = url.deletingLastPathComponent()
         let choice = Choice(format: FormatSettings.lastFormat())
-        let setType = { (format: OutputFormat) in
+        let setType = { (format: OutputFormat, base: URL) in
             if let type = format.type { panel.allowedContentTypes = [type] }
             // Our extension, or macOS picks the type's preferred one (.pbm for PPM, .jpeg for JPEG).
-            let base = URL(fileURLWithPath: panel.nameFieldStringValue.isEmpty ? url.lastPathComponent
-                                                                                : panel.nameFieldStringValue)
             panel.nameFieldStringValue = format.fileName(for: base)
         }
-        setType(choice.format)
-        let accessory = NSHostingView(rootView: Accessory(choice: choice, formatChanged: setType))
+        // A new panel's name field says "Untitled", so the first name comes from the image.
+        setType(choice.format, url)
+        let accessory = NSHostingView(rootView: Accessory(choice: choice) { setType($0, URL(fileURLWithPath: panel.nameFieldStringValue)) })
         accessory.sizingOptions = [.intrinsicContentSize]
         // Auto Layout, not a fixed frame: the panel then grows when another format shows more options.
         accessory.translatesAutoresizingMaskIntoConstraints = false
