@@ -88,7 +88,8 @@ Spec: "Formats", "Format options", ⇧⌘S Save As.
   ≈18 ms. Next step: hand the canvas images already in the display's colour space (convert off
   the main thread when decoding or prefetching), then measure again. Setting `window.title`
   directly instead of `.navigationTitle` doesn't work: SwiftUI puts the scene title back on its
-  next update. Miss accepted until then (maintainer, 2026-10-16).
+  next update. The maintainer accepted the earlier, toolbar-based miss (≈20 ms) on
+  2026-10-16; this cause and next step aren't accepted yet.
 
 ## 4. Batch complete
 
