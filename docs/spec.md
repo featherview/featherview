@@ -93,8 +93,9 @@ Mac SF Symbols, never icons taken from another viewer.
 ⌘O Open…, ⌘⌫ Move to Trash, ⌘B Batch Convert…, ⇧⌘S Save As… (the current image in any writable format, with that format's options, orientation
 applied, never overwriting without the standard Mac replace prompt; afterwards the window shows the saved file in its folder, decided 2026-10-16; if Featherview can't read the format it saved, the window stays on the original), ⌘C Copy (the current image, full resolution,
 orientation applied), ⌘Q Quit. Menus also list the single-key commands
-(with the key in the title) so they are discoverable. Single keys are deliberately not menu
-shortcuts, so typing in the batch window's text fields never triggers viewer actions.
+(the single key in the shortcut column, also for commands that have a ⌘ shortcut, which keeps
+working; decided 2026-10-16) so they are discoverable. Single keys are menu shortcuts only while a
+menu is open, so typing in the batch window's text fields never triggers viewer actions.
 
 ### Rotate
 

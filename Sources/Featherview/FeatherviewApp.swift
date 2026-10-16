@@ -70,6 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         AppSettings.registerDefaults()
+        MenuKeys.install()
         OwnDecoders.register(SVGFormat.format)
         // AppKit hands Finder's files to application(_:open:) only after SwiftUI built the window
         // (~50 ms later); taking the open event here lets the image decode meanwhile.

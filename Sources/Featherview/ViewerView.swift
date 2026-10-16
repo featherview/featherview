@@ -361,7 +361,7 @@ struct ViewerCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .appInfo) {
-            Button("About Featherview") { openWindow(id: "about") }
+            Button("About Featherview  (A)") { openWindow(id: "about") }
         }
         CommandGroup(replacing: .newItem) {
             Button("Open…  (O)") { (model ?? ViewerModel.lastActive.current).showOpenPanel() }
