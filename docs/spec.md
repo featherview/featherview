@@ -31,7 +31,7 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
   even if hidden or of an unknown extension; symlinked folders are followed; folders and broken
   links with image names are skipped.
 - Supported formats: everything ImageIO decodes on the user's Mac (JPEG, PNG, HEIC, WebP,
-  TIFF, GIF first frame, BMP, camera RAW, …). PDF is not an image here.
+  TIFF, GIF first frame, BMP, camera RAW, …), plus PDF (see "Formats").
 - Window title: `filename — 3 / 120`; for a multi-page file `filename — page 2 / 3 — 3 / 120`.
   A multi-page file always opens on page 1 (decided 2026-10-16).
 - Black background. Fit mode shrinks large images to the window and never enlarges small ones.
@@ -91,7 +91,7 @@ Mac SF Symbols, never icons taken from another viewer.
 ### Menu commands
 
 ⌘O Open…, ⌘⌫ Move to Trash, ⌘B Batch Convert…, ⇧⌘S Save As… (the current image in any writable format, with that format's options, orientation
-applied, never overwriting without the standard Mac replace prompt; afterwards the window shows the saved file in its folder, decided 2026-10-16), ⌘C Copy (the current image, full resolution,
+applied, never overwriting without the standard Mac replace prompt; afterwards the window shows the saved file in its folder, decided 2026-10-16; if Featherview can't read the format it saved, the window stays on the original), ⌘C Copy (the current image, full resolution,
 orientation applied), ⌘Q Quit. Menus also list the single-key commands
 (with the key in the title) so they are discoverable. Single keys are deliberately not menu
 shortcuts, so typing in the batch window's text fields never triggers viewer actions.
@@ -257,7 +257,10 @@ the About window.
 
 - Read: everything ImageIO decodes, including JPEG, PNG, HEIC/HEIF, AVIF, JPEG XL, WebP, TIFF,
   GIF (first frame), BMP, ICO, ICNS, JPEG 2000, PSD, TGA, OpenEXR, Radiance HDR, SGI, PBM, DDS,
-  DNG and camera RAW from all major makers. PDF is not an image here.
+  DNG and camera RAW from all major makers.
+- PDF (decided 2026-10-16, milestone 3, like the reference viewer): a PDF is browsed like a
+  multi-page image. Core Graphics renders each page on white at the size shown (sharp at any
+  zoom), opening on page 1; ⌥← / ⌥→ step pages and the page shows in the title and status bar.
 - Read (decided 2026-10-16), formats macOS can't read, so Featherview decodes them itself:
   - SVG through AppKit (`NSImage` renders it; ImageIO doesn't), rasterised at the size shown.
   - Own decoders, pure Swift, no dependency (milestone 3): QOI, PCX (and multi-page DCX), XBM,
