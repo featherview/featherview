@@ -97,6 +97,7 @@ final class ViewerModel {
         loadTask?.cancel()
         guard let url = list.current else {
             image = nil
+            errorMessage = nil  // an old file's error would hide the "Open an image" hint
             return
         }
         let size: Int? = zoom == .fit ? screenPixels : nil
