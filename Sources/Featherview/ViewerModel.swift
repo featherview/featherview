@@ -165,7 +165,8 @@ final class ViewerModel {
     func setZoom(_ zoom: Zoom) {
         let needsReload = (zoom == .fit) != (self.zoom == .fit)
         self.zoom = zoom
-        if needsReload { show(page: page) }
+        // A held image is gone from disk: show() would release it and decode the next file at the held page.
+        if needsReload, !list.isHolding { show(page: page) }
     }
 
     private func pastEnd(forward: Bool) {
@@ -212,9 +213,9 @@ final class ViewerModel {
         }
     }
 
-    /// ⌥→ / ⌥←: pages of a multi-page TIFF; nothing past either end.
-    func nextPage() { if page + 1 < pageCount { page += 1; show(page: page) } }
-    func previousPage() { if page > 0 { page -= 1; show(page: page) } }
+    /// ⌥→ / ⌥←: pages of a multi-page TIFF; nothing past either end, nor on a held (removed) image.
+    func nextPage() { if !list.isHolding, page + 1 < pageCount { page += 1; show(page: page) } }
+    func previousPage() { if !list.isHolding, page > 0 { page -= 1; show(page: page) } }
 
     /// Settings › Viewer › zoom step, 10 % by default (×1.1).
     private var zoomMultiplier: Double { 1 + Double(max(AppSettings.zoomStepPercent.value(), 1)) / 100 }
