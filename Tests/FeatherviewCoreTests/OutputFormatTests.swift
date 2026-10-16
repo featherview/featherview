@@ -9,7 +9,7 @@ import Testing
         let ids = Set(FormatRegistry.writable.map(\.id))
         // docs/spec.md "Formats": ImageIO's list plus our own encoders.
         for id in ["jpg", "png", "heic", "avif", "tiff", "gif", "jp2", "pdf", "psd", "tga", "ico", "icns",
-                   "exr", "pbm", "bmp", "pgm", "ppm", "qoi", "pcx"] {
+                   "exr", "pbm", "bmp", "pgm", "ppm", "qoi", "pcx", "webp"] {
             #expect(ids.contains(id), "\(id)")
         }
         for hidden in ["ktx", "ktx2", "astc", "pvr", "dds", "atx", "heics"] { #expect(!ids.contains(hidden)) }
@@ -31,6 +31,32 @@ import Testing
         #expect(FormatRegistry.format(id: "gif")?.optionFields == [])
     }
 
+    @Test func webpFollowsTheSpec() throws {
+        let webp = try #require(FormatRegistry.format(id: "webp"))
+        #expect(webp.name == "WebP" && webp.fileExtension == "webp" && webp.writer == .webp)
+        #expect(webp.optionFields == [.webpKind, .lossless, .quality, .effort])
+        let d = webp.defaultOptions
+        #expect(d.quality == 75 && !d.lossless && d.effort == 4 && d.webpKind == .photo)
+        #expect(webp.type?.identifier == "org.webmproject.webp")
+    }
+
+    // A newer macOS that writes WebP itself must not add a second "WebP" entry.
+    @Test func onlyOneWebPEntry() {
+        #expect(FormatRegistry.writable.filter { $0.fileExtension == "webp" }.count == 1)
+        #expect(FormatRegistry.hidden.contains("org.webmproject.webp"))
+    }
+
+    @Test func oldStoredOptionsGetWebPDefaults() throws {
+        // What milestone 3 stored for JPEG: no effort, no webpKind.
+        let json = Data(#"{"quality":55,"lossless":false,"progressive":true,"keepMetadata":false,"interlaced":false,"tiffCompression":5,"keepAllPages":true}"#.utf8)
+        let options = try JSONDecoder().decode(FormatOptions.self, from: json)
+        #expect(options.quality == 55 && options.progressive && !options.keepMetadata)
+        #expect(options.effort == 4 && options.webpKind == .photo)
+        let again = try JSONDecoder().decode(FormatOptions.self, from: JSONEncoder().encode(
+            options.with { $0.effort = 6; $0.webpKind = .drawing }))
+        #expect(again.effort == 6 && again.webpKind == .drawing)
+    }
+
     @Test func readableNamesListMacOSAndOwnFormats() {
         let names = FormatRegistry.readableNames
         #expect(names.macOS.contains("JPEG") && names.macOS.contains("HEIC"))
@@ -47,6 +73,33 @@ import Testing
             context.fill(CGRect(x: x, y: y, width: 1, height: 1))
         } }
         return context.makeImage()!
+    }
+
+    @Test func webpUsesItsOptions() throws {
+        let webp = try #require(FormatRegistry.format(id: "webp"))
+        let lossy = try ImageEncoder.encode([image(200, 150)], as: webp, options: webp.defaultOptions)
+        let lossless = try ImageEncoder.encode([image(200, 150)], as: webp, options: webp.defaultOptions.with { $0.lossless = true })
+        let source = try #require(CGImageSourceCreateWithData(lossy as CFData, nil))
+        #expect(CGImageSourceGetType(source) as String? == "org.webmproject.webp")
+        #expect(lossy != lossless)
+        let losslessSource = try #require(CGImageSourceCreateWithData(lossless as CFData, nil))
+        let decoded = try #require(CGImageSourceCreateImageAtIndex(losslessSource, 0, nil))
+        let back = try #require(RGBAImage(decoded))
+        #expect(back == (try ImageEncoder.rgba(image(200, 150))))
+    }
+
+    @Test func sixteenBitSourceEncodes() throws {
+        let webp = try #require(FormatRegistry.format(id: "webp"))
+        let p3 = try #require(CGColorSpace(name: CGColorSpace.displayP3))
+        let context = try #require(CGContext(data: nil, width: 32, height: 24, bitsPerComponent: 16, bytesPerRow: 0,
+                                             space: p3, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(CGColor(red: 1, green: 0.2, blue: 0.1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: 32, height: 24))
+        let source = try #require(context.makeImage())
+        let data = try ImageEncoder.encode([source], as: webp, options: webp.defaultOptions)
+        let readBack = try #require(CGImageSourceCreateWithData(data as CFData, nil))
+        let decoded = try #require(CGImageSourceCreateImageAtIndex(readBack, 0, nil))
+        #expect(decoded.width == 32 && decoded.height == 24)
     }
 
     func props(_ data: Data) throws -> [CFString: Any] {

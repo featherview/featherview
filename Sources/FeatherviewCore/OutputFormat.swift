@@ -10,6 +10,8 @@ public struct OutputFormat: Hashable, Sendable, Identifiable {
         /// One page per image, drawn with Core Graphics (ImageIO's PDF ignores quality).
         case pdf
         case pbm, pgm, ppm, qoi, pcx
+        /// libwebp (the one third-party encoder, spec "Formats").
+        case webp
     }
 
     /// Stable key, stored in settings: never change one once shipped. The file extension for known formats.
@@ -39,7 +41,8 @@ public struct OutputFormat: Hashable, Sendable, Identifiable {
 
 /// One option of spec "Format options".
 public enum FormatOption: String, Sendable, CaseIterable {
-    case quality, lossless, progressive, keepMetadata, targetSize, interlaced, tiffCompression, keepAllPages
+    case quality, lossless, progressive, keepMetadata, targetSize, interlaced, tiffCompression, keepAllPages,
+         effort, webpKind
 }
 
 public enum TIFFCompression: Int, Codable, Sendable, CaseIterable {
@@ -60,6 +63,10 @@ public struct FormatOptions: Codable, Equatable, Sendable {
     public var interlaced = false
     public var tiffCompression = TIFFCompression.lzw
     public var keepAllPages = true
+    /// WebP: libwebp's method, 0...6; higher is slower and smaller.
+    public var effort = 4
+    /// WebP: the spec's "preset".
+    public var webpKind = WebPPictureKind.photo
 
     public init() {}
 
@@ -74,6 +81,8 @@ public struct FormatOptions: Codable, Equatable, Sendable {
         interlaced = (try? c.decodeIfPresent(Bool.self, forKey: .interlaced)) ?? d.interlaced
         tiffCompression = (try? c.decodeIfPresent(TIFFCompression.self, forKey: .tiffCompression)) ?? d.tiffCompression
         keepAllPages = (try? c.decodeIfPresent(Bool.self, forKey: .keepAllPages)) ?? d.keepAllPages
+        effort = (try? c.decodeIfPresent(Int.self, forKey: .effort)) ?? d.effort
+        webpKind = (try? c.decodeIfPresent(WebPPictureKind.self, forKey: .webpKind)) ?? d.webpKind
     }
 
     func with(_ change: (inout FormatOptions) -> Void) -> FormatOptions {
@@ -90,6 +99,7 @@ public enum FormatRegistry {
         "com.apple.atx", "org.khronos.ktx", "org.khronos.ktx2", "org.khronos.astc",
         "com.microsoft.dds", "public.pvr", "public.heics",
         "public.pbm",  // writes colour ASCII PPM under the .pbm name; ours writes real PBM
+        "org.webmproject.webp",  // ours, through libwebp, if a newer ImageIO writes it too
     ]
 
     /// Known ImageIO types: id (= extension), name, options, defaults.
@@ -131,6 +141,9 @@ public enum FormatRegistry {
             formats.append(OutputFormat(id: id, name: name, fileExtension: id, writer: writer,
                                         optionFields: [], defaultOptions: FormatOptions()))
         }
+        formats.append(OutputFormat(id: "webp", name: "WebP", fileExtension: "webp", writer: .webp,
+                                    optionFields: [.webpKind, .lossless, .quality, .effort],
+                                    defaultOptions: FormatOptions().with { $0.quality = 75 }))
         return formats.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }()
 
