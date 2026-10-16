@@ -10,9 +10,12 @@ final class BatchModel {
         didSet {
             UserDefaults.standard.set(format.id, forKey: "batchFormat")
             options = FormatSettings.options(for: format)
+            saved = options
         }
     }
     var options: FormatOptions
+    /// The options as last read or written, to tell edits here from a save in another window.
+    private var saved: FormatOptions
     var limitSize = false
     var maxDimension = 1920
     var useRename = false
@@ -26,12 +29,23 @@ final class BatchModel {
     init() {
         let format = FormatRegistry.format(id: UserDefaults.standard.string(forKey: "batchFormat") ?? "jpg") ?? .jpeg
         options = FormatSettings.options(for: format)
+        saved = FormatSettings.options(for: format)
         self.format = format
+    }
+
+    /// Takes options saved by Save As or Settings since, so Convert never writes back a stale copy;
+    /// unsaved edits here survive unrelated defaults changes.
+    func reloadOptions() {
+        let current = FormatSettings.options(for: format)
+        guard current != saved else { return }
+        options = current
+        saved = current
     }
 
     func run() {
         guard let outputFolder, !inputs.isEmpty, !isRunning else { return }
         FormatSettings.save(options, for: format)
+        saved = options
         let job = BatchJob(
             inputs: inputs, outputFolder: outputFolder, format: format, options: options,
             maxDimension: limitSize ? max(16, maxDimension) : nil,
@@ -121,5 +135,8 @@ struct BatchView: View {
         }
         .formStyle(.grouped)
         .frame(minWidth: 460, minHeight: 420)
+        // The model outlives the window: catch saves from Save As or Settings › Formats.
+        .onAppear { model.reloadOptions() }
+        .onReceive(defaultsChanged) { _ in model.reloadOptions() }
     }
 }
