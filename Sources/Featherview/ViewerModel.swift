@@ -254,6 +254,8 @@ final class ViewerModel {
                         try ImageDecoder.decode(url, maxPixelSize: size, halvingSteps: true, page: page)
                     }
                     pageDecode = decode
+                    // A finished decode would otherwise keep its page in memory, outside both caches.
+                    defer { if pageDecode == decode { pageDecode = nil } }
                     decoded = try await decode.value
                 } else {
                     decoded = size == nil
