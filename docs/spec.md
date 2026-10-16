@@ -166,6 +166,24 @@ A standard Mac settings window with tabs. Every setting below has the default sh
 - Open with: up to 3 external apps, opened with ⌥1, ⌥2, ⌥3 on the current file.
 - Formats: per-format defaults (see "Format options"), saved profiles.
 
+## Languages
+
+Decided 2026-10-16: the UI is translated into the 30 most widely spoken languages that macOS
+offers. The app follows the system language, and System Settings › Language & Region › Applications
+can set it per app (no setting of our own).
+
+English (source), Chinese Simplified, Chinese Traditional, Hindi, Spanish, Arabic, French,
+Bengali, Portuguese (Brazil), Russian, Indonesian, Urdu, German, Japanese, Marathi, Telugu,
+Turkish, Tamil, Vietnamese, Korean, Italian, Gujarati, Thai, Polish, Ukrainian, Kannada,
+Malayalam, Malay, Dutch, Romanian.
+
+- One String Catalog (`Localizable.xcstrings`); every user-facing string goes through it,
+  including error messages and the batch log.
+- Arabic and Urdu lay out right to left (SwiftUI mirrors the layout; images are never mirrored).
+- Numbers, sizes, dates and units use system formatters, never hand-built strings.
+- Keyboard shortcuts stay the same in every language.
+- File names produced by rename templates are not translated.
+
 ## Formats
 
 Format support is a headline feature. The lists are built at runtime from what macOS can do

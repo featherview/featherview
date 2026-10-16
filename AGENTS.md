@@ -98,6 +98,8 @@ Use Instruments (Time Profiler) to find where time goes.
   batch output; delete means move to Trash.
 - User-facing errors are short sentences naming the file ("Can't open IMG_1234.jpg"), never
   raw error dumps; one bad file never stops browsing or a batch.
+- User-facing text is translatable (spec "Languages"): SwiftUI string literals already are; anything
+  else uses `String(localized:)`. Never build sentences by concatenating pieces.
 - Keep `shortcut:` comments for known limits, in the form `shortcut: <limit>, <when to upgrade>`.
 - Commit messages: conventional commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
 

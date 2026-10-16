@@ -16,6 +16,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 3 | Formats and Save As | to write after 2 | — |
 | 4 | Batch complete | to write after 3 | — |
 | 5 | WebP output | to write after 3 (independent of 4) | — |
+| 6 | Languages | to write after 4 and 5 | — |
 
 ## 1. Core viewer and batch
 
@@ -79,6 +80,13 @@ Spec: "Batch window (⌘B)" (all of it).
 Spec: "Write (open-source encoder)". libwebp built from source as a SwiftPM C target, loaded
 only when writing WebP; WebP options (quality, lossless, effort, preset). Verify no change to
 launch time and memory budgets. Record libwebp and its licence in README.md.
+
+## 6. Languages
+
+Spec: "Languages". Last, because by then every UI string exists. Move all user-facing strings
+into `Localizable.xcstrings` (bundled by `scripts/bundle.sh`), translate into the 30 languages,
+check right-to-left layout (Arabic, Urdu) and long strings (German) in the viewer, batch and
+settings windows. A test fails if a catalog key is missing a language.
 
 ## v2 (not in v1)
 
