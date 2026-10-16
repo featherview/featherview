@@ -26,12 +26,14 @@ public enum OrientationRotator {
 
     /// Lossless: only the orientation tag changes, pixel data is copied untouched.
     /// Writes a temp file next to the original and swaps it in, so a failure never damages the original.
-    public static func rotate(_ url: URL, _ rotation: Rotation) throws {
-        guard let type = UTType(filenameExtension: url.pathExtension),
-              supported.contains(where: { type.conforms(to: $0) }) else { throw RotateError.unsupportedFormat }
+    public static func rotate(_ link: URL, _ rotation: Rotation) throws {
+        let url = link.resolvingSymlinksInPath()  // replaceItemAt can't swap a symlink; rotate its target
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let sourceType = CGImageSourceGetType(source),
-              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+              let sourceType = CGImageSourceGetType(source) else { throw RotateError.unreadable }
+        // Content, not extension: a PNG named .jpg must still be refused.
+        guard let type = UTType(sourceType as String),
+              supported.contains(where: { type.conforms(to: $0) }) else { throw RotateError.unsupportedFormat }
+        guard let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
         else { throw RotateError.unreadable }
         let current = props[kCGImagePropertyOrientation] as? Int ?? 1
         let temp = url.deletingLastPathComponent()

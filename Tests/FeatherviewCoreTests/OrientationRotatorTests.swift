@@ -43,4 +43,24 @@ import Testing
         #expect(throws: RotateError.writeFailed) { try OrientationRotator.rotate(url, .clockwise) }
         #expect(try Data(contentsOf: url) == original)
     }
+
+    @Test func rotatesThroughSymlink() throws {
+        let dir = try Fixtures.makeTempDir()
+        let target = try Fixtures.writeImage(to: dir.appendingPathComponent("target.jpg"), width: 60, height: 30)
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+
+        try OrientationRotator.rotate(link, .clockwise)
+
+        #expect(ImageDecoder.displaySize(of: target) == CGSize(width: 30, height: 60))
+        #expect(try FileManager.default.destinationOfSymbolicLink(atPath: link.path) == target.path)
+    }
+
+    @Test func refusesPNGWithJPEGExtension() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("png.jpg"), width: 4, height: 4, type: .png)
+        let original = try Data(contentsOf: url)
+        #expect(throws: RotateError.unsupportedFormat) { try OrientationRotator.rotate(url, .clockwise) }
+        #expect(try Data(contentsOf: url) == original)
+    }
 }
