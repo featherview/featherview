@@ -131,6 +131,14 @@ Spec "Formats" (Finder previews). A Quick Look preview extension and a thumbnail
 (SwiftPM can't produce app extensions), sharing FeatherviewCore. Check: Finder icon thumbnails,
 Space preview, open panel preview; no effect on the app's launch time.
 
+## Own look (any time before the v1 release)
+
+Maintainer, 2026-10-16: the app looks like a stock macOS app; Featherview's own taste and feel is
+missing. Give it a design pass of its own (identity, colour, typography, motion, the small
+touches that make a viewer feel crafted), mockups first as an artifact, reviewed by the
+maintainer, then planned. Coordinate with milestone 4's batch-window mockups so both share one
+visual language. Clean-room rules still apply.
+
 ## v2 (not in v1)
 
 JPEG XL writing (libjxl), thumbnail browser, anything in "Out of scope for v1" in `AGENTS.md`.

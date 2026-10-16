@@ -287,15 +287,20 @@ the About window.
 
 | Format | Options |
 |---|---|
-| JPEG | quality 1–100 (default 80), progressive, no chroma subsampling, keep EXIF/IPTC/XMP/comment (default on), target file size in KB |
-| HEIC, AVIF | quality 1–100 (default 80), lossless, keep metadata (default on) |
-| PNG | compression effort fast / default / best, interlaced |
+| JPEG | quality 1–100 (default 80), progressive, keep EXIF/IPTC/XMP/comment (default on), target file size in KB |
+| HEIC, AVIF | quality 1–100 (default 80; 100 is the best ImageIO does, not lossless), keep metadata (default on) |
+| PNG | interlaced |
 | TIFF | compression none / LZW / PackBits / JPEG / ZIP, keep all pages |
-| GIF | interlaced |
-| JPEG 2000 | quality 1–100, lossless |
+| JPEG 2000 | quality 1–100 (default 90), lossless (default) |
 | PDF | one page per image at the image's size; JPEG quality 1–100 for the image (default 95) or lossless (decided 2026-10-16; paper sizes later) |
-| TGA, BMP, ICO, ICNS, PBM | none |
+| GIF, TGA, BMP, PSD, OpenEXR, PBM | none |
+| ICO, ICNS | none; the image is scaled to fit a transparent square of 256 px (ICO) or 512 px (ICNS), or the next allowed size up for smaller images (16, 32, 128, 256, 512), never enlarged beyond it |
 | WebP | quality 1–100 (default 75), lossless, effort 0–6 (default 4), preset photo / picture / drawing / icon / text |
+
+Decided 2026-10-16 after testing ImageIO on macOS 27: it can't write JPEG without chroma subsampling
+(except at quality 100), lossless HEIC/AVIF, PNG compression levels or interlaced GIF, so those
+options are not offered. ImageIO's GPU texture formats (KTX, KTX2, ASTC, PVR, ATX, DDS) and HEIC
+sequences are not offered for writing; any other type a newer macOS adds appears automatically.
 
 Orientation is always applied to the pixels and the tag reset to 1 (not an option). Options are
 remembered per format and can be saved as named profiles.
