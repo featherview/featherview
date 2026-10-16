@@ -5,6 +5,7 @@ struct ViewerView: View {
     @Bindable var model: ViewerModel
     @Environment(\.displayScale) private var displayScale
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -117,6 +118,7 @@ struct ViewerView: View {
         case .open: model.showOpenPanel()
         case .batch: openWindow(id: "batch")
         case .minimize: NSApp.keyWindow?.miniaturize(nil)
+        case .settings: openSettings()
         }
         return .handled
     }
