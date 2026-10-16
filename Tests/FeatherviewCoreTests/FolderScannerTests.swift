@@ -61,7 +61,16 @@ import Testing
         try Fixtures.writeImage(to: dir.appendingPathComponent(name), width: 4, height: 4)
 
         let names = try FolderScanner.images(around: dir.appendingPathComponent(name)).map(\.lastPathComponent)
-        #expect(Set(names) == ["a.jpg", name])
+        #expect(names.sorted() == ["a.jpg", name].sorted())
+    }
+
+    @Test func openedFileInOtherCaseIsListedOnce() throws {
+        let dir = try Fixtures.makeTempDir()
+        try Fixtures.writeImage(to: dir.appendingPathComponent("img.jpg"), width: 4, height: 4)
+        try Fixtures.writeImage(to: dir.appendingPathComponent("b.png"), width: 4, height: 4)
+
+        let names = try FolderScanner.images(around: dir.appendingPathComponent("IMG.JPG")).map(\.lastPathComponent)
+        #expect(names == ["b.png", "img.jpg"])
     }
 
     @Test func missingFolderThrows() {

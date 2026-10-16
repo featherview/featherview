@@ -13,7 +13,9 @@ public enum FolderScanner {
         // folder-open budget; show the opened file first and sort later if that budget slips.
         var images = items.filter { ImageFormats.isDecodable($0) && isRegularFile($0) }
         // The file the user opened is always listed, even if hidden or of an unknown extension.
-        if !isFolder, isRegularFile(url), !images.contains(where: { $0.lastPathComponent == url.lastPathComponent }) {
+        // Names compare without case (APFS default); not pathKey, which would merge symlinks with their target.
+        let openedName = url.lastPathComponent.lowercased()
+        if !isFolder, isRegularFile(url), !images.contains(where: { $0.lastPathComponent.lowercased() == openedName }) {
             images.append(folder.appendingPathComponent(url.lastPathComponent))
         }
         return images
