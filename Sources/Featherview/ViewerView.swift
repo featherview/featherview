@@ -367,7 +367,8 @@ struct ViewerCommands: Commands {
             Button("Open…  (O)") { (model ?? ViewerModel.lastActive.current).showOpenPanel() }
                 .keyboardShortcut("o")
         }
-        CommandGroup(replacing: .saveItem) {
+        // Not replacing .saveItem: SwiftUI shows nothing in that group for an app without documents.
+        CommandGroup(after: .newItem) {
             Button("Save As…  (S)") { model?.saveAs() }
                 .keyboardShortcut("s", modifiers: [.command, .shift])
                 .disabled(model?.list.current == nil || model?.list.isHolding == true)
