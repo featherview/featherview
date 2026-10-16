@@ -26,7 +26,7 @@ final class ViewerModel {
     /// Brings the viewer window back if it was closed; set by the view.
     var revealWindow: () -> Void = {}
 
-    /// Fit mode decodes at screen size: enough for any window, far less memory than full size.
+    /// Fit mode decodes at screen size (rounded up to a halving step): enough for any window, less memory than full size.
     private let screenPixels = Int(NSScreen.screens
         .map { max($0.frame.width, $0.frame.height) * $0.backingScaleFactor }
         .max() ?? 2560)

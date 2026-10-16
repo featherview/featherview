@@ -83,9 +83,10 @@ Rule of thumb: if logic can be tested without a window, it belongs in Feathervie
 | Next/previous image when prefetched | no visible delay (< 16 ms to swap) |
 | Next/previous image, not prefetched | < 150 ms (12 MP JPEG) |
 | Opening a folder of 10,000 files | < 500 ms to first image, UI never blocks |
-| Memory while browsing | bounded by the 8-image cache, decoded at screen size |
+| Memory while browsing | bounded by the 8-image cache, decoded at screen size (rounded up to JPEG's next halving step, at most 2× per side) |
 
-How: decode off the main thread at screen size (ImageIO thumbnail API), prefetch 2 neighbours each
+How: decode off the main thread at screen size, rounded up to full, ½, ¼ or ⅛ size (decided
+2026-10-16: any size in between costs a slow resample; see `ImageDecoder.decodeSize`), prefetch 2 neighbours each
 way, never touch file contents while scanning a folder. Measure: the app logs how long each image
 took to appear — `log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'`.
 Use Instruments (Time Profiler) to find where time goes.

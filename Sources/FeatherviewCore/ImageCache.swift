@@ -1,7 +1,8 @@
 import CoreGraphics
 import Foundation
 
-/// Decoded images, least recently used evicted first. Cached images are keyed by URL only: callers
+/// Decoded images for display, least recently used evicted first. Decodes use halving steps, so an
+/// image can be up to 2× the requested size per side (see `ImageDecoder.decodeSize`). Cached images are keyed by URL only: callers
 /// clear it when the decode size they need changes. Running decodes are joined only at the same size.
 public actor ImageCache {
     private let capacity: Int
@@ -28,7 +29,7 @@ public actor ImageCache {
         } else {
             task = Task.detached(priority: .userInitiated) {
                 try Task.checkCancellation()
-                return try ImageDecoder.decode(url, maxPixelSize: maxPixelSize)
+                return try ImageDecoder.decode(url, maxPixelSize: maxPixelSize, halvingSteps: true)
             }
             inFlight[url] = (maxPixelSize, task, 1)
         }

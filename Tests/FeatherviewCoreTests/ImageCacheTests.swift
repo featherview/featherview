@@ -62,8 +62,9 @@ import Testing
         let url = try Fixtures.makeTempDir().appendingPathComponent("b.jpg")
         let cache = ImageCache()
         try await startLargeDecode(cache, url)
-        #expect(try await cache.image(for: url, maxPixelSize: 100).width == 100)
-        #expect(try await cache.image(for: url, maxPixelSize: 100).width == 100)
+        // 750 = 6000 / 8, the halving step at or above 100.
+        #expect(try await cache.image(for: url, maxPixelSize: 100).width == 750)
+        #expect(try await cache.image(for: url, maxPixelSize: 100).width == 750)
     }
 
     @Test func cancelledCallerSkipsDecode() async throws {
