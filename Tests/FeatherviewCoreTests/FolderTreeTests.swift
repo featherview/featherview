@@ -102,6 +102,34 @@ private func makeTree() throws -> URL {
         #expect(chooser.selected.url.lastPathComponent == "link")
     }
 
+    @Test func upFromALinkToASiblingReturnsToTheLink() throws {
+        let root = try makeTree()  // link -> c, both in root
+        var chooser = FolderChooser(folder: root)
+        chooser.moveSelection(by: 5)  // a → link
+        #expect(chooser.selected.url.lastPathComponent == "link")
+        chooser.enter()
+        chooser.up()
+        #expect(chooser.selected.url.lastPathComponent == "link")
+    }
+
+    /// Needs a case-sensitive volume to hold both folders; on the default APFS it checks nothing.
+    @Test func upTellsFoldersApartThatDifferOnlyInCase() throws {
+        let base = try Fixtures.makeTempDir(), manager = FileManager.default
+        for name in ["Photos", "photos"] {
+            try? manager.createDirectory(at: base.appendingPathComponent(name), withIntermediateDirectories: false)
+        }
+        guard try manager.contentsOfDirectory(atPath: base.path).count == 2 else { return }
+        let names = FolderChooser(folder: base).entries.map(\.url.lastPathComponent)
+        #expect(FolderChooser(folder: base).entries.map(\.url.lastPathComponent) == names)
+        for name in ["Photos", "photos"] {
+            var chooser = FolderChooser(folder: base)
+            chooser.moveSelection(by: names.firstIndex(of: name)! - chooser.selection)
+            chooser.enter()
+            chooser.up()
+            #expect(chooser.selected.url.lastPathComponent == name)
+        }
+    }
+
     @Test func rootHasNoParentEntry() {
         var chooser = FolderChooser(folder: URL(fileURLWithPath: "/"))
         #expect(!chooser.entries.contains { if case .parent = $0 { true } else { false } })

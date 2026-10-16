@@ -58,10 +58,14 @@ public struct FolderChooser: Equatable, Sendable {
         entries = [.again(folder)]
             + (FolderTree.parent(of: folder).map { [Entry.parent($0)] } ?? [])
             + subfolders.map { .subfolder($0) }
-        let previousKey = previous.map(pathKey)
-        selection = entries.firstIndex { entry in
-            if case .subfolder(let url) = entry { return previousKey == nil || pathKey(url) == previousKey }
-            return false
-        } ?? (entries.count > 1 && previousKey == nil ? 1 : 0)
+        guard let previous else {
+            selection = subfolders.isEmpty ? (entries.count > 1 ? 1 : 0) : entries.count - subfolders.count
+            return
+        }
+        // By name, not pathKey: a link and its target, or "Photos" and "photos" on a case-sensitive
+        // volume, are different entries. pathKey only catches a folder opened by a differently-cased path.
+        let index = subfolders.firstIndex { $0.lastPathComponent == previous.lastPathComponent }
+            ?? subfolders.firstIndex { pathKey($0) == pathKey(previous) }
+        selection = index.map { entries.count - subfolders.count + $0 } ?? 0
     }
 }
