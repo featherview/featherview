@@ -57,8 +57,6 @@ final class ViewerModel {
     /// F7 / F8: which panel is open, if any.
     var destinationPanel: FileOperation?
     var slots = DestinationSlots(defaults: .standard)
-    /// With "show the next image" off, the removed image stays on screen until the next key.
-    private var holdingRemoved = false
 
     /// Fit mode decodes at screen size (rounded up to a halving step): enough for any window, less memory than full size.
     private let screenPixels = Int(NSScreen.screens
@@ -116,7 +114,6 @@ final class ViewerModel {
         isOpening = true
         closeChooser()
         emptyFolder = nil
-        holdingRemoved = false
         let includeHidden = AppSettings.showHiddenFiles.value()
         let isFolder = isFolderPath(url)
         openedFolder = isFolder ? url : url.deletingLastPathComponent()
@@ -156,12 +153,10 @@ final class ViewerModel {
     }
 
     func next() {
-        if holdingRemoved { holdingRemoved = false; return show() }  // the image after the removed one
         if list.next() { show() } else { pastEnd(forward: true) }
     }
 
     func previous() {
-        holdingRemoved = false
         if list.previous() { show() } else { pastEnd(forward: false) }
     }
     func first() { list.first(); show() }
@@ -246,7 +241,7 @@ final class ViewerModel {
     /// arrow keys feel instant.
     func show(page: Int = 0) {
         loadTask?.cancel()
-        holdingRemoved = false
+        list.release()
         // The old file's count would let ⌥→ ask a single-page file for page 2; it's read again below.
         if page == 0 { self.page = 0; pageCount = 1 }
         guard let url = list.current else {
@@ -325,7 +320,7 @@ final class ViewerModel {
 
     /// Queued behind rotations: one still running would write the file back after it was trashed.
     func moveCurrentToTrash() {
-        guard let url = list.current else { return }
+        guard let url = list.current, !list.isHolding else { return }
         let previous = rotateTask
         rotateTask = Task {
             await previous?.value
@@ -348,31 +343,28 @@ final class ViewerModel {
 
     /// After Trash or a move: the image leaves the list. With "show the next image" on (default) the
     /// next one shows; off, the removed image stays until the next key, which then shows the one after it.
-    // shortcut: while the removed image is held, the title already names the next file; fine until someone notices.
     private func removeFromList(_ url: URL) async {
         await cache.remove(url)
         await fullSizeCache.remove(url)
         let wasCurrent = list.current == url
         let wasLast = list.index == list.urls.count - 1
-        list.remove(url)
-        guard wasCurrent else { return }
+        let hold = wasCurrent && !wasLast && !AppSettings.showNextAfterRemoval.value()
+        // Held, the removed file stays current, so ⌘⌫, F7 / F8, R / L and Info can't reach the unseen next one.
+        list.remove(url, hold: hold)
+        guard wasCurrent, !hold else { return }
         // Keeps the folder known, so the view says it's empty and ← / → still reach the chooser.
         if list.isEmpty { emptyFolder = openedFolder ?? url.deletingLastPathComponent() }
-        if AppSettings.showNextAfterRemoval.value() || wasLast || list.isEmpty {
-            show()
-        } else {
-            holdingRemoved = true
-        }
+        show()
     }
 
     func showDestinations(_ operation: FileOperation) {
-        if list.current != nil { destinationPanel = operation }
+        if list.current != nil, !list.isHolding { destinationPanel = operation }
     }
 
     /// F7 / F8 with a slot picked: moves or copies the current file (and sidecars) there.
     /// A copy leaves the viewer as it is; a move removes the file from the list.
     func transfer(to slot: Int) {
-        guard let operation = destinationPanel, let url = list.current, let folder = slots[slot] else { return }
+        guard let operation = destinationPanel, let url = list.current, !list.isHolding, let folder = slots[slot] else { return }
         destinationPanel = nil
         slots.lastUsed = slot
         slots.save(to: .standard)
@@ -423,7 +415,7 @@ final class ViewerModel {
 
     /// Rewrites the file off the main thread. Rotations and trashing run one at a time so none is lost.
     func rotate(_ rotation: Rotation) {
-        guard let url = list.current else { return }
+        guard let url = list.current, !list.isHolding else { return }  // a held image is already gone
         let page = page
         let previous = rotateTask
         rotateTask = Task {
