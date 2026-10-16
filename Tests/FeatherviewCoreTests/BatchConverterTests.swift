@@ -67,7 +67,7 @@ import Testing
         #expect(try FileManager.default.contentsOfDirectory(atPath: out.path).count == 2)
     }
 
-    @Test(arguments: OutputFormat.allCases)
+    @Test(arguments: [OutputFormat.jpeg, .png, .heic, .tiff])
     func keepsCameraExifGpsAndIptcMetadata(format: OutputFormat) async throws {
         let dir = try Fixtures.makeTempDir()
         let input = try Fixtures.writeImage(

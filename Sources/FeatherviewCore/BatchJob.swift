@@ -1,49 +1,22 @@
 import Foundation
-import UniformTypeIdentifiers
-
-public enum OutputFormat: String, CaseIterable, Sendable {
-    case jpeg, png, heic, tiff
-
-    public var type: UTType {
-        switch self {
-        case .jpeg: .jpeg
-        case .png: .png
-        case .heic: .heic
-        case .tiff: .tiff
-        }
-    }
-
-    public var fileExtension: String {
-        switch self {
-        case .jpeg: "jpg"
-        case .png: "png"
-        case .heic: "heic"
-        case .tiff: "tiff"
-        }
-    }
-
-    public var isLossy: Bool { self == .jpeg || self == .heic }
-}
 
 public struct BatchJob: Sendable {
     public var inputs: [URL]
     public var outputFolder: URL
     public var format: OutputFormat
-    /// 0...1, lossy formats only.
-    public var quality: Double
-    /// docs/spec.md: JPEG and HEIC quality default to 80.
-    public static let defaultQuality = 0.8
+    /// The format's options (spec "Format options"); its defaults unless given.
+    public var options: FormatOptions
     /// Longest side in pixels; nil keeps the size. Never upscales.
     public var maxDimension: Int?
     /// nil keeps the original base name.
     public var rename: RenamePattern?
 
-    public init(inputs: [URL], outputFolder: URL, format: OutputFormat, quality: Double = defaultQuality,
+    public init(inputs: [URL], outputFolder: URL, format: OutputFormat, options: FormatOptions? = nil,
                 maxDimension: Int? = nil, rename: RenamePattern? = nil) {
         self.inputs = inputs
         self.outputFolder = outputFolder
         self.format = format
-        self.quality = quality
+        self.options = options ?? format.defaultOptions
         self.maxDimension = maxDimension
         self.rename = rename
     }

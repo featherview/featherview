@@ -96,9 +96,9 @@ import Testing
 }
 
 @Suite struct BatchJobTests {
-    @Test func qualityDefaultsToSpec() {
-        // docs/spec.md: JPEG and HEIC quality 1-100, default 80.
-        #expect(BatchJob.defaultQuality == 0.8)
-        #expect(BatchJob(inputs: [], outputFolder: URL(fileURLWithPath: "/a"), format: .jpeg).quality == 0.8)
+    @Test func optionsDefaultToTheFormats() {
+        // docs/spec.md "Format options": JPEG and HEIC quality default to 80.
+        #expect(BatchJob(inputs: [], outputFolder: URL(fileURLWithPath: "/a"), format: .jpeg).options.quality == 80)
+        #expect(BatchJob(inputs: [], outputFolder: URL(fileURLWithPath: "/a"), format: .heic).options.quality == 80)
     }
 }

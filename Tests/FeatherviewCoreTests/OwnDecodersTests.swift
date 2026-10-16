@@ -106,6 +106,13 @@ import Testing
         #expect(reader.isAtEnd)
     }
 
+    @Test func builtInDecodersCoverTheSpec() {
+        let extensions = Set(OwnDecoders.builtIn.flatMap(\.extensions))
+        for ext in ["qoi", "pcx", "dcx", "xbm", "xpm", "wbmp", "ras", "iff", "lbm", "pdf"] {
+            #expect(extensions.contains(ext), "\(ext)")
+        }
+    }
+
     @Test func pixelCapIs256Megapixels() {
         #expect((try? checkedSize(16384, 16384)) != nil)
         #expect((try? checkedSize(65536, 4096)) != nil)
