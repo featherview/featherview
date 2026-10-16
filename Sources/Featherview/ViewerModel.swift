@@ -70,6 +70,8 @@ final class ViewerModel {
     private var pageDecode: Task<CGImage, Error>?
     private var openTask: Task<Void, Never>?
     private var rotateTask: Task<Void, Never>?
+    /// ⌘C's full-size decodes: ImageIO can't stop one, so they run one at a time and held ⌘C skips the ones in between.
+    private let copies = LatestWins()
     /// Read timings with: log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'
     private static let log = Logger(subsystem: "net.mynetx.featherview", category: "viewer")
     /// When the process started, so the first image's log line covers launch and folder scan too.
@@ -453,8 +455,55 @@ final class ViewerModel {
     weak var window: NSWindow?
     /// Kept up to date by the view from the window's full-screen notifications.
     var isFullScreen = false
+    /// True while the viewer itself has the keyboard, not a text field or selected text beside it;
+    /// ⌘C copies the image only then. Kept up to date by the view.
+    var hasKeyboardFocus = false
 
     func toggleFullScreen() {
         window?.toggleFullScreen(nil)
+    }
+
+    /// ⌘C: the current image at full resolution, upright, decoded off the main thread.
+    func copyImage() {
+        guard let url = list.current else { return }
+        let page = page
+        let pending = rotateTask  // a rotation still rewriting the file would give the old image
+        copies.submit {
+            await pending?.value
+            do {
+                let image = try await Task.detached(priority: .userInitiated) { try ImageDecoder.decode(url, page: page) }.value
+                guard !Task.isCancelled else { return }  // a newer ⌘C came in: skip the encode
+                guard let data = await Task.detached(priority: .userInitiated, operation: { ClipboardImage.pngData(image) }).value
+                else { throw DecodeError.unreadable(url) }
+                guard !Task.isCancelled else { return }
+                let pasteboard = NSPasteboard.general
+                pasteboard.clearContents()
+                // the pasteboard can still refuse very large data; say so rather than leave it silently empty
+                if !pasteboard.setData(data, forType: .png) {
+                    self.errorMessage = String(localized: "Couldn't copy \(url.lastPathComponent)")
+                }
+            } catch {
+                if !Task.isCancelled { self.errorMessage = String(localized: "Couldn't copy \(url.lastPathComponent)") }
+            }
+        }
+    }
+
+    /// ⌥1–⌥3: opens the current file in the app set in Settings › Open With.
+    func openWith(_ index: Int) {
+        let path = AppSettings.openWith[index].value()
+        guard let url = list.current, !path.isEmpty else { return }
+        Task {
+            do {
+                _ = try await NSWorkspace.shared.open([url], withApplicationAt: URL(fileURLWithPath: path),
+                                                      configuration: NSWorkspace.OpenConfiguration())
+            } catch {
+                let app = FileManager.default.displayName(atPath: path)
+                errorMessage = String(localized: "Can't open \(url.lastPathComponent) with \(app)")
+            }
+        }
+    }
+
+    func showInFinder() {
+        if let url = list.current { NSWorkspace.shared.activateFileViewerSelecting([url]) }
     }
 }

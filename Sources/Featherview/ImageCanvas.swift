@@ -38,6 +38,8 @@ struct ImageCanvas: NSViewRepresentable {
     let checkerboard: Bool
     let panController: PanController
     let onDoubleClick: () -> Void
+    /// Any click on the image: the viewer takes the keyboard back (e.g. from the Info panel's text).
+    var onClick: () -> Void = {}
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -55,6 +57,7 @@ struct ImageCanvas: NSViewRepresentable {
         scrollView.backgroundColor = background
         guard let view = scrollView.documentView as? ImageLayerView else { return }
         view.onDoubleClick = onDoubleClick
+        view.onClick = onClick
         let oldSize = view.frame.size
         let visible = scrollView.contentView.bounds
         // Keep the point at the centre of the view where it was, so zooming doesn't jump to a corner.
@@ -90,6 +93,7 @@ private final class CenteringClipView: NSClipView {
 /// Draws the image with Core Animation and pans its scroll view while dragged.
 private final class ImageLayerView: NSView {
     var onDoubleClick: () -> Void = {}
+    var onClick: () -> Void = {}
     private let imageLayer = CALayer()
     private var dragStart: (mouse: NSPoint, origin: NSPoint)?
 
@@ -126,6 +130,7 @@ private final class ImageLayerView: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        onClick()
         if event.clickCount == 2 { return onDoubleClick() }
         guard let clip = enclosingScrollView?.contentView else { return }
         dragStart = (event.locationInWindow, clip.bounds.origin)
