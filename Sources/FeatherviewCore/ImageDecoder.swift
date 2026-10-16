@@ -78,10 +78,26 @@ public enum ImageDecoder {
                 ? decodeSize(full: full, target: maxPixelSize ?? full)
                 : min(maxPixelSize ?? full, full),
         ]
-        if hdr && supportsHDR { options[kCGImageSourceDecodeRequest] = kCGImageSourceDecodeToHDR }
+        let wantsHDR = hdr && supportsHDR
+        if wantsHDR { options[kCGImageSourceDecodeRequest] = kCGImageSourceDecodeToHDR }
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, page, options as CFDictionary)
         else { throw DecodeError.unreadable(url) }
-        return image
+        // 16-bit PNG/TIFF and EXR decode deep even as SDR; callers treat > 8 bits as HDR and the
+        // cache budget assumes 8, so only a real HDR result (PQ/HLG or extended range) stays deep.
+        guard image.bitsPerComponent > 8, !(wantsHDR && isHDR(image.colorSpace)) else { return image }
+        guard let eight = redrawn(image, width: image.width, height: image.height,
+                                  in: image.colorSpace.flatMap(sdrSpace) ?? CGColorSpace(name: CGColorSpace.sRGB)!)
+        else { throw DecodeError.unreadable(url) }
+        return eight
+    }
+
+    private static func isHDR(_ space: CGColorSpace?) -> Bool {
+        space.map { CGColorSpaceUsesITUR_2100TF($0) || CGColorSpaceUsesExtendedRange($0) } ?? false
+    }
+
+    /// `space` if an 8-bit RGB context can use it (not extended, not grey/CMYK).
+    private static func sdrSpace(_ space: CGColorSpace) -> CGColorSpace? {
+        space.model == .rgb && !isHDR(space) ? space : nil
     }
 
     /// `image` shrunk so its longest side is `longestSide`; nil if it's already that small.
@@ -90,12 +106,17 @@ public enum ImageDecoder {
         let longest = max(image.width, image.height)
         guard longestSide > 0, longest > longestSide else { return nil }
         let scale = Double(longestSide) / Double(longest)
-        let width = max(1, Int((Double(image.width) * scale).rounded()))
-        let height = max(1, Int((Double(image.height) * scale).rounded()))
+        return redrawn(image, width: max(1, Int((Double(image.width) * scale).rounded())),
+                       height: max(1, Int((Double(image.height) * scale).rounded())),
+                       in: CGColorSpace(name: CGColorSpace.sRGB)!)
+    }
+
+    /// `image` drawn into an 8-bit RGB(A) bitmap of the given size and color space.
+    private static func redrawn(_ image: CGImage, width: Int, height: Int, in space: CGColorSpace) -> CGImage? {
         let hasAlpha = ![.none, .noneSkipFirst, .noneSkipLast].contains(image.alphaInfo)
         guard let context = CGContext(
             data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-            space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            space: space,
             bitmapInfo: (hasAlpha ? CGImageAlphaInfo.premultipliedLast : .noneSkipLast).rawValue) else { return nil }
         context.interpolationQuality = .high
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))

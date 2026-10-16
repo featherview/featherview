@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import Testing
+import UniformTypeIdentifiers
 @testable import FeatherviewCore
 
 @Suite struct ImageDecoderTests {
@@ -91,5 +92,24 @@ import Testing
         let dir = try Fixtures.makeTempDir()
         let sdr = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 64, height: 48)
         #expect(try ImageDecoder.decode(sdr, maxPixelSize: 64, halvingSteps: true, hdr: true).bitsPerComponent == 8)
+    }
+
+    @Test(arguments: [UTType.png, .tiff], [true, false])
+    func deepSDRImagesDecodeAtEightBits(type: UTType, hdr: Bool) throws {
+        let dir = try Fixtures.makeTempDir()
+        let deep = try Fixtures.writeImage(to: dir.appendingPathComponent("deep.\(type.preferredFilenameExtension!)"),
+                                           width: 64, height: 48, type: type, bitsPerComponent: 16)
+        let image = try ImageDecoder.decode(deep, maxPixelSize: 64, halvingSteps: true, hdr: hdr)
+        #expect(image.bitsPerComponent == 8)
+        #expect(image.bitsPerPixel == 32)
+    }
+
+    @Test func exrDecodesAsEightBitSDRWithoutTheHDRRequest() throws {
+        let dir = try Fixtures.makeTempDir()
+        let exr = try Fixtures.writeImage(to: dir.appendingPathComponent("a.exr"), width: 64, height: 48,
+                                          type: UTType("com.ilm.openexr-image")!, bitsPerComponent: 16)
+        let image = try ImageDecoder.decode(exr, maxPixelSize: 64, halvingSteps: true)
+        #expect(image.bitsPerComponent == 8)
+        #expect(image.colorSpace.map(CGColorSpaceUsesExtendedRange) == false)
     }
 }
