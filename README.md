@@ -42,3 +42,5 @@ open build/Featherview.app
 Featherview is an independent, clean-room project inspired by the workflow of classic Windows
 image viewers such as IrfanView. It is not affiliated with, endorsed by, or derived from
 IrfanView or its author.
+
+Thanks to Irfan Škiljan, whose viewer has shown for decades how fast looking at images can be.
