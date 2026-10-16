@@ -77,7 +77,7 @@ struct ViewerView: View {
         // On a new image and on entering full screen (double-click, F or Return leave the image as is).
         .onChange(of: model.image) { hidePointerInFullScreen() }
         .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
-        .toolbar(id: "viewer") { ViewerToolbar(model: model, ready: toolbarReady) }
+        .modifier(ViewerToolbarPlacement(model: model, ready: toolbarReady))
         .onChange(of: model.image != nil || model.errorMessage != nil || model.emptyFolder != nil || !model.isOpening,
                   initial: true) { if $1, model.image == nil { ViewerModel.afterFrame { toolbarReady = true } } }
         .toolbar(model.isFullScreen || toolbarHidden ? .hidden : .visible, for: .windowToolbar)
@@ -352,6 +352,23 @@ struct InfoPanel: View {
 private let toolbarHiddenKey = "toolbarHidden"
 /// Whether viewer windows hide their status bar (View › Hide Status Bar).
 private let statusBarHiddenKey = "statusBarHidden"
+
+/// Only the main window's toolbar is customizable. AppKit copies every item inserted into a customizable
+/// toolbar into all windows with that toolbar's id, so a second window adding its buttons after its first
+/// image (or page buttons for a PDF) crashed with "already contains an item". Extra windows show the same
+/// buttons at once instead (the main window waits for the launch budget, see `toolbarReady`).
+private struct ViewerToolbarPlacement: ViewModifier {
+    let model: ViewerModel
+    let ready: Bool
+
+    func body(content: Content) -> some View {
+        if model === ViewerModel.main {
+            content.toolbar(id: "viewer") { ViewerToolbar(model: model, ready: ready) }
+        } else {
+            content.toolbar { ViewerToolbar(model: model, ready: true) }
+        }
+    }
+}
 
 struct ViewerCommands: Commands {
     @FocusedValue(\.viewer) private var model
