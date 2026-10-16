@@ -79,27 +79,32 @@ struct ViewerView: View {
             model.moveCurrentToTrash()
             return .handled
         }
-        guard modifiers.isEmpty else { return .ignored }
-        switch press.key {
-        case .rightArrow, .space, .pageDown, .downArrow: model.next()
-        case .leftArrow, .delete, .pageUp, .upArrow: model.previous()
-        case .home: model.first()
-        case .end: model.last()
-        case .escape:
-            guard model.isFullScreen else { return .ignored }
-            model.toggleFullScreen()
-        default:
-            switch press.characters.lowercased() {
-            case "r": model.rotate(.clockwise)
-            case "l": model.rotate(.counterClockwise)
-            case "i": model.showInfo.toggle()
-            case "f": model.toggleFullScreen()
-            case "0": model.setZoom(.fit)
-            case "1": model.setZoom(.factor(1))
-            case "+", "=": model.zoomIn()
-            case "-": model.zoomOut()
-            default: return .ignored
+        if modifiers.isEmpty {
+            switch press.key {
+            case .rightArrow, .space, .pageDown, .downArrow: model.next(); return .handled
+            case .leftArrow, .delete, .pageUp, .upArrow: model.previous(); return .handled
+            case .home: model.first(); return .handled
+            case .end: model.last(); return .handled
+            case .escape:
+                guard model.isFullScreen else { return .ignored }
+                model.toggleFullScreen()
+                return .handled
+            default: break
             }
+        }
+        // Shift may be needed to type a character key ('+' on US, digits on AZERTY).
+        guard modifiers.subtracting(.shift).isEmpty,
+              let action = ViewerKey.action(characters: press.characters, shift: modifiers.contains(.shift))
+        else { return .ignored }
+        switch action {
+        case .rotateRight: model.rotate(.clockwise)
+        case .rotateLeft: model.rotate(.counterClockwise)
+        case .toggleInfo: model.showInfo.toggle()
+        case .toggleFullScreen: model.toggleFullScreen()
+        case .fit: model.setZoom(.fit)
+        case .actualSize: model.setZoom(.factor(1))
+        case .zoomIn: model.zoomIn()
+        case .zoomOut: model.zoomOut()
         }
         return .handled
     }
