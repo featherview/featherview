@@ -28,11 +28,4 @@ public struct FileInfo: Equatable, Sendable {
         let candidate = page == 0 ? known : current
         return candidate?.isFor(url, page: page) == true ? candidate : nil
     }
-
-    /// The info to show with a page just put on screen: page 0's read (nil if none yet, or dropped by a
-    /// rotation), else the current one only if it is for that very page. Never another file's or page's.
-    public static func shown(url: URL, page: Int, known: FileInfo?, current: FileInfo?) -> FileInfo? {
-        if page == 0 { return known }
-        return current?.isFor(url, page: page) == true ? current : nil
-    }
 }
