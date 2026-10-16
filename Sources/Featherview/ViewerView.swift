@@ -73,18 +73,21 @@ struct ViewerView: View {
 
     /// Viewer shortcuts live here, not in the menus: a menu shortcut would also fire while typing
     /// in the Batch window's text fields (⌘⌫ there means "delete to start of line").
+    /// The Mac's ⌫ key sends U+007F; SwiftUI's `.delete` is U+0008 and never matches it.
+    private static let backspace = KeyEquivalent("\u{7F}")
+
     private func handle(_ press: KeyPress) -> KeyPress.Result {
         // Arrow keys carry the numeric-pad/function flags and Caps Lock changes nothing here,
         // so only these modifiers count.
         let modifiers = press.modifiers.intersection([.command, .control, .option, .shift])
-        if modifiers == .command, press.key == .delete {
+        if modifiers == .command, press.key == Self.backspace {
             model.moveCurrentToTrash()
             return .handled
         }
         if modifiers.isEmpty {
             switch press.key {
             case .rightArrow, .space, .pageDown, .downArrow: model.next(); return .handled
-            case .leftArrow, .delete, .pageUp, .upArrow: model.previous(); return .handled
+            case .leftArrow, Self.backspace, .pageUp, .upArrow: model.previous(); return .handled
             case .home: model.first(); return .handled
             case .end: model.last(); return .handled
             case .escape:
