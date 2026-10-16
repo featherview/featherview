@@ -20,15 +20,6 @@ final class ViewerModel {
     private(set) var zoom = Zoom.fit
     /// Bumped when the current file changes on disk (rotation), so views reading it refresh.
     private(set) var fileRevision = 0
-    /// What the status bar and the overlay show about a file: its pixel size, bytes and date.
-    struct FileInfo {
-        let url: URL
-        let pixelSize: CGSize?
-        let bytes: Int?
-        let modified: Date?
-        /// The overlay's `{size}` and `{date}`.
-        let values: [String: String]
-    }
     /// For the file shown, read off the main thread when it's shown.
     private(set) var fileInfo: FileInfo?
     var fileValues: (url: URL, values: [String: String])? { fileInfo.map { ($0.url, $0.values) } }
@@ -38,7 +29,7 @@ final class ViewerModel {
         switch zoom {
         case .factor(let factor): return Int((factor * 100).rounded())
         case .fit:
-            guard let info = fileInfo, info.url == list.current, let size = info.pixelSize else { return nil }
+            guard let info = fileInfo, info.isFor(list.current, page: page), let size = info.pixelSize else { return nil }
             return Int((ZoomSteps.fitFactor(image: size, view: viewSize, displayScale: displayScale) * 100).rounded())
         }
     }
@@ -333,13 +324,9 @@ final class ViewerModel {
                 // Read again on every show: a rotation changes both size and date. Not awaited, so the
                 // prefetch below doesn't wait for another file read (slow on network or USB disks).
                 Task {
-                    let info = await Task.detached {
-                        let resources = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
-                        return FileInfo(url: url, pixelSize: ImageDecoder.displaySize(of: url, page: page),
-                                        bytes: resources?.fileSize, modified: resources?.contentModificationDate,
-                                        values: OverlayTemplate.fileValues(of: url))
-                    }.value
-                    if list.current == url { fileInfo = info }
+                    let info = await Task.detached { FileInfo.read(url: url, page: page) }.value
+                    // A slower read for another page of this file may finish last.
+                    if info.isFor(list.current, page: self.page) { fileInfo = info }
                 }
                 // Not awaited either, and only for TIFFs: a cached image swaps in without another file read.
                 if page == 0, ImageFormats.mayHavePages(url) {

@@ -25,7 +25,7 @@ struct StatusBar: View {
     private var fields: [String] {
         // While the folder is listed the position isn't known yet; "1 / 1" would be wrong.
         guard let url = model.list.current, !model.isOpening else { return [] }
-        let info = model.fileInfo?.url == url ? model.fileInfo : nil
+        let info = model.fileInfo?.isFor(url, page: model.page) == true ? model.fileInfo : nil
         return StatusLine.make(pixelSize: info?.pixelSize, zoomPercent: model.zoomPercent, fileBytes: info?.bytes,
                                index: model.list.index, count: model.list.urls.count,
                                page: model.page, pageCount: model.pageCount, modified: info?.modified).fields
