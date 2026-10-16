@@ -79,7 +79,7 @@ Rule of thumb: if logic can be tested without a window, it belongs in Feathervie
 
 | Budget | Target |
 |---|---|
-| Cold launch with a file to first image on screen | < 300 ms (12 MP JPEG, Apple Silicon) |
+| Cold launch with a file to first image on screen | < 350 ms (12 MP JPEG, Apple Silicon; AppKit + SwiftUI alone take ~300 ms to show the window, decided 2026-10-16) |
 | Next/previous image when prefetched | no visible delay (< 16 ms to swap) |
 | Next/previous image, not prefetched | < 150 ms (12 MP JPEG) |
 | Opening a folder of 10,000 files | < 500 ms to first image, UI never blocks |
