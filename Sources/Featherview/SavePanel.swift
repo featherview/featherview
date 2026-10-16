@@ -22,7 +22,8 @@ enum SavePanel {
         setType(choice.format)
         let accessory = NSHostingView(rootView: Accessory(choice: choice, formatChanged: setType))
         accessory.sizingOptions = [.intrinsicContentSize]
-        accessory.frame.size = accessory.fittingSize
+        // Auto Layout, not a fixed frame: the panel then grows when another format shows more options.
+        accessory.translatesAutoresizingMaskIntoConstraints = false
         panel.accessoryView = accessory
 
         let response = if let window { await panel.beginSheetModal(for: window) } else { panel.runModal() }
