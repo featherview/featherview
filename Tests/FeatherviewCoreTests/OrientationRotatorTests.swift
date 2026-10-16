@@ -63,4 +63,25 @@ import Testing
         #expect(throws: RotateError.unsupportedFormat) { try OrientationRotator.rotate(url, .clockwise) }
         #expect(try Data(contentsOf: url) == original)
     }
+
+    @Test func refusesPagesAfterTheFirstAndLeavesTheFileUntouched() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("m.tif"), pages: 3)
+        let original = try Data(contentsOf: url)
+
+        // Turning a later page means re-encoding every page (lossy for JPEG-compressed TIFFs).
+        #expect(throws: RotateError.notFirstPage) { try OrientationRotator.rotate(url, .clockwise, page: 1) }
+        #expect(try Data(contentsOf: url) == original)
+    }
+
+    @Test func rotatingTheFirstPageKeepsTheOtherPages() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("m.tif"), pages: 3)
+
+        try OrientationRotator.rotate(url, .clockwise)
+
+        #expect(ImageDecoder.pageCount(of: url) == 3)
+        #expect(ImageDecoder.displaySize(of: url, page: 0) == CGSize(width: 4, height: 8))
+        #expect(ImageDecoder.displaySize(of: url, page: 2) == CGSize(width: 10, height: 4))
+    }
 }

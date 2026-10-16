@@ -8,6 +8,8 @@ public enum Rotation: Sendable {
 
 public enum RotateError: Error, Equatable {
     case unsupportedFormat, unreadable, writeFailed
+    /// A later page of a multi-page TIFF: turning it would re-encode every page.
+    case notFirstPage
 }
 
 public enum OrientationRotator {
@@ -26,7 +28,10 @@ public enum OrientationRotator {
 
     /// Lossless: only the orientation tag changes, pixel data is copied untouched.
     /// Writes a temp file next to the original and swaps it in, so a failure never damages the original.
-    public static func rotate(_ link: URL, _ rotation: Rotation) throws {
+    /// `page` is a page of a multi-page TIFF. ImageIO can only set the first page's tag without
+    /// re-encoding, so later pages are refused (spec "Rotate").
+    public static func rotate(_ link: URL, _ rotation: Rotation, page: Int = 0) throws {
+        guard page == 0 else { throw RotateError.notFirstPage }
         let url = link.resolvingSymlinksInPath()  // replaceItemAt can't swap a symlink; rotate its target
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let sourceType = CGImageSourceGetType(source) else { throw RotateError.unreadable }

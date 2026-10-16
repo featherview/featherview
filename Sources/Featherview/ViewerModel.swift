@@ -43,6 +43,17 @@ final class ViewerModel {
 
     /// A folder opened directly that has no images: the view says so, ← / → still leave it.
     private(set) var emptyFolder: URL?
+    /// Shown past either end of the folder (spec "Moving past the end of a folder").
+    private let chooserSession = ChooserSession()
+    var chooser: FolderChooser? { chooserSession.chooser }
+    /// Also true while the chooser's first listing runs, so keys go to it and Esc cancels it.
+    var isChooserOpen: Bool { chooserSession.isOpen }
+    /// Image counts of the chooser's folders, filled in off the main thread as they are counted.
+    private(set) var chooserCounts: [URL: Int] = [:]
+    private var countTask: Task<Void, Never>?
+    /// Page of a multi-page TIFF, 0-based; `pageCount` is 1 for every other file.
+    private(set) var page = 0
+    private(set) var pageCount = 1
 
     /// Fit mode decodes at screen size (rounded up to a halving step): enough for any window, less memory than full size.
     private let screenPixels = Int(NSScreen.screens
@@ -52,6 +63,8 @@ final class ViewerModel {
     /// Full-size decodes for zoom: one kept, and ones nobody waits for any more are skipped.
     private let fullSizeCache = ImageCache(capacity: 1)
     private var loadTask: Task<Void, Never>?
+    /// The page decode running, if any: ImageIO can't stop one, so the next waits for it (see show).
+    private var pageDecode: Task<CGImage, Error>?
     private var openTask: Task<Void, Never>?
     private var rotateTask: Task<Void, Never>?
     /// Read timings with: log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'
@@ -67,10 +80,27 @@ final class ViewerModel {
     }()
     private var loggedLaunch = false
 
+    init() {
+        chooserSession.onListed = { [weak self] in self?.countImages() }
+    }
+
     var title: String {
-        guard let url = list.current else { return "Featherview" }
+        guard let url = list.current else { return emptyFolder?.lastPathComponent ?? "Featherview" }
         // While the folder is listed the position isn't known yet; "1 / 1" would be wrong.
-        return isOpening ? url.lastPathComponent : "\(url.lastPathComponent) — \(list.position)"
+        if isOpening { return url.lastPathComponent }
+        if pageCount > 1 {
+            return String(localized: "\(url.lastPathComponent) — page \(page + 1) / \(pageCount) — \(list.position)")
+        }
+        return "\(url.lastPathComponent) — \(list.position)"
+    }
+
+    /// The folder being browsed, also when it has no images. It's the path the folder was opened by:
+    /// the scanner lists a symlinked folder under its target, and the chooser must go back the way the user came.
+    var folder: URL? { openedFolder ?? list.current?.deletingLastPathComponent() ?? emptyFolder }
+    private var openedFolder: URL?
+
+    private func isFolderPath(_ url: URL) -> Bool {
+        (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
     }
 
     /// A file shows at once; its folder is scanned off the main thread meanwhile, because a big
@@ -79,7 +109,11 @@ final class ViewerModel {
         revealWindow()
         openTask?.cancel()
         isOpening = true
-        let isFolder = (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+        closeChooser()
+        emptyFolder = nil
+        let includeHidden = AppSettings.showHiddenFiles.value()
+        let isFolder = isFolderPath(url)
+        openedFolder = isFolder ? url : url.deletingLastPathComponent()
         // Off the main actor: at launch the main thread is busy building the window, the decode needn't wait.
         let prefetch = isFolder || zoom != .fit ? nil : screenPixels
         let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache] in
@@ -97,11 +131,12 @@ final class ViewerModel {
             }
             do {
                 let urls = try await Task.detached(priority: .userInitiated) {
-                    try FolderScanner.images(around: url)
+                    try FolderScanner.images(around: url, includeHidden: includeHidden)
                 }.value
                 guard !Task.isCancelled else { return }
                 list = ImageList(urls: urls, current: url)
                 if isFolder {
+                    emptyFolder = urls.isEmpty ? url : nil
                     show()
                 } else if zoom == .fit, prefetchesNeighbors {
                     // show() ran before the neighbours were known; calling it again could restart the decode.
@@ -114,17 +149,69 @@ final class ViewerModel {
         }
     }
 
-    // Past either end nothing happens yet; Milestone 2 shows the folder chooser here.
-    func next() { if list.next() { show() } }
-    func previous() { if list.previous() { show() } }
+    func next() {
+        if list.next() { show() } else { pastEnd(forward: true) }
+    }
+
+    func previous() {
+        if list.previous() { show() } else { pastEnd(forward: false) }
+    }
     func first() { list.first(); show() }
     func last() { list.last(); show() }
 
     func setZoom(_ zoom: Zoom) {
         let needsReload = (zoom == .fit) != (self.zoom == .fit)
         self.zoom = zoom
-        if needsReload { show() }
+        if needsReload { show(page: page) }
     }
+
+    private func pastEnd(forward: Bool) {
+        // While the folder is scanned the list isn't complete yet: its end isn't the folder's end.
+        guard !isOpening else { return }
+        switch AppSettings.pastEndBehavior {
+        case .stop: break
+        case .loop:
+            guard !list.isEmpty else { break }
+            if forward { list.first() } else { list.last() }
+            show()
+        case .folderChooser:
+            guard let folder else { break }
+            let includeHidden = AppSettings.showHiddenFiles.value()
+            chooserCounts = [:]  // folders may have changed since the last chooser
+            chooserSession.start(folder: folder, includeHidden: includeHidden)
+        }
+    }
+
+    /// Chooser keys: ↑ ↓ select, → / Space enter, ← up, Return opens, Esc cancels.
+    func chooserMove(_ delta: Int) { chooserSession.move(delta) }
+    func chooserEnter() { chooserSession.enter() }
+    func chooserUp() { chooserSession.up() }
+    func chooserOpen() { chooserSession.open { [weak self] in self?.open($0) } }
+    func closeChooser() {
+        countTask?.cancel()
+        chooserSession.close()
+    }
+
+    /// Counts the listed folders' images one by one, off the main thread; a big folder takes a while.
+    private func countImages() {
+        countTask?.cancel()
+        guard let chooser else { return }
+        let folders = chooser.entries.map(\.url).filter { chooserCounts[$0] == nil }
+        let includeHidden = AppSettings.showHiddenFiles.value()
+        countTask = Task {
+            for folder in folders {
+                let count = await Task.detached(priority: .utility) {
+                    FolderTree.imageCount(in: folder, includeHidden: includeHidden)
+                }.value
+                guard !Task.isCancelled else { return }
+                chooserCounts[folder] = count
+            }
+        }
+    }
+
+    /// ⌥→ / ⌥←: pages of a multi-page TIFF; nothing past either end.
+    func nextPage() { if page + 1 < pageCount { page += 1; show(page: page) } }
+    func previousPage() { if page > 0 { page -= 1; show(page: page) } }
 
     /// Settings › Viewer › zoom step, 10 % by default (×1.1).
     private var zoomMultiplier: Double { 1 + Double(max(AppSettings.zoomStepPercent.value(), 1)) / 100 }
@@ -139,16 +226,20 @@ final class ViewerModel {
         }
         guard let url = list.current else { return }
         Task {
-            let size = await Task.detached { ImageDecoder.displaySize(of: url) }.value
+            let page = page
+            let size = await Task.detached { ImageDecoder.displaySize(of: url, page: page) }.value
             guard zoom == .fit, list.current == url else { return }
             let fit = size.map { ZoomSteps.fitFactor(image: $0, view: viewSize, displayScale: displayScale) } ?? 1
             setZoom(.factor(ZoomSteps.step(fit, by: multiplier)))
         }
     }
 
-    /// Shows `list.current`, then prefetches its neighbours so arrow keys feel instant.
-    func show() {
+    /// Shows `list.current` (page 0 unless `page` is given), then prefetches its neighbours so
+    /// arrow keys feel instant.
+    func show(page: Int = 0) {
         loadTask?.cancel()
+        // The old file's count would let ⌥→ ask a single-page file for page 2; it's read again below.
+        if page == 0 { self.page = 0; pageCount = 1 }
         guard let url = list.current else {
             image = nil
             errorMessage = nil  // an old file's error would hide the "Open an image" hint
@@ -159,9 +250,25 @@ final class ViewerModel {
         let started = ContinuousClock.now
         loadTask = Task {
             do {
-                let decoded = size == nil
-                    ? try await fullSizeCache.image(for: url, maxPixelSize: nil)
-                    : try await cache.image(for: url, maxPixelSize: size)
+                let decoded: CGImage
+                if page > 0 {
+                    // shortcut: pages after the first aren't cached or prefetched; cache them if people browse long TIFFs.
+                    // One at a time, and one superseded while it waits is skipped: holding ⌥→ on a big TIFF
+                    // would otherwise run a full-size decode per key press at once.
+                    _ = await pageDecode?.result
+                    guard !Task.isCancelled else { return }
+                    let decode = Task.detached(priority: .userInitiated) {
+                        try ImageDecoder.decode(url, maxPixelSize: size, halvingSteps: true, page: page)
+                    }
+                    pageDecode = decode
+                    // A finished decode would otherwise keep its page in memory, outside both caches.
+                    defer { if pageDecode == decode { pageDecode = nil } }
+                    decoded = try await decode.value
+                } else {
+                    decoded = size == nil
+                        ? try await fullSizeCache.image(for: url, maxPixelSize: nil)
+                        : try await cache.image(for: url, maxPixelSize: size)
+                }
                 guard !Task.isCancelled else { return }
                 image = decoded
                 errorMessage = nil
@@ -180,12 +287,19 @@ final class ViewerModel {
                     let values = await Task.detached { OverlayTemplate.fileValues(of: url) }.value
                     if list.current == url { fileValues = (url, values) }
                 }
+                // Not awaited either, and only for TIFFs: a cached image swaps in without another file read.
+                if page == 0, ImageFormats.mayHavePages(url) {
+                    Task {
+                        let count = await Task.detached { ImageDecoder.pageCount(of: url) }.value
+                        if list.current == url { pageCount = count }
+                    }
+                }
             } catch {
                 guard !Task.isCancelled else { return }
-                image = nil
+                image = nil  // pageCount stays: one bad page mustn't hide the file's other pages
                 errorMessage = "Can't open \(url.lastPathComponent)"
             }
-            if let size, prefetchesNeighbors { await cache.prefetch(neighbors, maxPixelSize: size) }
+            if let size, page == 0, prefetchesNeighbors { await cache.prefetch(neighbors, maxPixelSize: size) }
         }
     }
 
@@ -216,6 +330,8 @@ final class ViewerModel {
                 await fullSizeCache.remove(url)
                 let wasCurrent = list.current == url
                 list.remove(url)
+                // Keeps the folder known, so the view says it's empty and ← / → still reach the chooser.
+                if list.isEmpty { emptyFolder = openedFolder ?? url.deletingLastPathComponent() }
                 if wasCurrent { show() }
             } catch {
                 errorMessage = "Couldn't move \(url.lastPathComponent) to the Trash"
@@ -226,15 +342,18 @@ final class ViewerModel {
     /// Rewrites the file off the main thread. Rotations and trashing run one at a time so none is lost.
     func rotate(_ rotation: Rotation) {
         guard let url = list.current else { return }
+        let page = page
         let previous = rotateTask
         rotateTask = Task {
             await previous?.value
             do {
-                try await Task.detached(priority: .userInitiated) { try OrientationRotator.rotate(url, rotation) }.value
+                try await Task.detached(priority: .userInitiated) { try OrientationRotator.rotate(url, rotation, page: page) }.value
                 await cache.remove(url)
                 await fullSizeCache.remove(url)
                 fileRevision += 1
-                if list.current == url { show() }
+                if list.current == url { show(page: self.page) }
+            } catch RotateError.notFirstPage {
+                errorMessage = String(localized: "Only page 1 of \(url.lastPathComponent) can be rotated losslessly")
             } catch RotateError.unsupportedFormat {
                 errorMessage = "Lossless rotation works with JPEG, HEIC and TIFF only"
             } catch {

@@ -31,10 +31,15 @@ struct ViewerView: View {
                             onDoubleClick: model.toggleFullScreen)
             } else if let message = model.errorMessage {
                 Text(message).foregroundStyle(.secondary)
+            } else if let folder = model.emptyFolder {
+                Text("No images in \(folder.lastPathComponent)").foregroundStyle(.secondary)
             } else if !model.isOpening && model.list.current == nil {
                 // Only when nothing is on its way: a loading image shows black, not the hint.
                 Text("Open an image with ⌘O, or drop one here").foregroundStyle(.secondary)
             }
+        }
+        .overlay {
+            if model.chooser != nil { FolderChooserView(model: model) }
         }
         .overlay(alignment: .bottom) {
             if let message = model.errorMessage, model.image != nil {
@@ -145,6 +150,14 @@ struct ViewerView: View {
         // Arrow keys carry the numeric-pad/function flags and Caps Lock changes nothing here,
         // so only these modifiers count.
         let modifiers = press.modifiers.intersection([.command, .control, .option, .shift])
+        if model.isChooserOpen { return handleChooser(press, modifiers) }
+        if modifiers == .option {
+            switch press.key {
+            case .rightArrow: model.nextPage(); return .handled
+            case .leftArrow: model.previousPage(); return .handled
+            default: return .ignored
+            }
+        }
         if modifiers == .command, press.key == Self.backspace {
             model.moveCurrentToTrash()
             return .handled
@@ -185,6 +198,21 @@ struct ViewerView: View {
         case .batch: openWindow(id: "batch")
         case .minimize: model.window?.miniaturize(nil)
         case .settings: openSettings()
+        }
+        return .handled
+    }
+
+    /// While the folder chooser shows, keys drive it and nothing else.
+    private func handleChooser(_ press: KeyPress, _ modifiers: EventModifiers) -> KeyPress.Result {
+        guard modifiers.isEmpty else { return .handled }
+        switch press.key {
+        case .upArrow: model.chooserMove(-1)
+        case .downArrow: model.chooserMove(1)
+        case .rightArrow, .space: model.chooserEnter()
+        case .leftArrow: model.chooserUp()
+        case .return: model.chooserOpen()
+        case .escape: model.closeChooser()
+        default: break
         }
         return .handled
     }
@@ -243,6 +271,10 @@ struct ViewerCommands: Commands {
         CommandMenu("Image") {
             Button("Next  (→ or Space)") { model?.next() }
             Button("Previous  (← or ⌫)") { model?.previous() }
+            Button("Next Page  (⌥→)") { model?.nextPage() }
+                .disabled((model?.pageCount ?? 1) < 2)
+            Button("Previous Page  (⌥←)") { model?.previousPage() }
+                .disabled((model?.pageCount ?? 1) < 2)
             Divider()
             Button("Rotate Right  (R)") { model?.rotate(.clockwise) }
             Button("Rotate Left  (L)") { model?.rotate(.counterClockwise) }
