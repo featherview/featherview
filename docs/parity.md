@@ -131,7 +131,7 @@ switched off with a warning that they are old; until then opening such a file sh
 
 | Area | Observed behaviour | Featherview | Status |
 |---|---|---|---|
-| PDN | Opens at the full canvas size (800 × 600, 694 × 424), not the small thumbnail in the file. Page 1 is the flattened image, matching Paint.NET's own thumbnail including layers with other blend modes; pages 2 … n are the layers one by one, bottom layer first ("1 / 15" for 14 layers). The status bar says 24 bits per pixel. | Spec: flattened image. Open: layers as extra pages (⌥→), like the reference. | open |
+| PDN | Opens at the full canvas size (800 × 600, 694 × 424), not the small thumbnail in the file. Page 1 is the flattened image, matching Paint.NET's own thumbnail including layers with other blend modes; pages 2 … n are the layers one by one, bottom layer first ("1 / 15" for 14 layers). The status bar says 24 bits per pixel. | Spec: flattened image only; layers are not shown as extra pages. | v1 |
 | XCF | Opens flattened at the canvas size, hidden layers left out. A Multiply layer looks applied; a layer group set to Screen is drawn as if Normal. No pages. | Spec: visible layers, normal blending with opacity, other modes a known limit. | v1 |
 | PSP | A one-layer file whose only stored composite is a 300 × 225 thumbnail opens at the full 800 × 600 from its layer. No pages. | Spec: full-size composite when stored, else the layers. | v1 |
 

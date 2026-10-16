@@ -419,8 +419,8 @@ Behaviour:
   samples whether alpha is straight (expected) or premultiplied. Draw visible layers on `LayerCanvas`
   with their opacity, one layer at a time.
 - Known limits as `shortcut:` comments: blend modes drawn as normal; a body not starting `00 01`
-  (older Paint.NET 2.x) `.unsupported`; layers as separate pages (the reference viewer shows them, an
-  open question in `docs/parity.md`) not done.
+  (older Paint.NET 2.x) `.unsupported`. Layers are not shown as separate pages (the reference viewer
+  does; the maintainer chose flattened only), so no shortcut comment for that.
 
 - [ ] **Step 1: Write the failing tests.** `NRBFReaderTests` with records built byte by byte:
   `headerAndEnd`, `classWithMembersAndTypes` (int, bool, double, string members), `classWithIdReusesMetadata`,
