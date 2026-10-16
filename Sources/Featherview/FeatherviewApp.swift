@@ -52,24 +52,18 @@ struct ExtraViewer: View {
     var body: some View {
         ViewerView(model: model)
             .onAppear { if let url, model.list.current == nil { model.open(url) } }
+            .onDisappear { ViewerModel.lastActive.close(model) }
     }
 }
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// Owned here, not by a view, so a file from Finder starts decoding before any window exists.
-    let viewer: ViewerModel = {
-        let viewer = ViewerModel()
-        viewer.revealWindow = { ViewerModel.windows.revealMain() }
-        return viewer
-    }()
+    let viewer = ViewerModel.main
     /// True while a batch runs: quitting then would stop it part-way. Set by the Batch window.
     var isBusy: () -> Bool = { false }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         AppSettings.registerDefaults()
-        // ⌘O from the Batch window before any viewer was used opens in the main one.
-        ViewerModel.lastActive = viewer
         // AppKit hands Finder's files to application(_:open:) only after SwiftUI built the window
         // (~50 ms later); taking the open event here lets the image decode meanwhile.
         NSAppleEventManager.shared().setEventHandler(

@@ -64,8 +64,8 @@ struct BatchView: View {
                 LabeledContent("Selected", value: "\(model.inputs.count)")
                 HStack {
                     Button("Add Files…") { model.addFiles() }
-                    Button("Use Viewer's Folder") { model.inputs = ViewerModel.lastActive?.list.urls ?? [] }
-                        .disabled(ViewerModel.lastActive?.list.isEmpty ?? true)
+                    Button("Use Viewer's Folder") { model.inputs = ViewerModel.lastActive.current.list.urls }
+                        .disabled(ViewerModel.lastActive.current.list.isEmpty)
                     Button("Clear") { model.inputs = [] }
                 }
             }

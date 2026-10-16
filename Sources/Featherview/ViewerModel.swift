@@ -29,8 +29,15 @@ final class ViewerModel {
 
     /// Opens viewer windows for files from Finder; every window's view installs the openers.
     static let windows = ViewerWindows()
-    /// The viewer the user last worked in, for "Use Viewer's Folder" in the batch window.
-    static weak var lastActive: ViewerModel?
+    /// The main viewer, owned here, not by a view, so a file from Finder starts decoding before any window exists.
+    static let main: ViewerModel = {
+        let viewer = ViewerModel()
+        viewer.revealWindow = { ViewerModel.windows.revealMain() }
+        return viewer
+    }()
+    /// The viewer the user last worked in, for ⌘O and "Use Viewer's Folder" from the batch window;
+    /// the main one until another is used, and again once that one's window closes.
+    static let lastActive = LastUsed(fallback: main)
 
     /// A folder opened directly that has no images: the view says so, ← / → still leave it.
     private(set) var emptyFolder: URL?

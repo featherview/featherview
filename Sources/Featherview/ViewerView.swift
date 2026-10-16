@@ -37,7 +37,7 @@ struct ViewerView: View {
             InfoPanel(url: model.list.current, revision: model.fileRevision)
         }
         .focusedSceneValue(\.viewer, model)
-        .onChange(of: activeState, initial: true) { if activeState == .key { ViewerModel.lastActive = model } }
+        .onChange(of: activeState, initial: true) { if activeState == .key { ViewerModel.lastActive.use(model) } }
         .background(WindowAccessor { window in
             model.window = window
             if !rememberFrame { window.setContentSize(NSSize(width: 960, height: 640)); window.center() }
@@ -184,7 +184,7 @@ struct ViewerCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
-            Button("Open…  (O)") { (model ?? ViewerModel.lastActive)?.showOpenPanel() }
+            Button("Open…  (O)") { (model ?? ViewerModel.lastActive.current).showOpenPanel() }
                 .keyboardShortcut("o")
         }
         CommandMenu("Image") {
