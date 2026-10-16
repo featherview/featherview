@@ -52,9 +52,14 @@ public enum BatchPlanner {
     /// never the same name twice: clashes get " 2", " 3", ... appended.
     public static func outputURLs(
         for job: BatchJob,
-        fileExists: (URL) -> Bool = { FileManager.default.fileExists(atPath: $0.path) }
+        // attributesOfItem doesn't follow symlinks, so a dangling link still counts as taken.
+        fileExists: (URL) -> Bool = { (try? FileManager.default.attributesOfItem(atPath: $0.path)) != nil }
     ) -> [URL] {
         var taken = Set(job.inputs.map(pathKey))
+        // Resolve the folder once: pathKey per probe hits the filesystem and made clashes quadratic.
+        let folderKey = pathKey(job.outputFolder)
+        func key(_ url: URL) -> String { folderKey + "/" + url.lastPathComponent.lowercased() }
+        var nextSuffix: [String: Int] = [:]
         return job.inputs.enumerated().map { offset, input in
             let original = input.deletingPathExtension().lastPathComponent
             let base = job.rename?.baseName(original: original, index: offset + 1) ?? original
@@ -63,12 +68,13 @@ public enum BatchPlanner {
                     .appendingPathExtension(job.format.fileExtension)
             }
             var url = candidate("")
-            var counter = 2
-            while taken.contains(pathKey(url)) || fileExists(url) {
+            var counter = nextSuffix[base.lowercased()] ?? 2
+            while taken.contains(key(url)) || fileExists(url) {
                 url = candidate(" \(counter)")
                 counter += 1
             }
-            taken.insert(pathKey(url))
+            nextSuffix[base.lowercased()] = counter
+            taken.insert(key(url))
             return url
         }
     }
