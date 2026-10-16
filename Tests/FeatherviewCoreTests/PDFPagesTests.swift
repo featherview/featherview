@@ -80,3 +80,24 @@ import Testing
         #expect(throws: DecodeError.unreadable(url)) { try ImageDecoder.decode(url) }
     }
 }
+
+/// Shared by PDF and SVG (in the app): a vector image too large for a bitmap renders smaller instead of failing.
+@Suite struct VectorPixelSizeTests {
+    @Test func twoPixelsPerPointWhenItFits() {
+        let s = vectorPixelSize(CGSize(width: 9000, height: 6000), maxPixelSize: nil)
+        #expect((s.width, s.height, s.scale) == (18000, 12000, 2))
+    }
+
+    @Test func hugeImageScalesDownToTheBitmapLimits() throws {
+        for points in [CGSize(width: 40000, height: 100), CGSize(width: 30000, height: 30000)] {
+            let s = vectorPixelSize(points, maxPixelSize: nil)
+            #expect(s.scale < 2)
+            _ = try checkedSize(s.width, s.height)
+        }
+    }
+
+    @Test func maxPixelSizeCapsTheLongestSide() {
+        let s = vectorPixelSize(CGSize(width: 9000, height: 6000), maxPixelSize: 3456)
+        #expect((s.width, s.height) == (3456, 2304))
+    }
+}

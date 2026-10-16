@@ -5,17 +5,14 @@ import FeatherviewCore
 enum SVGFormat {
     static let format = OwnFormat(
         name: "SVG", extensions: ["svg"],
-        size: { data, _ in NSImage(data: data).map { CGSize(width: $0.size.width * 2, height: $0.size.height * 2) } },
+        size: { data, _ in NSImage(data: data).map { let s = vectorPixelSize($0.size, maxPixelSize: nil)
+                                                     return CGSize(width: s.width, height: s.height) } },
         decode: { data, _, maxPixelSize in
             guard let image = NSImage(data: data), image.size.width >= 1, image.size.height >= 1 else {
                 throw OwnDecodeError.corrupt
             }
-            var scale = 2.0
-            if let maxPixelSize { scale = min(scale, Double(maxPixelSize) / max(image.size.width, image.size.height)) }
-            let width = max(1, Int((image.size.width * scale).rounded()))
-            let height = max(1, Int((image.size.height * scale).rounded()))
-            guard width <= 16384, height <= 16384,
-                  let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+            let (width, height, _) = vectorPixelSize(image.size, maxPixelSize: maxPixelSize)
+            guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                           space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                           bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
             else { throw OwnDecodeError.corrupt }

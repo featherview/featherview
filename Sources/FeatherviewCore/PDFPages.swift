@@ -3,12 +3,9 @@ import Foundation
 
 /// PDFs shown like multi-page images (spec "Formats"), rendered by Core Graphics.
 enum PDFPages {
-    /// 144 dpi: a page's points × 2, sharp on Retina at 100 %.
-    static let pixelsPerPoint = 2.0
-
     static let format = OwnFormat(
         name: "PDF", extensions: ["pdf"], hasPages: true,
-        size: { data, page in pageBox(data, page).map { let s = pixelSize($0, maxPixelSize: nil)
+        size: { data, page in pageBox(data, page).map { let s = vectorPixelSize($0, maxPixelSize: nil)
                                                         return CGSize(width: s.width, height: s.height) } },
         pageCount: { data in document(data)?.numberOfPages ?? 0 },
         decode: { data, page, maxPixelSize in try render(data, page: page, maxPixelSize: maxPixelSize) })
@@ -24,19 +21,6 @@ enum PDFPages {
         return pdfPage.rotationAngle % 180 == 0 ? box.size : CGSize(width: box.height, height: box.width)
     }
 
-    /// The bitmap size for a page of `points`: 2 px per point, at most `maxPixelSize` a side, and always within
-    /// `checkedSize`'s limits, since a vector page renders at any scale instead of failing.
-    static func pixelSize(_ points: CGSize, maxPixelSize: Int?) -> (width: Int, height: Int, scale: Double) {
-        let scale = min(pixelsPerPoint, Double(maxPixelSize ?? 1 << 16) / max(points.width, points.height),
-                        (Double(maxOwnPixels) / (points.width * points.height)).squareRoot())
-        func pixels(_ rule: FloatingPointRoundingRule) -> (Int, Int) {
-            (max(1, Int((points.width * scale).rounded(rule))), max(1, Int((points.height * scale).rounded(rule))))
-        }
-        var (width, height) = pixels(.toNearestOrAwayFromZero)
-        if width * height > maxOwnPixels { (width, height) = pixels(.down) }  // rounding up overshot the pixel cap
-        return (width, height, scale)
-    }
-
     /// Renders straight at the size asked for, so fit mode never scales a bitmap.
     static func render(_ data: Data, page: Int, maxPixelSize: Int?) throws -> CGImage {
         guard let document = document(data) else { throw OwnDecodeError.corrupt }
@@ -44,7 +28,7 @@ enum PDFPages {
         if document.isEncrypted && !document.isUnlocked { throw OwnDecodeError.unsupported }
         guard let pdfPage = document.page(at: page + 1), let points = pageBox(data, page),
               points.width >= 1, points.height >= 1 else { throw OwnDecodeError.corrupt }
-        let (width, height, scale) = pixelSize(points, maxPixelSize: maxPixelSize)
+        let (width, height, scale) = vectorPixelSize(points, maxPixelSize: maxPixelSize)
         _ = try checkedSize(width, height)
         guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                       space: CGColorSpace(name: CGColorSpace.sRGB)!,
@@ -67,4 +51,18 @@ enum PDFPages {
         guard let image = context.makeImage() else { throw OwnDecodeError.corrupt }
         return image
     }
+}
+
+/// The bitmap size for a vector image (a PDF page, an SVG) of `points`: 2 px per point (144 dpi, sharp on Retina
+/// at 100 %), at most `maxPixelSize` a side, and always within `checkedSize`'s limits, since a vector image renders
+/// at any scale instead of failing.
+public func vectorPixelSize(_ points: CGSize, maxPixelSize: Int?) -> (width: Int, height: Int, scale: Double) {
+    let scale = min(2, Double(maxPixelSize ?? 1 << 16) / max(points.width, points.height),
+                    (Double(maxOwnPixels) / (points.width * points.height)).squareRoot())
+    func pixels(_ rule: FloatingPointRoundingRule) -> (Int, Int) {
+        (max(1, Int((points.width * scale).rounded(rule))), max(1, Int((points.height * scale).rounded(rule))))
+    }
+    var (width, height) = pixels(.toNearestOrAwayFromZero)
+    if width * height > maxOwnPixels { (width, height) = pixels(.down) }  // rounding up overshot the pixel cap
+    return (width, height, scale)
 }
