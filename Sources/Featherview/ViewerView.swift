@@ -54,9 +54,9 @@ struct ViewerView: View {
                     .padding()
             }
         }
-        .onChange(of: model.image) {
-            if model.isFullScreen, hidePointer { NSCursor.setHiddenUntilMouseMoves(true) }
-        }
+        // On a new image and on entering full screen (double-click, F or Return leave the image as is).
+        .onChange(of: model.image) { hidePointerInFullScreen() }
+        .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
         .toolbar(model.isFullScreen ? .hidden : .automatic, for: .windowToolbar)
         .onGeometryChange(for: CGSize.self) { $0.size } action: { model.viewSize = $0 }
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
@@ -109,6 +109,10 @@ struct ViewerView: View {
         case .factor(let factor):
             return CGSize(width: points.width * factor, height: points.height * factor)
         }
+    }
+
+    private func hidePointerInFullScreen() {
+        if model.isFullScreen, hidePointer { NSCursor.setHiddenUntilMouseMoves(true) }
     }
 
     private func overlayValues(_ url: URL) -> [String: String] {
