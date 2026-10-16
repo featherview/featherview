@@ -1,7 +1,7 @@
 import FeatherviewCore
 import SwiftUI
 
-/// Settings (⌘, or P): every setting from spec "Settings" except Formats (milestone 3).
+/// Settings (⌘, or P): every setting from spec "Settings".
 struct SettingsView: View {
     var body: some View {
         TabView {
@@ -10,6 +10,7 @@ struct SettingsView: View {
             FullScreenSettings().tabItem { Label("Full Screen", systemImage: "arrow.up.left.and.arrow.down.right") }
             MoveCopySettings().tabItem { Label("Move / Copy", systemImage: "folder") }
             OpenWithSettings().tabItem { Label("Open With", systemImage: "arrow.up.forward.app") }
+            FormatsSettings().tabItem { Label("Formats", systemImage: "doc.badge.gearshape") }
         }
         .formStyle(.grouped)  // wraps long labels instead of clipping them at this width
         .frame(width: 520)
@@ -116,6 +117,27 @@ private struct MoveCopySettings: View {
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
         slots = DestinationSlots.update(in: .standard) { $0[slot] = url }
+    }
+}
+
+/// Each format's default options, saved on every change.
+private struct FormatsSettings: View {
+    @State private var format = FormatSettings.lastFormat()
+    @State private var options = FormatSettings.options(for: FormatSettings.lastFormat())
+
+    var body: some View {
+        Form {
+            Picker("Format:", selection: Binding { format } set: {
+                format = $0
+                options = FormatSettings.options(for: $0)
+            }) {
+                ForEach(FormatRegistry.writable) { Text($0.name).tag($0) }
+            }
+            FormatOptionsView(format: format, options: Binding { options } set: {
+                options = $0
+                FormatSettings.save($0, for: format)
+            })
+        }
     }
 }
 
