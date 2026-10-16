@@ -3,7 +3,7 @@ import Testing
 @testable import FeatherviewCore
 
 @Suite struct ImageFormatsTests {
-    @Test(arguments: ["a.jpg", "a.JPG", "a.jpeg", "a.png", "a.heic", "a.tiff", "a.gif", "a.webp"])
+    @Test(arguments: ["a.jpg", "a.JPG", "a.jpeg", "a.png", "a.heic", "a.tiff", "a.gif", "a.webp", "a.jfif", "a.JFIF", "a.jif", "a.jfi"])
     func decodable(_ name: String) {
         #expect(ImageFormats.isDecodable(URL(fileURLWithPath: "/x/\(name)")))
     }
