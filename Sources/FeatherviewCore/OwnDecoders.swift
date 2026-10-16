@@ -47,7 +47,7 @@ public struct OwnFormat: Sendable {
 public enum OwnDecoders {
     /// Pure-Swift decoders in FeatherviewCore. The app adds the ones that need AppKit (SVG) with `register`.
     static let builtIn: [OwnFormat] = [
-        // Task 2
+        QOICodec.format, PCXCodec.pcx, PCXCodec.dcx,
         // Task 3
         // Task 4
         // Task 5
