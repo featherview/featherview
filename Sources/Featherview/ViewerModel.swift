@@ -174,9 +174,12 @@ final class ViewerModel {
                     let launchMs = Int(Date().timeIntervalSince(start) * 1000)
                     Self.log.debug("first image \(launchMs) ms after launch")
                 }
-                // Read again on every show: a rotation changes both size and date.
-                let values = await Task.detached { OverlayTemplate.fileValues(of: url) }.value
-                if !Task.isCancelled { fileValues = (url, values) }
+                // Read again on every show: a rotation changes both size and date. Not awaited, so the
+                // prefetch below doesn't wait for another file read (slow on network or USB disks).
+                Task {
+                    let values = await Task.detached { OverlayTemplate.fileValues(of: url) }.value
+                    if list.current == url { fileValues = (url, values) }
+                }
             } catch {
                 guard !Task.isCancelled else { return }
                 image = nil
