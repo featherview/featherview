@@ -11,6 +11,7 @@ struct SettingsView: View {
             MoveCopySettings().tabItem { Label("Move / Copy", systemImage: "folder") }
             OpenWithSettings().tabItem { Label("Open With", systemImage: "arrow.up.forward.app") }
         }
+        .formStyle(.grouped)  // wraps long labels instead of clipping them at this width
         .frame(width: 520)
         .scenePadding()
     }

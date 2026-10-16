@@ -10,11 +10,15 @@ struct ViewerView: View {
     @Environment(\.controlActiveState) private var activeState
     @AppStorage(AppSettings.rememberWindowFrame.key) private var rememberFrame = AppSettings.rememberWindowFrame.defaultValue
     @State private var panController = PanController()
+    /// Toolbar buttons are built only once there's something to show: building them takes ~100 ms of
+    /// the main thread, which would otherwise delay the first image at launch (budget 350 ms).
+    @State private var toolbarReady = false
     @AppStorage(AppSettings.backgroundColor.key) private var backgroundHex = AppSettings.backgroundColor.defaultValue
     @AppStorage(AppSettings.checkerboard.key) private var checkerboard = AppSettings.checkerboard.defaultValue
     @AppStorage(AppSettings.showOverlay.key) private var showOverlay = AppSettings.showOverlay.defaultValue
     @AppStorage(AppSettings.overlayTemplate.key) private var overlayTemplate = AppSettings.overlayTemplate.defaultValue
     @AppStorage(AppSettings.hidePointer.key) private var hidePointer = AppSettings.hidePointer.defaultValue
+    @AppStorage(toolbarHiddenKey) private var toolbarHidden = false
 
     private var background: Color { Color(nsColor: backgroundNSColor) }
     private var backgroundNSColor: NSColor {
@@ -31,12 +35,12 @@ struct ViewerView: View {
                             onDoubleClick: model.toggleFullScreen, onClick: { focused = true })
                     .contextMenu { ImageContextMenu(model: model) }
             } else if let message = model.errorMessage {
-                Text(message).foregroundStyle(.secondary)
+                Text(message).messageBox()
             } else if let folder = model.emptyFolder {
-                Text("No images in \(folder.lastPathComponent)").foregroundStyle(.secondary)
+                Text("No images in \(folder.lastPathComponent)").messageBox()
             } else if !model.isOpening && model.list.current == nil {
                 // Only when nothing is on its way: a loading image shows black, not the hint.
-                Text("Open an image with ⌘O, or drop one here").foregroundStyle(.secondary)
+                Text("Open an image with ⌘O, or drop one here").messageBox()
             }
         }
         .overlay {
@@ -46,8 +50,7 @@ struct ViewerView: View {
         .overlay(alignment: .bottom) {
             if let message = model.errorMessage, model.image != nil {
                 Text(message)
-                    .padding(8)
-                    .background(.regularMaterial, in: .rect(cornerRadius: 6))
+                    .messageBox()
                     .padding()
             }
         }
@@ -64,9 +67,14 @@ struct ViewerView: View {
         // On a new image and on entering full screen (double-click, F or Return leave the image as is).
         .onChange(of: model.image) { hidePointerInFullScreen() }
         .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
-        .toolbar(id: "viewer") { ViewerToolbar(model: model) }
-        .toolbar(model.isFullScreen ? .hidden : .automatic, for: .windowToolbar)
-        .onGeometryChange(for: CGSize.self) { $0.size } action: { model.viewSize = $0 }
+        .toolbar(id: "viewer") { ViewerToolbar(model: model, ready: toolbarReady) }
+        .onChange(of: model.image != nil || model.errorMessage != nil || model.emptyFolder != nil || !model.isOpening,
+                  initial: true) { if $1 { toolbarReady = true } }
+        .toolbar(model.isFullScreen || toolbarHidden ? .hidden : .visible, for: .windowToolbar)
+        // Not onGeometryChange: it misses the restored window frame at launch, leaving fit at the 100×48 placeholder.
+        .background(GeometryReader { geo in
+            Color.clear.onChange(of: geo.size, initial: true) { model.viewSize = geo.size }
+        })
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         .navigationTitle(model.title)
         .inspector(isPresented: $model.showInfo) {
@@ -84,10 +92,10 @@ struct ViewerView: View {
             model.isFullScreen = window.styleMask.contains(.fullScreen)
             if !rememberFrame, !model.isFullScreen { Self.place(window) }
         })
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { note in
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willEnterFullScreenNotification)) { note in
             if note.object as? NSWindow === model.window { model.isFullScreen = true }
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { note in
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willExitFullScreenNotification)) { note in
             if note.object as? NSWindow === model.window { model.isFullScreen = false }
         }
         .dropDestination(for: URL.self) { urls, _ in
@@ -331,9 +339,13 @@ struct InfoPanel: View {
     }
 }
 
+/// Whether viewer windows hide their toolbar (View › Hide Toolbar).
+private let toolbarHiddenKey = "toolbarHidden"
+
 struct ViewerCommands: Commands {
     @FocusedValue(\.viewer) private var model
     @Environment(\.openWindow) private var openWindow
+    @AppStorage(toolbarHiddenKey) private var toolbarHidden = false
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -380,11 +392,27 @@ struct ViewerCommands: Commands {
             Button("Batch Convert…  (B)") { openWindow(id: "batch") }
                 .keyboardShortcut("b")
         }
+        // Not ToolbarCommands: SwiftUI shows its toolbar at every launch, so whether it's hidden is kept here.
+        CommandGroup(replacing: .toolbar) {
+            Button(toolbarHidden ? "Show Toolbar" : "Hide Toolbar") { toolbarHidden.toggle() }
+                .keyboardShortcut("t", modifiers: [.command, .option])
+            Button("Customize Toolbar…") {
+                NSApp.sendAction(#selector(NSWindow.runToolbarCustomizationPalette(_:)), to: nil, from: nil)
+            }
+            .disabled(model == nil || toolbarHidden)
+        }
         CommandGroup(after: .toolbar) {
             Button("Zoom to Fit  (0)") { model?.setZoom(.fit) }
             Button("Actual Size  (1)") { model?.setZoom(.factor(1)) }
             Button("Zoom In  (+)") { model?.zoomIn() }
             Button("Zoom Out  (−)") { model?.zoomOut() }
         }
+    }
+}
+
+private extension View {
+    /// Readable on any background colour the user picks (grey text vanishes on black).
+    func messageBox() -> some View {
+        padding(8).background(.regularMaterial, in: .rect(cornerRadius: 6))
     }
 }
