@@ -144,7 +144,8 @@ enum XCFDecoder {
             let layer = try file.layer(at: pointer, version: h.version)
             // Children of a group are inside the group's projection; only top-level items are drawn.
             guard layer.visible, layer.depth <= 1, layer.opacity > 0 else { continue }
-            _ = try checkedSize(layer.width, layer.height)
+            // GIMP's own layer limit; only the part on the canvas is decoded, so a layer may be larger than our image cap.
+            guard (1...524_288).contains(layer.width), (1...524_288).contains(layer.height) else { throw OwnDecodeError.corrupt }
             guard layer.type <= 5 else { throw OwnDecodeError.unsupported }
             // Only the part of the layer on the canvas is decoded, so memory stays at the canvas size.
             // GIMP writes each hierarchy once; shared ones would draw tiles the file paid for once many times.
@@ -176,9 +177,18 @@ enum XCFDecoder {
         let data: Data, wide: Bool, compression: Int, palette: [UInt8]
         /// Every structure comes after the image header's pointer list; a pointer before it is a loop.
         var minPointer = 0
+        /// Bytes of tile pointers and properties left to read. A real file stores each once, so it never reads
+        /// more than its own size; structures shared by crafted pointers would make parsing take minutes.
+        private var work: Int
 
         init(data: Data, wide: Bool, compression: Int, palette: [UInt8]) {
             self.data = data; self.wide = wide; self.compression = compression; self.palette = palette
+            work = data.count
+        }
+
+        func charge(_ bytes: Int) throws {
+            work -= bytes
+            guard work >= 0 else { throw OwnDecodeError.corrupt }
         }
 
         func pointer(_ reader: inout ByteReader) throws -> Int {
@@ -198,6 +208,7 @@ enum XCFDecoder {
             try skipString(&r)
             var floatOpacity: Double?
             try properties(&r, version: version) { type, p in
+                try charge(8 + p.remaining)
                 switch type {
                 case 6: layer.opacity = Double(min(try p.u32be(), 255)) / 255
                 case 8: layer.visible = try p.u32be() != 0
@@ -230,6 +241,7 @@ enum XCFDecoder {
             var pointers: [Int] = []
             // A list cut short by a 0 leaves the remaining tiles empty, as GIMP reads it.
             for _ in 0..<columns * rows {
+                try charge(wide ? 8 : 4)
                 let p = try self.pointer(&r)
                 if p == 0 { break }
                 guard p >= minPointer, p > (pointers.last ?? -1), data.count > p else { throw OwnDecodeError.corrupt }
@@ -239,7 +251,7 @@ enum XCFDecoder {
         }
 
         /// Calls `body` with each tile that overlaps `region` (layer coordinates), its bytes interleaved
-        /// per pixel, its size and its top-left corner. Tiles past the stored ones are empty (all zero).
+        /// per pixel, its size and its top-left corner. A tile past the stored ones is empty: its buffer has no bytes.
         func tiles(_ pointers: [Int], width: Int, height: Int, bpp: Int, region: Region,
                    _ body: (_ tile: UnsafeBufferPointer<UInt8>, _ width: Int, _ height: Int, _ x: Int, _ y: Int) throws -> Void) throws {
             let columns = (width + 63) / 64, rows = (height + 63) / 64
@@ -254,8 +266,7 @@ enum XCFDecoder {
                         guard tx < region.x1, tx + tw > region.x0 else { continue }
                         let i = row * columns + column, size = tw * th * bpp
                         guard i < pointers.count else {
-                            tile.withUnsafeMutableBufferPointer { $0.initialize(repeating: 0) }
-                            try tile.withUnsafeBufferPointer { try body($0, tw, th, tx, ty) }
+                            try body(UnsafeBufferPointer(start: nil, count: 0), tw, th, tx, ty)
                             continue
                         }
                         let start = pointers[i]
@@ -286,6 +297,14 @@ enum XCFDecoder {
             let palette = self.palette
             try image.pixels.withUnsafeMutableBufferPointer { out in
                 try tiles(pointers, width: layer.width, height: layer.height, bpp: bpp, region: region) { tile, tw, th, tx, ty in
+                    if tile.isEmpty {  // transparent, also for a layer without alpha
+                        for y in max(ty, region.y0)..<min(ty + th, region.y1) {
+                            for x in max(tx, region.x0)..<min(tx + tw, region.x1) {
+                                out[((y - region.y0) * region.width + (x - region.x0)) * 4 + 3] = 0
+                            }
+                        }
+                        return
+                    }
                     for y in max(ty, region.y0)..<min(ty + th, region.y1) {
                         for x in max(tx, region.x0)..<min(tx + tw, region.x1) {
                             let s = ((y - ty) * tw + (x - tx)) * bpp
@@ -314,13 +333,13 @@ enum XCFDecoder {
             var r = try reader(at: pointer)
             guard try r.u32be() == layer.width, try r.u32be() == layer.height else { throw OwnDecodeError.corrupt }
             try skipString(&r)
-            try properties(&r, version: 0) { _, _ in }
+            try properties(&r, version: 0) { _, p in try charge(8 + p.remaining) }
             let pointers = try tilePointers(of: try self.pointer(&r), width: layer.width, height: layer.height, bpp: precision.bytes)
             try image.pixels.withUnsafeMutableBufferPointer { out in
                 try tiles(pointers, width: layer.width, height: layer.height, bpp: precision.bytes, region: region) { tile, tw, th, tx, ty in
                     for y in max(ty, region.y0)..<min(ty + th, region.y1) {
                         for x in max(tx, region.x0)..<min(tx + tw, region.x1) {
-                            let mask = Int(byte(tile, ((y - ty) * tw + (x - tx)) * precision.bytes, precision, colour: false))
+                            let mask = tile.isEmpty ? 0 : Int(byte(tile, ((y - ty) * tw + (x - tx)) * precision.bytes, precision, colour: false))
                             let d = ((y - region.y0) * region.width + (x - region.x0)) * 4 + 3
                             out[d] = UInt8((Int(out[d]) * mask + 127) / 255)
                         }

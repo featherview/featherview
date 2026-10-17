@@ -402,6 +402,41 @@ struct XCFBuilder {
         let built = file.build()
         let image = try XCFDecoder.decode(Self.patched(built, slot: built.tilePointerSlots[1], to: 0))
         #expect(image[63, 63] == (9, 8, 7, 255) && image[64, 0].a == 0 && image[0, 64].a == 0 && image[69, 65].a == 0)
+        // Cut in the last row: the missing tile of a layer without alpha is still empty, not opaque black.
+        let lastRow = try XCFDecoder.decode(Self.patched(built, slot: built.tilePointerSlots[3], to: 0))
+        #expect(lastRow[0, 65] == (9, 8, 7, 255) && lastRow[69, 65].a == 0)
+    }
+
+    /// GIMP allows layers up to 524,288 px per side; only the part on the canvas is decoded.
+    @Test func layerWiderThanTheImageCapOpens() throws {
+        var file = B(width: 64, height: 64, compression: 1)
+        file.layers = [.init(width: 65600, height: 1, pixels: Self.solid(65600, 1, [1, 2, 3, 255]))]
+        let image = try XCFDecoder.decode(file.data)
+        #expect(image[63, 0] == (1, 2, 3, 255) && image[0, 1].a == 0)
+    }
+
+    /// `layers` RGB records 64·`tiles` × 1 on a 1 × 1 canvas, each with its own hierarchy, all pointing at one
+    /// level of `tiles` tile pointers; only the first tile (192 raw bytes) is on the canvas.
+    static func sharedLevel(layers: Int, tiles: Int) -> Data {
+        let width = 64 * tiles, listEnd = 34 + 4 * layers + 8, records = listEnd + 32 * layers
+        let level = records + 20 * layers, tileData = level + 8 + 4 * tiles + 4
+        var bytes = Array("gimp xcf file\0".utf8) + B.be32(1) + B.be32(1) + B.be32(0) + B.be32(0) + B.be32(0)
+        for i in 0..<layers { bytes += B.be32(listEnd + 32 * i) }
+        bytes += B.be32(0) + B.be32(0)
+        for i in 0..<layers {
+            bytes += B.be32(width) + B.be32(1) + B.be32(0) + B.be32(0) + B.be32(0) + B.be32(0) + B.be32(records + 20 * i) + B.be32(0)
+        }
+        for _ in 0..<layers { bytes += B.be32(width) + B.be32(1) + B.be32(3) + B.be32(level) + B.be32(0) }
+        bytes += B.be32(width) + B.be32(1)
+        for i in 0..<tiles { bytes += B.be32(tileData + (i == 0 ? 0 : 192 + i)) }
+        bytes += B.be32(0) + [UInt8](repeating: 7, count: 192 + tiles)
+        return Data(bytes)
+    }
+
+    /// Layers sharing one tile list would read it once per layer: parsing could take minutes.
+    @Test func layersSharingALevelThrow() throws {
+        #expect(try XCFDecoder.decode(Self.sharedLevel(layers: 1, tiles: 2000))[0, 0] == (7, 7, 7, 255))
+        #expect(Self.refused(Self.sharedLevel(layers: 50, tiles: 2000)))
     }
 
     @Test func layersSharingAHierarchyThrow() throws {
