@@ -19,5 +19,6 @@ let package = Package(
         .executableTarget(name: "Featherview", dependencies: ["FeatherviewCore"]),
         .executableTarget(name: "FeatherviewBench", dependencies: ["FeatherviewCore"]),
         .testTarget(name: "FeatherviewCoreTests", dependencies: ["FeatherviewCore"]),
+        .testTarget(name: "FeatherviewBenchTests", dependencies: ["FeatherviewBench"]),
     ]
 )

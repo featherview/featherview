@@ -14,7 +14,7 @@ let usage = """
     corpus  writes generated test images into <dir> (never commit them).
     decode  times the viewer's fit decode per file and screen, plus one full-size decode per file.
             The first run reads the file from disk; for a truly cold first run, run `sudo purge`
-            before (the bench never does). --baseline exits 1 if a median is > 10 % slower.
+            before (the bench never does). --baseline exits 1 if a median is > 10 % slower or a row is gone.
     browse  steps through the folder like a held arrow key: one step every --interval-ms, whether
             or not the last one finished, through an 8-image cache with 2 neighbours prefetched each way.
     Screens are in pixels; default 3024x1964 3456x2234 5120x2880 (decode), 3024x1964 (browse).
@@ -101,14 +101,6 @@ func imageFiles(in dir: URL) -> [URL] {
 
 // MARK: - decode
 
-struct Row: Codable {
-    let file: String
-    let screen: String  // "full" for the full-size decode
-    let width: Int, height: Int
-    let megabytes: Double
-    let firstMs: Double, medianMs: Double, p95Ms: Double, minMs: Double
-}
-
 @MainActor func runDecode() {
     let screens = screens(default: ["3024x1964", "3456x2234", "5120x2880"])
     let runs = number("--runs", default: 10)
@@ -159,14 +151,9 @@ struct Row: Codable {
     if let path = option("--baseline") {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
               let baseline = try? JSONDecoder().decode([Row].self, from: data) else { fail("Can't read \(path).") }
-        let before = Dictionary(baseline.map { ("\($0.file) \($0.screen)", $0.medianMs) }, uniquingKeysWith: { a, _ in a })
-        var slower = false
-        for row in rows {
-            guard let old = before["\(row.file) \(row.screen)"], row.medianMs > old * 1.1 else { continue }
-            print("slower: \(row.file) \(row.screen) median \(f(old)) → \(f(row.medianMs)) ms")
-            slower = true
-        }
-        if slower { exit(1) }
+        let failures = baselineFailures(rows, baseline: baseline)
+        failures.forEach { print($0) }
+        if !failures.isEmpty { exit(1) }
         print("No median is more than 10 % slower than \(path).")
     }
 }
