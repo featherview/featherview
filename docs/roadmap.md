@@ -168,6 +168,10 @@ Questions for this pass, with what Apple's guidelines say:
   windowed viewing hides the toolbar after the pointer rests (a media-player style) or only full
   screen does, as now.
 - Settings window: doesn't look like a macOS 26 (Tahoe) settings window yet. Mock it in the current system style along with the rest.
+- Installer disk image: a designed `.dmg` in the own look (background art, the app and an Applications
+  link to drag it to). The app is only ad-hoc signed, so the image also shows how to get past
+  Gatekeeper: first open, then System Settings › Privacy & Security › "Open Anyway" (since macOS 15
+  Control-click › Open no longer does it). Built by a script next to `scripts/bundle.sh`.
 - Launch time: the toolbar and canvas decide it (~385 ms with glass, 350 ms without;
   the window's first glass draw is macOS's cost). Measure launch again after this pass and set the
   budget in `AGENTS.md` then. If the toolbar may start hidden, try showing it only after the first
