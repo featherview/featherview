@@ -124,16 +124,14 @@ struct ViewerView: View {
         .frame(minWidth: 480, minHeight: 320)
     }
 
-    /// Fit shrinks large images to the view and never enlarges small ones; a zoom factor scales the full-size decode.
+    /// Fit shrinks large images to the view; a zoom factor scales the file's full pixel size, so a smaller
+    /// decode shown while the full one loads already has its final size (never another file's size).
     private func drawSize(_ image: CGImage) -> CGSize {
-        let points = CGSize(width: CGFloat(image.width) / displayScale, height: CGFloat(image.height) / displayScale)
-        switch model.zoom {
-        case .fit:
-            let scale = min(1, model.viewSize.width / max(points.width, 1), model.viewSize.height / max(points.height, 1))
-            return CGSize(width: (points.width * scale).rounded(), height: (points.height * scale).rounded())
-        case .factor(let factor):
-            return CGSize(width: points.width * factor, height: points.height * factor)
-        }
+        let info = model.fileInfo
+        let full = info?.isFor(model.list.current, page: model.page) == true ? info?.pixelSize : nil
+        let factor: Double? = if case .factor(let factor) = model.zoom { factor } else { nil }
+        return ZoomSteps.drawSize(decoded: CGSize(width: image.width, height: image.height), full: full,
+                                  factor: factor, view: model.viewSize, displayScale: displayScale)
     }
 
     private func hidePointerInFullScreen() {

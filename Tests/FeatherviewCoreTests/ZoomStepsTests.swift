@@ -34,4 +34,29 @@ import Testing
         #expect(ZoomSteps.showsPixels(drawnWidth: 2000, imageWidth: 1000, displayScale: 1))
         #expect(!ZoomSteps.showsPixels(drawnWidth: 1500, imageWidth: 1000, displayScale: 1))
     }
+
+    private func near(_ a: CGSize, _ b: CGSize) -> Bool { abs(a.width - b.width) < 1e-6 && abs(a.height - b.height) < 1e-6 }
+
+    @Test func zoomDrawSizeUsesFullPixels() {
+        let size = ZoomSteps.drawSize(decoded: CGSize(width: 4344, height: 2896), full: CGSize(width: 8688, height: 5792),
+                                      factor: 0.44, view: CGSize(width: 1500, height: 900), displayScale: 2)
+        #expect(near(size, CGSize(width: 1911.36, height: 1274.24)))
+    }
+
+    @Test func zoomDrawSizeWithoutFullUsesDecoded() {
+        let size = ZoomSteps.drawSize(decoded: CGSize(width: 4344, height: 2896), full: nil,
+                                      factor: 0.44, view: CGSize(width: 1500, height: 900), displayScale: 2)
+        #expect(near(size, CGSize(width: 955.68, height: 637.12)))
+    }
+
+    @Test func fitDrawSizeIsUnchanged() {
+        // Small image: never enlarged.
+        #expect(ZoomSteps.drawSize(decoded: CGSize(width: 400, height: 300), full: CGSize(width: 400, height: 300),
+                                   factor: nil, view: CGSize(width: 1500, height: 900), displayScale: 2)
+                == CGSize(width: 200, height: 150))
+        // Large image: shrunk to the view, from the decoded pixels, rounded.
+        #expect(ZoomSteps.drawSize(decoded: CGSize(width: 4344, height: 2896), full: CGSize(width: 8688, height: 5792),
+                                   factor: nil, view: CGSize(width: 1500, height: 900), displayScale: 2)
+                == CGSize(width: 1350, height: 900))
+    }
 }

@@ -20,4 +20,18 @@ public enum ZoomSteps {
     public static func step(_ factor: Double, by multiplier: Double) -> Double {
         min(max(factor * multiplier, range.lowerBound), range.upperBound)
     }
+
+    /// Points to draw `decoded` at. Fit: shrink to `view`, never enlarge (as today, from `decoded`).
+    /// Factor: from `full` (the file's displayed pixel size) when known, so a smaller decode shown
+    /// while the full one loads already has its final size; from `decoded` when `full` is nil.
+    public static func drawSize(decoded: CGSize, full: CGSize?, factor: Double?, view: CGSize,
+                                displayScale: Double) -> CGSize {
+        guard let factor else {
+            let points = CGSize(width: decoded.width / displayScale, height: decoded.height / displayScale)
+            let scale = min(1, view.width / max(points.width, 1), view.height / max(points.height, 1))
+            return CGSize(width: (points.width * scale).rounded(), height: (points.height * scale).rounded())
+        }
+        let pixels = full ?? decoded
+        return CGSize(width: pixels.width / displayScale * factor, height: pixels.height / displayScale * factor)
+    }
 }
