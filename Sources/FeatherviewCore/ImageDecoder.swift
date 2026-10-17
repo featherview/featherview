@@ -73,6 +73,14 @@ public enum ImageDecoder {
         halvingStep(full: full, target: Int((Double(full) * factor).rounded(.up)))
     }
 
+    /// The halving step to decode an image of `size` (displayed) at for zoom `factor`, and whether that
+    /// step is no larger than the image's own fit decode for `screens`, so it may go in the fit-sized cache.
+    public static func zoomDecode(size: PixelSize, factor: Double, screens: [PixelSize]) -> (step: Int, withinFit: Bool) {
+        let full = max(size.width, size.height)
+        let step = zoomStep(full: full, factor: factor)
+        return (step, stepSize(full: full, step: step) <= fitDecodeSize(image: size, screens: screens))
+    }
+
     /// The longest side to decode an image of `image` (displayed size, orientation applied) at, so it
     /// fits any of `screens` without enlarging: the smallest halving step at or above that size.
     /// Integer arithmetic: a 3024×4032 portrait on a 2016 px high screen needs exactly 2016, and

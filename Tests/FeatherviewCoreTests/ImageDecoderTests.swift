@@ -86,6 +86,22 @@ import UniformTypeIdentifiers
         #expect(ImageDecoder.zoomStep(full: full, factor: factor) == expected)
     }
 
+    /// Decided per image: a neighbour of another size can need a step above its own fit decode, and
+    /// that one mustn't go in the fit-sized cache.
+    @Test(arguments: [
+        (1920, 1080, 1.0, 0, true),    // a screenshot at 100 %: full size is its fit size
+        (8688, 5792, 1.0, 0, false),   // a 50 MP neighbour at 100 %: full size is far above fit (2172)
+        (5792, 8688, 0.5, 1, false),   // 50 MP portrait at 50 %: 4344 px, fit is 2172
+        (4032, 3024, 0.5, 1, true),    // 12 MP at 50 %: 2016 px is at or below fit
+        (8688, 5792, 0.25, 2, true),   // 2172 px: exactly its fit size
+    ])
+    func zoomDecodeKeepsStepsAboveFitOutOfTheFitCache(width: Int, height: Int, factor: Double, step: Int, withinFit: Bool) {
+        let decision = ImageDecoder.zoomDecode(size: PixelSize(width: width, height: height), factor: factor,
+                                               screens: [PixelSize(width: 3024, height: 1964)])
+        #expect(decision.step == step)
+        #expect(decision.withinFit == withinFit)
+    }
+
     @Test func decodesAtAHalvingStep() throws {
         let dir = try Fixtures.makeTempDir()
         let url = try Fixtures.writeImage(to: dir.appendingPathComponent("z.jpg"), width: 4000, height: 2000, orientation: 6)
