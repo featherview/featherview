@@ -114,8 +114,8 @@ Spec: "Batch window (⌘B)" (all of it).
 - HDR kept when an HDR photo is converted to HEIC or AVIF (spec "Formats");
   milestone 3 writes 8-bit SDR there.
 - Format options behind an "Options…" button in the batch window (spec "Output"); Save As has had its button since milestone 3, and batch shows them inline until then.
-- **Observe first:** the sub-dialogs of canvas size, text overlay, watermark, border, and
-  "more effects"; the batch preview image.
+- Observed (docs/parity.md "Batch"): the sub-dialogs of canvas size, text overlay, watermark,
+  border, and "more effects"; the batch preview image.
 
 ## 5. WebP output
 
