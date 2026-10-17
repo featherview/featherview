@@ -179,6 +179,20 @@ import Testing
         #expect(out.extent == CGRect(x: 0, y: 0, width: 1, height: 1))
     }
 
+    @Test func resizeNeverBeyondWhatCanBeRendered() throws {
+        var s = ResizeSettings()
+        s.isOn = true; s.dontEnlarge = false; s.side = Int.max
+        let big = ResizeStep.targetSize(for: Self.size(40, 30), s, scale: 1)
+        #expect(big.width <= 65536 && big.height <= 65536 && big.width * big.height <= Double(1 << 28))
+        #expect(abs(big.width / big.height - 4.0 / 3) < 0.01)
+        s.mode = .percent; s.percentWidth = 1e9
+        let pct = ResizeStep.targetSize(for: Self.size(4000, 3000), s, scale: 1)
+        #expect(pct.width <= 65536 && pct.height <= 65536 && pct.width * pct.height <= Double(1 << 28))
+        s.mode = .megapixels; s.megapixels = 1e300
+        let mp = ResizeStep.targetSize(for: Self.size(40, 30), s, scale: 1)
+        #expect(mp.width <= 65536 && mp.width * mp.height <= Double(1 << 28) && mp.height > 1)
+    }
+
     @Test func percentIgnoresScale() {
         let percent = SizeCase(mode: .percent, input: Self.landscape, expected: Self.size(2000, 1500))
         #expect(ResizeStep.targetSize(for: Self.landscape, percent.settings, scale: 0.5) == Self.size(2000, 1500))

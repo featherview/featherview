@@ -83,6 +83,14 @@ public enum ResizeStep {
         case .percent:
             target = (w * s.percentWidth / 100, h * (s.keepAspect ? s.percentWidth : s.percentHeight) / 100)
         }
+        // At most what the own decoders accept (65,536 a side, 2²⁸ pixels), aspect kept: larger can't render.
+        if target.w.isFinite, target.h.isFinite, target.w > 0, target.h > 0 {
+            let side = min(1, 65536 / max(target.w, target.h))
+            target = (target.w * side, target.h * side)
+            let area = min(1, (Double(maxOwnPixels) / (target.w * target.h)).squareRoot())
+            // Rounded down, so rounding below can't push it back over.
+            if area < 1 { target = ((target.w * area).rounded(.down), (target.h * area).rounded(.down)) }
+        }
         // NaN or ±∞ (a broken setting) becomes 1 pixel or keeps the input size below, never a crash.
         let round = { (v: Double) in v.isFinite ? max(1, v.rounded()) : (v > 0 ? .infinity : 1) }
         let result = CGSize(width: round(target.w), height: round(target.h))
