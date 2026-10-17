@@ -69,7 +69,8 @@ public struct BatchNamer: Sendable {
         func bytes(_ s: some StringProtocol) -> Int { s.decomposedStringWithCanonicalMapping.utf8.count }
         let tail = suffix + (ext.isEmpty ? "" : "." + ext)
         var trimmed = Substring(base)
-        while bytes(trimmed) > 255 - bytes(tail) { trimmed = trimmed.dropLast() }
+        // An extension too long for any base leaves an over-long name; writing it fails for that file only.
+        while !trimmed.isEmpty, bytes(trimmed) > 255 - bytes(tail) { trimmed = trimmed.dropLast() }
         return folder.appendingPathComponent(trimmed + tail, isDirectory: false)
     }
 

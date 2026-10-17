@@ -118,6 +118,14 @@ import Testing
         #expect(names.allSatisfy { $0.decomposedStringWithCanonicalMapping.utf8.count <= 255 })
         #expect(names[0].hasSuffix(".heic") && names[1].hasSuffix(" 2.heic") && names[2].hasSuffix(".jpg"))
     }
+
+    @Test(.timeLimit(.minutes(1))) func hugeExtensionDoesNotHang() {
+        // A legal 255-byte name whose extension alone leaves no room for a " 2" suffix.
+        let inputs = [input("/a/x." + String(repeating: "e", count: 253))]
+        var namer = BatchNamer(settings: settings(.rename, out: ""), inputs: inputs) { _ in false }
+        #expect(namer.next(for: inputs[0], date: nil).lastPathComponent.hasPrefix(" 2."))
+    }
+
 }
 
 @Suite struct BatchCopyTests {
