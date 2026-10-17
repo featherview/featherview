@@ -24,26 +24,30 @@ public enum PipelineRender {
         let width = Int(rect.width), height = Int(rect.height), bytesPerRow = width * 4
         let space = CGColorSpace(name: CGColorSpace.sRGB)!
         // Core Image always writes premultiplied (an `unpremultiplyingAlpha()` before the render is undone
-        // after any filter), so it renders float strips that are un-premultiplied here before rounding to
-        // 8 bits: faint pixels keep their colour. Strips bound the float buffer for large images.
+        // after any filter). Each strip renders to 8 bits; one with half-transparent pixels renders again in half
+        // floats, un-premultiplied before rounding, so faint pixels keep their colour. Opaque strips stay one pass.
         let stripRows = max(1, min(height, (1 << 20) / width))
-        var strip = [Float](repeating: 0, count: width * stripRows * 4)
+        var strip = [Float16]()
         var data = Data(count: bytesPerRow * height)
         data.withUnsafeMutableBytes { buffer in
             let out = buffer.bindMemory(to: UInt8.self)
             for top in stride(from: 0, to: height, by: stripRows) {
-                let rows = min(stripRows, height - top)
+                let rows = min(stripRows, height - top), base = top * bytesPerRow
                 let bounds = CGRect(x: rect.minX, y: rect.maxY - CGFloat(top + rows), width: rect.width, height: CGFloat(rows))
-                strip.withUnsafeMutableBytes { f in
-                    context.render(image, toBitmap: f.baseAddress!, rowBytes: width * 16, bounds: bounds,
-                                   format: .RGBAf, colorSpace: space)
-                }
-                let base = top * bytesPerRow
-                for i in stride(from: 0, to: rows * width * 4, by: 4) {
-                    let alpha = min(1, max(0, strip[i + 3]))
-                    out[base + i + 3] = UInt8((alpha * 255).rounded())
-                    guard alpha > 0 else { continue }
-                    for c in 0..<3 { out[base + i + c] = UInt8((min(1, max(0, strip[i + c] / alpha)) * 255).rounded()) }
+                context.render(image, toBitmap: buffer.baseAddress! + base, rowBytes: bytesPerRow, bounds: bounds,
+                               format: .RGBA8, colorSpace: space)
+                let end = base + rows * bytesPerRow
+                guard stride(from: base + 3, to: end, by: 4).contains(where: { out[$0] != 0 && out[$0] != 255 }) else { continue }
+                if strip.isEmpty { strip = [Float16](repeating: 0, count: width * stripRows * 4) }
+                strip.withUnsafeMutableBufferPointer { f in
+                    context.render(image, toBitmap: f.baseAddress!, rowBytes: width * 8, bounds: bounds,
+                                   format: .RGBAh, colorSpace: space)
+                    for i in stride(from: 0, to: end - base, by: 4) where out[base + i + 3] != 255 {
+                        let alpha = min(1, max(0, Float(f[i + 3])))
+                        let scale = alpha > 0 ? 255 / alpha : 0
+                        for c in 0..<3 { out[base + i + c] = UInt8((min(255, max(0, Float(f[i + c]) * scale))).rounded()) }
+                        out[base + i + 3] = UInt8((alpha * 255).rounded())
+                    }
                 }
             }
         }
