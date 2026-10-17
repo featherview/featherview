@@ -82,7 +82,8 @@ struct ViewerView: View {
         .modifier(ViewerToolbarPlacement(model: model, ready: toolbarReady))
         .onChange(of: model.image != nil || model.errorMessage != nil || model.emptyFolder != nil || !model.isOpening,
                   initial: true) { if $1, model.image == nil { ViewerModel.afterFrame { toolbarReady = true } } }
-        .toolbar(model.isFullScreen || toolbarHidden ? .hidden : .visible, for: .windowToolbar)
+        .toolbar(toolbarHidden || hidesToolbarForFullScreen ? .hidden : .visible, for: .windowToolbar)
+        .modifier(ToolbarHiddenInFullScreen())
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         // Not set on the window directly: SwiftUI puts the scene's title back on its next update.
         .navigationTitle(model.title)
@@ -142,6 +143,12 @@ struct ViewerView: View {
     /// The pixels `image` stands for, so a smaller decode is smoothed or not as the full one will be.
     private func pixelSize(_ image: CGImage) -> CGSize {
         ZoomSteps.pixelSize(decoded: CGSize(width: image.width, height: image.height), full: fullSize)
+    }
+
+    /// shortcut: macOS 14 has no `windowToolbarFullScreenVisibility`, so it still hides the toolbar mid-transition
+    /// (the content can stay at the window's old size), drop when macOS 15 is the minimum.
+    private var hidesToolbarForFullScreen: Bool {
+        if #available(macOS 15, *) { false } else { model.isFullScreen }
     }
 
     private func hidePointerInFullScreen() {
@@ -489,5 +496,14 @@ extension View {
         } else {
             background(.regularMaterial, in: .rect(cornerRadius: cornerRadius))
         }
+    }
+}
+
+/// Full screen hides the toolbar the native way: it slides in with the menu bar when the pointer is at the top.
+/// Hiding it with `.toolbar(.hidden)` from willEnterFullScreen left the content at the old window size (View menu)
+/// or kept the toolbar's strip as a black band (Return).
+struct ToolbarHiddenInFullScreen: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 15, *) { content.windowToolbarFullScreenVisibility(.onHover) } else { content }
     }
 }

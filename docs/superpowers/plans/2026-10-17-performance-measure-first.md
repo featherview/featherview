@@ -250,11 +250,11 @@ extension ImageDecoder {
 - `ImageCache`: two requests for the same URL with different `fit` targets don't join; same target joins.
 - Existing `decodeSizeIsSmallestHalvingStepAtOrAboveTarget` stays unchanged (`decodeSize` is reused).
 
-- [ ] Failing tests, then `fitDecodeSize`, then the decode parameter, then the cache key, then the viewer
-- [ ] Update `fitDecode` in the bench; run `decode` before (Task 1's numbers) and after; record both
+- [x] Failing tests, then `fitDecodeSize`, then the decode parameter, then the cache key, then the viewer
+- [x] Update `fitDecode` in the bench; run `decode` before (Task 1's numbers) and after; record both
 - [ ] By hand: a portrait photo fills the window height sharply at fit; full screen on a 5K display stays sharp
-- [ ] Update `AGENTS.md` "Performance budgets" memory line: "decoded to fit the screen per axis"
-- [ ] Commit: `fix: fit decodes portrait images at the size the screen shows`
+- [x] Update `AGENTS.md` "Performance budgets" memory line: "decoded to fit the screen per axis"
+- [x] Commit: `fix: fit decodes portrait images at the size the screen shows`
 
 ### Task 4: Zoom placeholder at the right size
 
@@ -285,9 +285,9 @@ extension ZoomSteps {
 → 1911.36×1274.24 pt. `full` nil → from decoded (today's result). Fit: unchanged results for a
 small image (never enlarged) and a large one.
 
-- [ ] Failing tests, `ZoomSteps.drawSize`, view uses it
-- [ ] By hand with `50mp-landscape.jpg`: + from fit grows the image a little and it sharpens when the decode lands; no shrink, no jump; the point under the window centre stays put
-- [ ] Commit: `fix: zooming from fit no longer shows the image at half size first`
+- [x] Failing tests, `ZoomSteps.drawSize`, view uses it
+- [x] By hand with `50mp-landscape.jpg`: + from fit grows the image a little and it sharpens when the decode lands; no shrink, no jump; the point under the window centre stays put
+- [x] Commit: `fix: zooming from fit no longer shows the image at half size first`
 
 ### Task 5: Zoom decode at the needed step, prefetch while zoomed
 

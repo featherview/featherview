@@ -82,7 +82,7 @@ Single keys for commands match the reference viewer, for people switching over; 
 For mouse users, the viewer window has a standard macOS toolbar: previous,
 next, rotate left, rotate right, zoom out, zoom to fit, zoom in, info panel, Move to Trash, plus previous / next page
 for a multi-page file only. Each button does what its key does and has a tooltip naming that key. View › Hide Toolbar hides it
-(remembered), and View › Customize Toolbar… changes it, as in any Mac app. Hidden in full screen.
+(remembered), and View › Customize Toolbar… changes it, as in any Mac app. Hidden in full screen; it slides in with the menu bar when the pointer is at the top (macOS 15 and later).
 Mac SF Symbols, never icons taken from another viewer.
 
 ### Menu commands
