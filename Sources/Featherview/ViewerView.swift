@@ -301,7 +301,7 @@ struct OpenWithMenu: View {
                     model?.openWith(index)
                 }
                 .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .option)
-                .disabled(path.isEmpty || model?.list.current == nil)
+                .disabled(path.isEmpty || model?.availability.hasCurrent != true)
             }
         }
     }
