@@ -92,6 +92,44 @@ import Testing
         #expect(items.allSatisfy { $0.root == link })
     }
 
+    /// "Recreate subfolders" takes each input's path below its root, so the root must prefix it.
+    @Test func scanKeepsItemsUnderTheChosenFolderPath() throws {
+        let dir = try Fixtures.makeTempDir()  // under /var, which is a symlink to /private/var
+        let real = dir.appendingPathComponent("real")
+        try FileManager.default.createDirectory(at: real.appendingPathComponent("sub"), withIntermediateDirectories: true)
+        _ = try image(real, "sub/x.jpg")
+        let link = dir.appendingPathComponent("link")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+        for folder in [real, link] {
+            let items = try BatchInputList.scan(folder: folder, subfolders: true)
+            #expect(items.map(\.url.path) == [folder.path + "/sub/x.jpg"])
+        }
+    }
+
+    @Test func addAndLoadSkipFoldersNamedLikeImages() throws {
+        let dir = try Fixtures.makeTempDir()
+        let folder = dir.appendingPathComponent("pics.jpg")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        var list = BatchInputList()
+        list.add(files: [folder])
+        #expect(list.items.isEmpty)
+        #expect(list.load(listText: folder.path + "\n") == (0, 0))
+        #expect(list.items.isEmpty)
+    }
+
+    @Test func namesDifferingOnlyInCaseAreTwoInputsOnCaseSensitiveVolumes() throws {
+        let volume = try CaseSensitiveVolume()
+        defer { volume.detach() }
+        let upper = try image(volume.root, "A.jpg")
+        let lower = try image(volume.root, "a.jpg")
+        var list = BatchInputList()
+        list.add(files: [upper, lower])
+        #expect(list.items.count == 2)
+        list.remove(at: IndexSet(list.items.indices.filter { list.items[$0].url == upper }))
+        list.add(files: [upper])
+        #expect(list.items.count == 2)
+    }
+
     @Test func scanThrowsForMissingFolder() throws {
         let dir = try Fixtures.makeTempDir()
         #expect(throws: (any Error).self) {

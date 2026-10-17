@@ -172,7 +172,7 @@ import Testing
 }
 
 /// A small case-sensitive APFS disk image, mounted privately for one test.
-private struct CaseSensitiveVolume {
+struct CaseSensitiveVolume {
     let image: URL
     let root: URL
 

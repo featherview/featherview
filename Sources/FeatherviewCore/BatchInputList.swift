@@ -13,29 +13,39 @@ public struct BatchInputList: Equatable, Sendable {
     /// Appends in Finder order; skips files already in the list (same resolved path) and
     /// anything that isn't a decodable image.
     public mutating func add(files: [URL]) {
-        append(FolderScanner.inFinderOrder(files.filter(ImageFormats.isDecodable)).map { BatchInput(url: $0) })
+        append(FolderScanner.inFinderOrder(files.filter(Self.isImageFile)).map { BatchInput(url: $0) })
+    }
+
+    /// A decodable image that is a file (through symlinks), not a folder or package named like one.
+    private static func isImageFile(_ url: URL) -> Bool {
+        var isFolder: ObjCBool = false
+        return ImageFormats.isDecodable(url)
+            && FileManager.default.fileExists(atPath: url.path, isDirectory: &isFolder) && !isFolder.boolValue
     }
 
     /// Lists `folder` (and, with `subfolders`, every folder below it, skipping hidden ones and
     /// packages) off the caller's thread: call it from a background task. Hidden and non-image
     /// files are skipped. Each folder's files in Finder order, folders depth-first in Finder
-    /// order. Every item gets `root: folder`.
+    /// order. Every item gets `root: folder` and a URL below `folder`'s path as given.
     public static func scan(folder: URL, subfolders: Bool) throws -> [BatchInput] {
         var inputs: [BatchInput] = []
-        // Listing fails on a symlinked folder the user chose; only subfolders found below stay unfollowed.
-        try scan(folder.resolvingSymlinksInPath(), root: folder, subfolders: subfolders, into: &inputs)
+        try scan(folder, root: folder, subfolders: subfolders, into: &inputs)
         return inputs
     }
 
     private static func scan(_ folder: URL, root: URL, subfolders: Bool, into inputs: inout [BatchInput]) throws {
         let keys: [URLResourceKey] = [.isDirectoryKey, .isPackageKey, .isRegularFileKey, .isSymbolicLinkKey]
         // Resource values come from the directory listing: no file is opened.
+        // Listing fails on a symlinked folder the user chose, so list its target; entries found
+        // below are not followed.
         let entries = try FileManager.default.contentsOfDirectory(
-            at: folder, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles])
+            at: folder.resolvingSymlinksInPath(), includingPropertiesForKeys: keys, options: [.skipsHiddenFiles])
         var files: [URL] = []
         var folders: [URL] = []
-        for entry in entries {
-            guard let values = try? entry.resourceValues(forKeys: Set(keys)) else { continue }
+        for listed in entries {
+            // Named under `folder` as given, so `root` stays a prefix ("Recreate subfolders" needs it).
+            let entry = folder.appendingPathComponent(listed.lastPathComponent)
+            guard let values = try? listed.resourceValues(forKeys: Set(keys)) else { continue }
             // Symlinks report the link itself, so a symlinked folder is never entered (no loops).
             if values.isDirectory == true {
                 if values.isPackage != true { folders.append(entry) }
@@ -120,7 +130,7 @@ public struct BatchInputList: Equatable, Sendable {
             }
         }
         let before = items.count
-        append(urls.filter(ImageFormats.isDecodable).map { BatchInput(url: $0) })  // the saved order is kept
+        append(urls.filter(Self.isImageFile).map { BatchInput(url: $0) })  // the saved order is kept
         return (items.count - before, missing)
     }
 }
