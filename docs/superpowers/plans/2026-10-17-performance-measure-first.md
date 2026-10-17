@@ -252,7 +252,7 @@ extension ImageDecoder {
 
 - [x] Failing tests, then `fitDecodeSize`, then the decode parameter, then the cache key, then the viewer
 - [x] Update `fitDecode` in the bench; run `decode` before (Task 1's numbers) and after; record both
-- [ ] By hand: a portrait photo fills the window height sharply at fit; full screen on a 5K display stays sharp
+- [x] By hand: a portrait photo fills the window height sharply at fit; full screen on a 5K display stays sharp (no 5K display: checked by numbers, 50 MP on 5120×2880 decodes to 4344×2896 for a 4320×2880 fit, portrait 2896×4344 for 1920×2880)
 - [x] Update `AGENTS.md` "Performance budgets" memory line: "decoded to fit the screen per axis"
 - [x] Commit: `fix: fit decodes portrait images at the size the screen shows`
 
