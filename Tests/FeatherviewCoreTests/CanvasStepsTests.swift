@@ -240,6 +240,18 @@ import Testing
         #expect(AutoCropStep.apply(image).extent == CGRect(x: 0, y: 0, width: 3000, height: 2834))
     }
 
+    /// Top-left and bottom-right borders of different colours: the side borders still go on large images.
+    @Test func autoCropRemovesSidesWhenCornerColoursDiffer() throws {
+        var image = RGBAImage(width: 2400, height: 1600)
+        for y in 0..<1600 {
+            for x in 0..<2400 {
+                let v: UInt8 = y < 200 ? 255 : y >= 1400 ? 0 : x < 200 ? 255 : x >= 2200 ? 0 : 128
+                image[x, y] = (v, v, v, 255)
+            }
+        }
+        #expect(AutoCropStep.apply(PipelineFixtures.fromRGBA(image)).extent == CGRect(x: 0, y: 0, width: 2000, height: 1200))
+    }
+
     @Test func canvasRunsAutoCropFirst() throws {
         var s = perSide(1, 1, 1, 1)
         s.autoCropBorders = true

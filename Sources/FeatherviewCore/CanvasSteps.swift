@@ -50,17 +50,19 @@ public enum AutoCropStep {
         if top == p.height { return image }
         var bottom = p.height - 1
         while bottom > top, row(bottom, bottomRight) { bottom -= 1 }
-        func column(_ x: Int, _ c: (r: UInt8, g: UInt8, b: UInt8, a: UInt8)) -> Bool {
-            (top...bottom).allSatisfy { near(x, $0, c) }
-        }
-        var left = 0
-        while left < p.width - 1, column(left, topLeft) { left += 1 }
-        var right = p.width - 1
-        while right > left, column(right, bottomRight) { right -= 1 }
-
-        // Back to full size.
-        var x0 = (Double(left) / s).rounded(.down), x1 = min(width, (Double(right + 1) / s).rounded(.up))
         var y0 = (Double(top) / s).rounded(.down), y1 = min(height, (Double(bottom + 1) / s).rounded(.up))
+        var rows = Array(top...bottom)
+        func columns() -> (CGFloat, CGFloat) {
+            func column(_ x: Int, _ c: (r: UInt8, g: UInt8, b: UInt8, a: UInt8)) -> Bool {
+                rows.allSatisfy { near(x, $0, c) }
+            }
+            var left = 0
+            while left < p.width - 1, column(left, topLeft) { left += 1 }
+            var right = p.width - 1
+            while right > left, column(right, bottomRight) { right -= 1 }
+            return ((Double(left) / s).rounded(.down), min(width, (Double(right + 1) / s).rounded(.up)))
+        }
+        var (x0, x1) = s < 1 ? (0, 0) : columns()
         if s < 1 {
             // A small pixel sees its block and part of its neighbours, so each edge lies within `m` pixels
             // of where the small copies put it: find it exactly on a full-size strip there.
@@ -73,6 +75,12 @@ public enum AutoCropStep {
             y0 = t0 + CGFloat(first(t.height) { y in (0..<t.width).allSatisfy { near(t[$0, y], topLeft) } })
             y1 = b0 + CGFloat(last(b.height) { y in (0..<b.width).allSatisfy { near(b[$0, y], bottomRight) } } + 1)
             guard y1 > y0 else { return image }
+            // Columns are judged only on small rows whose window stays between the edges just found: one
+            // reaching into the top or bottom border would compare that border's colour with the side's.
+            let h = CGFloat(window / 2 + 1)  // one more for where Core Image samples the block
+            let inner = rows.filter { let c = ((CGFloat($0) + 0.5) / s).rounded(.down); return c - h >= y0 && c + h < y1 }
+            if !inner.isEmpty { rows = inner }
+            (x0, x1) = columns()
             let (l0, l1) = (max(0, x0 - m), min(width, x0 + m)), (r0, r1) = (max(0, x1 - m), min(width, x1 + m))
             guard let l = strip(l0, y0, l1 - l0, y1 - y0), let r = strip(r0, y0, r1 - r0, y1 - y0) else { return image }
             x0 = l0 + CGFloat(first(l.width) { x in (0..<l.height).allSatisfy { near(l[x, $0], topLeft) } })
