@@ -178,7 +178,7 @@ public enum Signposts {
 - [x] Write `decode` mode with `fitDecode` mirroring today's call; run it on the maintainer's Mac
 - [x] Write `browse` mode and `Footprint.swift`; run at 300 ms and 30 ms
 - [x] Add the signposts; `swift build`, `swift test` pass
-- [ ] Check in Instruments (Points of Interest) that `Navigate`, `Decode` and `Scan` appear while browsing the corpus
+- [x] Check in Instruments (Points of Interest) that `Navigate`, `Decode` and `Scan` appear while browsing the corpus
 - [x] Record all numbers in "Measurements" (machine, macOS, commit)
 - [x] Commit: `feat: featherview-bench and signposts for decode, scan and navigation`
 
@@ -194,7 +194,7 @@ re-evaluates the commands and SwiftUI rebuilds the main menu on the main thread.
 
 - [x] Replace with `.disabled(model?.availability.canChangeFile != true)`
 - [x] By hand: Save As is disabled with no image, enabled with one, disabled on a held (trashed, "show the next image" off) image
-- [ ] If Task 1 is merged: compare `Navigate` p50 before/after in Instruments while browsing `browse/` at 300 ms (expect a small gain; record it, even if zero)
+- [x] If Task 1 is merged: compare `Navigate` p50 before/after in Instruments while browsing `browse/` at 300 ms (expect a small gain; record it, even if zero)
 - [x] Commit: `fix: the menu no longer rebuilds on every image`
 
 ### Task 3: Fit decode per axis
@@ -369,5 +369,6 @@ Same Mac, same command, release build. Fill in per task; never edit an earlier r
 | 1 (baseline) | 5d02ec6 | Apple M1 Pro, 32 GB / macOS 27.0.1 | `featherview-bench browse <dir>/browse --interval-ms 30` | 1 returned (92 ms), 39 of 40 superseded: nothing is shown until the key is let go; peak cache 390 MB decoded, footprint 280 MB |
 | 3 (after) | task-3 | Apple M1 Pro, 32 GB / macOS 27.0.1 | `featherview-bench decode <dir> --baseline build/bench/baseline-task1.json` | Portrait on 3024x1964 now at ½: 12 MP JPEG 83.0 → 33.7 ms (48.8 → 12.2 MB), EXIF-6 JPEG 111.3 → 42.1 ms, 12 MP HEIC 231.8 → 123.0 ms, 50 MP portrait 128.4 → 71.5 ms (50.3 → 12.6 MB). 5120x2880: 50 MP landscape 359.0 → 128.7 ms and portrait 336.5 → 123.3 ms, both at ½ (201.3 → 50.3 MB). Landscape 12 MP and portrait on 3456x2234 decode the same size as before (2234 > 2016 needs full). Only `--baseline` flag: 12 MP landscape JPEG full 81.8 → 90.9 ms, a path this task doesn't change; load average 4–6 from other builds during the run (a first run under more load flagged every landscape row). JSON: `build/bench/after-task3.json` |
 | 3 (after) | task-3 | Apple M1 Pro, 32 GB / macOS 27.0.1 | `featherview-bench browse <dir>/browse --interval-ms 300` | 40 returned, 0 superseded; cached 39: median 0.2 ms, p95 0.7 ms; not cached 1: 114 ms; peak cache 243 MB decoded (was 390), footprint 8 MB |
+| 2 (before/after) | de75b16 → b3bc7d6 | Apple M1 Pro, 32 GB / macOS 27.0.1 | App, `browse/`, 39 × → at 300 ms (accessibility key events), `Navigate` from `sudo log show --signpost` | Navigate p50 23.5 → 25.0 ms, p95 41.0 → 36.0 ms, max 173 → 170 ms (n = 40 each): no measurable gain. All four signposts appear (Scan 3 ms for 40 files, Decode, Navigate, FirstImage) |
 
 Memory baseline for Task 6 is "peak cache … MB decoded" (`bytesPerRow × height`, what the byte budget counts); the footprint misses purgeable decoded images and is only a side number.
