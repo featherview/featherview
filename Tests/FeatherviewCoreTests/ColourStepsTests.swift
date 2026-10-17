@@ -183,4 +183,16 @@ private func filter(_ configure: (inout FilterSettings) -> Void) -> FilterSettin
                                                                filter { $0.unsharpMask = 100 }, scale: 1))
         for (x, y) in [(0, 0), (15, 0), (8, 8), (15, 15)] { #expect(near(out[x, y], (128, 128, 128, 255))) }
     }
+
+    /// Presets are read from disk: out-of-range values act like the nearest valid one.
+    @Test func outOfRangeValuesAreClamped() throws {
+        let grey = PipelineFixtures.solid(RGBAColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1), width: 4, height: 4)
+        var wild = ColourSettings(), edge = ColourSettings()
+        wild.isOn = true; edge.isOn = true
+        wild.contrast = 10_000; edge.contrast = 127
+        wild.blur = 100_000; edge.blur = 99
+        wild.gamma = 1_000; edge.gamma = 6.99
+        #expect(try PipelineFixtures.pixels(ColourStep.apply(grey, wild, scale: 1))
+                == PipelineFixtures.pixels(ColourStep.apply(grey, edge, scale: 1)))
+    }
 }

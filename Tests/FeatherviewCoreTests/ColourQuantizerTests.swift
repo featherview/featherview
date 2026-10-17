@@ -92,6 +92,29 @@ private let isOptimised = true
         }
     }
 
+    /// Invisible pixels aren't in the palette: their (any) colour must not push error into visible neighbours.
+    @Test func transparentPixelsPassNoErrorOn() {
+        var image = RGBAImage(width: 48, height: 8)
+        for y in 0..<8 {
+            for x in 0..<48 {
+                switch x {
+                case ..<16: image[x, y] = (0, 0, 0, 0)
+                case ..<24: image[x, y] = (220, 30, 30, 255)
+                default: let v = UInt8(128 + (x - 24) * 5); image[x, y] = (v, v, v, 255)
+                }
+            }
+        }
+        let out = ColourQuantizer.reduce(image, colours: 4, dither: true)
+        for y in 0..<8 { #expect(out[16, y] == (220, 30, 30, 255)) }
+    }
+
+    @Test func blackAndWhiteIgnoresTransparentPixels() {
+        var image = RGBAImage(width: 2, height: 1)
+        image[0, 0] = (100, 100, 100, 0)
+        image[1, 0] = (100, 100, 100, 255)
+        #expect(ColourQuantizer.reduce(image, colours: 2, dither: true)[1, 0] == (0, 0, 0, 255))
+    }
+
     @Test func clampsCount() {
         let image = gradient()
         #expect(ColourQuantizer.reduce(image, colours: 1, dither: false) == ColourQuantizer.reduce(image, colours: 2, dither: false))

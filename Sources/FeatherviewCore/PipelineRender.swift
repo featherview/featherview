@@ -24,10 +24,10 @@ public enum PipelineRender {
         let width = Int(rect.width), height = Int(rect.height), bytesPerRow = width * 4
         let space = CGColorSpace(name: CGColorSpace.sRGB)!
         // Core Image always writes premultiplied (an `unpremultiplyingAlpha()` before the render is undone
-        // after any filter). Each strip renders to 8 bits; one with half-transparent pixels renders again in half
-        // floats, un-premultiplied before rounding, so faint pixels keep their colour. Opaque strips stay one pass.
+        // after any filter). Each strip renders to 8 bits; one with half-transparent pixels renders again in
+        // floats (Float, not Float16: Intel Macs lack it), un-premultiplied before rounding, so faint pixels keep their colour. Opaque strips stay one pass.
         let stripRows = max(1, min(height, (1 << 20) / width))
-        var strip = [Float16]()
+        var strip = [Float]()
         var data = Data(count: bytesPerRow * height)
         data.withUnsafeMutableBytes { buffer in
             let out = buffer.bindMemory(to: UInt8.self)
@@ -38,10 +38,10 @@ public enum PipelineRender {
                                format: .RGBA8, colorSpace: space)
                 let end = base + rows * bytesPerRow
                 guard stride(from: base + 3, to: end, by: 4).contains(where: { out[$0] != 0 && out[$0] != 255 }) else { continue }
-                if strip.isEmpty { strip = [Float16](repeating: 0, count: width * stripRows * 4) }
+                if strip.isEmpty { strip = [Float](repeating: 0, count: width * stripRows * 4) }
                 strip.withUnsafeMutableBufferPointer { f in
-                    context.render(image, toBitmap: f.baseAddress!, rowBytes: width * 8, bounds: bounds,
-                                   format: .RGBAh, colorSpace: space)
+                    context.render(image, toBitmap: f.baseAddress!, rowBytes: width * 16, bounds: bounds,
+                                   format: .RGBAf, colorSpace: space)
                     for i in stride(from: 0, to: end - base, by: 4) where out[base + i + 3] != 255 {
                         let alpha = min(1, max(0, Float(f[i + 3])))
                         let scale = alpha > 0 ? 255 / alpha : 0

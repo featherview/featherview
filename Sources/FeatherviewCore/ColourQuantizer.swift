@@ -22,6 +22,7 @@ public enum ColourQuantizer {
             let row = (y & 1) * (w + 2), next = (1 - (y & 1)) * (w + 2)
             for x in 0..<w {
                 let i = (y * w + x) * 4
+                guard image.pixels[i + 3] != 0 else { continue }  // invisible: no error to pass on
                 let v = luminance(Float(image.pixels[i]), Float(image.pixels[i + 1]), Float(image.pixels[i + 2]))
                     + error[row + x + 1]
                 let on = v >= 128
@@ -43,7 +44,7 @@ public enum ColourQuantizer {
     private static func hasAtMost(_ n: Int, _ image: RGBAImage) -> Bool {
         var seen = Set<UInt32>(minimumCapacity: n + 1)
         let p = image.pixels
-        for i in stride(from: 0, to: p.count, by: 4) {
+        for i in stride(from: 0, to: p.count, by: 4) where p[i + 3] > 0 {
             seen.insert(UInt32(p[i]) << 16 | UInt32(p[i + 1]) << 8 | UInt32(p[i + 2]))
             if seen.count > n { return false }
         }
@@ -174,6 +175,7 @@ public enum ColourQuantizer {
                                                _ x: Int, _ y: Int, _ w: Int, _ stride: Int,
                                                _ palette: [(r: Int, g: Int, b: Int)], _ nearest: inout Nearest) {
         let i = (y &* w &+ x) &* 4, row = y % 3 &* stride, next = (y &+ 1) % 3 &* stride
+        guard out[i + 3] != 0 else { return }  // invisible: not in the palette, so no error to pass on
         let e = row &+ (x &+ 1) &* 3
         let wr = Int32(out[i]) &+ (error[e] &+ 8) >> 4, wg = Int32(out[i + 1]) &+ (error[e + 1] &+ 8) >> 4
         let wb = Int32(out[i + 2]) &+ (error[e + 2] &+ 8) >> 4

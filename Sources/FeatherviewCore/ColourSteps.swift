@@ -8,6 +8,7 @@ import Foundation
 public enum ColourStep {
     public static func apply(_ image: CIImage, _ s: ColourSettings, scale: Double) -> CIImage {
         guard s.isOn else { return image }
+        let s = s.clamped  // presets come from disk: never trust their ranges
         var image = image
         if s.autoAdjust {
             for filter in autoAdjustAnalysed(image)?.autoAdjustmentFilters(options: [.redEye: false]) ?? [] {
@@ -103,6 +104,7 @@ private func autoAdjustAnalysed(_ image: CIImage) -> CIImage? {
 public enum FilterStep {
     public static func apply(_ image: CIImage, _ s: FilterSettings, scale: Double) -> CIImage {
         guard s.isOn else { return image }
+        let s = s.clamped
         var image = image
         if s.autoLevels { image = autoLevels(image) }
         if s.noiseReduction > 0 {
@@ -200,4 +202,28 @@ private func clamped(_ image: CIImage) -> CIImage {
 /// so edges don't darken.
 private func edgeSafe(_ image: CIImage, _ filter: (CIImage) -> CIImage) -> CIImage {
     filter(image.clampedToExtent()).cropped(to: image.extent)
+}
+
+private func clamp<T: Comparable>(_ v: T, _ r: ClosedRange<T>) -> T { min(r.upperBound, max(r.lowerBound, v)) }
+
+extension ColourSettings {
+    /// The ranges of spec "Per-image operations" (the reference viewer's).
+    var clamped: ColourSettings {
+        var c = self
+        c.brightness = clamp(brightness, -255...255); c.contrast = clamp(contrast, -127...127)
+        c.gamma = gamma.isFinite ? clamp(gamma, 0.01...6.99) : 1; c.saturation = clamp(saturation, -255...255)
+        c.balanceRed = clamp(balanceRed, -255...255); c.balanceGreen = clamp(balanceGreen, -255...255)
+        c.balanceBlue = clamp(balanceBlue, -255...255)
+        c.sharpen = clamp(sharpen, 0...99); c.blur = clamp(blur, 0...99)
+        return c
+    }
+}
+
+extension FilterSettings {
+    var clamped: FilterSettings {
+        var f = self
+        f.unsharpMask = clamp(unsharpMask, 0...100); f.noiseReduction = clamp(noiseReduction, 0...100)
+        f.sepia = clamp(sepia, 0...100); f.colourTemperature = clamp(colourTemperature, -100...100)
+        return f
+    }
 }
