@@ -86,6 +86,25 @@ import Testing
         #expect(MetadataReader.taken("garbage") == nil)
     }
 
+    @Test func dateTakenPrefersExif() throws {
+        let dir = try Fixtures.makeTempDir()
+        let exif: [CFString: Any] = [
+            kCGImagePropertyExifDictionary: [kCGImagePropertyExifDateTimeOriginal: "2024:03:05 14:30:00"] as [CFString: Any],
+        ]
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8, properties: exif)
+        let local = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2024, month: 3, day: 5, hour: 14, minute: 30))
+        #expect(MetadataReader.dateTaken(of: url) == local)
+    }
+
+    @Test func dateTakenFallsBackToModificationDate() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.png"), width: 8, height: 8, type: .png)
+        let modified = Date(timeIntervalSince1970: 1_700_000_000)
+        try FileManager.default.setAttributes([.modificationDate: modified], ofItemAtPath: url.path)
+        #expect(MetadataReader.dateTaken(of: url) == modified)
+        #expect(MetadataReader.dateTaken(of: dir.appendingPathComponent("missing.jpg")) == nil)
+    }
+
     @Test func fileSizeFollowsSymlinks() throws {
         let dir = try Fixtures.makeTempDir()
         let target = try Fixtures.writeImage(to: dir.appendingPathComponent("r.jpg"), width: 8, height: 8)
