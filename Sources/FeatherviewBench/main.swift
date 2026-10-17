@@ -61,12 +61,9 @@ var arguments = Array(CommandLine.arguments.dropFirst())
 guard arguments.count >= 2 else { fail("Missing mode or folder.") }
 let mode = arguments.removeFirst()
 let folder = URL(fileURLWithPath: arguments.removeFirst())
-var options: [String: [String]] = [:]
-while !arguments.isEmpty {
-    let name = arguments.removeFirst()
-    guard name.hasPrefix("--"), !arguments.isEmpty else { fail("Unexpected argument \(name).") }
-    options[name, default: []].append(arguments.removeFirst())
-}
+guard knownOptions[mode] != nil else { fail("Unknown mode \(mode).") }
+let options: [String: [String]]
+do { options = try parseOptions(arguments, mode: mode) } catch { fail(error.message) }
 @MainActor func option(_ name: String) -> String? { options[name]?.last }
 @MainActor func screens(default defaults: [String]) -> [Screen] {
     (options["--screen"] ?? defaults).map { text in
