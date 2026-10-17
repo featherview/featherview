@@ -73,6 +73,27 @@ import UniformTypeIdentifiers
         #expect(image.height == 1000)
     }
 
+    @Test(arguments: [
+        (8688, 0.25, 2),   // 2172 px: ¼, no full decode
+        (8688, 0.5, 1),    // 4344 px: ½
+        (8688, 0.3, 1),    // 2607 px is above ¼ (2172): ½
+        (8688, 1.0, 0),
+        (8688, 2.0, 0),    // enlarged on screen, never decoded above full
+        (8688, 0.05, 3),   // JPEG's smallest step is ⅛
+        (4033, 0.5, 1),    // 2016.5 rounds up to 2017, which ½ (2017) still covers
+    ])
+    func zoomStepIsTheSmallestHalvingStepThatCoversTheFactor(full: Int, factor: Double, expected: Int) {
+        #expect(ImageDecoder.zoomStep(full: full, factor: factor) == expected)
+    }
+
+    @Test func decodesAtAHalvingStep() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("z.jpg"), width: 4000, height: 2000, orientation: 6)
+        let image = try ImageDecoder.decode(url, halvingSteps: true, step: 2)
+        #expect(image.width == 500)
+        #expect(image.height == 1000)
+    }
+
     /// Core Animation colour-converts an image on the main thread when it's first shown (≈18 ms for
     /// 12 MP); a display decode in the screen's colour space skips that.
     @Test func displayDecodeComesInTheScreensColorSpace() async throws {

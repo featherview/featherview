@@ -128,4 +128,21 @@ import Testing
         quitter.cancel()
         #expect(try await keeper.value.width == 6000)
     }
+
+    @Test func zoomingWithinAStepDoesNotDecodeAgain() async throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("g.jpg"), width: 400, height: 200)
+        let cache = ImageCache(capacity: 1)
+        let first = try await cache.image(for: url, target: .step(1))
+        #expect(first.width == 200)
+        #expect(try await cache.image(for: url, target: .step(1)) === first)
+    }
+
+    @Test func anotherStepDecodesAgain() async throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("h.jpg"), width: 400, height: 200)
+        let cache = ImageCache(capacity: 1)
+        _ = try await cache.image(for: url, target: .step(1))
+        // A cached ½ decode must not stand in for full size: zooming past its step would never sharpen.
+        #expect(try await cache.image(for: url, target: .step(0)).width == 400)
+        #expect(try await cache.image(for: url, target: .step(2)).width == 100)
+    }
 }
