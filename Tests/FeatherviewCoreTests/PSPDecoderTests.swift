@@ -16,6 +16,7 @@ struct PSPBuilder {
         var type: UInt8 = 1
         var hasTransparency = true
         var samples: [UInt8]? = nil           // one channel (paletted or greyscale) instead of red, green, blue
+        var extraChannels: [[UInt8]] = []     // Channel blocks written after the layer's own
     }
 
     struct Composite {
@@ -100,6 +101,7 @@ struct PSPBuilder {
         if layer.hasTransparency {
             channels.append(channel(planes(layer.pixels).a, bitmap: 1, channel: 0, compression: compression, stored: stored))
         }
+        channels += layer.extraChannels
         let extensionBlock = expansion > 0 ? Self.block(33, [1, 2, 3, 4]) : []
         let bitmaps = layer.hasTransparency ? 2 : 1
         return Self.block(4, chunk(info) + extensionBlock + chunk(Self.le16(bitmaps) + Self.le16(channels.count)) + channels.joined())
@@ -285,7 +287,24 @@ struct PSPBuilder {
         #expect(try PSPDecoder.size(Data(file.header())) == (640, 480))
     }
 
+    @Test func userMaskWithItsOwnRectangleIsIgnored() throws {
+        var file = PSPBuilder(width: 4, height: 3)
+        var layer = PSPBuilder.Layer(pixels: Self.pattern(4, 3))
+        layer.extraChannels = [file.channel([255], bitmap: 2, channel: 0, compression: 0)]  // a 1 × 1 mask
+        file.layers = [layer]
+        #expect(try PSPDecoder.decode(file.data) == Self.pattern(4, 3))
+    }
+
     // MARK: - Hostile input
+
+    @Test func repeatedChannelIsNotDecodedAgain() throws {
+        // A second red plane would cost another full plane (a bomb when repeated); it's skipped unread.
+        var file = PSPBuilder(width: 4, height: 3)
+        var layer = PSPBuilder.Layer(pixels: Self.pattern(4, 3))
+        layer.extraChannels = [file.channel([1], bitmap: 0, channel: 1, compression: 0)]
+        file.layers = [layer]
+        #expect(try PSPDecoder.decode(file.data) == Self.pattern(4, 3))
+    }
 
     static func smallTwoLayerFile() -> [UInt8] {
         var file = PSPBuilder(width: 4, height: 3)

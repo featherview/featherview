@@ -173,7 +173,7 @@ enum PSPDecoder {
             if subID == Block.palette { palette = try readPalette(&peek, end: subEnd); reader.offset = subEnd }
         }
         let channels = try readChannels(&reader, end: imageEnd, width: attributes.width, height: attributes.height,
-                                        bitDepth: chosen.bitDepth, compression: chosen.compression)
+                                        bitDepth: chosen.bitDepth, compression: chosen.compression, colour: 8, alpha: 9)
         return try assemble(channels, width: attributes.width, height: attributes.height, bitDepth: chosen.bitDepth,
                             greyscale: attributes.greyscale, palette: palette, colour: 8, alpha: 9)
     }
@@ -205,7 +205,8 @@ enum PSPDecoder {
             guard type == 1 || type == 2, flags & 1 != 0, opacity > 0, width > 0, height > 0 else { continue }
             _ = try checkedSize(width, height)
             let channels = try readChannels(&reader, end: layerEnd, width: width, height: height,
-                                            bitDepth: attributes.bitDepth, compression: attributes.compression)
+                                            bitDepth: attributes.bitDepth, compression: attributes.compression,
+                                            colour: 0, alpha: 1)
             let layer = try assemble(channels, width: width, height: height, bitDepth: attributes.bitDepth,
                                      greyscale: attributes.greyscale, palette: palette, colour: 0, alpha: 1)
             canvas.draw(layer, x: imageX + savedX0, y: imageY + savedY0, opacity: Double(opacity) / 255)
@@ -220,11 +221,14 @@ enum PSPDecoder {
         let bytes: [UInt8]
     }
 
-    /// Every Channel sub-block from the reader to `end`. Each holds one plane of `width` × `height`
+    /// The Channel sub-blocks from the reader to `end` that `assemble` reads: the colour planes of bitmap type
+    /// `colour` and the transparency plane of bitmap type `alpha`, each once. Others (user masks, stored at
+    /// their own rectangle) and repeats are skipped unread. Each holds one plane of `width` × `height`
     /// samples, rows not padded (the "uncompressed length" field gives a padded bitmap size, so it isn't used).
     private static func readChannels(_ reader: inout ByteReader, end: Int, width: Int, height: Int,
-                                     bitDepth: Int, compression: Int) throws -> [Channel] {
+                                     bitDepth: Int, compression: Int, colour: Int, alpha: Int) throws -> [Channel] {
         var channels: [Channel] = []
+        let colourPlanes = bitDepth == 24 ? [1, 2, 3] : [0]
         while reader.offset < end {
             let (id, channelEnd) = try blockHeader(&reader, end: end)
             defer { reader.offset = channelEnd }
@@ -235,6 +239,9 @@ enum PSPDecoder {
             let bitmapType = try reader.u16le(), channelType = try reader.u16le()
             reader.offset = chunkEnd
             guard length <= channelEnd - reader.offset else { throw OwnDecodeError.corrupt }
+            let wanted = (bitmapType == colour && colourPlanes.contains(channelType)) || (bitmapType == alpha && channelType == 0)
+            guard wanted, !channels.contains(where: { $0.bitmapType == bitmapType && $0.channelType == channelType })
+            else { continue }
             let content = try reader.take(length)
             // Colour channels of paletted images pack 1 or 4 bits per sample; every other channel is 8-bit.
             // shortcut: packed rows are assumed to be byte-aligned (no 1- or 4-bit sample file exists), check it when one does.
