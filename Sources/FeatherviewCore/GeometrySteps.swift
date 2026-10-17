@@ -35,7 +35,10 @@ public enum CropStep {
         guard s.isOn else { return image }
         let picture = atOrigin(image)
         let total = (w: Int(picture.extent.width), h: Int(picture.extent.height))
-        let px = { (v: Int) in Int((Double(v) * scale).rounded()) }
+        // Clamped first: presets aren't trusted, and no picture comes near 2³⁰ pixels a side.
+        let px = { (v: Int) in Int(min(max(Double(v) * scale, -0x1p30), 0x1p30).rounded()) }
+        // A set length stays at least 1 pixel in the preview: 0 would mean "to the edge".
+        let length = { (v: Int) in v > 0 ? max(1, px(v)) : 0 }
 
         /// Start and length along one axis, measured from the near edge (left, or top).
         func place(_ side: Side, offset: Int, length: Int, total: Int) -> (start: Int, length: Int) {
@@ -46,8 +49,8 @@ public enum CropStep {
             case .far: (total - offset - length, length)
             }
         }
-        let x = place(s.anchor.horizontal, offset: px(s.x), length: px(s.width), total: total.w)
-        let y = place(s.anchor.vertical, offset: px(s.y), length: px(s.height), total: total.h)
+        let x = place(s.anchor.horizontal, offset: px(s.x), length: length(s.width), total: total.w)
+        let y = place(s.anchor.vertical, offset: px(s.y), length: length(s.height), total: total.h)
         // Core Image's y grows upwards: a rectangle `y.start` below the top sits at H − start − length.
         let rect = CGRect(x: x.start, y: total.h - y.start - y.length, width: x.length, height: y.length)
             .intersection(picture.extent)

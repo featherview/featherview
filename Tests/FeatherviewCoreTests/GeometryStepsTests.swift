@@ -77,6 +77,24 @@ import Testing
         #expect(o.x == 1 && o.y == 1)
     }
 
+    // Presets come from stored JSON: any Int must neither trap nor overflow.
+    @Test(arguments: [Int.max, Int.min, Int.min + 100, Int.max - 1])
+    func cropToleratesExtremeValues(v: Int) {
+        let image = coordinates(width: 10, height: 8)
+        for anchor in ImageAnchor.allCases {
+            for s in [crop(x: v, y: v, width: 0, height: 0, anchor), crop(x: 0, y: 0, width: v, height: v, anchor),
+                      crop(x: v, y: v, width: v, height: v, anchor)] {
+                let out = CropStep.apply(image, s, scale: 1)
+                #expect(out.extent.width >= 1 && out.extent.width <= 10 && out.extent.height <= 8)
+            }
+        }
+    }
+
+    @Test func smallCropStaysSmallInPreview() {
+        let out = CropStep.apply(coordinates(width: 10, height: 8), crop(x: 0, y: 0, width: 4, height: 4, .topLeft), scale: 0.1)
+        #expect(out.extent.size == CGSize(width: 1, height: 1))
+    }
+
     @Test func cropOffIsIdentity() {
         let image = coordinates(width: 10, height: 8)
         var s = crop(x: 1, y: 1, width: 4, height: 4, .topLeft)
