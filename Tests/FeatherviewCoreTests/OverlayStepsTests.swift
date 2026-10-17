@@ -158,6 +158,19 @@ import UniformTypeIdentifiers
         #expect(box.maxY - box.minY > 60)  // 30 px font: wrapped onto several lines
     }
 
+    @Test(arguments: [TextPlacement.stripBelow, .stripAbove])
+    func stripGrowsWithEveryLineOnAShortImage(_ placement: TextPlacement) {
+        func height(_ lines: Int) -> CGFloat {
+            var s = text((1...lines).map { "L\($0)" }.joined(separator: "\n"))
+            s.placement = placement
+            s.sizePercent = 20
+            s.shadow = false
+            return TextStep.apply(black(400, 100), s, values: values, scale: 1).extent.height
+        }
+        let heights = (1...6).map(height)
+        #expect(zip(heights, heights.dropFirst()).allSatisfy { $0 < $1 }, "\(heights)")
+    }
+
     // MARK: watermark
 
     func mark(at position: ImageAnchor = .bottomRight, width: Double = 25, opacity: Double = 1) -> WatermarkSettings {

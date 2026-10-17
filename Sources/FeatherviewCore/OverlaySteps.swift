@@ -40,7 +40,9 @@ public enum TextStep {
         let margin = (s.marginPercent.clamped(0, 25) / 100 * shorter).rounded()
         // Wrap inside the picture: keeps the text visible and the bitmap no bigger than the image.
         let pad = (size / 4).rounded(.up)
-        let fit = CGSize(width: max(1, extent.width - 2 * margin - 2 * pad), height: max(1, extent.height - 2 * margin - 2 * pad))
+        // A strip grows to fit the text, so only its width is bounded.
+        let fit = CGSize(width: max(1, extent.width - 2 * margin - 2 * pad),
+                         height: s.placement == .inImage ? max(1, extent.height - 2 * margin - 2 * pad) : .greatestFiniteMagnitude)
         guard let block = textBlock(string, s, size: size, pad: pad, fit: fit) else { return image }
         let blockSize = block.extent.size
 
