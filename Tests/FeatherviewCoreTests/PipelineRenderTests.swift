@@ -33,6 +33,12 @@ import Testing
         #expect(cg.alphaInfo == .last)
     }
 
+    @Test func halfTransparentStaysStraightAfterAFilter() throws {
+        let red = PipelineFixtures.solid(RGBAColor(red: 1, green: 0, blue: 0, alpha: 0.5), width: 2, height: 2)
+        let image = try PipelineFixtures.pixels(red.applyingFilter("CIColorClamp"))
+        #expect(close(image[1, 1], (255, 0, 0, 128)))
+    }
+
     @Test func movedExtentRendersFromOrigin() throws {
         let moved = PipelineFixtures.quadrants(width: 4, height: 4).transformed(by: .init(translationX: 10, y: -7))
         let image = try PipelineFixtures.pixels(moved)

@@ -47,10 +47,7 @@ private func filter(_ configure: (inout FilterSettings) -> Void) -> FilterSettin
     @Test func negativeKeepsAlpha() throws {
         let red = PipelineFixtures.solid(RGBAColor(red: 1, green: 0, blue: 0, alpha: 0.5), width: 4, height: 4)
         let out = try PipelineFixtures.pixels(ColourStep.apply(red, colour { $0.negative = true }, scale: 1))
-        // shortcut: colours checked loosely, PipelineRender.cgImage halves straight colours of filtered
-        // half-transparent images (Task 1); expect (0, 255, 255) exactly once that is fixed.
-        let p = out[1, 1]
-        #expect(p.a == 128 && p.r == 0 && p.g == p.b && p.g >= 127)
+        #expect(near(out[1, 1], (0, 255, 255, 128)))
     }
 
     @Test func brightnessAddsToEncodedValues() throws {

@@ -23,11 +23,18 @@ public enum PipelineRender {
         let rect = extent.integral
         let width = Int(rect.width), height = Int(rect.height), bytesPerRow = width * 4
         let space = CGColorSpace(name: CGColorSpace.sRGB)!
-        // Core Image's values are premultiplied; un-premultiplied first, the bytes it writes are straight.
+        // Core Image always writes RGBA8 premultiplied (an `unpremultiplyingAlpha()` before the render is
+        // undone after any filter), so the bytes are un-premultiplied here.
         var data = Data(count: bytesPerRow * height)
         data.withUnsafeMutableBytes { buffer in
-            context.render(image.unpremultiplyingAlpha(), toBitmap: buffer.baseAddress!, rowBytes: bytesPerRow,
+            context.render(image, toBitmap: buffer.baseAddress!, rowBytes: bytesPerRow,
                            bounds: rect, format: .RGBA8, colorSpace: space)
+            let p = buffer.bindMemory(to: UInt8.self)
+            for i in stride(from: 0, to: p.count, by: 4) {
+                let alpha = Int(p[i + 3])
+                guard alpha > 0, alpha < 255 else { continue }
+                for c in 0..<3 { p[i + c] = UInt8(min(255, (Int(p[i + c]) * 255 + alpha / 2) / alpha)) }
+            }
         }
         guard let provider = CGDataProvider(data: data as CFData),
               let cg = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
