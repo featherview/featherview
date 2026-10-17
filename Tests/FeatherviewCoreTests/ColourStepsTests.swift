@@ -37,6 +37,18 @@ private func filter(_ configure: (inout FilterSettings) -> Void) -> FilterSettin
             == PipelineFixtures.pixels(image))
     }
 
+    /// A 1x1 image (spacer GIF, tracking pixel) is auto-adjusted like a larger one of the same colour, not turned black.
+    @Test func autoAdjustOnOnePixelMatchesALargerImage() throws {
+        let auto = colour { $0.autoAdjust = true }
+        let big = try PipelineFixtures.pixels(ColourStep.apply(grey(128, width: 2, height: 2), auto, scale: 1))[0, 0]
+        var one = RGBAImage(width: 1, height: 1)
+        one[0, 0] = (128, 128, 128, 255)
+        for image in [grey(128, width: 1, height: 1), grey(128, width: 1, height: 100), PipelineFixtures.fromRGBA(one)] {
+            let out = try PipelineFixtures.pixels(ColourStep.apply(image, auto, scale: 1))[0, 0]
+            #expect(near(out, (Int(big.r), Int(big.g), Int(big.b), 255)), "\(out) vs \(big)")
+        }
+    }
+
     @Test func greyscaleUsesRec709() throws {
         let green = PipelineFixtures.solid(RGBAColor(red: 0, green: 1, blue: 0), width: 4, height: 4)
         let out = try PipelineFixtures.pixels(ColourStep.apply(green, colour { $0.greyscale = true }, scale: 1))

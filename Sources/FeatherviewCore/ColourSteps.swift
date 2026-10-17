@@ -10,7 +10,12 @@ public enum ColourStep {
         guard s.isOn else { return image }
         var image = image
         if s.autoAdjust {
-            for filter in image.autoAdjustmentFilters(options: [.redEye: false]) {
+            // The analysis gives a black-making curve for one-pixel-wide images: measure a copy widened by
+            // repeating the edge (same colours, same histogram) and apply the result to the image itself.
+            var measured = image.extent
+            measured.size.width = max(2, measured.width)
+            let analysed = image.clampedToExtent().cropped(to: measured)
+            for filter in analysed.autoAdjustmentFilters(options: [.redEye: false]) {
                 filter.setValue(image, forKey: kCIInputImageKey)
                 image = filter.outputImage ?? image
             }
