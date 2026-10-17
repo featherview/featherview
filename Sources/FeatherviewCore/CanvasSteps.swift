@@ -10,85 +10,63 @@ public enum AutoCropStep {
     /// channel of that edge's corner colour. A uniform image is left whole.
     public static func apply(_ image: CIImage) -> CIImage {
         let image = atOrigin(image)
-        let width = image.extent.width, height = image.extent.height
-        // Edges are found on copies at most 1024 pixels long, so 24 MP stays fast. Each small pixel
-        // holds the per-channel minimum (or maximum) of the block it covers, not the average, so a
-        // thin faint line still shows: a block is border only if its minimum and maximum are both near.
-        let s = min(1, 1024 / max(width, height))
-        let small = CGRect(x: 0, y: 0, width: (width * s).rounded(.up), height: (height * s).rounded(.up))  // blocks cover every pixel
-        let window = 2 * Int((0.5 / s).rounded(.up)) + 1  // reaches a whole block around its centre
-        func shrunk(_ filter: String) -> RGBAImage? {
-            var copy = image.clampedToExtent()
-            if s < 1 {
-                copy = copy.applyingFilter(filter, parameters: ["inputWidth": window, "inputHeight": window])
-                    // The default downsample blends neighbouring pixels, which pulls a faint minimum back toward the border.
-                    .samplingNearest().transformed(by: .init(scaleX: s, y: s), highQualityDownsample: false)
-            }
-            return try? RGBAImage(PipelineRender.cgImage(copy.cropped(to: small)))
-        }
-        func strip(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> RGBAImage? {  // full size, y from the top
+        let width = Int(image.extent.width.rounded()), height = Int(image.extent.height.rounded())
+        guard width > 0, height > 0 else { return image }
+        // Full-size strips, scanned inward from each edge, stop at the first row or column that isn't border:
+        // exact, and on a photo without borders only four thin strips are rendered.
+        func strip(_ x: Int, _ y: Int, _ w: Int, _ h: Int) -> RGBAImage? {  // y from the top
             try? RGBAImage(PipelineRender.cgImage(image.cropped(to: CGRect(x: x, y: height - y - h, width: w, height: h))))
         }
-        // Both passes judge against the exact corner pixels: a shrunk block is border only if its whole
-        // range is within 8 of them, so it never runs past an edge the full-size rule would stop at.
-        guard let p = shrunk("CIMorphologyRectangleMinimum"), let hi = shrunk("CIMorphologyRectangleMaximum"),
-              let topLeft = strip(0, 0, 1, 1)?[0, 0], let bottomRight = strip(width - 1, height - 1, 1, 1)?[0, 0]
+        guard let topLeft = strip(0, 0, 1, 1)?[0, 0], let bottomRight = strip(width - 1, height - 1, 1, 1)?[0, 0]
         else { return image }
-
         func near(_ a: (r: UInt8, g: UInt8, b: UInt8, a: UInt8), _ b: (r: UInt8, g: UInt8, b: UInt8, a: UInt8)) -> Bool {
             abs(Int(a.r) - Int(b.r)) <= 8 && abs(Int(a.g) - Int(b.g)) <= 8
                 && abs(Int(a.b) - Int(b.b)) <= 8 && abs(Int(a.a) - Int(b.a)) <= 8
         }
-        func near(_ x: Int, _ y: Int, _ c: (r: UInt8, g: UInt8, b: UInt8, a: UInt8)) -> Bool {
-            near(p[x, y], c) && near(hi[x, y], c)
-        }
-        func row(_ y: Int, _ c: (r: UInt8, g: UInt8, b: UInt8, a: UInt8)) -> Bool {
-            (0..<p.width).allSatisfy { near($0, y, c) }
-        }
-        var top = 0
-        while top < p.height, row(top, topLeft) { top += 1 }
-        if top == p.height { return image }
-        var bottom = p.height - 1
-        while bottom > top, row(bottom, bottomRight) { bottom -= 1 }
-        var y0 = (Double(top) / s).rounded(.down), y1 = min(height, (Double(bottom + 1) / s).rounded(.up))
-        var rows = Array(top...bottom)
-        func columns() -> (CGFloat, CGFloat) {
-            func column(_ x: Int, _ c: (r: UInt8, g: UInt8, b: UInt8, a: UInt8)) -> Bool {
-                rows.allSatisfy { near(x, $0, c) }
+        let chunk = 64
+        /// How many lines from one edge are border. `render(start, count)` gives `count` lines starting
+        /// `start` lines in from that edge, as rows (`rows`) or columns, ordered from the edge inward.
+        func borderLines(_ total: Int, rows: Bool, _ colour: (r: UInt8, g: UInt8, b: UInt8, a: UInt8),
+                         _ render: (Int, Int) -> RGBAImage?) -> Int? {
+            var done = 0
+            while done < total {
+                let n = min(chunk, total - done)
+                guard let s = render(done, n) else { return nil }
+                for i in 0..<n {
+                    let border = rows ? (0..<s.width).allSatisfy { near(s[$0, i], colour) }
+                                      : (0..<s.height).allSatisfy { near(s[i, $0], colour) }
+                    if !border { return done + i }
+                }
+                done += n
             }
-            var left = 0
-            while left < p.width - 1, column(left, topLeft) { left += 1 }
-            var right = p.width - 1
-            while right > left, column(right, bottomRight) { right -= 1 }
-            return ((Double(left) / s).rounded(.down), min(width, (Double(right + 1) / s).rounded(.up)))
+            return total
         }
-        var (x0, x1) = s < 1 ? (0, 0) : columns()
-        if s < 1 {
-            // A small pixel sees its block and part of its neighbours, so each edge lies within `m` pixels
-            // of where the small copies put it: find it exactly on a full-size strip there.
-            let m = CGFloat(window) + (1 / s).rounded(.up) + 1
-            func first(_ n: Int, _ border: (Int) -> Bool) -> Int { (0..<n).first { !border($0) } ?? n }
-            func last(_ n: Int, _ border: (Int) -> Bool) -> Int { (0..<n).last { !border($0) } ?? -1 }
-            let (t0, t1) = (max(0, y0 - m), min(height, y0 + m)), (b0, b1) = (max(0, y1 - m), min(height, y1 + m))
-            guard let t = strip(0, t0, width, t1 - t0), let b = strip(0, b0, width, b1 - b0)
-            else { return image }
-            y0 = t0 + CGFloat(first(t.height) { y in (0..<t.width).allSatisfy { near(t[$0, y], topLeft) } })
-            y1 = b0 + CGFloat(last(b.height) { y in (0..<b.width).allSatisfy { near(b[$0, y], bottomRight) } } + 1)
-            guard y1 > y0 else { return image }
-            // Columns are judged only on small rows whose window stays between the edges just found: one
-            // reaching into the top or bottom border would compare that border's colour with the side's.
-            let h = CGFloat(window / 2 + 1)  // one more for where Core Image samples the block
-            let inner = rows.filter { let c = ((CGFloat($0) + 0.5) / s).rounded(.down); return c - h >= y0 && c + h < y1 }
-            if !inner.isEmpty { rows = inner }
-            (x0, x1) = columns()
-            let (l0, l1) = (max(0, x0 - m), min(width, x0 + m)), (r0, r1) = (max(0, x1 - m), min(width, x1 + m))
-            guard let l = strip(l0, y0, l1 - l0, y1 - y0), let r = strip(r0, y0, r1 - r0, y1 - y0) else { return image }
-            x0 = l0 + CGFloat(first(l.width) { x in (0..<l.height).allSatisfy { near(l[x, $0], topLeft) } })
-            x1 = r0 + CGFloat(last(r.width) { x in (0..<r.height).allSatisfy { near(r[x, $0], bottomRight) } } + 1)
-            guard x1 > x0 else { return image }
-        }
+        // Each render is ordered from its edge inward: strips from the far edges are flipped by index.
+        func flippedRows(_ s: RGBAImage?) -> RGBAImage? { s.map { flip($0, rows: true) } }
+        func flippedColumns(_ s: RGBAImage?) -> RGBAImage? { s.map { flip($0, rows: false) } }
+        guard let top = borderLines(height, rows: true, topLeft, { strip(0, $0, width, $1) }) else { return image }
+        if top == height { return image }  // uniform
+        guard let bottom = borderLines(height - top, rows: true, bottomRight,
+                                       { flippedRows(strip(0, height - $0 - $1, width, $1)) }) else { return image }
+        let y0 = top, y1 = height - bottom
+        guard y1 > y0 else { return image }
+        guard let left = borderLines(width, rows: false, topLeft, { strip($0, y0, $1, y1 - y0) }) else { return image }
+        guard let right = borderLines(width - left, rows: false, bottomRight,
+                                      { flippedColumns(strip(width - $0 - $1, y0, $1, y1 - y0)) }) else { return image }
+        let x0 = left, x1 = width - right
+        guard x1 > x0 else { return image }
         // Core Image's origin is the bottom-left corner.
         return atOrigin(image.cropped(to: CGRect(x: x0, y: height - y1, width: x1 - x0, height: y1 - y0)))
+    }
+
+    private static func flip(_ image: RGBAImage, rows: Bool) -> RGBAImage {
+        var out = image
+        for y in 0..<image.height {
+            for x in 0..<image.width {
+                out[x, y] = rows ? image[x, image.height - 1 - y] : image[image.width - 1 - x, y]
+            }
+        }
+        return out
     }
 }
 

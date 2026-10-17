@@ -252,6 +252,16 @@ import Testing
         #expect(AutoCropStep.apply(PipelineFixtures.fromRGBA(image)).extent == CGRect(x: 0, y: 0, width: 2000, height: 1200))
     }
 
+    /// Content only near the top and bottom edges of a large image still bounds the sides.
+    @Test func autoCropSeesContentOnlyNearTopAndBottom() throws {
+        var pixels = RGBAImage(width: 2000, height: 1500)
+        for i in stride(from: 0, to: pixels.pixels.count, by: 4) { pixels.pixels.replaceSubrange(i..<i + 4, with: [255, 255, 255, 255]) }
+        for y in 0..<4 { for x in 100..<110 { pixels[x, y + 2] = (0, 0, 0, 255) } }       // near the top
+        for y in 0..<4 { for x in 1800..<1810 { pixels[x, 1494 + y] = (0, 0, 0, 255) } }  // near the bottom
+        let out = AutoCropStep.apply(PipelineFixtures.fromRGBA(pixels))
+        #expect(out.extent == CGRect(x: 0, y: 0, width: 1710, height: 1496))
+    }
+
     @Test func canvasRunsAutoCropFirst() throws {
         var s = perSide(1, 1, 1, 1)
         s.autoCropBorders = true
