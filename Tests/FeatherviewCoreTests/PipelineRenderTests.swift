@@ -33,6 +33,31 @@ import Testing
         #expect(cg.alphaInfo == .last)
     }
 
+    @Test func halfTransparentStaysStraightAfterAFilter() throws {
+        let red = PipelineFixtures.solid(RGBAColor(red: 1, green: 0, blue: 0, alpha: 0.5), width: 2, height: 2)
+        let image = try PipelineFixtures.pixels(red.applyingFilter("CIColorClamp"))
+        #expect(close(image[1, 1], (255, 0, 0, 128)))
+    }
+
+    /// Faint pixels (a soft shadow edge) keep their straight colour exactly when nothing filters them,
+    /// and within 1 after a filter: no 8-bit premultiplied round trip.
+    @Test func faintPixelsKeepTheirColour() throws {
+        var source = RGBAImage(width: 2, height: 1)
+        source[0, 0] = (200, 100, 50, 4)
+        source[1, 0] = (17, 230, 99, 1)
+        let plain = PipelineFixtures.fromRGBA(source)
+        for (image, tolerance) in [(plain, 0), (plain.applyingFilter("CIColorClamp"), 1)] {
+            let cg = try PipelineRender.cgImage(image)
+            let bytes = [UInt8](cg.dataProvider!.data! as Data)
+            for (n, i) in [0, 4].enumerated() {
+                let want = source[n, 0]
+                #expect(abs(Int(bytes[i]) - Int(want.r)) <= tolerance && abs(Int(bytes[i + 1]) - Int(want.g)) <= tolerance
+                    && abs(Int(bytes[i + 2]) - Int(want.b)) <= tolerance && bytes[i + 3] == want.a,
+                    "\(bytes[i..<i + 4]) vs \(want)")
+            }
+        }
+    }
+
     @Test func movedExtentRendersFromOrigin() throws {
         let moved = PipelineFixtures.quadrants(width: 4, height: 4).transformed(by: .init(translationX: 10, y: -7))
         let image = try PipelineFixtures.pixels(moved)
