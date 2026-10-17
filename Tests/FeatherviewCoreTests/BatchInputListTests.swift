@@ -80,6 +80,18 @@ import Testing
         #expect(names(items) == ["a.jpg"])
     }
 
+    @Test func scanFollowsASymlinkedRootFolder() throws {
+        let dir = try Fixtures.makeTempDir()
+        let real = dir.appendingPathComponent("real")
+        try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
+        _ = try image(real, "x.jpg")
+        let link = dir.appendingPathComponent("link")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+        let items = try BatchInputList.scan(folder: link, subfolders: true)
+        #expect(names(items) == ["x.jpg"])
+        #expect(items.allSatisfy { $0.root == link })
+    }
+
     @Test func scanThrowsForMissingFolder() throws {
         let dir = try Fixtures.makeTempDir()
         #expect(throws: (any Error).self) {

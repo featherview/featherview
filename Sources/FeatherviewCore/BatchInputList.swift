@@ -20,7 +20,8 @@ public struct BatchInputList: Equatable, Sendable {
     /// order. Every item gets `root: folder`.
     public static func scan(folder: URL, subfolders: Bool) throws -> [BatchInput] {
         var inputs: [BatchInput] = []
-        try scan(folder, root: folder, subfolders: subfolders, into: &inputs)
+        // Listing fails on a symlinked folder the user chose; only subfolders found below stay unfollowed.
+        try scan(folder.resolvingSymlinksInPath(), root: folder, subfolders: subfolders, into: &inputs)
         return inputs
     }
 
