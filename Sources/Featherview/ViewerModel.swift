@@ -419,6 +419,8 @@ final class ViewerModel {
                 let around = list.neighbors(radius: 1)
                 let wanted = Set(around + [url])
                 knownInfo = knownInfo.filter { wanted.contains($0.key) }
+                // Fit decodes, read only at fit: step decodes replace them in `cache`, so kept here they'd sit outside its budget.
+                ready = [:]
                 for neighbor in around {
                     let decode = await zoomDecode(neighbor)
                     guard !Task.isCancelled else { return }
