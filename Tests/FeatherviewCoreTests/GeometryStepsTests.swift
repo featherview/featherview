@@ -234,10 +234,11 @@ import Testing
         settings.resize.isOn = true
         settings.resize.mode = .longestSide
         settings.resize.side = 1920
-        // The exact ½ at or above 1920: ImageIO's own rounding at 1920 could come out a pixel short.
-        #expect(ResizeStep.decodeLimit(settings, originalSize: Self.landscape) == 2000)
-        #expect(ResizeStep.decodeLimit(settings, originalSize: Self.size(6000, 4000)) == 3000)
-        #expect(ResizeStep.decodeLimit(settings, originalSize: Self.size(8000, 6000)) == 2000)
+        // Decoded at the target, whatever the original's sides (odd ones too).
+        #expect(ResizeStep.decodeLimit(settings, originalSize: Self.landscape) == 1920)
+        #expect(ResizeStep.decodeLimit(settings, originalSize: Self.size(6000, 4000)) == 1920)
+        #expect(ResizeStep.decodeLimit(settings, originalSize: Self.size(5473, 3649)) == 1920)
+        #expect(ResizeStep.decodeLimit(settings, originalSize: Self.size(3001, 4000)) == 1920)
         // A smaller image isn't enlarged: it needs its full size.
         #expect(ResizeStep.decodeLimit(settings, originalSize: Self.size(800, 600)) == nil)
         var cropped = settings
@@ -253,7 +254,7 @@ import Testing
 
     /// ImageIO's thumbnail rounding differs from `targetSize`'s: the fast path must still give the
     /// exact size the full path gives.
-    @Test(arguments: [(1999, 1333, 1000), (4000, 2999, 1000), (5000, 3333, 1920), (2999, 4000, 1000), (6000, 600, 1000), (6000, 4000, 1920), (4032, 3024, 1000)])
+    @Test(arguments: [(1999, 1333, 1000), (4000, 2999, 1000), (5000, 3333, 1920), (2999, 4000, 1000), (6000, 600, 1000), (6000, 4000, 1920), (4032, 3024, 1000), (4000, 3001, 100), (5473, 3649, 1920)])
     func decodeLimitKeepsTheExactSize(_ w: Int, _ h: Int, _ side: Int) throws {
         var settings = BatchSettings()
         settings.resize.isOn = true
@@ -263,7 +264,8 @@ import Testing
         let limit = ResizeStep.decodeLimit(settings, originalSize: original)
         let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("a.jpg"), width: w, height: h)
         let decoded = CIImage(cgImage: try ImageDecoder.decode(url, maxPixelSize: limit))
-        let out = ResizeStep.apply(decoded, settings.resize, scale: 1)
+        #expect(limit != nil)
+        let out = ResizeStep.apply(decoded, settings.resize, scale: 1, originalSize: original)
         #expect(out.extent.size == ResizeStep.targetSize(for: original, settings.resize, scale: 1))
     }
 

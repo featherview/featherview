@@ -102,11 +102,13 @@ public enum ResizeStep {
         return result
     }
 
-    public static func apply(_ image: CIImage, _ s: ResizeSettings, scale: Double) -> CIImage {
+    /// `originalSize`: the upright size before a smaller decode (`decodeLimit`). The target comes
+    /// from it, so the decode's own rounding can't change the output size.
+    public static func apply(_ image: CIImage, _ s: ResizeSettings, scale: Double, originalSize: CGSize? = nil) -> CIImage {
         guard s.isOn else { return image }
         let picture = atOrigin(image)
         let size = picture.extent.size
-        let target = targetSize(for: size, s, scale: scale)
+        let target = targetSize(for: originalSize ?? size, s, scale: scale)
         guard target != size else { return picture }
         let sx = target.width / size.width, sy = target.height / size.height
         // Clamped first, so the resample doesn't pull transparency in at the edges.
@@ -120,18 +122,14 @@ public enum ResizeStep {
 
     /// The largest pixel size a decode may be limited to before the pipeline runs, or nil when
     /// the full image is needed (crop on, or a mode that isn't a plain downscale). Used by Task 8
-    /// to keep the old fast path (a smaller decode) for the common "longest side" case.
+    /// to keep the old fast path (decode at the target size) for the common "longest side" case;
+    /// pass `originalSize` to `apply` then, so the output keeps the exact size.
     public static func decodeLimit(_ settings: BatchSettings, originalSize: CGSize) -> Int? {
         let s = settings.resize
         guard s.isOn, !settings.crop.isOn, s.mode == .longestSide else { return nil }
         let target = targetSize(for: originalSize, s, scale: 1)
-        // ImageIO rounds a thumbnail's sides its own way (often a pixel below the target), so decode
-        // at an exact ½, ¼ or ⅛ that keeps the aspect: the pipeline's resize then gives the same size
-        // as from the full image. JPEG decodes these steps fastest.
-        let w = Int(originalSize.width), h = Int(originalSize.height), long = max(w, h)
-        let steps = (1...3).map { 1 << $0 }
-            .filter { w % $0 == 0 && h % $0 == 0 && long / $0 >= Int(max(target.width, target.height)) }
-        return steps.last.map { long / $0 }
+        let long = Int(max(target.width, target.height))
+        return long < Int(max(originalSize.width, originalSize.height)) ? long : nil
     }
 }
 
