@@ -57,19 +57,34 @@ public enum ColourQuantizer {
     /// `channel(n, c)` is entry n's channel c at that precision; `sums` are full 8-bit sums.
     private static func histogram(_ image: RGBAImage)
         -> (count: [Int], sums: [Int], channel: (Int, Int) -> Int) {
-        let p = image.pixels
-        var exact = [UInt32: Int]()
-        var count = [Int](), sums = [Int](), keys = [UInt32]()
-        for i in stride(from: 0, to: p.count, by: 4) where p[i + 3] > 0 {
-            let key = UInt32(p[i]) << 16 | UInt32(p[i + 1]) << 8 | UInt32(p[i + 2])
-            let n: Int
-            if let found = exact[key] { n = found } else {
-                if keys.count == 1 << 16 { return buckets(image) }
-                n = keys.count; exact[key] = n; keys.append(key)
-                count.append(0); sums += [0, 0, 0]
+        // Open addressing at most half full (a Dictionary costs a second per 24 MP): slot → entry + 1, 0 = empty.
+        let limit = 1 << 16, mask = limit * 2 - 1
+        var slots = [Int32](repeating: 0, count: limit * 2)
+        var count = [Int](), keys = [UInt32]()
+        count.reserveCapacity(limit); keys.reserveCapacity(limit)
+        let full = image.pixels.withUnsafeBufferPointer { p in
+            slots.withUnsafeMutableBufferPointer { slots in
+                for i in stride(from: 0, to: p.count, by: 4) where p[i + 3] > 0 {
+                    let key = UInt32(p[i]) << 16 | UInt32(p[i + 1]) << 8 | UInt32(p[i + 2])
+                    var s = Int((key &* 0x9E37_79B1) >> 15) & mask
+                    while true {
+                        let n = Int(slots[s]) - 1
+                        if n < 0 {
+                            if keys.count == limit { return true }
+                            slots[s] = Int32(keys.count + 1); keys.append(key); count.append(1)
+                            break
+                        }
+                        if keys[n] == key { count[n] += 1; break }
+                        s = (s + 1) & mask
+                    }
+                }
+                return false
             }
-            count[n] += 1
-            sums[n * 3] += Int(p[i]); sums[n * 3 + 1] += Int(p[i + 1]); sums[n * 3 + 2] += Int(p[i + 2])
+        }
+        if full { return buckets(image) }
+        var sums = [Int](repeating: 0, count: keys.count * 3)
+        for (n, key) in keys.enumerated() {
+            for c in 0..<3 { sums[n * 3 + c] = count[n] * Int(key >> (16 - 8 * UInt32(c)) & 255) }
         }
         return (count, sums, { n, c in Int(keys[n] >> (16 - 8 * UInt32(c)) & 255) })
     }
@@ -121,58 +136,124 @@ public enum ColourQuantizer {
     }
 
     private static func map(_ image: RGBAImage, palette: [(r: Int, g: Int, b: Int)], dither: Bool) -> RGBAImage {
-        // Per 5-bit bucket, filled on first use: the palette entries that can be nearest to some colour in it
-        // (nearest possible distance no more than the smallest farthest distance), then an exact search among those.
-        var start = [Int32](repeating: -1, count: 1 << 15), length = [Int16](repeating: 0, count: 1 << 15)
-        var candidates = [Int16]()
-        var near = [Int](repeating: 0, count: palette.count)
-        func axis(_ v: Int, _ lo: Int) -> (near: Int, far: Int) {
-            let d = v < lo ? lo - v : v > lo + 7 ? v - lo - 7 : 0, f = max(abs(v - lo), abs(v - lo - 7))
-            return (d * d, f * f)
-        }
-        func nearest(_ r: Int, _ g: Int, _ b: Int) -> Int {
-            let k = bucket(r, g, b)
-            if start[k] < 0 {
-                var bound = Int.max
-                for (n, c) in palette.enumerated() {
-                    let x = axis(c.r, r & ~7), y = axis(c.g, g & ~7), z = axis(c.b, b & ~7)
-                    near[n] = x.near + y.near + z.near
-                    bound = min(bound, x.far + y.far + z.far)
-                }
-                start[k] = Int32(candidates.count)
-                for n in palette.indices where near[n] <= bound { candidates.append(Int16(n)) }
-                length[k] = Int16(candidates.count - Int(start[k]))
+        var nearest = Nearest(palette: palette)
+        var out = image.pixels
+        let w = image.width, h = image.height
+        guard dither else {
+            var last: UInt32 = .max, lastIndex = 0 // runs of one colour skip the search
+            for i in stride(from: 0, to: out.count, by: 4) {
+                let key = UInt32(out[i]) << 16 | UInt32(out[i + 1]) << 8 | UInt32(out[i + 2])
+                if key != last { last = key; lastIndex = nearest(Int(out[i]), Int(out[i + 1]), Int(out[i + 2])) }
+                let q = palette[lastIndex]
+                out[i] = UInt8(q.r); out[i + 1] = UInt8(q.g); out[i + 2] = UInt8(q.b)
             }
+            return RGBAImage(width: w, height: h, pixels: out)
+        }
+        // Floyd–Steinberg is one long chain of dependent steps per row (latency-bound); two rows at once, the lower
+        // one two pixels behind (all it needs from the upper row is done by then), give the CPU two chains to overlap.
+        // 16 × the error, in integers (the weights are sixteenths): three rows, one pad each side.
+        let stride = (w + 2) * 3
+        var error = [Int32](repeating: 0, count: stride * 3)
+        out.withUnsafeMutableBufferPointer { p in
+            error.withUnsafeMutableBufferPointer { error in
+                for y in Swift.stride(from: 0, to: h, by: 2) {
+                    for r in 1...2 { let base = (y + r) % 3 * stride; for x in 0..<stride { error[base + x] = 0 } }
+                    for x in 0..<w + 2 {
+                        if x < w { step(p, error, x, y, w, stride, palette, &nearest) }
+                        if x >= 2, y + 1 < h { step(p, error, x - 2, y + 1, w, stride, palette, &nearest) }
+                    }
+                }
+            }
+        }
+        return RGBAImage(width: w, height: h, pixels: out)
+    }
+
+    /// One dithered pixel: wanted colour (pixel + incoming error), nearest entry, error passed on.
+    /// Wrapping arithmetic: no overflow checks on the hot path (all values are small).
+    @inline(__always) private static func step(_ out: UnsafeMutableBufferPointer<UInt8>, _ error: UnsafeMutableBufferPointer<Int32>,
+                                               _ x: Int, _ y: Int, _ w: Int, _ stride: Int,
+                                               _ palette: [(r: Int, g: Int, b: Int)], _ nearest: inout Nearest) {
+        let i = (y &* w &+ x) &* 4, row = y % 3 &* stride, next = (y &+ 1) % 3 &* stride
+        let e = row &+ (x &+ 1) &* 3
+        let wr = Int32(out[i]) &+ (error[e] &+ 8) >> 4, wg = Int32(out[i + 1]) &+ (error[e + 1] &+ 8) >> 4
+        let wb = Int32(out[i + 2]) &+ (error[e + 2] &+ 8) >> 4
+        let q = palette[nearest(Int(min(255, max(0, wr))), Int(min(255, max(0, wg))), Int(min(255, max(0, wb))))]
+        out[i] = UInt8(truncatingIfNeeded: q.r); out[i + 1] = UInt8(truncatingIfNeeded: q.g); out[i + 2] = UInt8(truncatingIfNeeded: q.b)
+        let d = (wr &- Int32(truncatingIfNeeded: q.r), wg &- Int32(truncatingIfNeeded: q.g), wb &- Int32(truncatingIfNeeded: q.b))
+        let ahead = row &+ (x &+ 2) &* 3, below = next &+ x &* 3
+        error[ahead] &+= d.0 &* 7; error[ahead + 1] &+= d.1 &* 7; error[ahead + 2] &+= d.2 &* 7
+        error[below] &+= d.0 &* 3; error[below + 1] &+= d.1 &* 3; error[below + 2] &+= d.2 &* 3
+        error[below + 3] &+= d.0 &* 5; error[below + 4] &+= d.1 &* 5; error[below + 5] &+= d.2 &* 5
+        error[below + 6] &+= d.0; error[below + 7] &+= d.1; error[below + 8] &+= d.2
+    }
+
+    /// The nearest palette entry. Per cell, filled on first use: the palette entries that can be nearest to some
+    /// colour in it (nearest possible distance no more than the smallest farthest distance), then an exact search
+    /// among those. 4-wide cells keep the lists short; each takes its list from its 8-wide parent, not the whole palette.
+    private struct Nearest {
+        let palette: [(r: Int, g: Int, b: Int)]
+        var coarse = Cells(bits: 5), fine = Cells(bits: 6)
+        lazy var all = palette.indices.map { Int16($0) }
+
+        @inline(__always) mutating func callAsFunction(_ r: Int, _ g: Int, _ b: Int) -> Int {
+            let k = (r >> 2) << 12 | (g >> 2) << 6 | (b >> 2)
+            var v = Int(fine.cell[k])
+            if v == -1 { v = fill(k, r, g, b) }
+            if v <= -2 { return -2 - v }
             var best = 0, bestDistance = Int.max
-            for j in Int(start[k])..<Int(start[k]) + Int(length[k]) {
-                let n = Int(candidates[j]), c = palette[n]
-                let d = (c.r - r) * (c.r - r) + (c.g - g) * (c.g - g) + (c.b - b) * (c.b - b)
+            for j in v + 1...v + Int(fine.lists[v]) {
+                let n = Int(fine.lists[j]), c = palette[n]
+                let dr = c.r &- r, dg = c.g &- g, db = c.b &- b, d = dr &* dr &+ dg &* dg &+ db &* db // wrapping: no overflow checks in the hot loop
                 if d < bestDistance { best = n; bestDistance = d }
             }
             return best
         }
-        var out = image
-        let w = image.width
-        var error = [Float](repeating: 0, count: (w + 2) * 2 * 3)
-        for y in 0..<image.height {
-            let row = (y & 1) * (w + 2) * 3, next = (1 - (y & 1)) * (w + 2) * 3
-            for x in 0..<w {
-                let i = (y * w + x) * 4
-                func wanted(_ c: Int) -> Float { Float(image.pixels[i + c]) + (dither ? error[row + (x + 1) * 3 + c] : 0) }
-                func level(_ c: Int) -> Int { min(255, max(0, Int(wanted(c).rounded()))) }
-                let q = palette[nearest(level(0), level(1), level(2))]
-                out.pixels[i] = UInt8(q.r); out.pixels[i + 1] = UInt8(q.g); out.pixels[i + 2] = UInt8(q.b)
-                guard dither else { continue }
-                for c in 0..<3 {
-                    let e = wanted(c) - Float(c == 0 ? q.r : c == 1 ? q.g : q.b)
-                    error[row + (x + 2) * 3 + c] += e * 7 / 16
-                    error[next + x * 3 + c] += e * 3 / 16
-                    error[next + (x + 1) * 3 + c] += e * 5 / 16
-                    error[next + (x + 2) * 3 + c] += e / 16
-                }
-            }
-            for x in 0..<(w + 2) * 3 { error[row + x] = 0 }
+
+        @inline(never) mutating func fill(_ k: Int, _ r: Int, _ g: Int, _ b: Int) -> Int {
+            let c = bucket(r, g, b)
+            if coarse.cell[c] == -1 { coarse.fill(c, r, g, b, palette, from: all[...]) }
+            fine.fill(k, r, g, b, palette, from: coarse.list(c))
+            return Int(fine.cell[k])
         }
-        return out
+    }
+
+    /// Candidate lists of palette entries per cube of side 2^(8 - bits), for `map`.
+    private struct Cells {
+        let bits: Int
+        /// -1 not filled yet; -2 - n when entry n is the only candidate; else the offset of [count, entries…] in `lists`.
+        var cell: [Int32], lists = [Int16]()
+        init(bits: Int) {
+            self.bits = bits
+            cell = [Int32](repeating: -1, count: 1 << (3 * bits))
+        }
+
+        func list(_ k: Int) -> ArraySlice<Int16> {
+            let v = Int(cell[k])
+            return v <= -2 ? [Int16(-2 - v)][...] : lists[v + 1...v + Int(lists[v])]
+        }
+
+        mutating func fill(_ k: Int, _ r: Int, _ g: Int, _ b: Int, _ palette: [(r: Int, g: Int, b: Int)],
+                           from: ArraySlice<Int16>) {
+            let side = (1 << (8 - bits)) - 1, mask = ~side
+            func axis(_ v: Int, _ lo: Int) -> (near: Int, far: Int) {
+                let d = v < lo ? lo - v : v > lo + side ? v - lo - side : 0, f = max(abs(v - lo), abs(v - lo - side))
+                return (d * d, f * f)
+            }
+            var bound = Int.max
+            let start = lists.count
+            lists.append(0)
+            withUnsafeTemporaryAllocation(of: Int.self, capacity: from.count) { near in
+                for (j, n) in from.enumerated() {
+                    let c = palette[Int(n)], x = axis(c.r, r & mask), y = axis(c.g, g & mask), z = axis(c.b, b & mask)
+                    near[j] = x.near + y.near + z.near
+                    bound = min(bound, x.far + y.far + z.far)
+                }
+                for (j, n) in from.enumerated() where near[j] <= bound { lists.append(n) }
+            }
+            let count = lists.count - start - 1
+            if count == 1 { cell[k] = Int32(-2 - Int(lists[start + 1])); lists.removeLast(2) } else {
+                lists[start] = Int16(count); cell[k] = Int32(start)
+            }
+        }
     }
 }
