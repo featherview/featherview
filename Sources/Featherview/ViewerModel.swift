@@ -442,8 +442,8 @@ final class ViewerModel {
 
     /// `url`'s page-0 info, read and kept in `knownInfo` when missing: a zoomed decode is smaller than the file,
     /// so `shown` needs the file's size with it, or the canvas draws the decode's pixels at the zoom factor.
+    /// Never `fileInfo`: `shown` reads only `knownInfo`, and after a rotation `fileInfo` has the old orientation.
     private func pageZeroInfo(_ url: URL) async -> FileInfo {
-        if let fileInfo, fileInfo.isFor(url, page: 0) { return fileInfo }
         if let known = knownInfo[url] { return known }
         let revision = fileRevision
         let info = await Task.detached { FileInfo.read(url: url, page: 0) }.value
