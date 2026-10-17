@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 @testable import FeatherviewCore
@@ -21,6 +22,20 @@ import Testing
         let cache = ImageCache(capacity: 2)
         for file in files { _ = try await cache.image(for: file, maxPixelSize: 100) }
         #expect(await cache.count == 2)
+    }
+
+    @Test func decodedBytesCountsKeptImagesOnly() async throws {
+        let dir = try Fixtures.makeTempDir()
+        let files = try (0..<3).map {
+            try Fixtures.writeImage(to: dir.appendingPathComponent("\($0).jpg"), width: 64, height: 32)
+        }
+        let cache = ImageCache(capacity: 2)
+        #expect(await cache.decodedBytes == 0)
+        var images: [CGImage] = []
+        for file in files { images.append(try await cache.image(for: file, maxPixelSize: nil)) }
+        #expect(await cache.decodedBytes == images.suffix(2).reduce(0) { $0 + $1.bytesPerRow * $1.height })
+        await cache.removeAll()
+        #expect(await cache.decodedBytes == 0)
     }
 
     @Test func failuresAreNotCached() async throws {

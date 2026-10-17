@@ -145,7 +145,9 @@ then `cache.prefetch(neighbors radius 2)` (copy `ImageList.neighbors`). Start a 
 - per step: ms from step start until its image is returned (or "superseded" when cancelled first),
   split by whether the image was already cached;
 - median / p95 / max of the returned steps, count superseded;
-- peak memory footprint (`Footprint.swift`: `task_info(TASK_VM_INFO)` → `phys_footprint`, sampled
+- peak decoded bytes the cache keeps (`ImageCache.decodedBytes`, `bytesPerRow × height`, the same cost
+  Task 6 budgets) and peak memory footprint (`Footprint.swift`: `task_info(TASK_VM_INFO)` → `phys_footprint`,
+  which leaves out the decoded images: ImageIO keeps them in purgeable volatile memory), both sampled
   every step).
 Run at 300 ms (reading pace) and 30 ms (held key, macOS key repeat at its fastest). This is
 Task 6's baseline: Task 6 must not make 300 ms worse and should improve 30 ms.

@@ -58,6 +58,7 @@ swift test --filter ImageListTests   # one suite
 scripts/bundle.sh debug          # build/Featherview.app (ad-hoc signed)
 open build/Featherview.app
 open -a build/Featherview.app ~/Pictures/some.jpg   # open a file with it
+swift run -c release featherview-bench corpus /tmp/fv   # generated test images, then: decode /tmp/fv, browse /tmp/fv/browse
 ```
 
 ## Layout
@@ -88,6 +89,8 @@ Rule of thumb: if logic can be tested without a window, it belongs in Feathervie
 How: decode off the main thread at screen size, rounded up to full, ½, ¼ or ⅛ size (any size in between costs a slow resample; see `ImageDecoder.decodeSize`), prefetch 2 neighbours each
 way, never touch file contents while scanning a folder. Measure: the app logs how long each image
 took to appear — `log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'`.
+Without a window: `swift run -c release featherview-bench decode <dir>` (fit and full-size decode times; `--json` / `--baseline` to compare) and `browse <dir>/browse --interval-ms 300` (or 30, a held key).
+Instruments' Points of Interest shows the `Decode`, `Scan` and `Navigate` signposts and the `FirstImage` event (`Signposts.swift`).
 Use Instruments (Time Profiler) to find where time goes. Measure launches after a real quit (⌘Q), not after `pkill`: a killed app gets its window
 restored, which hides ~140 ms that every user who quit normally pays.
 
