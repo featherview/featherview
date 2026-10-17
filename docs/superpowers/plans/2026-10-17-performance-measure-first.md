@@ -311,6 +311,8 @@ Part two of the zoom finding. Today every `.factor` zoom decodes full size (`Vie
 
 ### Task 6: Decode scheduling and a byte budget, together
 
+**Skipped for now.** The gate run (Measurements, "6 (gate)") showed no queueing problem, and the maintainer chose to skip the byte budget too (peak 243 MB decoded while browsing).
+
 **Don't start until** Task 3 is merged and a `browse` baseline at 300 ms and 30 ms (after Task 3) is in
 "Measurements". If the 30 ms numbers show no queueing problem, stop and report: the finding was
 estimated.
