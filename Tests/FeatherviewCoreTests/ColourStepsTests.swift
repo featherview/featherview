@@ -49,6 +49,21 @@ private func filter(_ configure: (inout FilterSettings) -> Void) -> FilterSettin
         }
     }
 
+    /// A logo or cut-out gets the same correction as the same colours without transparency.
+    @Test func autoAdjustMeasuresColoursNotAlpha() throws {
+        func gradient(alpha: UInt8, height: Int = 16) -> CIImage {
+            var image = RGBAImage(width: 64, height: height, pixels: [UInt8](repeating: 0, count: 64 * height * 4))
+            for y in 0..<16 { for x in 0..<64 { image[x, y] = (UInt8(40 + x), UInt8(200 - x), UInt8(90 + x / 2), alpha) } }
+            return PipelineFixtures.fromRGBA(image)
+        }
+        let auto = colour { $0.autoAdjust = true }
+        let opaque = try PipelineFixtures.pixels(ColourStep.apply(gradient(alpha: 255), auto, scale: 1))[10, 8]
+        let half = try PipelineFixtures.pixels(ColourStep.apply(gradient(alpha: 128), auto, scale: 1))[10, 8]
+        let padded = try PipelineFixtures.pixels(ColourStep.apply(gradient(alpha: 255, height: 64), auto, scale: 1))[10, 8]
+        #expect(near(half, (Int(opaque.r), Int(opaque.g), Int(opaque.b), 128), 3), "\(half) vs \(opaque)")
+        #expect(near(padded, (Int(opaque.r), Int(opaque.g), Int(opaque.b), 255), 3), "\(padded) vs \(opaque)")
+    }
+
     @Test func greyscaleUsesRec709() throws {
         let green = PipelineFixtures.solid(RGBAColor(red: 0, green: 1, blue: 0), width: 4, height: 4)
         let out = try PipelineFixtures.pixels(ColourStep.apply(green, colour { $0.greyscale = true }, scale: 1))

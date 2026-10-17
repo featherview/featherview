@@ -10,12 +10,7 @@ public enum ColourStep {
         guard s.isOn else { return image }
         var image = image
         if s.autoAdjust {
-            // The analysis gives a black-making curve for one-pixel-wide images: measure a copy widened by
-            // repeating the edge (same colours, same histogram) and apply the result to the image itself.
-            var measured = image.extent
-            measured.size.width = max(2, measured.width)
-            let analysed = image.clampedToExtent().cropped(to: measured)
-            for filter in analysed.autoAdjustmentFilters(options: [.redEye: false]) {
+            for filter in autoAdjustAnalysed(image)?.autoAdjustmentFilters(options: [.redEye: false]) ?? [] {
                 filter.setValue(image, forKey: kCIInputImageKey)
                 image = filter.outputImage ?? image
             }
@@ -73,6 +68,35 @@ public enum ColourStep {
         }
         return image
     }
+}
+
+/// What auto-adjust measures: the straight colours, opaque, without fully transparent pixels (no colour,
+/// not black), so a cut-out is corrected like the same colours without transparency. Nil when nothing is visible.
+private func autoAdjustAnalysed(_ image: CIImage) -> CIImage? {
+    let extent = image.extent
+    let straight = image.unpremultiplyingAlpha().settingAlphaOne(in: extent)
+    // shortcut: finds transparency on a copy at most 512 px per side, so a few transparent pixels can be missed
+    // in a large image (they then count as black, as before); measure at full size if that ever shows.
+    let shrink = min(1, 512 / max(extent.width, extent.height))
+    let small = image.samplingNearest().transformed(by: CGAffineTransform(scaleX: shrink, y: shrink))
+    guard let cg = try? PipelineRender.cgImage(small), let pixels = RGBAImage(cg) else { return nil }
+    let visible = stride(from: 0, to: pixels.pixels.count, by: 4).filter { pixels.pixels[$0 + 3] > 0 }
+    guard !visible.isEmpty else { return nil }
+    guard visible.count < pixels.width * pixels.height else {
+        // The analysis gives a black-making curve for one-pixel-wide images: measure a copy widened by
+        // repeating the edge (same colours, same histogram).
+        var measured = extent
+        measured.size.width = max(2, measured.width)
+        return straight.clampedToExtent().cropped(to: measured)
+    }
+    // Only the visible pixels, packed into rows (the last row wraps around to fill up).
+    let width = max(2, min(visible.count, pixels.width)), height = (visible.count + width - 1) / width
+    var packed = RGBAImage(width: width, height: height)
+    for i in 0..<width * height {
+        let at = visible[i % visible.count]
+        packed[i % width, i / width] = (pixels.pixels[at], pixels.pixels[at + 1], pixels.pixels[at + 2], 255)
+    }
+    return packed.makeCGImage().map { CIImage(cgImage: $0) }
 }
 
 /// Batch "Filters" step, in spec order: auto levels, noise reduction, unsharp mask, colour temperature, sepia.
