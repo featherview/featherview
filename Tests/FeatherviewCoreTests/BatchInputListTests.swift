@@ -176,6 +176,20 @@ import Testing
         #expect(l.items.isEmpty)
     }
 
+    @Test func removeForgetsTheKeyStoredAtAddEvenAfterTheDiskChanged() throws {
+        let dir = try Fixtures.makeTempDir()
+        let a = try image(dir, "a.jpg")
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: a)
+        var l = BatchInputList()
+        l.add(files: [link])
+        try FileManager.default.removeItem(at: link)  // the link's key now resolves differently
+        l.remove(at: [0])
+        #expect(l == BatchInputList())
+        l.add(files: [a])
+        #expect(names(l.items) == ["a.jpg"])
+    }
+
     @Test func sortByNameIsFinderOrder() {
         var l = list(["img10.jpg", "B.jpg", "img2.jpg", "a.jpg"])
         l.sortByName()

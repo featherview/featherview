@@ -5,6 +5,8 @@ public struct BatchInputList: Equatable, Sendable {
     public private(set) var items: [BatchInput] = []
     /// `pathKey` of every item, kept so an add resolves only the incoming paths (it hits the disk).
     private var keys: Set<String> = []
+    /// Each row's key as stored at add: recomputing it on remove can differ once a symlink or volume changed.
+    private var keyOf: [URL: String] = [:]
 
     public init(_ items: [BatchInput] = []) {
         append(items)
@@ -65,20 +67,24 @@ public struct BatchInputList: Equatable, Sendable {
 
     /// Same de-duplication as `add(files:)`.
     public mutating func append(_ inputs: [BatchInput]) {
-        for input in inputs where keys.insert(pathKey(input.url)).inserted {
+        for input in inputs {
+            let key = pathKey(input.url)
+            guard keys.insert(key).inserted else { continue }
+            keyOf[input.url] = key
             items.append(input)
         }
     }
 
     public mutating func remove(at offsets: IndexSet) {
         for index in offsets.reversed() where items.indices.contains(index) {
-            keys.remove(pathKey(items.remove(at: index).url))
+            if let key = keyOf.removeValue(forKey: items.remove(at: index).url) { keys.remove(key) }
         }
     }
 
     public mutating func removeAll() {
         items.removeAll()
         keys.removeAll()
+        keyOf.removeAll()
     }
 
     /// Finder order of the file names, stable.
