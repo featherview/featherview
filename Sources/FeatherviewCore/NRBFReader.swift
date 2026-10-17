@@ -24,7 +24,7 @@ struct NRBFGraph {
 /// running or knowing any of its classes.
 struct NRBFReader {
     static let maxDepth = 64
-    /// Records, plus array elements (a null run counts each null), so a tiny file can't claim billions.
+    /// Records, plus array elements (a null run counts each null) and class members, so a tiny file can't claim billions.
     static let maxRecords = 1_000_000
 
     private enum MemberType { case primitive(UInt8), string, object, systemClass, classType, objectArray, stringArray, primitiveArray(UInt8) }
@@ -158,6 +158,7 @@ struct NRBFReader {
     private mutating func object(_ r: inout ByteReader, id: Int32, _ info: ClassInfo, depth: Int) throws {
         // Stored before its members, so `order` follows the records and a member record nested inside comes after.
         graph.order.append(id)
+        try count(info.members.count)  // Null-typed primitives read no bytes, so the input alone doesn't bound this
         var members: [String: NRBFValue] = [:]
         for member in info.members {
             if case .primitive(let p) = member.type {

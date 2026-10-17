@@ -248,6 +248,21 @@ struct NRBFBytes {
         #expect(throws: OwnDecodeError.corrupt) { try Self.read(w.bytes) }
     }
 
+    @Test func nullMembersCountTowardTheLimit() {
+        // 2,000 Null-typed primitive members read no bytes, so 600 9-byte ClassWithId records would build 1.2M entries.
+        var w = NRBFBytes()
+        w.header(); w.library(2)
+        let names = (0..<2_000).map { "m\($0)" }
+        w.u8(5); w.i32(1); w.string("Test.Wide"); w.i32(names.count)
+        for name in names { w.string(name) }
+        for _ in names { w.u8(0) }
+        for _ in names { w.u8(17) }
+        w.i32(2)
+        for id in 2...601 { w.u8(1); w.i32(id); w.i32(1) }
+        w.end()
+        #expect(throws: OwnDecodeError.corrupt) { _ = try Self.read(w.bytes) }
+    }
+
     @Test func hugeStringLengthThrows() {
         var w = NRBFBytes()
         w.header(); w.u8(6); w.i32(1)
