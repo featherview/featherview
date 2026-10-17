@@ -21,6 +21,8 @@ struct PDNBuilder {
     var height: Int
     var layers: [Layer]
     var thumbnail: RGBAImage?
+    /// Raw PNG for `<thumb>`, used instead of `thumbnail`.
+    var thumbnailPNG: Data?
     var chunkSize = 16
     /// Rewrites one block's chunks before they're gzipped (reorder, drop, duplicate, replace).
     var chunks: (_ layer: Int, _ chunks: [Chunk]) -> [Chunk] = { $1 }
@@ -36,7 +38,7 @@ struct PDNBuilder {
     }
 
     func xml() -> [UInt8] {
-        let thumb = thumbnail.map { #"<custom><thumb png=""# + Self.png($0).base64EncodedString() + #"" /></custom>"# } ?? ""
+        let thumb = (thumbnailPNG ?? thumbnail.map(Self.png)).map { #"<custom><thumb png=""# + $0.base64EncodedString() + #"" /></custom>"# } ?? ""
         return Array(#"<pdnImage width="\#(width)" height="\#(height)" layers="\#(layers.count)" savedWithVersion="5.9.0.0">"#.utf8)
             + Array(thumb.utf8) + Array("</pdnImage>".utf8)
     }
@@ -148,6 +150,24 @@ struct PDNBuilder {
         var b = Self.builder([.init(pixels: Self.red)])
         b.thumbnail = Self.solid(2, 1, (0, 255, 0, 255))
         #expect(try PDNDecoder.decode(b.data) == Self.red)
+    }
+
+    @Test func hugeThumbnailIsNotDecoded() throws {
+        // A 10,000 × 10,000 1-bit PNG: tiny compressed, 400 MB as RGBA. Its size alone rules it out.
+        let side = 10_000, rowBytes = side / 8
+        let provider = CGDataProvider(data: Data(count: rowBytes * side) as CFData)!
+        let gray = CGImage(width: side, height: side, bitsPerComponent: 1, bitsPerPixel: 1, bytesPerRow: rowBytes,
+                           space: CGColorSpaceCreateDeviceGray(), bitmapInfo: [], provider: provider,
+                           decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
+        let png = NSMutableData()
+        let destination = CGImageDestinationCreateWithData(png, UTType.png.identifier as CFString, 1, nil)!
+        CGImageDestinationAddImage(destination, gray, nil)
+        #expect(CGImageDestinationFinalize(destination))
+        var b = Self.builder([.init(pixels: Self.red)])
+        b.thumbnailPNG = png as Data
+        let start = ContinuousClock.now
+        #expect(try PDNDecoder.decode(b.data) == Self.red)
+        #expect(ContinuousClock.now - start < .milliseconds(200))
     }
 
     @Test func twoLayersBottomFirst() throws {

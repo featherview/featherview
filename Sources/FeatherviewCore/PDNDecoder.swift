@@ -18,7 +18,7 @@ enum PDNDecoder {
         var reader = ByteReader(data)
         let (size, xml) = try header(&reader)
         // Paint.NET renders the thumbnail with every blend mode, so a canvas-sized one is the image.
-        if let thumb = thumbnail(xml), thumb.width == size.width, thumb.height == size.height { return thumb }
+        if let thumb = thumbnail(xml, size: size) { return thumb }
 
         // shortcut: only the `00 01` body of Paint.NET 3.5 and later, add 2.x/3.0x if such files turn up.
         guard try reader.u8() == 0, try reader.u8() == 1 else { throw OwnDecodeError.unsupported }
@@ -131,13 +131,18 @@ enum PDNDecoder {
         return (try checkedSize(attribute("width"), attribute("height")), xml)
     }
 
-    /// The base64 PNG in `<thumb png="…">`, at most 256 px on the long side; nil if missing or unreadable.
-    private static func thumbnail(_ xml: String) -> RGBAImage? {
+    /// The base64 PNG in `<thumb png="…">` if it is exactly `size`; nil if missing, unreadable or another size.
+    /// Its size is checked before decoding, since the PNG can claim any size.
+    private static func thumbnail(_ xml: String, size: (width: Int, height: Int)) -> RGBAImage? {
         guard let start = xml.range(of: "png=\"")?.upperBound,
               let end = xml[start...].firstIndex(of: "\""),
               let png = Data(base64Encoded: String(xml[start..<end])),
               let source = CGImageSourceCreateWithData(png as CFData, nil),
-              let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              properties[kCGImagePropertyPixelWidth] as? Int == size.width,
+              properties[kCGImagePropertyPixelHeight] as? Int == size.height,
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
+              image.width == size.width, image.height == size.height else { return nil }
         return RGBAImage(image)
     }
 }
