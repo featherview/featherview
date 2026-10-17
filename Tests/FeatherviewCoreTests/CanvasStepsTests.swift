@@ -229,6 +229,17 @@ import Testing
         #expect(AutoCropStep.apply(image).extent == CGRect(x: 0, y: 0, width: 400, height: 4497))
     }
 
+    /// Content 9 to 13 levels off the border is kept on large images, as the full-size rule keeps it.
+    @Test(arguments: [245, 242])
+    func autoCropKeepsFaintRowOnLargeImages(grey: Int) throws {
+        let v = CGFloat(grey) / 255
+        let image = CIImage(color: CIColor(red: v, green: v, blue: v, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)!)
+            .cropped(to: CGRect(x: 1500, y: 3333, width: 3000, height: 1))
+            .composited(over: PipelineFixtures.solid(red, width: 3000, height: 2500).transformed(by: .init(translationX: 1500, y: 500)))
+            .composited(over: PipelineFixtures.solid(.white, width: 6000, height: 4000))
+        #expect(AutoCropStep.apply(image).extent == CGRect(x: 0, y: 0, width: 3000, height: 2834))
+    }
+
     @Test func canvasRunsAutoCropFirst() throws {
         var s = perSide(1, 1, 1, 1)
         s.autoCropBorders = true

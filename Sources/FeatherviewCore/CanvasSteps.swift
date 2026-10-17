@@ -21,7 +21,8 @@ public enum AutoCropStep {
             var copy = image.clampedToExtent()
             if s < 1 {
                 copy = copy.applyingFilter(filter, parameters: ["inputWidth": window, "inputHeight": window])
-                    .samplingNearest().transformed(by: .init(scaleX: s, y: s))
+                    // The default downsample blends neighbouring pixels, which pulls a faint minimum back toward the border.
+                    .samplingNearest().transformed(by: .init(scaleX: s, y: s), highQualityDownsample: false)
             }
             return try? RGBAImage(PipelineRender.cgImage(copy.cropped(to: small)))
         }
