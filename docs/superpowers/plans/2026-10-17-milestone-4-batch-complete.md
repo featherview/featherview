@@ -664,6 +664,7 @@ Behaviour to pin:
   public struct PipelineContext: Sendable {
       public var values: TextValues
       public var scale: Double = 1
+      public var originalSize: CGSize?      // set when decoded smaller (ResizeStep.decodeLimit)
       public var watermark: CIImage?        // loaded once per batch
   }
   public enum ImagePipeline {
@@ -706,7 +707,9 @@ Behaviour to pin:
 
 - Workers: `max(1, activeProcessorCount − 1)`, blocking work on GCD (keep `offPool`). Each worker:
   decode (all pages the format needs, `ImageSaver.pages`; with `ResizeStep.decodeLimit` as
-  `maxPixelSize` when it isn't nil), run the pipeline per page, encode to `Data`. Rename mode skips
+  `maxPixelSize` when it isn't nil, and then the upright original size passed on through
+  `PipelineContext.originalSize: CGSize?` to `ResizeStep.apply(…, originalSize:)`, so the output
+  keeps the exact target size), run the pipeline per page, encode to `Data`. Rename mode skips
   decode/encode entirely.
 - Commit stage (one at a time, list order): for a succeeded file take `namer.next`, create the
   folder (`recreateSubfolders` / `{folder}`), with `replaceExisting` trash an existing non-input
