@@ -177,11 +177,8 @@ struct Step: Sendable {
     let cache = ImageCache(capacity: 8, hdr: ImageDecoder.supportsHDR, colorSpace: displayP3)
     var list = ImageList(urls: urls)
     var steps: [Task<Step, Never>] = []
-    var peak: (footprint: UInt64, volatile: UInt64) = (0, 0)
-    func sample() {
-        let now = memoryUse()
-        peak = (max(peak.footprint, now.footprint), max(peak.volatile, now.volatile))
-    }
+    var peak: UInt64 = 0
+    func sample() { peak = max(peak, memoryFootprint()) }
 
     // As ViewerModel.show(): cancel the last step, await the image, then prefetch the neighbours.
     for index in urls.indices {
@@ -222,8 +219,7 @@ struct Step: Sendable {
     summary("cached", results.filter(\.cached))
     summary("not cached", results.filter { !$0.cached })
     print("superseded: \(results.filter { $0.ms == nil }.count) of \(results.count)")
-    print("peak footprint: \(peak.footprint / 1_000_000) MB, peak purgeable volatile: \(peak.volatile / 1_000_000) MB "
-          + "(screen \(screen[0]), every \(interval) ms)")
+    print("peak footprint: \(peak / 1_000_000) MB (screen \(screen[0]), every \(interval) ms)")
 }
 
 switch mode {
