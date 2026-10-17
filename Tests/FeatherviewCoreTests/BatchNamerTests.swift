@@ -126,6 +126,18 @@ import Testing
         #expect(namer.next(for: inputs[0], date: nil).lastPathComponent.hasPrefix(" 2."))
     }
 
+    @Test func symlinkedInputsTargetIsNeverReplaced() throws {
+        let dir = try Fixtures.makeTempDir()
+        let real = dir.appendingPathComponent("b", isDirectory: true), links = dir.appendingPathComponent("a", isDirectory: true)
+        try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: links, withIntermediateDirectories: true)
+        let target = try Fixtures.writeImage(to: real.appendingPathComponent("photo.jpg"), width: 8, height: 8)
+        let link = links.appendingPathComponent("photo.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+        let inputs = [input(link.path)]
+        var namer = BatchNamer(settings: settings(out: real.path, safety: SafetySettings(replaceExisting: true)), inputs: inputs)
+        #expect(namer.next(for: inputs[0], date: nil).lastPathComponent == "photo 2.jpg")
+    }
 }
 
 @Suite struct BatchCopyTests {

@@ -17,7 +17,11 @@ public struct BatchNamer: Sendable {
                 fileExists: @escaping @Sendable (URL) -> Bool = { (try? FileManager.default.attributesOfItem(atPath: $0.path)) != nil }) {
         self.settings = settings
         self.fileExists = fileExists
-        for input in inputs { taken.insert(key(input.url)) }
+        for input in inputs {
+            taken.insert(key(input.url))
+            // A symlinked input's target is also reserved, so its real file is never replaced.
+            taken.insert(key(input.url.resolvingSymlinksInPath()))
+        }
     }
 
     /// The folder `input`'s output goes to: `outputFolder` with `{folder}` = the input's parent
