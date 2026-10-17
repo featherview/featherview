@@ -1,20 +1,70 @@
 import FeatherviewCore
 import SwiftUI
 
-/// Settings (⌘, or P): every setting from spec "Settings".
-struct SettingsView: View {
-    var body: some View {
-        TabView {
-            BrowsingSettings().tabItem { Label("Browsing", systemImage: "photo.on.rectangle") }
-            ViewerSettings().tabItem { Label("Viewer", systemImage: "eye") }
-            FullScreenSettings().tabItem { Label("Full Screen", systemImage: "arrow.up.left.and.arrow.down.right") }
-            MoveCopySettings().tabItem { Label("Move / Copy", systemImage: "folder") }
-            OpenWithSettings().tabItem { Label("Open With", systemImage: "arrow.up.forward.app") }
-            FormatsSettings().tabItem { Label("Formats", systemImage: "doc.badge.gearshape") }
+/// Settings (⌘, or P): every setting from spec "Settings". AppKit's toolbar tabs, not SwiftUI's Settings scene,
+/// whose window can't animate its height per tab with the content pinned to the top, like other Mac settings windows.
+@MainActor
+enum SettingsWindow {
+    private static var controller: NSWindowController?
+
+    static func show() {
+        if controller == nil {
+            let tabs = SettingsTabs()
+            tabs.tabStyle = .toolbar
+            tabs.add(String(localized: "Browsing"), "photo.on.rectangle", BrowsingSettings())
+            tabs.add(String(localized: "Viewer"), "eye", ViewerSettings())
+            tabs.add(String(localized: "Full Screen"), "arrow.up.left.and.arrow.down.right", FullScreenSettings())
+            tabs.add(String(localized: "Move / Copy"), "folder", MoveCopySettings())
+            tabs.add(String(localized: "Open With"), "arrow.up.forward.app", OpenWithSettings())
+            tabs.add(String(localized: "Formats"), "doc.badge.gearshape", FormatsSettings())
+            let window = NSWindow(contentViewController: tabs)
+            window.styleMask = [.titled, .closable]
+            controller = NSWindowController(window: window)
         }
-        .formStyle(.grouped)  // wraps long labels instead of clipping them at this width
-        .frame(width: 520)
-        .scenePadding()
+        controller?.showWindow(nil)
+    }
+}
+
+/// The window takes the selected tab's height, animated with the top edge fixed. The tabs report their
+/// height themselves: AppKit's own sizing (from preferredContentSize) jumps.
+private final class SettingsTabs: NSTabViewController {
+    private var heights: [Int: CGFloat] = [:]
+
+    func add(_ label: String, _ symbol: String, _ view: some View) {
+        let index = tabViewItems.count
+        let host = NSHostingController(rootView: view
+            .formStyle(.grouped)  // wraps long labels instead of clipping them at this width
+            .scrollDisabled(true)
+            .frame(width: 520)
+            .fixedSize(horizontal: false, vertical: true)
+            .scenePadding()
+            .onGeometryChange(for: CGFloat.self, of: \.size.height) { [weak self] in self?.tab(index, height: $0) }
+            .frame(minHeight: 0, maxHeight: .infinity, alignment: .top))  // top stays put while the window's height animates
+        host.sizingOptions = []
+        host.title = label
+        let item = NSTabViewItem(viewController: host)
+        item.label = label
+        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+        addTabViewItem(item)
+    }
+
+    override func tabView(_ tabView: NSTabView, didSelect item: NSTabViewItem?) {
+        super.tabView(tabView, didSelect: item)
+        fit()
+    }
+
+    private func tab(_ index: Int, height: CGFloat) {
+        heights[index] = height
+        if index == selectedTabViewItemIndex { fit() }
+    }
+
+    private func fit() {
+        guard let window = view.window, let height = heights[selectedTabViewItemIndex] else { return }
+        var frame = window.frameRect(forContentRect: NSRect(x: 0, y: 0, width: 560, height: height))
+        frame.origin = NSPoint(x: window.frame.minX, y: window.frame.maxY - frame.height)
+        guard frame != window.frame else { return }
+        window.setFrame(frame, display: true, animate: window.isVisible)
+        if !window.isVisible { window.center() }
     }
 }
 
@@ -133,10 +183,13 @@ private struct FormatsSettings: View {
             }) {
                 ForEach(FormatRegistry.writable) { Text($0.name).tag($0) }
             }
-            FormatOptionsView(format: format, options: Binding { options } set: {
-                options = $0
-                FormatSettings.save($0, for: format)
-            })
+            // The options belong to the chosen format: their own group, named after it.
+            Section("\(format.name) Options") {
+                FormatOptionsView(format: format, options: Binding { options } set: {
+                    options = $0
+                    FormatSettings.save($0, for: format)
+                })
+            }
         }
         // Save As and batch save these options too; never write back a stale copy.
         .onReceive(defaultsChanged) { _ in options = FormatSettings.options(for: format) }

@@ -77,7 +77,7 @@ enum MenuKeys {
         switch (item.keyEquivalent, item.keyEquivalentModifierMask) {
         case ("m", .command): return plain("m")  // Minimize
         case ("f", [.control, .command]), ("f", .function): return plain("f")  // Enter/Exit Full Screen
-        // SwiftUI's Settings… item, which no command group replaces: "Preferences" matches its key P (spec).
+        // Our Settings… item (SettingsWindow): "Preferences" matches its key P (spec).
         case (",", .command): return MenuKey(title: String(localized: "Preferences…"), key: "p", modifiers: [])
         default: return nil
         }

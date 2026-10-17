@@ -231,7 +231,7 @@ Settings can be saved as named presets and loaded later.
 
 The menu calls it "Preferences…", not macOS's "Settings…", so it matches its single key P.
 
-A standard Mac settings window with tabs. Every setting below has the default shown.
+A standard Mac settings window with tabs; the window changes height to fit each tab. Every setting below has the default shown.
 
 - Browsing: past the end of a folder: folder chooser (default) / loop this folder / stop; show
   hidden files (off); after Move to Trash or move to folder, show the next image (on); move,

@@ -5,7 +5,6 @@ struct ViewerView: View {
     @Bindable var model: ViewerModel
     @Environment(\.displayScale) private var displayScale
     @Environment(\.openWindow) private var openWindow
-    @Environment(\.openSettings) private var openSettings
     @FocusState private var focused: Bool
     @Environment(\.controlActiveState) private var activeState
     @AppStorage(AppSettings.rememberWindowFrame.key) private var rememberFrame = AppSettings.rememberWindowFrame.defaultValue
@@ -237,7 +236,7 @@ struct ViewerView: View {
         case .open: model.showOpenPanel()
         case .batch: openWindow(id: "batch")
         case .minimize: model.window?.miniaturize(nil)
-        case .settings: openSettings()
+        case .settings: SettingsWindow.show()
         case .about: openWindow(id: "about")
         case .saveAs: model.saveAs()
         }
@@ -398,6 +397,9 @@ struct ViewerCommands: Commands {
         let _ = OpensViewerWindows.install(openWindow)
         CommandGroup(replacing: .appInfo) {
             Button("About Featherview  (A)") { openWindow(id: "about") }
+        }
+        CommandGroup(replacing: .appSettings) {
+            Button("Settings…") { SettingsWindow.show() }.keyboardShortcut(",")
         }
         CommandGroup(replacing: .newItem) {
             Button("Open…  (O)") { (model ?? ViewerModel.lastActive.current).showOpenPanel() }

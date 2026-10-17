@@ -30,10 +30,6 @@ struct FeatherviewApp: App {
                 .modifier(OpensViewerWindows())
         }
         .windowResizability(.contentSize)
-
-        Settings {
-            SettingsView()
-        }
     }
 }
 
