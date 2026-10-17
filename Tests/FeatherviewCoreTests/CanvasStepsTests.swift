@@ -181,6 +181,32 @@ import Testing
         #expect(out.extent.size == CGSize(width: 1200, height: 800))
     }
 
+    /// Large images take the shrunk path; noise of ±5 around the corner colour is still border.
+    @Test func autoCropToleratesNoiseAroundTheCornerOnLargeImages() throws {
+        let picture = CGRect(x: 600, y: 400, width: 1200, height: 800)
+        var image = RGBAImage(width: 2400, height: 1600)
+        for y in 0..<1600 {
+            for x in 0..<2400 {
+                let v = UInt8(245 + ((x * 7 + y * 3 + 5) % 11 - 5))  // 245 at the corners
+                image[x, y] = picture.contains(CGPoint(x: Double(x) + 0.5, y: Double(y) + 0.5)) ? (255, 0, 0, 255) : (v, v, v, 255)
+            }
+        }
+        #expect(AutoCropStep.apply(PipelineFixtures.fromRGBA(image)).extent == CGRect(x: 0, y: 0, width: 1200, height: 800))
+    }
+
+    /// The shrunk pass must judge against the corner pixel itself, or it can run past the real edge.
+    @Test func autoCropLargeImageUsesTheCornerPixel() throws {
+        var image = RGBAImage(width: 2400, height: 1600)
+        for y in 0..<1600 {
+            for x in 0..<2400 {
+                let v: UInt8 = y < 10 ? 200 : y < 400 ? 186 : UInt8((x * 13) % 256)
+                image[x, y] = (v, v, v, 255)
+            }
+        }
+        image[1, 1] = (192, 192, 192, 255)  // darkens the corner block's minimum, not the corner pixel
+        #expect(AutoCropStep.apply(PipelineFixtures.fromRGBA(image)).extent == CGRect(x: 0, y: 0, width: 2400, height: 1590))
+    }
+
     /// Shrinking must not average a thin, faint line near the edge into the border and cut it off.
     @Test(arguments: [100, 104, 106])
     func autoCropKeepsThinLineNearTheEdge(x: Int) throws {

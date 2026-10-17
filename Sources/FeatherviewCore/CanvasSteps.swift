@@ -25,7 +25,13 @@ public enum AutoCropStep {
             }
             return try? RGBAImage(PipelineRender.cgImage(copy.cropped(to: small)))
         }
-        guard let p = shrunk("CIMorphologyRectangleMinimum"), let hi = shrunk("CIMorphologyRectangleMaximum")
+        func strip(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> RGBAImage? {  // full size, y from the top
+            try? RGBAImage(PipelineRender.cgImage(image.cropped(to: CGRect(x: x, y: height - y - h, width: w, height: h))))
+        }
+        // Both passes judge against the exact corner pixels: a shrunk block is border only if its whole
+        // range is within 8 of them, so it never runs past an edge the full-size rule would stop at.
+        guard let p = shrunk("CIMorphologyRectangleMinimum"), let hi = shrunk("CIMorphologyRectangleMaximum"),
+              let topLeft = strip(0, 0, 1, 1)?[0, 0], let bottomRight = strip(width - 1, height - 1, 1, 1)?[0, 0]
         else { return image }
 
         func near(_ a: (r: UInt8, g: UInt8, b: UInt8, a: UInt8), _ b: (r: UInt8, g: UInt8, b: UInt8, a: UInt8)) -> Bool {
@@ -35,7 +41,6 @@ public enum AutoCropStep {
         func near(_ x: Int, _ y: Int, _ c: (r: UInt8, g: UInt8, b: UInt8, a: UInt8)) -> Bool {
             near(p[x, y], c) && near(hi[x, y], c)
         }
-        let topLeft = p[0, 0], bottomRight = p[p.width - 1, p.height - 1]
         func row(_ y: Int, _ c: (r: UInt8, g: UInt8, b: UInt8, a: UInt8)) -> Bool {
             (0..<p.width).allSatisfy { near($0, y, c) }
         }
@@ -59,22 +64,18 @@ public enum AutoCropStep {
             // A small pixel sees its block and part of its neighbours, so each edge lies within `m` pixels
             // of where the small copies put it: find it exactly on a full-size strip there.
             let m = CGFloat(window) + (1 / s).rounded(.up) + 1
-            func strip(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> RGBAImage? {  // y from the top
-                try? RGBAImage(PipelineRender.cgImage(image.cropped(to: CGRect(x: x, y: height - y - h, width: w, height: h))))
-            }
             func first(_ n: Int, _ border: (Int) -> Bool) -> Int { (0..<n).first { !border($0) } ?? n }
             func last(_ n: Int, _ border: (Int) -> Bool) -> Int { (0..<n).last { !border($0) } ?? -1 }
             let (t0, t1) = (max(0, y0 - m), min(height, y0 + m)), (b0, b1) = (max(0, y1 - m), min(height, y1 + m))
-            guard let tl = strip(0, 0, 1, 1)?[0, 0], let br = strip(width - 1, height - 1, 1, 1)?[0, 0],
-                  let t = strip(0, t0, width, t1 - t0), let b = strip(0, b0, width, b1 - b0)
+            guard let t = strip(0, t0, width, t1 - t0), let b = strip(0, b0, width, b1 - b0)
             else { return image }
-            y0 = t0 + CGFloat(first(t.height) { y in (0..<t.width).allSatisfy { near(t[$0, y], tl) } })
-            y1 = b0 + CGFloat(last(b.height) { y in (0..<b.width).allSatisfy { near(b[$0, y], br) } } + 1)
+            y0 = t0 + CGFloat(first(t.height) { y in (0..<t.width).allSatisfy { near(t[$0, y], topLeft) } })
+            y1 = b0 + CGFloat(last(b.height) { y in (0..<b.width).allSatisfy { near(b[$0, y], bottomRight) } } + 1)
             guard y1 > y0 else { return image }
             let (l0, l1) = (max(0, x0 - m), min(width, x0 + m)), (r0, r1) = (max(0, x1 - m), min(width, x1 + m))
             guard let l = strip(l0, y0, l1 - l0, y1 - y0), let r = strip(r0, y0, r1 - r0, y1 - y0) else { return image }
-            x0 = l0 + CGFloat(first(l.width) { x in (0..<l.height).allSatisfy { near(l[x, $0], tl) } })
-            x1 = r0 + CGFloat(last(r.width) { x in (0..<r.height).allSatisfy { near(r[x, $0], br) } } + 1)
+            x0 = l0 + CGFloat(first(l.width) { x in (0..<l.height).allSatisfy { near(l[x, $0], topLeft) } })
+            x1 = r0 + CGFloat(last(r.width) { x in (0..<r.height).allSatisfy { near(r[x, $0], bottomRight) } } + 1)
             guard x1 > x0 else { return image }
         }
         // Core Image's origin is the bottom-left corner.
