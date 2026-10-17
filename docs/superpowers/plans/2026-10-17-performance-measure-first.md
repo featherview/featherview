@@ -174,13 +174,13 @@ public enum Signposts {
   Its comment should say that it measures until the model has the image, not until the image is on
   screen; `Navigate` covers that.
 
-- [ ] Write the corpus generator; run it; check sizes and that `12mp-portrait-exif6.jpg` shows upright in Preview
-- [ ] Write `decode` mode with `fitDecode` mirroring today's call; run it on the maintainer's Mac
-- [ ] Write `browse` mode and `Footprint.swift`; run at 300 ms and 30 ms
-- [ ] Add the signposts; `swift build`, `swift test` pass
+- [x] Write the corpus generator; run it; check sizes and that `12mp-portrait-exif6.jpg` shows upright in Preview
+- [x] Write `decode` mode with `fitDecode` mirroring today's call; run it on the maintainer's Mac
+- [x] Write `browse` mode and `Footprint.swift`; run at 300 ms and 30 ms
+- [x] Add the signposts; `swift build`, `swift test` pass
 - [ ] Check in Instruments (Points of Interest) that `Navigate`, `Decode` and `Scan` appear while browsing the corpus
-- [ ] Record all numbers in "Measurements" (machine, macOS, commit)
-- [ ] Commit: `feat: featherview-bench and signposts for decode, scan and navigation`
+- [x] Record all numbers in "Measurements" (machine, macOS, commit)
+- [x] Commit: `feat: featherview-bench and signposts for decode, scan and navigation`
 
 ### Task 2: The menu stops re-reading the image list
 
@@ -192,10 +192,10 @@ re-evaluates the commands and SwiftUI rebuilds the main menu on the main thread.
 
 **Files:** Modify `Sources/Featherview/ViewerView.swift` (one line).
 
-- [ ] Replace with `.disabled(model?.availability.canChangeFile != true)`
-- [ ] By hand: Save As is disabled with no image, enabled with one, disabled on a held (trashed, "show the next image" off) image
+- [x] Replace with `.disabled(model?.availability.canChangeFile != true)`
+- [x] By hand: Save As is disabled with no image, enabled with one, disabled on a held (trashed, "show the next image" off) image
 - [ ] If Task 1 is merged: compare `Navigate` p50 before/after in Instruments while browsing `browse/` at 300 ms (expect a small gain; record it, even if zero)
-- [ ] Commit: `fix: the menu no longer rebuilds on every image`
+- [x] Commit: `fix: the menu no longer rebuilds on every image`
 
 ### Task 3: Fit decode per axis
 
@@ -364,6 +364,8 @@ Same Mac, same command, release build. Fill in per task; never edit an earlier r
 
 | Task | Commit | Mac / macOS | Command | Result |
 |---|---|---|---|---|
-| 1 (baseline) | | | `featherview-bench decode <dir>` | |
-| 1 (baseline) | | | `featherview-bench browse <dir>/browse --interval-ms 300` | |
-| 1 (baseline) | | | `featherview-bench browse <dir>/browse --interval-ms 30` | |
+| 1 (baseline) | 5d02ec6 | Apple M1 Pro, 32 GB / macOS 27.0.1 | `featherview-bench decode <dir>` | Fit decode median (every screen unless noted): 12 MP JPEG 81–83 ms, always full size 4032×3024 (48.8 MB); EXIF-6 JPEG 110–112 ms; 12 MP HEIC 225–233 ms; 12 MP PNG 216 ms; 50 MP JPEG 119–128 ms at ½ (50.3 MB) on 3024 and 3456 screens, 336–359 ms full (201.3 MB) on 5120; full-size decode 50 MP 361–365 ms. JSON: `build/bench/baseline-task1.json` |
+| 1 (baseline) | 5d02ec6 | Apple M1 Pro, 32 GB / macOS 27.0.1 | `featherview-bench browse <dir>/browse --interval-ms 300` | 40 returned, 0 superseded; cached 39: median 0.2 ms, p95 0.3 ms; not cached 1: 115 ms; peak cache 390 MB decoded, footprint 8 MB |
+| 1 (baseline) | 5d02ec6 | Apple M1 Pro, 32 GB / macOS 27.0.1 | `featherview-bench browse <dir>/browse --interval-ms 30` | 1 returned (92 ms), 39 of 40 superseded: nothing is shown until the key is let go; peak cache 390 MB decoded, footprint 280 MB |
+
+Memory baseline for Task 6 is "peak cache … MB decoded" (`bytesPerRow × height`, what the byte budget counts); the footprint misses purgeable decoded images and is only a side number.
