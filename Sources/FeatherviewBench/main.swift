@@ -177,8 +177,11 @@ struct Step: Sendable {
     let cache = ImageCache(capacity: 8, hdr: ImageDecoder.supportsHDR, colorSpace: displayP3)
     var list = ImageList(urls: urls)
     var steps: [Task<Step, Never>] = []
-    var peak: UInt64 = 0
-    func sample() { peak = max(peak, memoryFootprint()) }
+    var peak: UInt64 = 0, peakCache = 0
+    func sample() async {
+        peak = max(peak, memoryFootprint())
+        peakCache = max(peakCache, await cache.decodedBytes)
+    }
 
     // As ViewerModel.show(): cancel the last step, await the image, then prefetch the neighbours.
     for index in urls.indices {
@@ -196,13 +199,13 @@ struct Step: Sendable {
             await cache.prefetch(neighbors, maxPixelSize: size)
             return Step(index: index, file: url.lastPathComponent, cached: cached, ms: elapsed)
         })
-        sample()
+        await sample()
         try? await Task.sleep(until: start + .milliseconds(interval), clock: .continuous)
         list.next()
     }
     var results: [Step] = []
     for step in steps { results.append(await step.value) }
-    sample()
+    await sample()
 
     print("step\tfile\tcached\tms")
     for step in results {
@@ -219,7 +222,8 @@ struct Step: Sendable {
     summary("cached", results.filter(\.cached))
     summary("not cached", results.filter { !$0.cached })
     print("superseded: \(results.filter { $0.ms == nil }.count) of \(results.count)")
-    print("peak footprint: \(peak / 1_000_000) MB (screen \(screen[0]), every \(interval) ms)")
+    // The footprint leaves out the cache's decoded images (purgeable volatile), so both are reported.
+    print("peak cache: \(peakCache / 1_000_000) MB decoded, peak footprint: \(peak / 1_000_000) MB (screen \(screen[0]), every \(interval) ms)")
 }
 
 switch mode {

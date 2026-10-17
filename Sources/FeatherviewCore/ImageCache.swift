@@ -84,6 +84,10 @@ public actor ImageCache {
 
     public var count: Int { images.count }
 
+    /// Bytes of the decoded images kept (`bytesPerRow × height`). The process footprint leaves them out:
+    /// ImageIO keeps decoded pixels in purgeable volatile memory.
+    public var decodedBytes: Int { images.values.reduce(0) { $0 + $1.bytesPerRow * $1.height } }
+
     /// True if `url` is decoded and kept, not only being decoded (the bench's `browse` splits by it).
     public func contains(_ url: URL) -> Bool { images[url] != nil }
 
