@@ -2,16 +2,22 @@ import CoreGraphics
 import Foundation
 import os
 
+/// What a display decode is for: full size (zoom), or to fit these screens (`ImageDecoder.fitDecodeSize`).
+public enum DecodeTarget: Hashable, Sendable {
+    case full
+    case fit([PixelSize])
+}
+
 /// Decoded images for display, least recently used evicted first. Decodes use halving steps, so an
 /// image can be up to 2× the requested size per side (see `ImageDecoder.decodeSize`). Cached images are keyed by URL only: callers
-/// clear it when the decode size they need changes. Running decodes are joined only at the same size.
+/// clear it when the decode size they need changes. Running decodes are joined only for the same target.
 public actor ImageCache {
     private let capacity: Int
     private let hdr: Bool
     private let colorSpace: CGColorSpace?
     private var images: [URL: CGImage] = [:]
     private var order: [URL] = []  // least recently used first
-    private var inFlight: [URL: (size: Int?, task: Task<CGImage, Error>, waiters: Int)] = [:]
+    private var inFlight: [URL: (target: DecodeTarget, task: Task<CGImage, Error>, waiters: Int)] = [:]
 
     /// `colorSpace`: the screen's, see `ImageDecoder.decode`.
     public init(capacity: Int = 8, hdr: Bool = false, colorSpace: CGColorSpace? = nil) {
@@ -22,28 +28,29 @@ public actor ImageCache {
 
     /// The cached image, or decodes it — once, even when several callers ask at the same time.
     /// A decode that every caller has given up on (task cancelled) is skipped if it hasn't started.
-    public func image(for url: URL, maxPixelSize: Int?) async throws -> CGImage {
+    public func image(for url: URL, target: DecodeTarget) async throws -> CGImage {
         try Task.checkCancellation()
         if let hit = images[url] {
             touch(url)
             return hit
         }
         let task: Task<CGImage, Error>
-        if let running = inFlight[url], running.size == maxPixelSize, !running.task.isCancelled {
+        if let running = inFlight[url], running.target == target, !running.task.isCancelled {
             task = running.task
             inFlight[url]?.waiters += 1
         } else {
             let hdr = hdr, colorSpace = colorSpace
+            let screens: [PixelSize]? = if case .fit(let screens) = target { screens } else { nil }
             task = Task.detached(priority: .userInitiated) {
                 try Task.checkCancellation()
                 return try Signposts.poster.withIntervalSignpost(
                     "Decode", id: Signposts.poster.makeSignpostID(),
-                    "\(url.lastPathComponent, privacy: .public) \(maxPixelSize ?? 0)"
+                    "\(url.lastPathComponent, privacy: .public) \(screens == nil ? "full" : "fit", privacy: .public)"
                 ) {
-                    try ImageDecoder.decode(url, maxPixelSize: maxPixelSize, halvingSteps: true, hdr: hdr, colorSpace: colorSpace)
+                    try ImageDecoder.decode(url, halvingSteps: true, fitting: screens, hdr: hdr, colorSpace: colorSpace)
                 }
             }
-            inFlight[url] = (maxPixelSize, task, 1)
+            inFlight[url] = (target, task, 1)
         }
         // Only the current decode may store: a remove or a newer request supersedes this one.
         defer { if inFlight[url]?.task == task { inFlight[url] = nil } }
@@ -64,9 +71,9 @@ public actor ImageCache {
     }
 
     /// Warms the cache in the background. Failures are ignored here; they surface when shown.
-    public func prefetch(_ urls: [URL], maxPixelSize: Int?) {
+    public func prefetch(_ urls: [URL], target: DecodeTarget) {
         for url in urls where images[url] == nil && inFlight[url] == nil {
-            Task { _ = try? await self.image(for: url, maxPixelSize: maxPixelSize) }
+            Task { _ = try? await self.image(for: url, target: target) }
         }
     }
 

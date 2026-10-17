@@ -7,6 +7,16 @@ public enum DecodeError: Error, Equatable {
     case unreadable(URL)
 }
 
+/// A screen's size in pixels (points × backing scale).
+public struct PixelSize: Hashable, Sendable {
+    public let width: Int
+    public let height: Int
+    public init(width: Int, height: Int) {
+        self.width = width
+        self.height = height
+    }
+}
+
 public enum ImageDecoder {
     /// HDR display needs macOS 15 (spec "Formats").
     public static var supportsHDR: Bool { if #available(macOS 15, *) { true } else { false } }
@@ -50,28 +60,51 @@ public enum ImageDecoder {
         return size
     }
 
+    /// The longest side to decode an image of `image` (displayed size, orientation applied) at, so it
+    /// fits any of `screens` without enlarging: the smallest halving step at or above that size.
+    /// Integer arithmetic: a 3024×4032 portrait on a 2016 px high screen needs exactly 2016, and
+    /// Double can give 2016.0000001, which picks full size.
+    public static func fitDecodeSize(image: PixelSize, screens: [PixelSize]) -> Int {
+        let longest = max(image.width, image.height)
+        guard image.width > 0, image.height > 0 else { return longest }
+        func ceilDiv(_ a: Int, _ b: Int) -> Int { (a + b - 1) / b }
+        let needed = screens.map {
+            min(ceilDiv(longest * $0.width, image.width), ceilDiv(longest * $0.height, image.height))
+        }.max() ?? longest
+        return decodeSize(full: longest, target: needed)
+    }
+
     /// Decodes upright, downsampled so the longest side is at most `maxPixelSize` (nil = full size),
     /// or with `halvingSteps` to the faster step at or above it (see `decodeSize`), for display.
     /// Never upscales. Pixels are decoded here, not lazily at first draw, so callers can run this
     /// off the main thread and the UI never stalls on display.
+    /// `screens`, in place of `maxPixelSize`: decode at `fitDecodeSize` for them (the viewer's fit mode).
     /// `page` is a page of a multi-page TIFF (see `pageCount`).
     /// Display decodes (`halvingSteps`) come back at 8 bits, or with `hdr` an HDR image at up to 16
     /// bits with its extra range; other decodes keep the file's depth.
     /// Ignored before macOS 15 (`supportsHDR`) and for own formats.
     /// `colorSpace` (the screen's) applies to 8-bit display decodes: Core Animation would otherwise
     /// convert each image on the main thread when it's first shown (≈18 ms for 12 MP).
-    public static func decode(_ url: URL, maxPixelSize: Int? = nil, halvingSteps: Bool = false, page: Int = 0,
+    public static func decode(_ url: URL, maxPixelSize: Int? = nil, halvingSteps: Bool = false,
+                              fitting screens: [PixelSize]? = nil, page: Int = 0,
                               hdr: Bool = false, colorSpace: CGColorSpace? = nil) throws -> CGImage {
-        let image = try decodeFile(url, maxPixelSize: maxPixelSize, halvingSteps: halvingSteps, page: page, hdr: hdr)
+        let image = try decodeFile(url, maxPixelSize: maxPixelSize, halvingSteps: halvingSteps, screens: screens,
+                                   page: page, hdr: hdr)
         guard halvingSteps, let colorSpace, image.bitsPerComponent == 8, image.colorSpace != colorSpace else { return image }
         return redrawn(image, width: image.width, height: image.height, in: colorSpace) ?? image
     }
 
-    private static func decodeFile(_ url: URL, maxPixelSize: Int?, halvingSteps: Bool, page: Int, hdr: Bool) throws -> CGImage {
+    private static func decodeFile(_ url: URL, maxPixelSize: Int?, halvingSteps: Bool, screens: [PixelSize]?,
+                                   page: Int, hdr: Bool) throws -> CGImage {
+        func fit(_ size: CGSize) -> Int? {
+            screens.map { fitDecodeSize(image: PixelSize(width: Int(size.width), height: Int(size.height)), screens: $0) }
+        }
         if let own = OwnDecoders.format(for: url) {
             do {
-                let image = try own.decode(try Data(contentsOf: url, options: .mappedIfSafe), page, maxPixelSize)
-                return maxPixelSize.flatMap { scaled(image, longestSide: $0) } ?? image
+                let data = try Data(contentsOf: url, options: .mappedIfSafe)
+                let limit = own.size(data, page).flatMap(fit) ?? maxPixelSize
+                let image = try own.decode(data, page, limit)
+                return limit.flatMap { scaled(image, longestSide: $0) } ?? image
             } catch {
                 throw DecodeError.unreadable(url)
             }
@@ -84,9 +117,9 @@ public enum ImageDecoder {
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
             kCGImageSourceShouldCacheImmediately: true,
-            kCGImageSourceThumbnailMaxPixelSize: halvingSteps
+            kCGImageSourceThumbnailMaxPixelSize: fit(size) ?? (halvingSteps
                 ? decodeSize(full: full, target: maxPixelSize ?? full)
-                : min(maxPixelSize ?? full, full),
+                : min(maxPixelSize ?? full, full)),
         ]
         let wantsHDR = hdr && supportsHDR
         if wantsHDR { options[kCGImageSourceDecodeRequest] = kCGImageSourceDecodeToHDR }
