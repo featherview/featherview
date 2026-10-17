@@ -84,7 +84,9 @@ public enum ResizeStep {
             target = (w * s.percentWidth / 100, h * (s.keepAspect ? s.percentWidth : s.percentHeight) / 100)
         }
         // At most what the own decoders accept (65,536 a side, 2²⁸ pixels), aspect kept: larger can't render.
-        if target.w.isFinite, target.h.isFinite, target.w > 0, target.h > 0 {
+        // At least 1 pixel a side first, so a side of 0 or less can't skip the cap on the other.
+        target = (max(1, target.w), max(1, target.h))
+        if target.w.isFinite, target.h.isFinite {
             let side = min(1, 65536 / max(target.w, target.h))
             target = (target.w * side, target.h * side)
             let area = min(1, (Double(maxOwnPixels) / (target.w * target.h)).squareRoot())

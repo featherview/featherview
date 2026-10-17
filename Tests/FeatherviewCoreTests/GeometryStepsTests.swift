@@ -191,6 +191,16 @@ import Testing
         s.mode = .megapixels; s.megapixels = 1e300
         let mp = ResizeStep.targetSize(for: Self.size(40, 30), s, scale: 1)
         #expect(mp.width <= 65536 && mp.width * mp.height <= Double(1 << 28) && mp.height > 1)
+        // One side 0 or negative (typed, or an untrusted preset) mustn't skip the cap on the other.
+        s.mode = .widthHeight; s.keepAspect = false
+        for (w, h) in [(100_000, 0), (Int.max, Int.min)] {
+            s.width = w; s.height = h
+            let wh = ResizeStep.targetSize(for: Self.size(100, 100), s, scale: 1)
+            #expect(wh.width <= 65536 && wh.height >= 1 && wh.width * wh.height <= Double(1 << 28))
+        }
+        s.mode = .percent; s.percentWidth = 1e9; s.percentHeight = 0
+        let flat = ResizeStep.targetSize(for: Self.size(100, 100), s, scale: 1)
+        #expect(flat.width <= 65536 && flat.height >= 1)
     }
 
     @Test func percentIgnoresScale() {
