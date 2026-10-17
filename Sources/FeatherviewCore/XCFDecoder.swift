@@ -127,8 +127,19 @@ enum XCFDecoder {
             layers.append(p)
         }
         file.minPointer = reader.offset
+        guard Set(layers).count == layers.count else { throw OwnDecodeError.corrupt }  // GIMP writes each layer once
 
-        var canvas = try LayerCanvas(width: h.width, height: h.height)
+        // Each 64 × 64 tile (16 KiB of RGBA) costs at least its 4-byte pointer in the file, so a file can't
+        // make us allocate and fill more than 4096 bytes per byte it has, canvas and layers together.
+        // shortcut: a real file with a huge canvas and only tiny layers is refused too, allow it if one shows up.
+        var budget = data.count * 4096
+        func spend(_ width: Int, _ height: Int) throws {
+            budget -= width * height * 4
+            guard budget >= 0 else { throw OwnDecodeError.corrupt }
+        }
+        let (width, height) = try checkedSize(h.width, h.height)
+        try spend(width, height)
+        var canvas = try LayerCanvas(width: width, height: height)
         for pointer in layers.reversed() {  // the list is topmost first
             let layer = try file.layer(at: pointer, version: h.version)
             // Children of a group are inside the group's projection; only top-level items are drawn.
@@ -140,6 +151,7 @@ enum XCFDecoder {
             let y0 = max(0, -layer.y), y1 = min(layer.height, h.height - layer.y)
             guard x0 < x1, y0 < y1 else { continue }
             let region = Region(x0: x0, y0: y0, x1: x1, y1: y1)
+            try spend(region.width, region.height)
             let precision = layer.type >= 4 ? Precision() : h.precision  // indexed is always 8-bit
             var image = try file.pixels(of: layer, region: region, precision: precision)
             if layer.mask != 0, layer.applyMask {

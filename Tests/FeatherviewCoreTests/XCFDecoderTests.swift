@@ -358,6 +358,45 @@ struct XCFBuilder {
         #expect(throws: OwnDecodeError.self) { try XCFDecoder.decode(Data(bytes)) }
     }
 
+    /// A v0 RGB file by hand: `layers` lists each layer record by index, every record is
+    /// `layer` × `layer` and shares one hierarchy whose tile list starts with 0 (all tiles empty).
+    static func tiny(canvas: Int, layer: Int, records: Int, layers: [Int]) -> Data {
+        let listEnd = 34 + 4 * layers.count + 8, recordSize = 32
+        let hierarchy = listEnd + records * recordSize
+        var bytes = Array("gimp xcf file\0".utf8) + B.be32(canvas) + B.be32(canvas) + B.be32(0) + B.be32(0) + B.be32(0)
+        for i in layers { bytes += B.be32(listEnd + i * recordSize) }
+        bytes += B.be32(0) + B.be32(0)
+        for _ in 0..<records {
+            bytes += B.be32(layer) + B.be32(layer) + B.be32(0) + B.be32(0) + B.be32(0) + B.be32(0) + B.be32(hierarchy) + B.be32(0)
+        }
+        bytes += B.be32(layer) + B.be32(layer) + B.be32(3) + B.be32(hierarchy + 20) + B.be32(0)
+        bytes += B.be32(layer) + B.be32(layer) + B.be32(0)
+        return Data(bytes)
+    }
+
+    /// Not #expect(throws:): an image returned by mistake would be printed, all of its bytes.
+    static func refused(_ data: Data) -> Bool {
+        do { _ = try XCFDecoder.decode(data); return false } catch OwnDecodeError.corrupt { return true } catch { return false }
+    }
+
+    @Test func tinyFileCantClaimAHugeCanvas() throws {
+        #expect(Self.refused(Self.tiny(canvas: 16384, layer: 1, records: 0, layers: [])))
+        #expect(Self.refused(Self.tiny(canvas: 16384, layer: 16384, records: 1, layers: [0])))
+        // A small canvas with an empty RGB layer is still a valid image: opaque black.
+        let image = try XCFDecoder.decode(Self.tiny(canvas: 8, layer: 8, records: 1, layers: [0]))
+        #expect(image.width == 8 && image.pixels[0] == 0 && image.pixels[3] == 255)
+    }
+
+    @Test func repeatedLayerPointerThrows() throws {
+        let built = Self.twoLayers.build()
+        let data = Self.patched(built, slot: built.layerPointerSlots[1], to: built.layerOffsets[0])
+        #expect(throws: OwnDecodeError.corrupt) { try XCFDecoder.decode(data) }
+    }
+
+    @Test func manyLayersSharingOneHierarchyThrow() throws {
+        #expect(Self.refused(Self.tiny(canvas: 1024, layer: 1024, records: 100, layers: Array(0..<100))))
+    }
+
     @Test func unknownCompressionThrows() throws {
         var file = B(width: 1, height: 1, compression: 3)
         file.layers = [.init(width: 1, height: 1, pixels: [1, 2, 3, 4])]
