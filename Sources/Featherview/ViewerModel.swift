@@ -158,7 +158,6 @@ final class ViewerModel {
     /// A file shows at once; its folder is scanned off the main thread meanwhile, because a big
     /// folder takes longer to list and sort than the image takes to decode.
     func open(_ url: URL) {
-        revealWindow()
         openTask?.cancel()
         isOpening = true
         closeChooser()
@@ -225,6 +224,8 @@ final class ViewerModel {
                 errorMessage = "Can't open \(url.lastPathComponent)"
             }
         }
+        // Only now: shown earlier, the view sees no image and !isOpening and builds the toolbar (~150 ms) first.
+        revealWindow()
     }
 
     func next() {
