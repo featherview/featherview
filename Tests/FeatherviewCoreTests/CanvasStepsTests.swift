@@ -178,7 +178,29 @@ import Testing
         let image = framed(width: 2400, height: 1600, picture: CGRect(x: 600, y: 400, width: 1200, height: 800))
         let out = AutoCropStep.apply(image)
         #expect(out.extent.origin == .zero)
-        #expect(abs(out.extent.width - 1200) <= 3 && abs(out.extent.height - 800) <= 3)
+        #expect(out.extent.size == CGSize(width: 1200, height: 800))
+    }
+
+    /// Shrinking must not average a thin, faint line near the edge into the border and cut it off.
+    @Test(arguments: [100, 104, 106])
+    func autoCropKeepsThinLineNearTheEdge(x: Int) throws {
+        func box(_ v: CGFloat, _ r: CGRect) -> CIImage {
+            CIImage(color: CIColor(red: v, green: v, blue: v, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)!).cropped(to: r)
+        }
+        let image = box(230.0 / 255, CGRect(x: x, y: 0, width: 1, height: 400))
+            .composited(over: PipelineFixtures.solid(red, width: 3000, height: 400).transformed(by: .init(translationX: 1500, y: 0)))
+            .composited(over: box(1, CGRect(x: 0, y: 0, width: 6000, height: 400)))
+        let out = AutoCropStep.apply(image)
+        #expect(out.extent == CGRect(x: 0, y: 0, width: 4500 - x, height: 400))
+    }
+
+    @Test func autoCropKeepsThinLineNearTheBottom() throws {
+        let grey = CIColor(red: 0.9, green: 0.9, blue: 0.9, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)!
+        // Core Image's y = 3 is the fourth row from the bottom.
+        let image = CIImage(color: grey).cropped(to: CGRect(x: 0, y: 3, width: 400, height: 1))
+            .composited(over: PipelineFixtures.solid(red, width: 400, height: 3000).transformed(by: .init(translationX: 0, y: 1500)))
+            .composited(over: PipelineFixtures.solid(.white, width: 400, height: 6000))
+        #expect(AutoCropStep.apply(image).extent == CGRect(x: 0, y: 0, width: 400, height: 4497))
     }
 
     @Test func canvasRunsAutoCropFirst() throws {
