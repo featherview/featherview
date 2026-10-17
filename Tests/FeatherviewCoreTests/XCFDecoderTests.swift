@@ -379,12 +379,26 @@ struct XCFBuilder {
         do { _ = try XCFDecoder.decode(data); return false } catch OwnDecodeError.corrupt { return true } catch { return false }
     }
 
-    @Test func tinyFileCantClaimAHugeCanvas() throws {
-        #expect(Self.refused(Self.tiny(canvas: 16384, layer: 1, records: 0, layers: [])))
-        #expect(Self.refused(Self.tiny(canvas: 16384, layer: 16384, records: 1, layers: [0])))
-        // A small canvas with an empty RGB layer is still a valid image: opaque black.
-        let image = try XCFDecoder.decode(Self.tiny(canvas: 8, layer: 8, records: 1, layers: [0]))
-        #expect(image.width == 8 && image.pixels[0] == 0 && image.pixels[3] == 255)
+    @Test func largeCanvasWithOnlyASmallLayerOpens() throws {
+        var file = B(width: 3000, height: 3000, compression: 1)
+        file.layers = [.init(width: 300, height: 80, pixels: Self.solid(300, 80, [1, 2, 3, 255]), x: 10, y: 20)]
+        #expect(file.data.count < 8192)
+        let image = try XCFDecoder.decode(file.data)
+        #expect(image[10, 20] == (1, 2, 3, 255) && image[2999, 2999].a == 0)
+    }
+
+    /// GIMP stops at a 0 in a tile list and leaves the rest empty: those tiles cost no bytes, so they aren't drawn.
+    @Test func missingTilesAreNotDrawn() throws {
+        #expect(try XCFDecoder.decode(Self.tiny(canvas: 8, layer: 8, records: 1, layers: [0])).pixels.allSatisfy { $0 == 0 })
+        var file = B(width: 70, height: 66)
+        file.layers = [.init(width: 70, height: 66, type: 0, pixels: Self.solid(70, 66, [9, 8, 7]))]
+        let built = file.build()
+        let image = try XCFDecoder.decode(Self.patched(built, slot: built.tilePointerSlots[1], to: 0))
+        #expect(image[63, 63] == (9, 8, 7, 255) && image[64, 0].a == 0 && image[0, 64].a == 0 && image[69, 65].a == 0)
+    }
+
+    @Test func layersSharingAHierarchyThrow() throws {
+        #expect(Self.refused(Self.tiny(canvas: 8, layer: 8, records: 2, layers: [0, 1])))
     }
 
     @Test func repeatedLayerPointerThrows() throws {

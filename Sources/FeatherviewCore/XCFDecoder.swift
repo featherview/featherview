@@ -105,6 +105,9 @@ enum XCFDecoder {
         var width = 0, height = 0, type = 0, x = 0, y = 0
         var visible = true, opacity = 1.0, applyMask = true, depth = 1
         var hierarchy = 0, mask = 0
+
+        /// Bytes per pixel in a tile: colour components, then alpha, each at the precision.
+        func bpp(_ precision: Precision) -> Int { ((type / 2 == 0 ? 3 : 1) + type % 2) * precision.bytes }
     }
 
     static func decode(_ data: Data) throws -> RGBAImage {
@@ -129,16 +132,11 @@ enum XCFDecoder {
         file.minPointer = reader.offset
         guard Set(layers).count == layers.count else { throw OwnDecodeError.corrupt }  // GIMP writes each layer once
 
-        // Each 64 × 64 tile (16 KiB of RGBA) costs at least its 4-byte pointer in the file, so a file can't
-        // make us allocate and fill more than 4096 bytes per byte it has, canvas and layers together.
-        // shortcut: a real file with a huge canvas and only tiny layers is refused too, allow it if one shows up.
-        var budget = data.count * 4096
-        func spend(_ width: Int, _ height: Int) throws {
-            budget -= width * height * 4
-            guard budget >= 0 else { throw OwnDecodeError.corrupt }
-        }
+        // Only the stored tiles of a layer are decoded and drawn, and each 64 × 64 tile (16 KiB of RGBA) costs at
+        // least its 4-byte pointer, so layers can't make us fill much more than 4096 bytes per byte of the file.
+        // The canvas isn't charged: it has no tiles, and checkedSize caps it.
+        var budget = data.count * 4096, hierarchies: Set<Int> = []
         let (width, height) = try checkedSize(h.width, h.height)
-        try spend(width, height)
         var canvas = try LayerCanvas(width: width, height: height)
         for pointer in layers.reversed() {  // the list is topmost first
             let layer = try file.layer(at: pointer, version: h.version)
@@ -147,13 +145,21 @@ enum XCFDecoder {
             _ = try checkedSize(layer.width, layer.height)
             guard layer.type <= 5 else { throw OwnDecodeError.unsupported }
             // Only the part of the layer on the canvas is decoded, so memory stays at the canvas size.
-            let x0 = max(0, -layer.x), x1 = min(layer.width, h.width - layer.x)
-            let y0 = max(0, -layer.y), y1 = min(layer.height, h.height - layer.y)
+            // GIMP writes each hierarchy once; shared ones would draw tiles the file paid for once many times.
+            guard hierarchies.insert(layer.hierarchy).inserted else { throw OwnDecodeError.corrupt }
+            let precision = layer.type >= 4 ? Precision() : h.precision  // indexed is always 8-bit
+            let pointers = try file.tilePointers(of: layer.hierarchy, width: layer.width, height: layer.height,
+                                                 bpp: layer.bpp(precision))
+            // Stored tiles come first in row-major order: clip to the rows (and, within the first row, the
+            // columns) they cover; the empty rest isn't drawn.
+            let columns = (layer.width + 63) / 64, rows = (pointers.count + columns - 1) / columns
+            let x0 = max(0, -layer.x), x1 = min(layer.width, h.width - layer.x, rows > 1 ? .max : pointers.count * 64)
+            let y0 = max(0, -layer.y), y1 = min(layer.height, h.height - layer.y, rows * 64)
             guard x0 < x1, y0 < y1 else { continue }
             let region = Region(x0: x0, y0: y0, x1: x1, y1: y1)
-            try spend(region.width, region.height)
-            let precision = layer.type >= 4 ? Precision() : h.precision  // indexed is always 8-bit
-            var image = try file.pixels(of: layer, region: region, precision: precision)
+            budget -= region.width * region.height * 4
+            guard budget >= 0 else { throw OwnDecodeError.corrupt }
+            var image = try file.pixels(of: layer, pointers: pointers, region: region, precision: precision)
             if layer.mask != 0, layer.applyMask {
                 try file.applyMask(at: layer.mask, of: layer, region: region, precision: precision, to: &image)
             }
@@ -212,10 +218,8 @@ enum XCFDecoder {
             return layer
         }
 
-        /// Calls `body` with each tile that overlaps `region` (layer coordinates), its bytes interleaved
-        /// per pixel, its size and its top-left corner.
-        func tiles(of pointer: Int, width: Int, height: Int, bpp: Int, region: Region,
-                   _ body: (_ tile: UnsafeBufferPointer<UInt8>, _ width: Int, _ height: Int, _ x: Int, _ y: Int) throws -> Void) throws {
+        /// The offsets of a hierarchy's stored tiles, row-major.
+        func tilePointers(of pointer: Int, width: Int, height: Int, bpp: Int) throws -> [Int] {
             var r = try reader(at: pointer)
             guard try r.u32be() == width, try r.u32be() == height, try r.u32be() == bpp else { throw OwnDecodeError.corrupt }
             r = try reader(at: try self.pointer(&r))  // first level only
@@ -229,6 +233,14 @@ enum XCFDecoder {
                 guard p >= minPointer, p > (pointers.last ?? -1), data.count > p else { throw OwnDecodeError.corrupt }
                 pointers.append(p)
             }
+            return pointers
+        }
+
+        /// Calls `body` with each tile that overlaps `region` (layer coordinates), its bytes interleaved
+        /// per pixel, its size and its top-left corner. Tiles past the stored ones are empty (all zero).
+        func tiles(_ pointers: [Int], width: Int, height: Int, bpp: Int, region: Region,
+                   _ body: (_ tile: UnsafeBufferPointer<UInt8>, _ width: Int, _ height: Int, _ x: Int, _ y: Int) throws -> Void) throws {
+            let columns = (width + 63) / 64, rows = (height + 63) / 64
             var tile = [UInt8](repeating: 0, count: 64 * 64 * bpp)
             try data.withUnsafeBytes { (file: UnsafeRawBufferPointer) in
                 let bytes = file.bindMemory(to: UInt8.self)
@@ -264,14 +276,14 @@ enum XCFDecoder {
             }
         }
 
-        func pixels(of layer: Layer, region: Region, precision: Precision) throws -> RGBAImage {
+        func pixels(of layer: Layer, pointers: [Int], region: Region, precision: Precision) throws -> RGBAImage {
             let colours = layer.type / 2 == 0 ? 3 : 1, hasAlpha = layer.type % 2 == 1, isIndexed = layer.type >= 4
-            let components = colours + (hasAlpha ? 1 : 0), bpp = components * precision.bytes
+            let bpp = layer.bpp(precision)
             var image = RGBAImage(width: region.width, height: region.height,
                                   pixels: [UInt8](repeating: 255, count: region.width * region.height * 4))
             let palette = self.palette
             try image.pixels.withUnsafeMutableBufferPointer { out in
-                try tiles(of: layer.hierarchy, width: layer.width, height: layer.height, bpp: bpp, region: region) { tile, tw, th, tx, ty in
+                try tiles(pointers, width: layer.width, height: layer.height, bpp: bpp, region: region) { tile, tw, th, tx, ty in
                     for y in max(ty, region.y0)..<min(ty + th, region.y1) {
                         for x in max(tx, region.x0)..<min(tx + tw, region.x1) {
                             let s = ((y - ty) * tw + (x - tx)) * bpp
@@ -301,9 +313,9 @@ enum XCFDecoder {
             guard try r.u32be() == layer.width, try r.u32be() == layer.height else { throw OwnDecodeError.corrupt }
             try skipString(&r)
             try properties(&r, version: 0) { _, _ in }
-            let hierarchy = try self.pointer(&r)
+            let pointers = try tilePointers(of: try self.pointer(&r), width: layer.width, height: layer.height, bpp: precision.bytes)
             try image.pixels.withUnsafeMutableBufferPointer { out in
-                try tiles(of: hierarchy, width: layer.width, height: layer.height, bpp: precision.bytes, region: region) { tile, tw, th, tx, ty in
+                try tiles(pointers, width: layer.width, height: layer.height, bpp: precision.bytes, region: region) { tile, tw, th, tx, ty in
                     for y in max(ty, region.y0)..<min(ty + th, region.y1) {
                         for x in max(tx, region.x0)..<min(tx + tw, region.x1) {
                             let mask = Int(byte(tile, ((y - ty) * tw + (x - tx)) * precision.bytes, precision, colour: false))
