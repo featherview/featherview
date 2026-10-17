@@ -304,10 +304,10 @@ Part two of the zoom finding. Today every `.factor` zoom decodes full size (`Vie
   step, not ±2: these images are large.
 - Bench: add a `zoom` row per 50 MP file at factors 0.25, 0.5 and 1.0.
 
-- [ ] Interfaces + failing tests (step choice per factor, no re-decode within a step)
-- [ ] Viewer: target per factor; prefetch ±1 while zoomed
-- [ ] Bench before/after; by hand: browse 50 MP images at 50 % zoom, next image shows without waiting for a full decode
-- [ ] Commit: `perf: zoom decodes at the step it shows and prefetches while zoomed`
+- [x] Interfaces + failing tests (step choice per factor, no re-decode within a step)
+- [x] Viewer: target per factor; prefetch ±1 while zoomed
+- [ ] Bench before/after (done, see Measurements); by hand: browse 50 MP images at 50 % zoom, next image shows without waiting for a full decode
+- [x] Commit: `perf: zoom decodes at the step it shows and prefetches while zoomed`
 
 ### Task 6: Decode scheduling and a byte budget, together
 
@@ -372,6 +372,7 @@ Same Mac, same command, release build. Fill in per task; never edit an earlier r
 | 3 (after) | task-3 | Apple M1 Pro, 32 GB / macOS 27.0.1 | `featherview-bench decode <dir> --baseline build/bench/baseline-task1.json` | Portrait on 3024x1964 now at ½: 12 MP JPEG 83.0 → 33.7 ms (48.8 → 12.2 MB), EXIF-6 JPEG 111.3 → 42.1 ms, 12 MP HEIC 231.8 → 123.0 ms, 50 MP portrait 128.4 → 71.5 ms (50.3 → 12.6 MB). 5120x2880: 50 MP landscape 359.0 → 128.7 ms and portrait 336.5 → 123.3 ms, both at ½ (201.3 → 50.3 MB). Landscape 12 MP and portrait on 3456x2234 decode the same size as before (2234 > 2016 needs full). Only `--baseline` flag: 12 MP landscape JPEG full 81.8 → 90.9 ms, a path this task doesn't change; load average 4–6 from other builds during the run (a first run under more load flagged every landscape row). JSON: `build/bench/after-task3.json` |
 | 3 (after) | task-3 | Apple M1 Pro, 32 GB / macOS 27.0.1 | `featherview-bench browse <dir>/browse --interval-ms 300` | 40 returned, 0 superseded; cached 39: median 0.2 ms, p95 0.7 ms; not cached 1: 114 ms; peak cache 243 MB decoded (was 390), footprint 8 MB |
 | 6 (gate) | f98ea83 | Apple M1 Pro, 32 GB / macOS 27.0.1 | `featherview-bench browse <dir>/browse --interval-ms 30`, 6 runs | Runs 2–6: 19–20 of 40 returned, every other image shown from cache (0.1 ms), the rest superseded; not cached 33–35 ms, the same as one fit decode, so no stale work delays the current image. Run 1 (cold disk, load average 4): 1 of 40 returned, 41 ms. Peak cache 243 MB decoded, footprint 214–272 MB. No queueing problem: Task 6 stops here per its gate, reported to the maintainer |
+| 5 (after) | 4a2ffd0 | Apple M1 Pro, 32 GB / macOS 27.0.1 | `featherview-bench decode <dir>`, zoom rows, 5 runs, load average ~5.6 | Before: every zoom decoded full size, ~355 ms, 201.3 MB. After, 50 MP landscape: 0.25 → 2172×1448 66 ms 12.6 MB; 0.5 → 4344×2896 121 ms 50.3 MB; 1.0 → full 354 ms 201.3 MB. 50 MP portrait: 0.25 → 71 ms 12.6 MB; 0.5 → 120 ms 50.3 MB. Steps above fit size use the 1-image cache and aren't prefetched |
 | 2 (before/after) | de75b16 → b3bc7d6 | Apple M1 Pro, 32 GB / macOS 27.0.1 | App, `browse/`, 39 × → at 300 ms (accessibility key events), `Navigate` from `sudo log show --signpost` | Navigate p50 23.5 → 25.0 ms, p95 41.0 → 36.0 ms, max 173 → 170 ms (n = 40 each): no measurable gain. All four signposts appear (Scan 3 ms for 40 files, Decode, Navigate, FirstImage) |
 
 Memory baseline for Task 6 is "peak cache … MB decoded" (`bytesPerRow × height`, what the byte budget counts); the footprint misses purgeable decoded images and is only a side number.
