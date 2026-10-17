@@ -33,6 +33,8 @@ struct ImageCanvas: NSViewRepresentable {
     let image: CGImage
     /// Size in points the image is drawn at.
     let size: CGSize
+    /// The file's pixel width the image stands for (wider than `image` while a smaller decode shows).
+    let pixelWidth: Double
     let displayScale: Double
     let background: NSColor
     let checkerboard: Bool
@@ -70,7 +72,7 @@ struct ImageCanvas: NSViewRepresentable {
         let centre = CGPoint(x: oldSize.width > 0 ? visible.midX / oldSize.width : 0.5,
                              y: oldSize.height > 0 ? visible.midY / oldSize.height : 0.5)
         view.show(image, checkerboard: checkerboard && image.hasAlpha, 
-                  smooth: !ZoomSteps.showsPixels(drawnWidth: size.width, imageWidth: image.width, displayScale: displayScale))
+                  smooth: !ZoomSteps.showsPixels(drawnWidth: size.width, imageWidth: Int(pixelWidth), displayScale: displayScale))
         if oldSize != size {
             view.frame.size = size
             moveVisibleOrigin(scrollView, to: CGPoint(x: centre.x * size.width - visible.width / 2,

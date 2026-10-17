@@ -34,4 +34,48 @@ import Testing
         #expect(ZoomSteps.showsPixels(drawnWidth: 2000, imageWidth: 1000, displayScale: 1))
         #expect(!ZoomSteps.showsPixels(drawnWidth: 1500, imageWidth: 1000, displayScale: 1))
     }
+
+    private func near(_ a: CGSize, _ b: CGSize) -> Bool { abs(a.width - b.width) < 1e-6 && abs(a.height - b.height) < 1e-6 }
+
+    @Test func zoomDrawSizeUsesFullPixels() {
+        let size = ZoomSteps.drawSize(decoded: CGSize(width: 4344, height: 2896), full: CGSize(width: 8688, height: 5792),
+                                      factor: 0.44, view: CGSize(width: 1500, height: 900), displayScale: 2)
+        #expect(near(size, CGSize(width: 1911.36, height: 1274.24)))
+    }
+
+    @Test func zoomDrawSizeWithoutFullUsesDecoded() {
+        let size = ZoomSteps.drawSize(decoded: CGSize(width: 4344, height: 2896), full: nil,
+                                      factor: 0.44, view: CGSize(width: 1500, height: 900), displayScale: 2)
+        #expect(near(size, CGSize(width: 955.68, height: 637.12)))
+    }
+
+    @Test func fitDrawSizeIsUnchanged() {
+        // Small image: never enlarged.
+        #expect(ZoomSteps.drawSize(decoded: CGSize(width: 400, height: 300), full: CGSize(width: 400, height: 300),
+                                   factor: nil, view: CGSize(width: 1500, height: 900), displayScale: 2)
+                == CGSize(width: 200, height: 150))
+        // Large image: shrunk to the view, from the decoded pixels, rounded.
+        #expect(ZoomSteps.drawSize(decoded: CGSize(width: 4344, height: 2896), full: CGSize(width: 8688, height: 5792),
+                                   factor: nil, view: CGSize(width: 1500, height: 900), displayScale: 2)
+                == CGSize(width: 1350, height: 900))
+    }
+
+    @Test func placeholderSmoothsAtActualSizeOfTheFullFile() {
+        // Half-size fit decode of an 8688 px file at 100 %: drawn 4344 pt on Retina is 1×, so smoothed.
+        let pixels = ZoomSteps.pixelSize(decoded: CGSize(width: 4344, height: 2896), full: CGSize(width: 8688, height: 5792))
+        #expect(pixels == CGSize(width: 8688, height: 5792))
+        #expect(!ZoomSteps.showsPixels(drawnWidth: 4344, imageWidth: Int(pixels.width), displayScale: 2))
+    }
+
+    @Test func staleFullSizeFromBeforeARotationIsIgnored() {
+        // The file info read before R still says landscape; the rotated decode is portrait.
+        #expect(ZoomSteps.pixelSize(decoded: CGSize(width: 2896, height: 4344), full: CGSize(width: 4344, height: 2896))
+                == CGSize(width: 2896, height: 4344))
+        #expect(ZoomSteps.drawSize(decoded: CGSize(width: 2896, height: 4344), full: CGSize(width: 4344, height: 2896),
+                                   factor: 1, view: CGSize(width: 1500, height: 900), displayScale: 2)
+                == CGSize(width: 1448, height: 2172))
+        // A decode step rounds each side; that still counts as the same file.
+        #expect(ZoomSteps.pixelSize(decoded: CGSize(width: 543, height: 362), full: CGSize(width: 4345, height: 2897))
+                == CGSize(width: 4345, height: 2897))
+    }
 }
