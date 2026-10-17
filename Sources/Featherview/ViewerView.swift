@@ -302,7 +302,7 @@ struct OpenWithMenu: View {
                     model?.openWith(index)
                 }
                 .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .option)
-                .disabled(path.isEmpty || model?.list.current == nil)
+                .disabled(path.isEmpty || model?.availability.hasCurrent != true)
             }
         }
     }
@@ -392,7 +392,7 @@ struct ViewerCommands: Commands {
         CommandGroup(after: .newItem) {
             Button("Save As…  (S)") { model?.saveAs() }
                 .keyboardShortcut("s", modifiers: [.command, .shift])
-                .disabled(model?.list.current == nil || model?.list.isHolding == true)
+                .disabled(model?.availability.canChangeFile != true)
         }
         CommandGroup(replacing: .pasteboard) {
             // Text fields and selected text (batch window, Info panel) keep their own Copy and Paste.
