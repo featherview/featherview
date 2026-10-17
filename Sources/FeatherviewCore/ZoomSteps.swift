@@ -21,6 +21,15 @@ public enum ZoomSteps {
         min(max(factor * multiplier, range.lowerBound), range.upperBound)
     }
 
+    /// The file's pixel size `decoded` stands for: `full` when it has the same proportions, else `decoded`
+    /// (a size read before a rotation would draw the rotated image stretched).
+    public static func pixelSize(decoded: CGSize, full: CGSize?) -> CGSize {
+        guard let full else { return decoded }
+        // A decode step rounds each side by up to a pixel, so the cross products differ by at most this much.
+        let sameShape = abs(full.width * decoded.height - full.height * decoded.width) <= full.width + full.height
+        return sameShape ? full : decoded
+    }
+
     /// Points to draw `decoded` at. Fit: shrink to `view`, never enlarge (as today, from `decoded`).
     /// Factor: from `full` (the file's displayed pixel size) when known, so a smaller decode shown
     /// while the full one loads already has its final size; from `decoded` when `full` is nil.
@@ -31,7 +40,7 @@ public enum ZoomSteps {
             let scale = min(1, view.width / max(points.width, 1), view.height / max(points.height, 1))
             return CGSize(width: (points.width * scale).rounded(), height: (points.height * scale).rounded())
         }
-        let pixels = full ?? decoded
+        let pixels = pixelSize(decoded: decoded, full: full)
         return CGSize(width: pixels.width / displayScale * factor, height: pixels.height / displayScale * factor)
     }
 }

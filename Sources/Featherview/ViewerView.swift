@@ -31,7 +31,8 @@ struct ViewerView: View {
         ZStack {
             background.ignoresSafeArea()
             if let image = model.image {
-                ImageCanvas(image: image, size: drawSize(image), displayScale: displayScale, background: backgroundNSColor,
+                ImageCanvas(image: image, size: drawSize(image), pixelWidth: pixelSize(image).width,
+                            displayScale: displayScale, background: backgroundNSColor,
                             checkerboard: checkerboard, panController: panController,
                             onDoubleClick: model.toggleFullScreen, onClick: { focused = true },
                             onFirstDraw: { toolbarReady = true; model.firstImageDrawn() },
@@ -127,11 +128,20 @@ struct ViewerView: View {
     /// Fit shrinks large images to the view; a zoom factor scales the file's full pixel size, so a smaller
     /// decode shown while the full one loads already has its final size (never another file's size).
     private func drawSize(_ image: CGImage) -> CGSize {
-        let info = model.fileInfo
-        let full = info?.isFor(model.list.current, page: model.page) == true ? info?.pixelSize : nil
         let factor: Double? = if case .factor(let factor) = model.zoom { factor } else { nil }
-        return ZoomSteps.drawSize(decoded: CGSize(width: image.width, height: image.height), full: full,
+        return ZoomSteps.drawSize(decoded: CGSize(width: image.width, height: image.height), full: fullSize,
                                   factor: factor, view: model.viewSize, displayScale: displayScale)
+    }
+
+    /// The file's pixel size, for the current file and page only (never another file's size).
+    private var fullSize: CGSize? {
+        let info = model.fileInfo
+        return info?.isFor(model.list.current, page: model.page) == true ? info?.pixelSize : nil
+    }
+
+    /// The pixels `image` stands for, so a smaller decode is smoothed or not as the full one will be.
+    private func pixelSize(_ image: CGImage) -> CGSize {
+        ZoomSteps.pixelSize(decoded: CGSize(width: image.width, height: image.height), full: fullSize)
     }
 
     private func hidePointerInFullScreen() {
