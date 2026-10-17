@@ -23,17 +23,28 @@ public enum PipelineRender {
         let rect = extent.integral
         let width = Int(rect.width), height = Int(rect.height), bytesPerRow = width * 4
         let space = CGColorSpace(name: CGColorSpace.sRGB)!
-        // Core Image always writes RGBA8 premultiplied (an `unpremultiplyingAlpha()` before the render is
-        // undone after any filter), so the bytes are un-premultiplied here.
+        // Core Image always writes premultiplied (an `unpremultiplyingAlpha()` before the render is undone
+        // after any filter), so it renders float strips that are un-premultiplied here before rounding to
+        // 8 bits: faint pixels keep their colour. Strips bound the float buffer for large images.
+        let stripRows = max(1, min(height, (1 << 20) / width))
+        var strip = [Float](repeating: 0, count: width * stripRows * 4)
         var data = Data(count: bytesPerRow * height)
         data.withUnsafeMutableBytes { buffer in
-            context.render(image, toBitmap: buffer.baseAddress!, rowBytes: bytesPerRow,
-                           bounds: rect, format: .RGBA8, colorSpace: space)
-            let p = buffer.bindMemory(to: UInt8.self)
-            for i in stride(from: 0, to: p.count, by: 4) {
-                let alpha = Int(p[i + 3])
-                guard alpha > 0, alpha < 255 else { continue }
-                for c in 0..<3 { p[i + c] = UInt8(min(255, (Int(p[i + c]) * 255 + alpha / 2) / alpha)) }
+            let out = buffer.bindMemory(to: UInt8.self)
+            for top in stride(from: 0, to: height, by: stripRows) {
+                let rows = min(stripRows, height - top)
+                let bounds = CGRect(x: rect.minX, y: rect.maxY - CGFloat(top + rows), width: rect.width, height: CGFloat(rows))
+                strip.withUnsafeMutableBytes { f in
+                    context.render(image, toBitmap: f.baseAddress!, rowBytes: width * 16, bounds: bounds,
+                                   format: .RGBAf, colorSpace: space)
+                }
+                let base = top * bytesPerRow
+                for i in stride(from: 0, to: rows * width * 4, by: 4) {
+                    let alpha = min(1, max(0, strip[i + 3]))
+                    out[base + i + 3] = UInt8((alpha * 255).rounded())
+                    guard alpha > 0 else { continue }
+                    for c in 0..<3 { out[base + i + c] = UInt8((min(1, max(0, strip[i + c] / alpha)) * 255).rounded()) }
+                }
             }
         }
         guard let provider = CGDataProvider(data: data as CFData),
