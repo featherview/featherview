@@ -2,10 +2,12 @@ import Foundation
 
 /// The batch window's images column: files and folders the user added, in the order they'll run.
 public struct BatchInputList: Equatable, Sendable {
-    public private(set) var items: [BatchInput]
+    public private(set) var items: [BatchInput] = []
+    /// `pathKey` of every item, kept so an add resolves only the incoming paths (it hits the disk).
+    private var keys: Set<String> = []
 
     public init(_ items: [BatchInput] = []) {
-        self.items = items
+        append(items)
     }
 
     /// Appends in Finder order; skips files already in the list (same resolved path) and
@@ -53,18 +55,20 @@ public struct BatchInputList: Equatable, Sendable {
 
     /// Same de-duplication as `add(files:)`.
     public mutating func append(_ inputs: [BatchInput]) {
-        var seen = Set(items.map { pathKey($0.url) })
-        for input in inputs where seen.insert(pathKey(input.url)).inserted {
+        for input in inputs where keys.insert(pathKey(input.url)).inserted {
             items.append(input)
         }
     }
 
     public mutating func remove(at offsets: IndexSet) {
-        for index in offsets.reversed() where items.indices.contains(index) { items.remove(at: index) }
+        for index in offsets.reversed() where items.indices.contains(index) {
+            keys.remove(pathKey(items.remove(at: index).url))
+        }
     }
 
     public mutating func removeAll() {
         items.removeAll()
+        keys.removeAll()
     }
 
     /// Finder order of the file names, stable.

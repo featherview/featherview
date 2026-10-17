@@ -113,6 +113,23 @@ import Testing
         BatchInputList(names.map { BatchInput(url: URL(fileURLWithPath: "/tmp/\($0)")) })
     }
 
+    @Test func appendDoesNotResolveItemsAlreadyInTheList() {
+        // 20,000 rows: resolving every existing path per add took ~260 ms per call.
+        var l = BatchInputList((0..<20_000).map { BatchInput(url: URL(fileURLWithPath: "/tmp/batch-perf/\($0).jpg")) })
+        let start = ContinuousClock.now
+        for i in 0..<20 { l.append([BatchInput(url: URL(fileURLWithPath: "/tmp/batch-perf/new\(i).jpg"))]) }
+        #expect(ContinuousClock.now - start < .seconds(1))
+        #expect(l.items.count == 20_020)
+        l.append([BatchInput(url: URL(fileURLWithPath: "/tmp/batch-perf/5.jpg"))])
+        #expect(l.items.count == 20_020)
+        l.remove(at: [5])
+        l.append([BatchInput(url: URL(fileURLWithPath: "/tmp/batch-perf/5.jpg"))])
+        #expect(l.items.count == 20_020)
+        l.removeAll()
+        l.append([BatchInput(url: URL(fileURLWithPath: "/tmp/batch-perf/5.jpg"))])
+        #expect(l.items.count == 1)
+    }
+
     @Test func removeAndRemoveAll() {
         var l = list(["a", "b", "c", "d"])
         l.remove(at: [1, 3])
