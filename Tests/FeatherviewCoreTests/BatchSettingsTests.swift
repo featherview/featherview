@@ -175,4 +175,19 @@ import Testing
         defaults.set(Data("garbage".utf8), forKey: "batchSettings")
         #expect(BatchPresets.current(in: defaults) == BatchSettings())
     }
+
+    @Test func unreadablePresetStoreIsNeverOverwritten() throws {
+        let (defaults, name) = freshDefaults()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let future = Data(#"{"version":2,"presets":{"A":{}}}"#.utf8)
+        for blob: Any in [future, Data("garbage".utf8), "a string"] {
+            defaults.set(blob, forKey: "batchPresets")
+            #expect(BatchPresets.save("B", BatchSettings(), in: defaults) == false)
+            #expect(BatchPresets.delete("A", in: defaults) == false)
+            #expect((defaults.object(forKey: "batchPresets") as? NSObject) == (blob as? NSObject))
+        }
+        defaults.removeObject(forKey: "batchPresets")
+        #expect(BatchPresets.save("B", BatchSettings(), in: defaults))
+        #expect(BatchPresets.names(in: defaults) == ["B"])
+    }
 }
