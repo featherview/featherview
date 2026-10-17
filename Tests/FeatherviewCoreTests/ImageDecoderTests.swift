@@ -41,6 +41,38 @@ import UniformTypeIdentifiers
         #expect(ImageDecoder.decodeSize(full: full, target: target) == expected)
     }
 
+    @Test(arguments: [
+        (3024, 4032, [(3024, 1964)], 2016),  // portrait on a landscape screen: the height limits it
+        (4032, 3024, [(3024, 1964)], 4032),
+        (8688, 5792, [(5120, 2880)], 4344),
+        (5792, 8688, [(5120, 2880)], 4344),
+        (40, 20, [(5120, 2880)], 40),        // never upscales
+    ])
+    func fitDecodeSizePerAxis(width: Int, height: Int, screens: [(Int, Int)], expected: Int) {
+        let size = ImageDecoder.fitDecodeSize(image: PixelSize(width: width, height: height),
+                                              screens: screens.map { PixelSize(width: $0.0, height: $0.1) })
+        #expect(size == expected)
+    }
+
+    /// 4032 × 2016 / 4032 is exactly 2016; floating point can give 2016.0000001 and round up to full size.
+    @Test func fitDecodeSizeExactBoundary() {
+        #expect(ImageDecoder.fitDecodeSize(image: PixelSize(width: 3024, height: 4032),
+                                           screens: [PixelSize(width: 3024, height: 2016)]) == 2016)
+    }
+
+    @Test func fitDecodeSizeTakesTheMostDemandingScreen() {
+        let screens = [PixelSize(width: 3024, height: 1964), PixelSize(width: 5120, height: 2880)]
+        #expect(ImageDecoder.fitDecodeSize(image: PixelSize(width: 3024, height: 4032), screens: screens) == 4032)
+    }
+
+    @Test func fitDecodeUsesDisplayedOrientation() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("r.jpg"), width: 4000, height: 2000, orientation: 6)
+        let image = try ImageDecoder.decode(url, halvingSteps: true, fitting: [PixelSize(width: 3000, height: 1000)])
+        #expect(image.width == 500)
+        #expect(image.height == 1000)
+    }
+
     /// Core Animation colour-converts an image on the main thread when it's first shown (≈18 ms for
     /// 12 MP); a display decode in the screen's colour space skips that.
     @Test func displayDecodeComesInTheScreensColorSpace() async throws {
@@ -51,7 +83,7 @@ import UniformTypeIdentifiers
         #expect(image.colorSpace?.name == CGColorSpace.displayP3)
         #expect(image.width == 40)
         let cache = ImageCache(capacity: 1, colorSpace: p3)
-        #expect(try await cache.image(for: url, maxPixelSize: 40).colorSpace?.name == CGColorSpace.displayP3)
+        #expect(try await cache.image(for: url, target: .fit([PixelSize(width: 40, height: 40)])).colorSpace?.name == CGColorSpace.displayP3)
         // Batch and Save As keep the file's colour space.
         #expect(try ImageDecoder.decode(url).colorSpace?.name == CGColorSpace.sRGB)
     }

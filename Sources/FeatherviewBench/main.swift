@@ -33,15 +33,15 @@ struct Screen: Codable, Hashable, CustomStringConvertible {
 
 let displayP3 = CGColorSpace(name: CGColorSpace.displayP3)
 
-/// The longest side the viewer decodes at in fit mode, for these screens (today: the longest side of any).
-func fitPixels(_ screens: [Screen]) -> Int {
-    screens.map { max($0.width, $0.height) }.max() ?? 2560
+/// The screens as the viewer's fit decode takes them.
+func pixelSizes(_ screens: [Screen]) -> [PixelSize] {
+    screens.map { PixelSize(width: $0.width, height: $0.height) }
 }
 
 /// The viewer's fit decode, exactly as `ViewerModel` and `ImageCache` call it. Keep it the one place this call
 /// lives: a change to the fit rule changes only this function, so before and after stay comparable.
 func fitDecode(_ url: URL, screens: [Screen]) throws -> CGImage {
-    try ImageDecoder.decode(url, maxPixelSize: fitPixels(screens), halvingSteps: true,
+    try ImageDecoder.decode(url, halvingSteps: true, fitting: pixelSizes(screens),
                             hdr: ImageDecoder.supportsHDR, colorSpace: displayP3)
 }
 
@@ -169,7 +169,7 @@ struct Step: Sendable {
     let interval = number("--interval-ms", default: 300)
     let urls = imageFiles(in: folder)
     guard !urls.isEmpty else { fail("No images in \(folder.path). Run `corpus` first.") }
-    let size = fitPixels(screen)
+    let target = DecodeTarget.fit(pixelSizes(screen))
     // As ViewerModel sets up its fit cache.
     let cache = ImageCache(capacity: 8, hdr: ImageDecoder.supportsHDR, colorSpace: displayP3)
     var list = ImageList(urls: urls)
@@ -188,12 +188,12 @@ struct Step: Sendable {
         let neighbors = list.neighbors(radius: 2)
         let cached = await cache.contains(url)
         steps.append(Task {
-            let image = try? await cache.image(for: url, maxPixelSize: size)
+            let image = try? await cache.image(for: url, target: target)
             let elapsed = ms(start.duration(to: .now))
             guard image != nil, !Task.isCancelled else {
                 return Step(index: index, file: url.lastPathComponent, cached: cached, ms: nil)
             }
-            await cache.prefetch(neighbors, maxPixelSize: size)
+            await cache.prefetch(neighbors, target: target)
             return Step(index: index, file: url.lastPathComponent, cached: cached, ms: elapsed)
         })
         await sample()

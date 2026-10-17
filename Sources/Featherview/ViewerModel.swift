@@ -93,10 +93,16 @@ final class ViewerModel {
     var destinationPanel: FileOperation?
     var slots = DestinationSlots(defaults: .standard)
 
-    /// Fit mode decodes at screen size (rounded up to a halving step): enough for any window, less memory than full size.
-    private let screenPixels = Int(NSScreen.screens
-        .map { max($0.frame.width, $0.frame.height) * $0.backingScaleFactor }
-        .max() ?? 2560)
+    /// Fit mode decodes to fit every screen, per axis (rounded up to a halving step): enough for any window,
+    /// less memory than full size.
+    /// shortcut: screens are read at launch; a display plugged in later decodes for the old set, re-read on
+    /// `NSApplication.didChangeScreenParametersNotification` if that comes up.
+    private let screens: [PixelSize] = {
+        let screens = NSScreen.screens.map {
+            PixelSize(width: Int($0.frame.width * $0.backingScaleFactor), height: Int($0.frame.height * $0.backingScaleFactor))
+        }
+        return screens.isEmpty ? [PixelSize(width: 2560, height: 1600)] : screens
+    }()
     /// Display decodes come in it, so Core Animation doesn't colour-convert each image on the main thread.
     /// shortcut: the main screen's at launch; on another display CA converts again (slower, and clipped to the first
     /// display's gamut), follow the window's screen if people browse on two displays.
@@ -161,7 +167,7 @@ final class ViewerModel {
         let isFolder = isFolderPath(url)
         openedFolder = isFolder ? url : url.deletingLastPathComponent()
         // Off the main actor: at launch the main thread is busy building the window, the decode needn't wait.
-        let prefetch = zoom != .fit ? nil : screenPixels
+        let prefetch: DecodeTarget? = zoom != .fit ? nil : .fit(screens)
         ready = [:]
         knownInfo = [:]
         // A folder's first image is known only after its scan, so the scan runs here too, alongside the
@@ -170,7 +176,7 @@ final class ViewerModel {
             await cache.removeAll()
             await fullSizeCache.removeAll()
             guard isFolder else {
-                if let prefetch { await cache.prefetch([url], maxPixelSize: prefetch) }
+                if let prefetch { await cache.prefetch([url], target: prefetch) }
                 return nil
             }
             let scan = Result {
@@ -179,7 +185,7 @@ final class ViewerModel {
                 }
             }
             if let prefetch, let first = FolderScanner.firstInFinderOrder((try? scan.get()) ?? []) {
-                await cache.prefetch([first], maxPixelSize: prefetch)
+                await cache.prefetch([first], target: prefetch)
             }
             return scan.map(FolderScanner.inFinderOrder)
         }
@@ -210,9 +216,9 @@ final class ViewerModel {
                 } else if zoom == .fit, prefetchesNeighbors {
                     // show() ran before the neighbours were known; calling it again could restart the decode.
                     let neighbors = list.neighbors(radius: 2)
-                    await cache.prefetch(neighbors, maxPixelSize: screenPixels)
+                    await cache.prefetch(neighbors, target: .fit(screens))
                     guard !Task.isCancelled else { return }
-                    await fillReady(neighbors, maxPixelSize: screenPixels)
+                    await fillReady(neighbors, screens: screens)
                 }
             } catch {
                 guard !Task.isCancelled else { return }
@@ -324,7 +330,7 @@ final class ViewerModel {
             errorMessage = nil  // an old file's error would hide the "Open an image" hint
             return
         }
-        let size: Int? = zoom == .fit ? screenPixels : nil
+        let size: [PixelSize]? = zoom == .fit ? screens : nil
         let neighbors = list.neighbors(radius: 2)
         let started = ContinuousClock.now
         let prefetched = page == 0 && size != nil ? ready[url] : nil
@@ -345,7 +351,7 @@ final class ViewerModel {
                     guard !Task.isCancelled else { return }
                     let space = Self.screenSpace
                     let decode = Task.detached(priority: .userInitiated) {
-                        try ImageDecoder.decode(url, maxPixelSize: size, halvingSteps: true, page: page,
+                        try ImageDecoder.decode(url, halvingSteps: true, fitting: size, page: page,
                                                 hdr: ImageDecoder.supportsHDR, colorSpace: space)
                     }
                     pageDecode = decode
@@ -353,9 +359,11 @@ final class ViewerModel {
                     defer { if pageDecode == decode { pageDecode = nil } }
                     decoded = try await decode.value
                 } else {
-                    decoded = size == nil
-                        ? try await fullSizeCache.image(for: url, maxPixelSize: nil)
-                        : try await cache.image(for: url, maxPixelSize: size)
+                    decoded = if let size {
+                        try await cache.image(for: url, target: .fit(size))
+                    } else {
+                        try await fullSizeCache.image(for: url, target: .full)
+                    }
                 }
                 guard !Task.isCancelled else { return }
                 if prefetched == nil { shown(decoded, url: url, page: page, started: started) }
@@ -382,25 +390,25 @@ final class ViewerModel {
                 errorMessage = "Can't open \(url.lastPathComponent)"
             }
             if let size, page == 0, prefetchesNeighbors {
-                await cache.prefetch(neighbors, maxPixelSize: size)
+                await cache.prefetch(neighbors, target: .fit(size))
                 // A rotation may have dropped ready[url] meanwhile: this task's image is the unrotated one.
                 guard !Task.isCancelled else { return }
                 let wanted = Set(neighbors + [url])
                 knownInfo = knownInfo.filter { wanted.contains($0.key) }
                 ready = ready.filter { wanted.contains($0.key) }
                 if let image, list.current == url { ready[url] = image }
-                await fillReady(neighbors, maxPixelSize: size)
+                await fillReady(neighbors, screens: size)
             }
         }
     }
 
     /// Decodes and reads `neighbors` ahead, so a swap to one is synchronous and its status bar complete.
-    private func fillReady(_ neighbors: [URL], maxPixelSize size: Int) async {
+    private func fillReady(_ neighbors: [URL], screens: [PixelSize]) async {
         for neighbor in neighbors {
             // A rotation while we wait would make what we read stale; it doesn't cancel this task.
             let revision = fileRevision
             var decoded = ready[neighbor]
-            if decoded == nil { decoded = try? await cache.image(for: neighbor, maxPixelSize: size) }
+            if decoded == nil { decoded = try? await cache.image(for: neighbor, target: .fit(screens)) }
             guard !Task.isCancelled else { return }
             var info = knownInfo[neighbor]
             if info == nil { info = await Task.detached { FileInfo.read(url: neighbor, page: 0) }.value }
@@ -470,7 +478,7 @@ final class ViewerModel {
     func becameActive() {
         guard zoom == .fit, !list.isEmpty else { return }
         let neighbors = list.neighbors(radius: 2)
-        Task { await cache.prefetch(neighbors, maxPixelSize: screenPixels) }
+        Task { await cache.prefetch(neighbors, target: .fit(screens)) }
     }
 
     /// Queued behind rotations: one still running would write the file back after it was trashed.
