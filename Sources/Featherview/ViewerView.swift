@@ -391,7 +391,7 @@ struct ViewerCommands: Commands {
         CommandGroup(after: .newItem) {
             Button("Save As…  (S)") { model?.saveAs() }
                 .keyboardShortcut("s", modifiers: [.command, .shift])
-                .disabled(model?.list.current == nil || model?.list.isHolding == true)
+                .disabled(model?.availability.canChangeFile != true)
         }
         CommandGroup(replacing: .pasteboard) {
             // Text fields and selected text (batch window, Info panel) keep their own Copy and Paste.
