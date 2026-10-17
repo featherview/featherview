@@ -229,7 +229,7 @@ Facts to pin:
 - `quadrants` and every test reason in picture terms (row 0 = top). `pixels` returns rows top first
   (`RGBAImage(CGImage)` already does).
 
-- [ ] **Step 1: Write the failing tests** — `BatchSettingsTests`: `defaultsMatchTheSpec` (resize keeps
+- [x] **Step 1: Write the failing tests** — `BatchSettingsTests`: `defaultsMatchTheSpec` (resize keeps
   aspect and doesn't enlarge, nothing on, mode convert, pattern `{name}`), `emptyJSONDecodesToDefaults`,
   `roundTripsEveryField` (set every field to a non-default, encode, decode, equal),
   `missingNestedKeyKeepsDefault`, `unknownFormatFallsBackToJPEG`, `hasOperationsOnlyWhenAStepIsOn`,
@@ -237,10 +237,10 @@ Facts to pin:
   `corruptPresetIsSkipped`. `PipelineRenderTests`: `solidRendersItsColour` (±1 per channel),
   `quadrantsAreTopFirst`, `halfTransparentStaysStraightAlpha` (red at alpha 0.5 → (255, 0, 0, 128) ±1),
   `infiniteExtentThrows`.
-- [ ] **Step 2: Run them to see them fail.** `swift test --filter "BatchSettingsTests|PipelineRenderTests"`
-- [ ] **Step 3: Implement** the types, presets and render to the interfaces above.
-- [ ] **Step 4: Run the tests, then the full suite.** `swift test`
-- [ ] **Step 5: Commit.** `feat: batch settings, presets and the shared render`
+- [x] **Step 2: Run them to see them fail.** `swift test --filter "BatchSettingsTests|PipelineRenderTests"`
+- [x] **Step 3: Implement** the types, presets and render to the interfaces above.
+- [x] **Step 4: Run the tests, then the full suite.** `swift test`
+- [x] **Step 5: Commit.** `feat: batch settings, presets and the shared render`
 
 ---
 
@@ -301,7 +301,7 @@ Behaviour to pin:
 - Rotate `left` = 90° counter-clockwise, `right` = 90° clockwise, then flip horizontal, then flip
   vertical (`quadrants` pins each: after `right`, top-left is blue).
 
-- [ ] **Step 1: Write the failing tests** — crop: `cropFromEachAnchor` (a 10 × 8 `quadrants`, 4 × 4
+- [x] **Step 1: Write the failing tests** — crop: `cropFromEachAnchor` (a 10 × 8 `quadrants`, 4 × 4
   from each of the 9 anchors with `x = 1, y = 1`; check size and the corner pixel's colour),
   `zeroWidthCropsToTheEdge`, `cropIsClippedToThePicture`, `cropOutsideImageKeepsImage`,
   `cropScalesWithPreview` (`scale: 0.5` halves the rectangle). Resize: a table test
@@ -312,10 +312,10 @@ Behaviour to pin:
   `decodeLimitOnlyForPlainDownscale` (longest side with `dontEnlarge` → the side; crop on → nil;
   percent → nil). Orientation: `rotateLeftMovesTopLeftToBottomLeft`, `rotateRightMovesTopLeftToTopRight`,
   `flipsMirrorTheRightAxis`, `rotateThenFlipOrder`, `offIsIdentity`.
-- [ ] **Step 2: Run them to see them fail.** `swift test --filter GeometryStepsTests`
-- [ ] **Step 3: Implement** to the interfaces and behaviour above.
-- [ ] **Step 4: Run the tests, then the full suite.** `swift test`
-- [ ] **Step 5: Commit.** `feat: batch crop, resize, rotate and flip steps`
+- [x] **Step 2: Run them to see them fail.** `swift test --filter GeometryStepsTests`
+- [x] **Step 3: Implement** to the interfaces and behaviour above.
+- [x] **Step 4: Run the tests, then the full suite.** `swift test`
+- [x] **Step 5: Commit.** `feat: batch crop, resize, rotate and flip steps`
 
 ---
 
@@ -373,7 +373,7 @@ alpha never changes):
   `dither`). Must handle a 24 MP image in well under a second in release (histogram on 5-bit-per-
   channel buckets, not a sort of every pixel).
 
-- [ ] **Step 1: Write the failing tests** — `ColourStepsTests`: `offIsIdentity`,
+- [x] **Step 1: Write the failing tests** — `ColourStepsTests`: `offIsIdentity`,
   `greyscaleUsesRec709` (pure green → 0.7152 × 255 ± 1 in every channel), `negativeKeepsAlpha`,
   `brightnessAddsToEncodedValues` (128 + 51 → 179 ± 1), `contrastMinusMaxIsFlatGrey`,
   `gammaTwoBrightens` (64 → 128 ± 1), `saturationMinusMaxIsGrey`, `balanceMovesOneChannel`,
@@ -384,10 +384,10 @@ alpha never changes):
   `sepiaFullTurnsGreyBrownish` (R > G > B), `unsharpMaskKeepsAFlatImage`. `ColourQuantizerTests`:
   `atMostNColours` (a 64 × 64 gradient to 16 → ≤ 16 distinct RGB), `twoColoursIsBlackAndWhite`,
   `alphaUntouched`, `fewerColoursThanAskedIsUnchanged`, `clampsCount` (1 → 2, 1000 → 256).
-- [ ] **Step 2: Run them to see them fail.** `swift test --filter "ColourStepsTests|ColourQuantizerTests"`
-- [ ] **Step 3: Implement** to the interfaces and behaviour above.
-- [ ] **Step 4: Run the tests, then the full suite.** `swift test`
-- [ ] **Step 5: Commit.** `feat: batch colour steps, filters and colour reduction`
+- [x] **Step 2: Run them to see them fail.** `swift test --filter "ColourStepsTests|ColourQuantizerTests"`
+- [x] **Step 3: Implement** to the interfaces and behaviour above.
+- [x] **Step 4: Run the tests, then the full suite.** `swift test`
+- [x] **Step 5: Commit.** `feat: batch colour steps, filters and colour reduction`
 
 ---
 
@@ -434,7 +434,7 @@ Behaviour to pin:
   around the picture; widths × `scale`, rounded; 0-width frames are skipped. The picture grows by
   both widths on every side.
 
-- [ ] **Step 1: Write the failing tests** — `perSideAddsAndPlaces` (10 × 10 + left 2, right 3, top 4,
+- [x] **Step 1: Write the failing tests** — `perSideAddsAndPlaces` (10 × 10 + left 2, right 3, top 4,
   bottom 1 → 15 × 15, the picture's top-left pixel at (2, 4)), `negativeSideCutsIn`,
   `negativeBorderLargerThanImageFails`, `totalSizeAtEachAnchor` (9 anchors, picture corner position),
   `totalSizeZeroKeepsThatSide`, `totalSizeSmallerCrops`, `aspectRatioSixteenNine` (1000 × 1000 →
@@ -442,10 +442,10 @@ Behaviour to pin:
   `autoCropRemovesUniformBorders` (a red 20 × 20 picture in a white 40 × 30 canvas → 20 × 20),
   `autoCropKeepsUniformImage`, `autoCropToleratesJPEGNoise` (borders off by ±5 still removed),
   `borderTwoFramesNested` (colours at the expected offsets), `borderZeroWidthSkipped`, `offIsIdentity`.
-- [ ] **Step 2: Run them to see them fail.** `swift test --filter CanvasStepsTests`
-- [ ] **Step 3: Implement** to the interfaces and behaviour above.
-- [ ] **Step 4: Run the tests, then the full suite.** `swift test`
-- [ ] **Step 5: Commit.** `feat: batch auto-crop, canvas and border steps`
+- [x] **Step 2: Run them to see them fail.** `swift test --filter CanvasStepsTests`
+- [x] **Step 3: Implement** to the interfaces and behaviour above.
+- [x] **Step 4: Run the tests, then the full suite.** `swift test`
+- [x] **Step 5: Commit.** `feat: batch auto-crop, canvas and border steps`
 
 ---
 
@@ -500,7 +500,7 @@ Behaviour to pin:
   `load` throws `.unreadable("")`; Task 8 reports it once per file as "Can't read the watermark
   image <name>".
 
-- [ ] **Step 1: Write the failing tests** — `renderPlaceholders`, `renderKeepsUnknown`,
+- [x] **Step 1: Write the failing tests** — `renderPlaceholders`, `renderKeepsUnknown`,
   `renderDoesNotReplaceTwice`, `renderPadsCounter`; `textChangesPixelsOnlyNearItsCorner` (white
   text bottom-right on a black 400 × 300 image: changed pixels all in the bottom-right quarter),
   `textAtEachAnchorLandsInThatRegion` (9 anchors), `textOpacityZeroChangesNothing`,
@@ -510,10 +510,10 @@ Behaviour to pin:
   `watermarkWidthIsAShareOfTheImage`, `watermarkOpacity` (a red watermark at 0.5 on black → ≈128 red),
   `missingWatermarkFileThrows`, `watermarkKeepsTransparency` (a PNG with a transparent hole leaves the
   image visible there).
-- [ ] **Step 2: Run them to see them fail.** `swift test --filter OverlayStepsTests`
-- [ ] **Step 3: Implement** to the interfaces and behaviour above.
-- [ ] **Step 4: Run the tests, then the full suite.** `swift test`
-- [ ] **Step 5: Commit.** `feat: batch text overlay and watermark steps`
+- [x] **Step 2: Run them to see them fail.** `swift test --filter OverlayStepsTests`
+- [x] **Step 3: Implement** to the interfaces and behaviour above.
+- [x] **Step 4: Run the tests, then the full suite.** `swift test`
+- [x] **Step 5: Commit.** `feat: batch text overlay and watermark steps`
 
 ---
 
@@ -560,15 +560,15 @@ Behaviour to pin:
   followed (no loops).
 - `move` of several selected rows keeps their relative order; moving past either end clamps.
 
-- [ ] **Step 1: Write the failing tests** — `addAppendsInFinderOrder` (img10, img2 → img2, img10
+- [x] **Step 1: Write the failing tests** — `addAppendsInFinderOrder` (img10, img2 → img2, img10
   after existing items), `addSkipsDuplicatesAndSymlinks`, `addSkipsNonImages`, `scanSkipsHiddenAndNonImages`,
   `scanWithSubfoldersIsDepthFirstInFinderOrder`, `scanDoesNotFollowSymlinkLoops`, `scanSetsRoot`,
   `removeAndRemoveAll`, `sortByNameIsFinderOrder`, `moveUpAndDownKeepsSelectionOrder`, `moveClamps`,
   `listTextRoundTrips`, `loadSkipsMissingAndComments` (counts missing), `loadHandlesCRLF`.
-- [ ] **Step 2: Run them to see them fail.** `swift test --filter BatchInputListTests`
-- [ ] **Step 3: Implement** to the interface above.
-- [ ] **Step 4: Run the tests, then the full suite.** `swift test`
-- [ ] **Step 5: Commit.** `feat: batch input list with folders, sort, move and saved lists`
+- [x] **Step 2: Run them to see them fail.** `swift test --filter BatchInputListTests`
+- [x] **Step 3: Implement** to the interface above.
+- [x] **Step 4: Run the tests, then the full suite.** `swift test`
+- [x] **Step 5: Commit.** `feat: batch input list with folders, sort, move and saved lists`
 
 ---
 
@@ -625,7 +625,7 @@ Behaviour to pin:
 - 255-byte name limit as in `BatchPlanner` (decomposed UTF-8, whole characters).
 - `BatchPlanner` and its tests are deleted in Task 8, not here (the old converter still uses it).
 
-- [ ] **Step 1: Write the failing tests** — `RenamePattern`: `dateIsISODay`, `nilDateIsEmpty` (the
+- [x] **Step 1: Write the failing tests** — `RenamePattern`: `dateIsISODay`, `nilDateIsEmpty` (the
   caller passes the file date when EXIF has none; `nil` only when both are missing).
   `MetadataReaderTests.dateTakenPrefersExif` (a JPEG written with `DateTimeOriginal` via
   `Fixtures.writeImage` properties), `dateTakenFallsBackToModificationDate`. `BatchNamerTests`:
@@ -634,11 +634,11 @@ Behaviour to pin:
   `replaceExisting`), `replaceExistingReturnsTheExistingName`, `folderPlaceholder`,
   `recreateSubfoldersAddsRelativePath`, `filesWithoutRootIgnoreRecreate`, `longNamesAreTrimmedTo255Bytes`.
   `BatchCopyTests` (same file): `copyKeepsBytes`, `copyNeverReplaces`.
-- [ ] **Step 2: Run them to see them fail.** `swift test --filter "BatchNamerTests|MetadataReaderTests|RenamePattern"`
-- [ ] **Step 3: Implement** to the interface above (keep `RenamePattern.baseName(original:index:)`
+- [x] **Step 2: Run them to see them fail.** `swift test --filter "BatchNamerTests|MetadataReaderTests|RenamePattern"`
+- [x] **Step 3: Implement** to the interface above (keep `RenamePattern.baseName(original:index:)`
   working for the old converter until Task 8).
-- [ ] **Step 4: Run the tests, then the full suite.** `swift test`
-- [ ] **Step 5: Commit.** `feat: batch output naming with dates, folders and rename-only copies`
+- [x] **Step 4: Run the tests, then the full suite.** `swift test`
+- [x] **Step 5: Commit.** `feat: batch output naming with dates, folders and rename-only copies`
 
 ---
 
