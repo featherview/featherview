@@ -136,6 +136,24 @@ folder list.
 
 ## Batch window (B, ⌘B)
 
+### Window
+
+One window in three columns, with the mode (Convert / Rename / Convert and rename), the preset
+menu and Start in its toolbar:
+
+- Images: the input list with a small thumbnail, name, pixel size, file size and page count per
+  file; files and folders can be dropped on it; add (menu: Add Files…, Add Folder…, Use
+  Viewer's Folder), remove, Sort and a menu with Move up/down, Save List… and Load List….
+- Steps: Format and folder, Rename, then each operation in the order below, then Safety and
+  dates. Each step shows whether it is on and a short summary (e.g. "HEIC", "2048"); a mode
+  that doesn't use a step dims it.
+- The selected step's settings, with an on/off switch for operations. Below them a live preview
+  of the selected input with all operations applied (small, rendered off the main thread, never
+  blocking typing) and the first output names, updated as settings change.
+- While running, the settings columns give way to progress (n of N, time left), the log, Pause,
+  Stop and Copy Log; each input row shows its state (waiting, working, done with its output name,
+  failed). When the run ends, the settings come back unchanged.
+
 ### Mode and inputs
 
 - Mode: Convert, Rename (copies with new names, no re-encode), or Convert and rename.
@@ -161,7 +179,8 @@ folder list.
 - Rename pattern: `{name}` original name, `{n}` counter, `{n:3}` zero-padded counter, `{date}`
   date taken (YYYY-MM-DD, file date if missing). `/` and `:` become `-`. Empty pattern keeps the
   original name. The counter starts at 1 and advances only for files that succeed.
-- "Preview Names" shows the first output names without writing anything.
+- The window shows the first output names live, without writing anything (the reference
+  viewer's test-rename button).
 
 ### Per-image operations (applied in this order)
 
@@ -171,8 +190,21 @@ folder list.
    larger images, DPI value.
 3. Rotate left/right, flip horizontal/vertical.
 4. Colour: greyscale, negative, auto-adjust colours, brightness, contrast, gamma, saturation,
-   per-channel balance, sharpen, blur, reduce colour depth.
-5. Auto-crop uniform borders, canvas size, border, text overlay, watermark image.
+   per-channel balance, sharpen, blur, reduce colour depth. Filters, each with one strength
+   value: unsharp mask, noise reduction, sepia, colour temperature, auto levels (histogram
+   stretch). No artistic filters.
+5. Auto-crop uniform borders, canvas size, border, text overlay, watermark image:
+   - Canvas size, one of: a width per side (negative values cut into the image); a total size
+     in pixels (0 keeps that side) placed at one of 9 anchors; or an aspect ratio (1:1, 2:1, 3:2,
+     4:3, 16:9, 16:10, √2, or custom) at one of 9 anchors. New area in one colour (transparent
+     when the output format has alpha and the colour is clear).
+   - Border: one or two nested solid borders, each with a width in pixels and a colour.
+   - Text: one or more lines with `{name}`, `{folder}`, `{date}`, `{n}` placeholders (same
+     meaning as in Rename); font from the system font panel, size as % of the image's shorter
+     side; colour; one of 9 positions with a margin in % of the shorter side; in the image or on
+     a strip added below or above it; opacity; optional shadow and background box.
+   - Watermark: an image file (PNG with alpha works best) at one of 9 positions with a margin,
+     sized as % of the output's width, with an opacity (default 33 %).
 
 Settings can be saved as named presets and loaded later.
 

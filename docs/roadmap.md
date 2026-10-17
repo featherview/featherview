@@ -109,8 +109,8 @@ Spec: "Batch window (⌘B)" (all of it).
   of N" in its log line (spec "Output").
 - Nicer batch window (milestone 1's is a plain form): designed
   for the Mac before it's built — input list with thumbnails and drag and drop, settings
-  grouped by step, live preview of output names, progress and log in the window. Mockups first
-  (artifact), reviewed by the maintainer, then the plan.
+  grouped by step, live preview of output names, progress and log in the window. Mockups accepted by the
+  maintainer; the layout is in spec "Batch window" › "Window".
 - HDR kept when an HDR photo is converted to HEIC or AVIF (spec "Formats");
   milestone 3 writes 8-bit SDR there.
 - Format options behind an "Options…" button in the batch window (spec "Output"); Save As has had its button since milestone 3, and batch shows them inline until then.
