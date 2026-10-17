@@ -168,7 +168,7 @@ Facts to pin:
   round to nearest. Work row by row on the clipped intersection with `withUnsafeMutableBufferPointer`
   (a 12 MP layer must draw in tens of milliseconds in a release build, not seconds).
 
-- [ ] **Step 1: Write the failing tests** — `InflateTests`:
+- [x] **Step 1: Write the failing tests** — `InflateTests`:
   - `zlibRoundTrip`: bytes compressed in the test (`compression_encode_buffer` + a hand-written zlib
     header `78 9C` + Adler-32 computed in the test) inflate back exactly.
   - `gzipRoundTrip` and `gzipWithFileNameField`: a gzip member with FNAME set (bytes built in the test)
@@ -187,10 +187,10 @@ Facts to pin:
   - `canvasRefusesHugeSizes`: `LayerCanvas(width: 70000, height: 10)` throws `.corrupt`.
   `SampleCorpus` gets a test only in the format tasks; here add one smoke test
   `differenceOfIdenticalImagesIsZero` (in `LayerCanvasTests`).
-- [ ] **Step 2: Run them to see them fail.** `swift test --filter "InflateTests|LayerCanvasTests"`
-- [ ] **Step 3: Implement** `Inflate`, `LayerCanvas`, `SampleCorpus` to the interfaces above.
-- [ ] **Step 4: Run the tests, then the full suite.** `swift test`
-- [ ] **Step 5: Commit.** `feat: inflate and layer compositing for the layered app formats`
+- [x] **Step 2: Run them to see them fail.** `swift test --filter "InflateTests|LayerCanvasTests"`
+- [x] **Step 3: Implement** `Inflate`, `LayerCanvas`, `SampleCorpus` to the interfaces above.
+- [x] **Step 4: Run the tests, then the full suite.** `swift test`
+- [x] **Step 5: Commit.** `feat: inflate and layer compositing for the layered app formats`
 
 ---
 
@@ -209,7 +209,7 @@ Fact to pin: map the extension `psb` to `psd` before the UTType lookup, next to 
 `jfif` mapping (same comment style), so the conformance check accepts it. Don't add a second UTType
 list. ImageIO itself reads the file by content.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `psbIsDecodable`: `ImageFormats.isDecodable(URL(fileURLWithPath: "/x/a.psb"))` and `A.PSB`.
   - `decodesAHandBuiltPSB`: a minimal PSB built in the test and written to a temp `.psb` file —
     header `8BPS`, version **2**, 6 reserved zero bytes, channels 3, height 2, width 3, depth 8, mode 3
@@ -225,11 +225,11 @@ list. ImageIO itself reads the file by content.
     `gen_im_rgba8_zip.psb` decodes through `ImageDecoder` at full size and its `difference` to
     `ref/<name>.png` is below 2 (`pyaep_8bits.psb` only has to decode: its stored composite isn't the
     real image); the three known limits throw, never trap.
-- [ ] **Step 2: Run to see them fail.** `swift test --filter PSB`
-- [ ] **Step 3: Implement** the mapping.
-- [ ] **Step 4: Run the tests with the corpus, then the full suite.**
+- [x] **Step 2: Run to see them fail.** `swift test --filter PSB`
+- [x] **Step 3: Implement** the mapping.
+- [x] **Step 4: Run the tests with the corpus, then the full suite.**
   `FEATHERVIEW_SAMPLES=/Users/jm/Web/mx/featherview/research/appformats swift test --filter PSB`, `swift test`
-- [ ] **Step 5: Commit.** `feat: open Photoshop Large Documents (PSB) through ImageIO`
+- [x] **Step 5: Commit.** `feat: open Photoshop Large Documents (PSB) through ImageIO`
 
 ---
 
@@ -280,7 +280,7 @@ Behaviour (from `specs/xcf3.md`; read its sections "The image structure", "The l
   effects (version 20+) not applied (the stored pixels are pre-effect); `.xcf.gz` / `.xcf.bz2` not
   read (the extension is `gz`, which isn't an image); text layers show their stored pixels (correct).
 
-- [ ] **Step 1: Write the failing tests.** Build XCF files in the test with a small `XCFBuilder`
+- [x] **Step 1: Write the failing tests.** Build XCF files in the test with a small `XCFBuilder`
   (image size, base type, precision, version, compression, layers with size, offsets, opacity,
   visibility, mask, group flag, pixels): a 32-bit-pointer version 0 file and a 64-bit-pointer
   version 11 file. Tests:
@@ -302,11 +302,11 @@ Behaviour (from `specs/xcf3.md`; read its sections "The image structure", "The l
     `xcf/` decodes; files whose layers are all normal mode (`INDEX.md` "modes" 0 or 28, see the table)
     and visible-or-hidden only must be within `difference` < 3 of `ref/<name>.png`; files with other modes
     only need the right size. Print each file's difference so the reviewer sees them.
-- [ ] **Step 2: Run to see them fail.** `swift test --filter XCFDecoderTests`
-- [ ] **Step 3: Implement** `XCFDecoder` and register it.
-- [ ] **Step 4: Run the tests with the corpus, then the full suite.**
+- [x] **Step 2: Run to see them fail.** `swift test --filter XCFDecoderTests`
+- [x] **Step 3: Implement** `XCFDecoder` and register it.
+- [x] **Step 4: Run the tests with the corpus, then the full suite.**
   `FEATHERVIEW_SAMPLES=/Users/jm/Web/mx/featherview/research/appformats swift test --filter XCF`, `swift test`
-- [ ] **Step 5: Commit.** `feat: open GIMP XCF files, flattened`
+- [x] **Step 5: Commit.** `feat: open GIMP XCF files, flattened`
 
 ---
 
@@ -349,7 +349,7 @@ Behaviour (from `specs/psp6spec.txt`, `psp7spec.txt`, `psp8spec.txt`; little-end
   group (its layers hidden) and the group's opacity if the spec of that version says which layers belong to
   it; otherwise composite the layers flat and note the limit.
 
-- [ ] **Step 1: Write the failing tests.** A `PSPBuilder` in the test writes format 4 and format 8 files:
+- [x] **Step 1: Write the failing tests.** A `PSPBuilder` in the test writes format 4 and format 8 files:
   attributes block, optional composite bank (full-size composite and a smaller thumbnail), layer bank
   with raster layers (rectangles, opacity, visibility, transparency channel), compression none / RLE / LZ77.
   Tests: `usesFullSizeCompositeWhenStored`, `ignoresThumbnailOnlyBankAndUsesLayers` (bank with a
@@ -362,11 +362,11 @@ Behaviour (from `specs/psp6spec.txt`, `psp7spec.txt`, `psp8spec.txt`; little-end
   Corpus (`pspCorpusMatchesReferences`): every file in `psp/` decodes within `difference` < 3 of
   `ref/<name>.png` (GIMP's flatten); list any file that can't meet it with the reason in the test and the
   commit message (for example a vector layer GIMP renders and we skip).
-- [ ] **Step 2: Run to see them fail.** `swift test --filter PSPDecoderTests`
-- [ ] **Step 3: Implement** `PSPDecoder` and register it.
-- [ ] **Step 4: Run the tests with the corpus, then the full suite.**
+- [x] **Step 2: Run to see them fail.** `swift test --filter PSPDecoderTests`
+- [x] **Step 3: Implement** `PSPDecoder` and register it.
+- [x] **Step 4: Run the tests with the corpus, then the full suite.**
   `FEATHERVIEW_SAMPLES=/Users/jm/Web/mx/featherview/research/appformats swift test --filter PSP`, `swift test`
-- [ ] **Step 5: Commit.** `feat: open PaintShop Pro (PSP, PSPIMAGE) files, flattened`
+- [x] **Step 5: Commit.** `feat: open PaintShop Pro (PSP, PSPIMAGE) files, flattened`
 
 ---
 
@@ -422,7 +422,7 @@ Behaviour:
   (older Paint.NET 2.x) `.unsupported`. Layers are not shown as separate pages (the reference viewer
   does; the maintainer chose flattened only), so no shortcut comment for that.
 
-- [ ] **Step 1: Write the failing tests.** `NRBFReaderTests` with records built byte by byte:
+- [x] **Step 1: Write the failing tests.** `NRBFReaderTests` with records built byte by byte:
   `headerAndEnd`, `classWithMembersAndTypes` (int, bool, double, string members), `classWithIdReusesMetadata`,
   `memberReferenceResolves`, `arraySinglePrimitiveBytes`, `arraySingleObject`, `binaryArray`,
   `objectNullMultiple`, `classWithoutTypesIsUnsupported`, `deepNestingThrows`, `hugeStringLengthThrows`,
@@ -436,11 +436,11 @@ Behaviour:
   `difference` < 3 of `ref/pypdn_oldPDN3510.png`; every file, scaled down to its thumbnail's size, within
   < 6 of `ref/<name>.pdn.thumb.png` except files using other blend modes (only `pypdn_FlattenBlendTest.pdn`;
   check its layers' blend modes and keep it in the list only if some aren't normal).
-- [ ] **Step 2: Run to see them fail.** `swift test --filter "NRBFReaderTests|PDNDecoderTests"`
-- [ ] **Step 3: Implement** `NRBFReader`, `PDNDecoder`, register it.
-- [ ] **Step 4: Run the tests with the corpus, then the full suite.**
+- [x] **Step 2: Run to see them fail.** `swift test --filter "NRBFReaderTests|PDNDecoderTests"`
+- [x] **Step 3: Implement** `NRBFReader`, `PDNDecoder`, register it.
+- [x] **Step 4: Run the tests with the corpus, then the full suite.**
   `FEATHERVIEW_SAMPLES=/Users/jm/Web/mx/featherview/research/appformats swift test --filter "NRBF|PDN"`, `swift test`
-- [ ] **Step 5: Commit.** `feat: open Paint.NET (PDN) files, flattened`
+- [x] **Step 5: Commit.** `feat: open Paint.NET (PDN) files, flattened`
 
 ---
 
@@ -456,27 +456,30 @@ Behaviour:
 - Produces: Featherview in Finder's Open With for `.xcf`, `.pdn`, `.psp`, `.pspimage`, `.psb`, ranked
   Alternate (never the default).
 
-- [ ] **Step 1: Info.plist.** Add imported types following the existing `net.mynetx.featherview.qoi`
+- [x] **Step 1: Info.plist.** Add imported types following the existing `net.mynetx.featherview.qoi`
   entry: `net.mynetx.featherview.xcf` ("GIMP image", `xcf`), `net.mynetx.featherview.pdn`
   ("Paint.NET image", `pdn`), `net.mynetx.featherview.psp` ("PaintShop Pro image", `psp`, `pspimage`),
   each conforming to `public.image` and `public.data`; add the three to the "Other image" document
   type's `LSItemContentTypes`. PSB is already covered by `public.image`.
-- [ ] **Step 2: Check registration.** `scripts/bundle.sh release`, then
+- [x] **Step 2: Check registration.** `scripts/bundle.sh release`, then
   `/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f build/Featherview.app`
   and `lsregister -dump | grep -A3 featherview.xcf`; Finder › a sample `.xcf` › Open With lists
   Featherview and the default app is unchanged.
-- [ ] **Step 3: README.** Add PSB, XCF, PDN, PSP to "Also reads formats macOS can't" (PSB is read by
+- [x] **Step 3: README.** Add PSB, XCF, PDN, PSP to "Also reads formats macOS can't" (PSB is read by
   macOS but wasn't offered; list it with the layered formats) and a short known-limits line: layered
   files are shown flattened; blend modes other than normal are drawn as normal; PSB without a stored
   composite, multichannel PSB and XCF layer effects aren't shown; `.xcf.gz` isn't read.
-- [ ] **Step 4: Measure** (release build, `run-featherview` skill, the maintainer's Mac only when they
+- [x] **Step 4: Measure** (release build, `run-featherview` skill, the maintainer's Mac only when they
   agree to GUI use): open `research/appformats/xcf/mooney_texture.xcf.gz` unpacked
   (`gunzip -k` into the scratchpad), the largest maintainer XCF (`mdfind -name .xcf`; read-only, never copy
   into the repo or share screenshots) and `pdnpsp_Marble_head.PspImage`; note each file's time to appear
   from the per-image log and the app's memory. Expectation: well under a second for the 2048 × 2048
   nine-layer file; memory within the browsing budget plus one canvas. A miss is a bug in this milestone.
-- [ ] **Step 5: Browse the corpus in the app.** Open `research/appformats/xcf/` and step through every
+  Measured (release, M1 Pro, launch after a normal quit): `mooney_texture.xcf` 2048 × 2048, nine layers,
+  15 MB: 339 ms to appear, memory 182 MB vs 165 MB for the same image as PNG (+ one canvas);
+  `pdnpsp_Marble_head.PspImage` 19 ms. The maintainer's largest XCF (56 MB) was not measured.
+- [x] **Step 5: Browse the corpus in the app.** Open `research/appformats/xcf/` and step through every
   file with →; then `psp/`, `pdn/`, `psb/`. Every file shows or says "Can't open <name>" (only the known
   limits may); the info panel shows dimensions; batch-convert one folder to PNG and spot-check output.
-- [ ] **Step 6: Docs and commit.** Tick this plan, set milestone 7 to done in `docs/roadmap.md`.
+- [x] **Step 6: Docs and commit.** Tick this plan, set milestone 7 to done in `docs/roadmap.md`.
   `docs: milestone 7 done; Finder lists Featherview for XCF, PDN and PSP`

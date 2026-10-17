@@ -68,11 +68,69 @@
 				<string>net.mynetx.featherview.sun-raster</string>
 				<string>net.mynetx.featherview.ilbm</string>
 				<string>public.svg-image</string>
+				<string>net.mynetx.featherview.xcf</string>
+				<string>net.mynetx.featherview.pdn</string>
+				<string>net.mynetx.featherview.psp</string>
 			</array>
 		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.xcf</string>
+			<key>UTTypeDescription</key>
+			<string>GIMP image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>xcf</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.pdn</string>
+			<key>UTTypeDescription</key>
+			<string>Paint.NET image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>pdn</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.psp</string>
+			<key>UTTypeDescription</key>
+			<string>PaintShop Pro image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>psp</string>
+					<string>pspimage</string>
+				</array>
+			</dict>
+		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
 			<string>net.mynetx.featherview.jfif</string>
