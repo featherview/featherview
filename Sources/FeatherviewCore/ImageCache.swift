@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import os
 
 /// Decoded images for display, least recently used evicted first. Decodes use halving steps, so an
 /// image can be up to 2× the requested size per side (see `ImageDecoder.decodeSize`). Cached images are keyed by URL only: callers
@@ -35,7 +36,12 @@ public actor ImageCache {
             let hdr = hdr, colorSpace = colorSpace
             task = Task.detached(priority: .userInitiated) {
                 try Task.checkCancellation()
-                return try ImageDecoder.decode(url, maxPixelSize: maxPixelSize, halvingSteps: true, hdr: hdr, colorSpace: colorSpace)
+                return try Signposts.poster.withIntervalSignpost(
+                    "Decode", id: Signposts.poster.makeSignpostID(),
+                    "\(url.lastPathComponent, privacy: .public) \(maxPixelSize ?? 0)"
+                ) {
+                    try ImageDecoder.decode(url, maxPixelSize: maxPixelSize, halvingSteps: true, hdr: hdr, colorSpace: colorSpace)
+                }
             }
             inFlight[url] = (maxPixelSize, task, 1)
         }
@@ -77,6 +83,9 @@ public actor ImageCache {
     }
 
     public var count: Int { images.count }
+
+    /// True if `url` is decoded and kept, not only being decoded (the bench's `browse` splits by it).
+    public func contains(_ url: URL) -> Bool { images[url] != nil }
 
     private func touch(_ url: URL) {
         order.removeAll { $0 == url }

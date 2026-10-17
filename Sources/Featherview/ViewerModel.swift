@@ -123,6 +123,8 @@ final class ViewerModel {
         return Date(timeIntervalSince1970: Double(start.tv_sec) + Double(start.tv_usec) / 1_000_000)
     }()
     private var loggedLaunch = false
+    /// The running `Navigate` signpost: from show() until the canvas commits `image`, the image shown for `url`.
+    @ObservationIgnored private var navigation: (state: OSSignpostIntervalState, url: URL, prefetched: Bool, image: CGImage?)?
 
     init() {
         chooserSession.onListed = { [weak self] in self?.countImages() }
@@ -171,7 +173,11 @@ final class ViewerModel {
                 if let prefetch { await cache.prefetch([url], maxPixelSize: prefetch) }
                 return nil
             }
-            let scan = Result { try FolderScanner.images(around: url, includeHidden: includeHidden, sorted: false) }
+            let scan = Result {
+                try Signposts.poster.withIntervalSignpost("Scan") {
+                    try FolderScanner.images(around: url, includeHidden: includeHidden, sorted: false)
+                }
+            }
             if let prefetch, let first = FolderScanner.firstInFinderOrder((try? scan.get()) ?? []) {
                 await cache.prefetch([first], maxPixelSize: prefetch)
             }
@@ -191,7 +197,9 @@ final class ViewerModel {
                     urls = try folderScan.get()
                 } else {
                     urls = try await Task.detached(priority: .userInitiated) {
-                        try FolderScanner.images(around: url, includeHidden: includeHidden)
+                        try Signposts.poster.withIntervalSignpost("Scan") {
+                            try FolderScanner.images(around: url, includeHidden: includeHidden)
+                        }
                     }.value
                 }
                 guard !Task.isCancelled else { return }
@@ -303,6 +311,7 @@ final class ViewerModel {
     /// arrow keys feel instant.
     func show(page: Int = 0) {
         loadTask?.cancel()
+        endNavigation("superseded")
         list.release()
         // The old file's count would let ⌥→ ask a single-page file for page 2; it's read again below.
         // Assigned only when they change: the toolbar reads pageCount and would rebuild its items on every image.
@@ -319,6 +328,9 @@ final class ViewerModel {
         let neighbors = list.neighbors(radius: 2)
         let started = ContinuousClock.now
         let prefetched = page == 0 && size != nil ? ready[url] : nil
+        navigation = (Signposts.poster.beginInterval("Navigate", id: Signposts.poster.makeSignpostID(),
+                                                     "\(url.lastPathComponent, privacy: .public)"),
+                      url, prefetched != nil, nil)
         if let prefetched { shown(prefetched, url: url, page: page, started: started) }
         loadTask = Task {
             do {
@@ -364,6 +376,7 @@ final class ViewerModel {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
+                endNavigation("failed")
                 fileInfo = nil
                 image = nil  // pageCount stays: one bad page mustn't hide the file's other pages
                 errorMessage = "Can't open \(url.lastPathComponent)"
@@ -404,8 +417,13 @@ final class ViewerModel {
     private func shown(_ decoded: CGImage, url: URL, page: Int, started: ContinuousClock.Instant) {
         let info = FileInfo.shown(url: url, page: page, known: knownInfo[url], current: fileInfo)
         if info != fileInfo { fileInfo = info }
+        if let navigation, navigation.url == url {
+            // Already on screen: the canvas commits nothing new, so the wait ends here.
+            if image === decoded { endCommittedNavigation() } else { self.navigation?.image = decoded }
+        }
         image = decoded
         errorMessage = nil
+        // Measures until the model has the image, not until it is on screen: the `Navigate` signpost covers that.
         let elapsed = started.duration(to: .now).components
         let ms = elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000
         Self.log.debug("show \(url.lastPathComponent, privacy: .public): \(ms) ms")
@@ -417,6 +435,22 @@ final class ViewerModel {
         loggedLaunch = true
         let launchMs = Int(Date().timeIntervalSince(start) * 1000)
         Self.log.debug("first image \(launchMs) ms after launch")
+        Signposts.poster.emitEvent("FirstImage")
+    }
+
+    /// The canvas committed `committed` to the screen.
+    func imageCommitted(_ committed: CGImage) {
+        if let navigation, navigation.image === committed { endCommittedNavigation() }
+    }
+
+    private func endCommittedNavigation() {
+        endNavigation(navigation?.prefetched == true ? "prefetched: yes" : "prefetched: no")
+    }
+
+    private func endNavigation(_ outcome: String) {
+        guard let navigation else { return }
+        Signposts.poster.endInterval("Navigate", navigation.state, "\(outcome, privacy: .public)")
+        self.navigation = nil
     }
 
     /// Runs `body` after the frame being built now is committed (Core Animation commits it before the run

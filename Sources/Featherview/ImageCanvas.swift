@@ -42,6 +42,8 @@ struct ImageCanvas: NSViewRepresentable {
     var onClick: () -> Void = {}
     /// Called once the first image this canvas shows is committed to the screen.
     var onFirstDraw: @MainActor () -> Void = {}
+    /// Called with each new image once Core Animation has committed it (the `Navigate` signpost ends here).
+    var onCommit: @MainActor (CGImage) -> Void = { _ in }
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -61,6 +63,7 @@ struct ImageCanvas: NSViewRepresentable {
         view.onDoubleClick = onDoubleClick
         view.onClick = onClick
         view.onFirstDraw = onFirstDraw
+        view.onCommit = onCommit
         let oldSize = view.frame.size
         let visible = scrollView.contentView.bounds
         // Keep the point at the centre of the view where it was, so zooming doesn't jump to a corner.
@@ -98,6 +101,7 @@ private final class ImageLayerView: NSView {
     var onDoubleClick: () -> Void = {}
     var onClick: () -> Void = {}
     var onFirstDraw: @MainActor () -> Void = {}
+    var onCommit: @MainActor (CGImage) -> Void = { _ in }
     private let imageLayer = CALayer()
     private var dragStart: (mouse: NSPoint, origin: NSPoint)?
 
@@ -117,7 +121,11 @@ private final class ImageLayerView: NSView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)  // no fade between images
         if imageLayer.contents == nil { ViewerModel.afterFrame(onFirstDraw) }
-        if (imageLayer.contents as AnyObject?) !== image { imageLayer.contents = image }
+        if (imageLayer.contents as AnyObject?) !== image {
+            imageLayer.contents = image
+            let onCommit = onCommit
+            CATransaction.setCompletionBlock { MainActor.assumeIsolated { onCommit(image) } }
+        }
         // Same transaction as `contents`, so an SDR image after an HDR one never flashes bright.
         let isHDR = image.bitsPerComponent > 8  // display decodes are 8-bit unless HDR
         if #available(macOS 26, *) {

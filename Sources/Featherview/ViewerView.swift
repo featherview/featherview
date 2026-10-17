@@ -34,7 +34,8 @@ struct ViewerView: View {
                 ImageCanvas(image: image, size: drawSize(image), displayScale: displayScale, background: backgroundNSColor,
                             checkerboard: checkerboard, panController: panController,
                             onDoubleClick: model.toggleFullScreen, onClick: { focused = true },
-                            onFirstDraw: { toolbarReady = true; model.firstImageDrawn() })
+                            onFirstDraw: { toolbarReady = true; model.firstImageDrawn() },
+                            onCommit: model.imageCommitted)
                     .contextMenu { ImageContextMenu(model: model) }
             } else if let message = model.errorMessage {
                 Text(message).messageBox()
