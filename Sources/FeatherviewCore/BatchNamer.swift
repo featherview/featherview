@@ -5,7 +5,7 @@ import Foundation
 public struct BatchNamer: Sendable {
     let settings: BatchSettings
     let fileExists: @Sendable (URL) -> Bool
-    /// Inputs and names given in this run (folder key + "/" + lowercased name).
+    /// Inputs and names given in this run (folder key + "/" + case-folded name).
     var taken: Set<String> = []
     var folderKeys: [String: String] = [:]
     var nextSuffix: [String: Int] = [:]
@@ -78,7 +78,10 @@ public struct BatchNamer: Sendable {
         return folder.appendingPathComponent(trimmed + tail, isDirectory: false)
     }
 
-    static func normalized(_ name: String) -> String { name.decomposedStringWithCanonicalMapping.lowercased() }
+    /// Folded like APFS compares names (ß = ss, ς = σ, ﬀ = ff), which `lowercased()` misses.
+    static func normalized(_ name: String) -> String {
+        name.decomposedStringWithCanonicalMapping.folding(options: .caseInsensitive, locale: nil)
+    }
 
     /// Case-insensitive identity of `url` (its folder resolved once: pathKey hits the filesystem).
     private mutating func key(_ url: URL) -> String {

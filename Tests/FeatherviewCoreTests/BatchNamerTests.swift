@@ -63,6 +63,23 @@ import Testing
         #expect(namer.next(for: inputs[1], date: nil).lastPathComponent == "A 2.jpg")
     }
 
+    @Test(arguments: [("Straße.png", "STRASSE"), ("ς.png", "Σ"), ("ﬀ.png", "FF")])
+    func clashesFoldCaseLikeAPFS(name: String, pattern: String) {
+        // APFS treats ß/ss, ς/σ and ﬀ/ff as one name; an input must never be handed out (and replaced).
+        let inputs = [input("/a/" + name), input("/a/x.png")]
+        var namer = BatchNamer(settings: settings(.rename, pattern: pattern, out: "/a",
+                                                  safety: SafetySettings(replaceExisting: true)), inputs: inputs) { _ in true }
+        #expect(namer.next(for: inputs[1], date: nil).lastPathComponent == pattern + " 2.png")
+    }
+
+    @Test(arguments: [".", ".."]) func dotNamesFallBackToTheOriginal(pattern: String) {
+        // "<out>/.." is the output folder's parent: with Replace existing the caller would trash it.
+        let inputs = [input("/a/scan")]
+        var namer = BatchNamer(settings: settings(.rename, pattern: pattern,
+                                                  safety: SafetySettings(replaceExisting: true)), inputs: inputs) { _ in true }
+        #expect(namer.next(for: inputs[0], date: nil).path == "/out/scan")
+    }
+
     @Test func existingFileGetsSuffix() {
         let inputs = [input("/a/x.png")]
         var namer = BatchNamer(settings: settings(), inputs: inputs) { $0.lastPathComponent == "x.jpg" }

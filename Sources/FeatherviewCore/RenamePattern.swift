@@ -33,6 +33,7 @@ public struct RenamePattern: Equatable, Sendable {
             .replacingOccurrences(of: "{name}", with: original)
             .replacingOccurrences(of: "/", with: "-")
             .replacingOccurrences(of: ":", with: "-")
-        return name.isEmpty ? original : name
+        // "." and ".." would name the output folder or its parent when there is no extension.
+        return ["", ".", ".."].contains(name) ? original : name
     }
 }
