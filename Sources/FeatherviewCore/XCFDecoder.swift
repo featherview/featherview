@@ -134,9 +134,11 @@ enum XCFDecoder {
 
         // Only the stored tiles of a layer are decoded and drawn, and each 64 × 64 tile (16 KiB of RGBA) costs at
         // least its 4-byte pointer, so layers can't make us fill much more than 4096 bytes per byte of the file.
-        // The canvas isn't charged: it has no tiles, and checkedSize caps it.
+        // The canvas has no tiles, so it gets 32 times that (128 KiB per byte): the few hundred bytes of the smallest
+        // real file with one layer open a 3000 × 3000 canvas, but a 1 GB canvas needs at least an 8 KiB file.
         var budget = data.count * 4096, hierarchies: Set<Int> = []
         let (width, height) = try checkedSize(h.width, h.height)
+        guard width * height * 4 <= data.count * 131072 else { throw OwnDecodeError.corrupt }
         var canvas = try LayerCanvas(width: width, height: height)
         for pointer in layers.reversed() {  // the list is topmost first
             let layer = try file.layer(at: pointer, version: h.version)

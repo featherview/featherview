@@ -379,6 +379,13 @@ struct XCFBuilder {
         do { _ = try XCFDecoder.decode(data); return false } catch OwnDecodeError.corrupt { return true } catch { return false }
     }
 
+    @Test func tinyFileCantClaimAHugeCanvas() throws {
+        #expect(Self.refused(Self.tiny(canvas: 16384, layer: 1, records: 0, layers: [])))
+        var file = B(width: 16384, height: 16384)
+        file.layers = [.init(width: 1, height: 1, pixels: [1, 2, 3, 4])]
+        #expect(Self.refused(file.data))
+    }
+
     @Test func largeCanvasWithOnlyASmallLayerOpens() throws {
         var file = B(width: 3000, height: 3000, compression: 1)
         file.layers = [.init(width: 300, height: 80, pixels: Self.solid(300, 80, [1, 2, 3, 255]), x: 10, y: 20)]
