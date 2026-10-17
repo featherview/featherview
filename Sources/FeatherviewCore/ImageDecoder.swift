@@ -51,13 +51,34 @@ public enum ImageDecoder {
     /// JPEG decodes those steps directly; any size in between costs a full decode plus a resample
     /// (12 MP to 3456 px: 100 ms instead of 40 ms). Images stay at most 2× the target per side.
     public static func decodeSize(full: Int, target: Int) -> Int {
-        var size = full
-        for shift in 1...3 {
-            let step = (full + (1 << shift) - 1) >> shift
-            guard step >= target else { break }
-            size = step
-        }
-        return size
+        stepSize(full: full, step: halvingStep(full: full, target: target))
+    }
+
+    /// The longest side at halving step `step` (0 = full, 1 = ½, 2 = ¼, 3 = ⅛), rounded up as JPEG does.
+    public static func stepSize(full: Int, step: Int) -> Int {
+        let shift = min(max(step, 0), 3)
+        return (full + (1 << shift) - 1) >> shift
+    }
+
+    /// The halving step `decodeSize` picks.
+    static func halvingStep(full: Int, target: Int) -> Int {
+        var step = 0
+        while step < 3, stepSize(full: full, step: step + 1) >= target { step += 1 }
+        return step
+    }
+
+    /// The halving step to decode at for showing an image whose longest side is `full` pixels at `factor`
+    /// (1 = one image pixel per screen pixel): a factor of ½ or less needs no full decode.
+    public static func zoomStep(full: Int, factor: Double) -> Int {
+        halvingStep(full: full, target: Int((Double(full) * factor).rounded(.up)))
+    }
+
+    /// The halving step to decode an image of `size` (displayed) at for zoom `factor`, and whether that
+    /// step is no larger than the image's own fit decode for `screens`, so it may go in the fit-sized cache.
+    public static func zoomDecode(size: PixelSize, factor: Double, screens: [PixelSize]) -> (step: Int, withinFit: Bool) {
+        let full = max(size.width, size.height)
+        let step = zoomStep(full: full, factor: factor)
+        return (step, stepSize(full: full, step: step) <= fitDecodeSize(image: size, screens: screens))
     }
 
     /// The longest side to decode an image of `image` (displayed size, orientation applied) at, so it
@@ -79,6 +100,7 @@ public enum ImageDecoder {
     /// Never upscales. Pixels are decoded here, not lazily at first draw, so callers can run this
     /// off the main thread and the UI never stalls on display.
     /// `screens`, in place of `maxPixelSize`: decode at `fitDecodeSize` for them (the viewer's fit mode).
+    /// `step`, in place of `maxPixelSize`: decode at that halving step (`zoomStep`, the viewer's zoom).
     /// `page` is a page of a multi-page TIFF (see `pageCount`).
     /// Display decodes (`halvingSteps`) come back at 8 bits, or with `hdr` an HDR image at up to 16
     /// bits with its extra range; other decodes keep the file's depth.
@@ -86,18 +108,19 @@ public enum ImageDecoder {
     /// `colorSpace` (the screen's) applies to 8-bit display decodes: Core Animation would otherwise
     /// convert each image on the main thread when it's first shown (≈18 ms for 12 MP).
     public static func decode(_ url: URL, maxPixelSize: Int? = nil, halvingSteps: Bool = false,
-                              fitting screens: [PixelSize]? = nil, page: Int = 0,
+                              fitting screens: [PixelSize]? = nil, step: Int? = nil, page: Int = 0,
                               hdr: Bool = false, colorSpace: CGColorSpace? = nil) throws -> CGImage {
         let image = try decodeFile(url, maxPixelSize: maxPixelSize, halvingSteps: halvingSteps, screens: screens,
-                                   page: page, hdr: hdr)
+                                   step: step, page: page, hdr: hdr)
         guard halvingSteps, let colorSpace, image.bitsPerComponent == 8, image.colorSpace != colorSpace else { return image }
         return redrawn(image, width: image.width, height: image.height, in: colorSpace) ?? image
     }
 
     private static func decodeFile(_ url: URL, maxPixelSize: Int?, halvingSteps: Bool, screens: [PixelSize]?,
-                                   page: Int, hdr: Bool) throws -> CGImage {
+                                   step: Int?, page: Int, hdr: Bool) throws -> CGImage {
         func fit(_ size: CGSize) -> Int? {
-            screens.map { fitDecodeSize(image: PixelSize(width: Int(size.width), height: Int(size.height)), screens: $0) }
+            if let step { return stepSize(full: Int(max(size.width, size.height)), step: step) }
+            return screens.map { fitDecodeSize(image: PixelSize(width: Int(size.width), height: Int(size.height)), screens: $0) }
         }
         if let own = OwnDecoders.format(for: url) {
             do {

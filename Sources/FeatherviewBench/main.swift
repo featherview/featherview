@@ -12,7 +12,8 @@ let usage = """
       swift run -c release featherview-bench browse <dir>/browse [--interval-ms 300] [--screen WxH]
 
     corpus  writes generated test images into <dir> (never commit them).
-    decode  times the viewer's fit decode per file and screen, plus one full-size decode per file.
+    decode  times the viewer's fit decode per file and screen, plus one full-size decode per file,
+            and for 50 MP files the zoom decode at 0.25, 0.5 and 1.0 (rows "zoom <factor>").
             The first run reads the file from disk; for a truly cold first run, run `sudo purge`
             before (the bench never does). --baseline exits 1 if a median is > 10 % slower or a row is gone.
     browse  steps through the folder like a held arrow key: one step every --interval-ms, whether
@@ -45,10 +46,18 @@ func fitDecode(_ url: URL, screens: [Screen]) throws -> CGImage {
                             hdr: ImageDecoder.supportsHDR, colorSpace: displayP3)
 }
 
-/// Today's zoom path: full size.
+/// Full size: the zoom path before zoom decoded per step, and still the one for 100 % and above.
 func fullDecode(_ url: URL) throws -> CGImage {
     try ImageDecoder.decode(url, maxPixelSize: nil, halvingSteps: true, hdr: ImageDecoder.supportsHDR, colorSpace: displayP3)
 }
+
+/// The viewer's zoom decode at `factor`, as `ViewerModel` asks `ImageCache` for it (`.step`), header read included.
+func zoomDecode(_ url: URL, factor: Double) throws -> CGImage {
+    let size = ImageDecoder.displaySize(of: url) ?? .zero
+    let step = ImageDecoder.zoomStep(full: Int(max(size.width, size.height)), factor: factor)
+    return try ImageDecoder.decode(url, halvingSteps: true, step: step, hdr: ImageDecoder.supportsHDR, colorSpace: displayP3)
+}
+let zoomFactors = [0.25, 0.5, 1.0]
 
 // MARK: - Arguments
 
@@ -129,6 +138,9 @@ func imageFiles(in dir: URL) -> [URL] {
     for file in files {
         var fileRows = screens.compactMap { screen in measure(file, screen: "\(screen)") { try fitDecode(file, screens: [screen]) } }
         if let full = measure(file, screen: "full", { try fullDecode(file) }) { fileRows.append(full) }
+        if file.lastPathComponent.hasPrefix("50mp") {
+            fileRows += zoomFactors.compactMap { factor in measure(file, screen: "zoom \(factor)") { try zoomDecode(file, factor: factor) } }
+        }
         for row in fileRows {
             print([row.file, row.screen, "\(row.width)×\(row.height)", f(row.megabytes), f(row.firstMs),
                    f(row.medianMs), f(row.p95Ms), f(row.minMs)].joined(separator: "\t"))

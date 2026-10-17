@@ -108,8 +108,12 @@ final class ViewerModel {
     /// display's gamut), follow the window's screen if people browse on two displays.
     private static let screenSpace = NSScreen.main?.colorSpace?.cgColorSpace
     private let cache = ImageCache(capacity: 8, hdr: ImageDecoder.supportsHDR, colorSpace: screenSpace)
-    /// Full-size decodes for zoom: one kept, and ones nobody waits for any more are skipped.
+    /// Zoom decodes larger than the fit decode: one kept, and ones nobody waits for any more are skipped.
+    /// Zoom steps at or below fit size go in `cache`, as large as fit decodes.
     private let fullSizeCache = ImageCache(capacity: 1, hdr: ImageDecoder.supportsHDR, colorSpace: screenSpace)
+    /// The halving step the image on screen was decoded at while zoomed (page 0), with the longest side it was
+    /// worked out from (`fileInfo` is still the previous file's until the decode lands); zooming within it decodes nothing.
+    @ObservationIgnored private var shownStep: (step: Int, full: Int)?
     private var loadTask: Task<Void, Never>?
     /// The page decode running, if any: ImageIO can't stop one, so the next waits for it (see show).
     private var pageDecode: Task<CGImage, Error>?
@@ -239,7 +243,11 @@ final class ViewerModel {
     func last() { list.last(); show() }
 
     func setZoom(_ zoom: Zoom) {
-        let needsReload = (zoom == .fit) != (self.zoom == .fit)
+        var needsReload = (zoom == .fit) != (self.zoom == .fit)
+        // Past the decoded step the image shows enlarged (drawn at its full size) until the next step lands.
+        if case .factor(let factor) = zoom, !needsReload, page == 0, let shownStep {
+            needsReload = ImageDecoder.zoomStep(full: shownStep.full, factor: factor) != shownStep.step
+        }
         self.zoom = zoom
         // A held image is gone from disk: show() would release it and decode the next file at the held page.
         if needsReload, !list.isHolding { show(page: page) }
@@ -339,7 +347,10 @@ final class ViewerModel {
                                                      "\(url.lastPathComponent, privacy: .public)"),
                       url, prefetched != nil, nil)
         if let prefetched { shown(prefetched, url: url, page: page, started: started) }
+        shownStep = nil
         loadTask = Task {
+            // Set while zoomed (page 0): its neighbours are prefetched.
+            var zoomed = false
             do {
                 let decoded: CGImage
                 if let prefetched {
@@ -359,12 +370,14 @@ final class ViewerModel {
                     // A finished decode would otherwise keep its page in memory, outside both caches.
                     defer { if pageDecode == decode { pageDecode = nil } }
                     decoded = try await decode.value
+                } else if let size {
+                    decoded = try await cache.image(for: url, target: .fit(size))
                 } else {
-                    decoded = if let size {
-                        try await cache.image(for: url, target: .fit(size))
-                    } else {
-                        try await fullSizeCache.image(for: url, target: .full)
-                    }
+                    let decode = await zoomDecode(url)
+                    guard !Task.isCancelled else { return }
+                    if case .step(let step) = decode.target, let full = decode.full { shownStep = (step, full) }
+                    zoomed = true
+                    decoded = try await decode.cache.image(for: url, target: decode.target)
                 }
                 guard !Task.isCancelled else { return }
                 if prefetched == nil { shown(decoded, url: url, page: page, started: started) }
@@ -399,8 +412,46 @@ final class ViewerModel {
                 ready = ready.filter { wanted.contains($0.key) }
                 if let image, list.current == url { ready[url] = image }
                 await fillReady(neighbors, screens: size)
+            } else if zoomed, prefetchesNeighbors {
+                // ±1, not ±2 as at fit: zoomed images are large. Each at its own step, and only into `cache` when
+                // that step is within its own fit size: a larger neighbour would break the cache's memory budget.
+                // shortcut: steps above fit size (fullSizeCache, one image) prefetch nothing, give it room if browsing at 100 % is common.
+                let around = list.neighbors(radius: 1)
+                let wanted = Set(around + [url])
+                knownInfo = knownInfo.filter { wanted.contains($0.key) }
+                // Fit decodes, read only at fit: step decodes replace them in `cache`, so kept here they'd sit outside its budget.
+                ready = [:]
+                for neighbor in around {
+                    let decode = await zoomDecode(neighbor)
+                    guard !Task.isCancelled else { return }
+                    if decode.cache === cache { await cache.prefetch([neighbor], target: decode.target) }
+                }
             }
         }
+    }
+
+    /// The halving step to decode zoomed `url` at, for the current factor, and the cache it goes in: `cache`
+    /// when that step is no larger than the fit decode, else the one-image `fullSizeCache`. Full size in
+    /// `fullSizeCache` when the size can't be read (the decode then reports the file). `full` is the longest side.
+    private func zoomDecode(_ url: URL) async -> (target: DecodeTarget, cache: ImageCache, full: Int?) {
+        let size = await pageZeroInfo(url).pixelSize
+        // Read after the wait: setZoom can't re-decode before `shownStep` is set, so it must see the latest factor.
+        guard case .factor(let factor) = zoom, let size else { return (.full, fullSizeCache, nil) }
+        let pixels = PixelSize(width: Int(size.width), height: Int(size.height))
+        let decision = ImageDecoder.zoomDecode(size: pixels, factor: factor, screens: screens)
+        return (.step(decision.step), decision.withinFit ? cache : fullSizeCache, max(pixels.width, pixels.height))
+    }
+
+    /// `url`'s page-0 info, read and kept in `knownInfo` when missing: a zoomed decode is smaller than the file,
+    /// so `shown` needs the file's size with it, or the canvas draws the decode's pixels at the zoom factor.
+    /// Never `fileInfo`: `shown` reads only `knownInfo`, and after a rotation `fileInfo` has the old orientation.
+    private func pageZeroInfo(_ url: URL) async -> FileInfo {
+        if let known = knownInfo[url] { return known }
+        let revision = fileRevision
+        let info = await Task.detached { FileInfo.read(url: url, page: 0) }.value
+        // A rotation while we read makes it stale; it doesn't cancel the caller.
+        if fileRevision == revision { knownInfo[url] = info }
+        return info
     }
 
     /// Decodes and reads `neighbors` ahead, so a swap to one is synchronous and its status bar complete.

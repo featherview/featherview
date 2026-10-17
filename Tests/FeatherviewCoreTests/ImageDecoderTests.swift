@@ -73,6 +73,43 @@ import UniformTypeIdentifiers
         #expect(image.height == 1000)
     }
 
+    @Test(arguments: [
+        (8688, 0.25, 2),   // 2172 px: ¼, no full decode
+        (8688, 0.5, 1),    // 4344 px: ½
+        (8688, 0.3, 1),    // 2607 px is above ¼ (2172): ½
+        (8688, 1.0, 0),
+        (8688, 2.0, 0),    // enlarged on screen, never decoded above full
+        (8688, 0.05, 3),   // JPEG's smallest step is ⅛
+        (4033, 0.5, 1),    // 2016.5 rounds up to 2017, which ½ (2017) still covers
+    ])
+    func zoomStepIsTheSmallestHalvingStepThatCoversTheFactor(full: Int, factor: Double, expected: Int) {
+        #expect(ImageDecoder.zoomStep(full: full, factor: factor) == expected)
+    }
+
+    /// Decided per image: a neighbour of another size can need a step above its own fit decode, and
+    /// that one mustn't go in the fit-sized cache.
+    @Test(arguments: [
+        (1920, 1080, 1.0, 0, true),    // a screenshot at 100 %: full size is its fit size
+        (8688, 5792, 1.0, 0, false),   // a 50 MP neighbour at 100 %: full size is far above fit (2172)
+        (5792, 8688, 0.5, 1, false),   // 50 MP portrait at 50 %: 4344 px, fit is 2172
+        (4032, 3024, 0.5, 1, true),    // 12 MP at 50 %: 2016 px is at or below fit
+        (8688, 5792, 0.25, 2, true),   // 2172 px: exactly its fit size
+    ])
+    func zoomDecodeKeepsStepsAboveFitOutOfTheFitCache(width: Int, height: Int, factor: Double, step: Int, withinFit: Bool) {
+        let decision = ImageDecoder.zoomDecode(size: PixelSize(width: width, height: height), factor: factor,
+                                               screens: [PixelSize(width: 3024, height: 1964)])
+        #expect(decision.step == step)
+        #expect(decision.withinFit == withinFit)
+    }
+
+    @Test func decodesAtAHalvingStep() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("z.jpg"), width: 4000, height: 2000, orientation: 6)
+        let image = try ImageDecoder.decode(url, halvingSteps: true, step: 2)
+        #expect(image.width == 500)
+        #expect(image.height == 1000)
+    }
+
     /// Core Animation colour-converts an image on the main thread when it's first shown (≈18 ms for
     /// 12 MP); a display decode in the screen's colour space skips that.
     @Test func displayDecodeComesInTheScreensColorSpace() async throws {
