@@ -140,6 +140,24 @@ import UniformTypeIdentifiers
         #expect(TextStep.apply(base, s, values: noName, scale: 1) === base)
     }
 
+    @Test func textOffIsIdentity() {
+        var s = text()
+        s.isOn = false
+        let base = PipelineFixtures.quadrants(width: 40, height: 30)
+        #expect(TextStep.apply(base, s, values: values, scale: 1) === base)
+    }
+
+    @Test(arguments: [TextPlacement.inImage, .stripBelow])
+    func longTextWrapsInsideTheImage(_ placement: TextPlacement) throws {
+        var s = text(String(repeating: "Wide words ", count: 8), at: .bottom)
+        s.placement = placement
+        let out = TextStep.apply(black(), s, values: values, scale: 1)
+        let plain = black(Int(out.extent.width), Int(out.extent.height))  // the strip is black too
+        let box = try #require(changedBox(try PipelineFixtures.pixels(plain), try PipelineFixtures.pixels(out)))
+        #expect(box.minX >= 6 && box.maxX <= 399 - 6)  // margin 2 % of 300, so not cut at the edges
+        #expect(box.maxY - box.minY > 60)  // 30 px font: wrapped onto several lines
+    }
+
     // MARK: watermark
 
     func mark(at position: ImageAnchor = .bottomRight, width: Double = 25, opacity: Double = 1) -> WatermarkSettings {
@@ -154,6 +172,13 @@ import UniformTypeIdentifiers
 
     /// Solid red, 2:1.
     let red = PipelineFixtures.solid(RGBAColor(red: 1, green: 0, blue: 0), width: 100, height: 50)
+
+    @Test func watermarkOffIsIdentity() {
+        var s = mark()
+        s.isOn = false
+        let base = black()
+        #expect(WatermarkStep.apply(base, watermark: red, s) === base)
+    }
 
     @Test func watermarkAtBottomRight() throws {
         let base = black()

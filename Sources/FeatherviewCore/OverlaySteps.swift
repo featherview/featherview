@@ -34,11 +34,14 @@ public enum TextStep {
     public static func apply(_ image: CIImage, _ s: TextSettings, values: TextValues, scale: Double) -> CIImage {
         let string = render(s.text, values)
         let extent = image.extent
-        guard !string.isEmpty, !extent.isEmpty, !extent.isInfinite else { return image }
+        guard s.isOn, !string.isEmpty, !extent.isEmpty, !extent.isInfinite else { return image }
         let shorter = min(extent.width, extent.height)
         let size = max(1, s.sizePercent.clamped(0.5, 50) / 100 * shorter)
         let margin = (s.marginPercent.clamped(0, 25) / 100 * shorter).rounded()
-        guard let block = textBlock(string, s, size: size) else { return image }
+        // Wrap inside the picture: keeps the text visible and the bitmap no bigger than the image.
+        let pad = (size / 4).rounded(.up)
+        let fit = CGSize(width: max(1, extent.width - 2 * margin - 2 * pad), height: max(1, extent.height - 2 * margin - 2 * pad))
+        guard let block = textBlock(string, s, size: size, pad: pad, fit: fit) else { return image }
         let blockSize = block.extent.size
 
         switch s.placement {
@@ -61,8 +64,8 @@ public enum TextStep {
         }
     }
 
-    /// The text (with its box and shadow) on a transparent bitmap, padded by size / 4 on every side.
-    private static func textBlock(_ string: String, _ s: TextSettings, size: Double) -> CIImage? {
+    /// The text (with its box and shadow) on a transparent bitmap, padded by `pad` on every side, wrapped to `limit`.
+    private static func textBlock(_ string: String, _ s: TextSettings, size: Double, pad: Double, fit limit: CGSize) -> CIImage? {
         let font = CTFontCreateWithName(s.fontName as CFString, size, nil)  // unknown names fall back to the system font
         var alignment: CTTextAlignment = switch s.position {
         case .topLeft, .left, .bottomLeft: .left
@@ -79,9 +82,7 @@ public enum TextStep {
             kCTParagraphStyleAttributeName as NSAttributedString.Key: paragraph,
         ])
         let setter = CTFramesetterCreateWithAttributedString(attributed)
-        let fit = CTFramesetterSuggestFrameSizeWithConstraints(setter, CFRange(), nil,
-                                                               CGSize(width: 100_000, height: 100_000), nil)
-        let pad = (size / 4).rounded(.up)
+        let fit = CTFramesetterSuggestFrameSizeWithConstraints(setter, CFRange(), nil, limit, nil)
         let textRect = CGRect(x: pad, y: pad, width: fit.width.rounded(.up), height: fit.height.rounded(.up))
         let width = Int(textRect.width + 2 * pad), height = Int(textRect.height + 2 * pad)
         guard textRect.width > 0, textRect.height > 0,
@@ -124,7 +125,7 @@ public enum WatermarkStep {
 
     public static func apply(_ image: CIImage, watermark: CIImage, _ s: WatermarkSettings) -> CIImage {
         let extent = image.extent, mark = watermark.extent
-        guard !extent.isEmpty, !extent.isInfinite, !mark.isEmpty, !mark.isInfinite else { return image }
+        guard s.isOn, !extent.isEmpty, !extent.isInfinite, !mark.isEmpty, !mark.isInfinite else { return image }
         let factor = s.widthPercent.clamped(1, 100) / 100 * extent.width / mark.width
         let size = CGSize(width: mark.width * factor, height: mark.height * factor)
         let margin = (s.marginPercent.clamped(0, 25) / 100 * min(extent.width, extent.height)).rounded()
