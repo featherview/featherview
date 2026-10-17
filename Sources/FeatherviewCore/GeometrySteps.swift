@@ -120,13 +120,18 @@ public enum ResizeStep {
 
     /// The largest pixel size a decode may be limited to before the pipeline runs, or nil when
     /// the full image is needed (crop on, or a mode that isn't a plain downscale). Used by Task 8
-    /// to keep the old fast path (decode at the target size) for the common "longest side" case.
+    /// to keep the old fast path (a smaller decode) for the common "longest side" case.
     public static func decodeLimit(_ settings: BatchSettings, originalSize: CGSize) -> Int? {
         let s = settings.resize
         guard s.isOn, !settings.crop.isOn, s.mode == .longestSide else { return nil }
         let target = targetSize(for: originalSize, s, scale: 1)
-        guard target.width < originalSize.width, target.height < originalSize.height else { return nil }
-        return Int(max(target.width, target.height))
+        // ImageIO rounds a thumbnail's sides its own way (often a pixel below the target), so decode
+        // at an exact ½, ¼ or ⅛ that keeps the aspect: the pipeline's resize then gives the same size
+        // as from the full image. JPEG decodes these steps fastest.
+        let w = Int(originalSize.width), h = Int(originalSize.height), long = max(w, h)
+        let steps = (1...3).map { 1 << $0 }
+            .filter { w % $0 == 0 && h % $0 == 0 && long / $0 >= Int(max(target.width, target.height)) }
+        return steps.last.map { long / $0 }
     }
 }
 
