@@ -199,10 +199,11 @@ menu and Start in its toolbar:
      4:3, 16:9, 16:10, √2, or custom) at one of 9 anchors. New area in one colour (transparent
      when the output format has alpha and the colour is clear).
    - Border: one or two nested solid borders, each with a width in pixels and a colour.
-   - Text: one or more lines with `{name}`, `{folder}`, `{date}`, `{n}` placeholders (same
-     meaning as in Rename); font from the system font panel, size as % of the image's shorter
-     side; colour; one of 9 positions with a margin in % of the shorter side; in the image or on
-     a strip added below or above it; opacity; optional shadow and background box.
+   - Text: one or more lines with `{name}`, `{folder}`, `{date}` (as in Rename) and `{n}` (the
+     file's place in the list: the rename counter is only known once earlier files are
+     written); font from the system font panel, size as % of the image's shorter side; colour;
+     one of 9 positions with a margin in % of the shorter side; in the image or on a strip added
+     below or above it; opacity; optional shadow and background box.
    - Watermark: an image file (PNG with alpha works best) at one of 9 positions with a margin,
      sized as % of the output's width, with an opacity (default 33 %).
 
