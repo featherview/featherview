@@ -52,8 +52,29 @@ public enum ColourQuantizer {
 
     private static func bucket(_ r: Int, _ g: Int, _ b: Int) -> Int { (r >> 3) << 10 | (g >> 3) << 5 | (b >> 3) }
 
-    /// Median cut over 5-bit-per-channel buckets (not a sort of every pixel); each box's mean is its colour.
-    private static func medianCut(_ image: RGBAImage, colours: Int) -> [(r: Int, g: Int, b: Int)] {
+    /// The image's colours as entries for the median cut: every exact colour when there are at most 65,536
+    /// (fine gradients and near-greys keep apart), else 5-bit-per-channel buckets (not a sort of every pixel).
+    /// `channel(n, c)` is entry n's channel c at that precision; `sums` are full 8-bit sums.
+    private static func histogram(_ image: RGBAImage)
+        -> (count: [Int], sums: [Int], channel: (Int, Int) -> Int) {
+        let p = image.pixels
+        var exact = [UInt32: Int]()
+        var count = [Int](), sums = [Int](), keys = [UInt32]()
+        for i in stride(from: 0, to: p.count, by: 4) where p[i + 3] > 0 {
+            let key = UInt32(p[i]) << 16 | UInt32(p[i + 1]) << 8 | UInt32(p[i + 2])
+            let n: Int
+            if let found = exact[key] { n = found } else {
+                if keys.count == 1 << 16 { return buckets(image) }
+                n = keys.count; exact[key] = n; keys.append(key)
+                count.append(0); sums += [0, 0, 0]
+            }
+            count[n] += 1
+            sums[n * 3] += Int(p[i]); sums[n * 3 + 1] += Int(p[i + 1]); sums[n * 3 + 2] += Int(p[i + 2])
+        }
+        return (count, sums, { n, c in Int(keys[n] >> (16 - 8 * UInt32(c)) & 255) })
+    }
+
+    private static func buckets(_ image: RGBAImage) -> (count: [Int], sums: [Int], channel: (Int, Int) -> Int) {
         var count = [Int](repeating: 0, count: 1 << 15)
         var sums = [Int](repeating: 0, count: 3 << 15)
         let p = image.pixels
@@ -62,11 +83,16 @@ public enum ColourQuantizer {
             count[k] += 1
             sums[k * 3] += Int(p[i]); sums[k * 3 + 1] += Int(p[i + 1]); sums[k * 3 + 2] += Int(p[i + 2])
         }
+        return (count, sums, { k, c in k >> (10 - 5 * c) & 31 })
+    }
+
+    /// Median cut over the histogram's entries; each box's mean is its colour.
+    private static func medianCut(_ image: RGBAImage, colours: Int) -> [(r: Int, g: Int, b: Int)] {
+        let (count, sums, channel) = histogram(image)
         var boxes = [count.indices.filter { count[$0] > 0 }]
         if boxes[0].isEmpty { return [(0, 0, 0)] }
-        func channel(_ k: Int, _ c: Int) -> Int { k >> (10 - 5 * c) & 31 }
         while boxes.count < colours {
-            // Split the box with the most pixels that still holds more than one bucket.
+            // Split the box with the most pixels that still holds more than one entry.
             var best = -1, bestPixels = 0
             for (n, box) in boxes.enumerated() where box.count > 1 {
                 let pixels = box.reduce(0) { $0 + count[$1] }
@@ -95,17 +121,34 @@ public enum ColourQuantizer {
     }
 
     private static func map(_ image: RGBAImage, palette: [(r: Int, g: Int, b: Int)], dither: Bool) -> RGBAImage {
-        var lookup = [Int16](repeating: -1, count: 1 << 15) // bucket → nearest palette entry, filled on first use
+        // Per 5-bit bucket, filled on first use: the palette entries that can be nearest to some colour in it
+        // (nearest possible distance no more than the smallest farthest distance), then an exact search among those.
+        var start = [Int32](repeating: -1, count: 1 << 15), length = [Int16](repeating: 0, count: 1 << 15)
+        var candidates = [Int16]()
+        var near = [Int](repeating: 0, count: palette.count)
+        func axis(_ v: Int, _ lo: Int) -> (near: Int, far: Int) {
+            let d = v < lo ? lo - v : v > lo + 7 ? v - lo - 7 : 0, f = max(abs(v - lo), abs(v - lo - 7))
+            return (d * d, f * f)
+        }
         func nearest(_ r: Int, _ g: Int, _ b: Int) -> Int {
             let k = bucket(r, g, b)
-            if lookup[k] >= 0 { return Int(lookup[k]) }
-            let cr = (r & ~7) | 4, cg = (g & ~7) | 4, cb = (b & ~7) | 4
+            if start[k] < 0 {
+                var bound = Int.max
+                for (n, c) in palette.enumerated() {
+                    let x = axis(c.r, r & ~7), y = axis(c.g, g & ~7), z = axis(c.b, b & ~7)
+                    near[n] = x.near + y.near + z.near
+                    bound = min(bound, x.far + y.far + z.far)
+                }
+                start[k] = Int32(candidates.count)
+                for n in palette.indices where near[n] <= bound { candidates.append(Int16(n)) }
+                length[k] = Int16(candidates.count - Int(start[k]))
+            }
             var best = 0, bestDistance = Int.max
-            for (n, c) in palette.enumerated() {
-                let d = (c.r - cr) * (c.r - cr) + (c.g - cg) * (c.g - cg) + (c.b - cb) * (c.b - cb)
+            for j in Int(start[k])..<Int(start[k]) + Int(length[k]) {
+                let n = Int(candidates[j]), c = palette[n]
+                let d = (c.r - r) * (c.r - r) + (c.g - g) * (c.g - g) + (c.b - b) * (c.b - b)
                 if d < bestDistance { best = n; bestDistance = d }
             }
-            lookup[k] = Int16(best)
             return best
         }
         var out = image

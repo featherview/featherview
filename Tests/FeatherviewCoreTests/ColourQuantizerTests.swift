@@ -48,6 +48,26 @@ import Testing
         #expect(ColourQuantizer.reduce(image, colours: 16, dither: true) == image)
     }
 
+    /// Fine ramps whose colours share 5-bit buckets still get (about) the colours asked for.
+    @Test(arguments: [64, 128, 200]) func greyRampKeepsTheAskedColours(colours: Int) {
+        var ramp = RGBAImage(width: 256, height: 4)
+        for y in 0..<4 { for x in 0..<256 { ramp[x, y] = (UInt8(x), UInt8(x), UInt8(x), 255) } }
+        for dither in [false, true] {
+            let count = distinct(ColourQuantizer.reduce(ramp, colours: colours, dither: dither)).count
+            #expect(count <= colours && count >= colours * 9 / 10)
+        }
+    }
+
+    @Test func darkColoursInOneBucketStayApart() {
+        var image = RGBAImage(width: 300, height: 2)
+        for x in 0..<300 {
+            let c = (UInt8(x % 8), UInt8(x / 8 % 8), UInt8(x / 64))
+            for y in 0..<2 { image[x, y] = (c.0, c.1, c.2, 255) }
+        }
+        let count = distinct(ColourQuantizer.reduce(image, colours: 256, dither: false)).count
+        #expect(count <= 256 && count >= 230)
+    }
+
     @Test func clampsCount() {
         let image = gradient()
         #expect(ColourQuantizer.reduce(image, colours: 1, dither: false) == ColourQuantizer.reduce(image, colours: 2, dither: false))
