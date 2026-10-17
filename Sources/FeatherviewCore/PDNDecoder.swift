@@ -38,7 +38,7 @@ enum PDNDecoder {
         let document = try object(.reference(graph.root))
         let list = try object(document.members["layers"])
         guard case .array(let items) = try object(list.members["ArrayList+_items"]).members["items"],
-              let count = try? int(list.members["ArrayList+_size"]), count <= items.count
+              let count = try? int(list.members["ArrayList+_size"]), count > 0, count <= items.count
         else { throw OwnDecodeError.corrupt }
 
         struct Layer { let width, height, stride: Int; let visible: Bool; let opacity: Double }
@@ -50,13 +50,17 @@ enum PDNDecoder {
             guard case .reference(let block)? = surface.members["scan0"] else { throw OwnDecodeError.corrupt }
             let width = try int(surface.members["width"]), height = try int(surface.members["height"])
             let stride = try int(surface.members["stride"])
-            // Every Paint.NET layer is canvas-sized; anything else is a damaged file.
-            guard width == size.width, height == size.height, stride >= width * 4 else { throw OwnDecodeError.corrupt }
+            // Every Paint.NET layer is canvas-sized with rows padded by a few bytes at most; anything else is a damaged file.
+            guard width == size.width, height == size.height, stride >= width * 4, stride <= width * 4 + 64,
+                  try int(graph.objects[block]?.members["length64"]) == stride * height
+            else { throw OwnDecodeError.corrupt }
             layers[block] = Layer(width: width, height: height, stride: stride,
                                   visible: properties.members["visible"] != .bool(false),
                                   opacity: Double((try? int(properties.members["opacity"])) ?? 255) / 255)
         }
 
+        // DEFLATE expands at most about 1032:1, so the file must hold that much for its layers before any is allocated.
+        guard layers.values.reduce(0, { $0 + $1.stride * $1.height }) / 1032 <= reader.remaining else { throw OwnDecodeError.truncated }
         var canvas = try LayerCanvas(width: size.width, height: size.height)
         // The deferred blocks follow the graph in the order their MemoryBlock records appeared.
         let blocks = graph.order.filter {
@@ -68,7 +72,6 @@ enum PDNDecoder {
             let block = graph.objects[id]!
             let length = try int(block.members["length64"])
             let layer = layers[id]
-            if let layer, length < layer.stride * (layer.height - 1) + layer.width * 4 { throw OwnDecodeError.corrupt }
             let draw = layer.map { $0.visible && $0.opacity > 0 } ?? false
             let pixels = try readBlock(&reader, length: length, layer: draw ? layer.map { ($0.width, $0.height, $0.stride) } : nil)
             if let layer, let pixels, draw { canvas.draw(pixels, x: 0, y: 0, opacity: layer.opacity) }

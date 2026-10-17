@@ -13,6 +13,10 @@ struct PDNBuilder {
         var visible = true
         var opacity: UInt8 = 255
         var extraStride = 0
+        /// Bytes past the last row, counted in `length64`.
+        var extraLength = 0
+        /// Surface size written to the graph instead of the pixels' size (the block keeps the real pixels).
+        var claimedSize: (width: Int, height: Int)?
     }
 
     typealias Chunk = (index: Int, raw: [UInt8])
@@ -65,13 +69,13 @@ struct PDNBuilder {
                 ("name", .string(id: id + 5, "Layer \(i)")), ("visible", .bool(layer.visible)),
                 ("isBackground", .bool(i == 0)), ("opacity", .byte(layer.opacity)),
             ])
+            let (sw, sh) = layer.claimedSize ?? (layer.pixels.width, layer.pixels.height)
             w.classRecord(id: id + 2, name: "PaintDotNet.Surface", members: [
-                ("width", .int32(layer.pixels.width)), ("height", .int32(layer.pixels.height)),
-                ("stride", .int32(layer.pixels.width * 4 + layer.extraStride)),
+                ("width", .int32(sw)), ("height", .int32(sh)), ("stride", .int32(sw * 4 + layer.extraStride)),
                 ("scan0", .reference(id + 3, className: "PaintDotNet.MemoryBlock")),
             ])
             w.classRecord(id: id + 3, name: "PaintDotNet.MemoryBlock", members: [
-                ("length64", .int64(blockBytes(layer).count)), ("hasParent", .bool(false)), ("deferred", .bool(true)),
+                ("length64", .int64(layer.claimedSize.map { $0.width * 4 * $0.height } ?? blockBytes(layer).count)), ("hasParent", .bool(false)), ("deferred", .bool(true)),
             ])
         }
         w.end()
@@ -88,7 +92,7 @@ struct PDNBuilder {
             }
             out += [UInt8](repeating: 0xEE, count: layer.extraStride)
         }
-        return out
+        return out + [UInt8](repeating: 0xEE, count: layer.extraLength)
     }
 
     func block(_ i: Int) -> [UInt8] {
@@ -253,6 +257,30 @@ struct PDNBuilder {
         var small = Self.builder([.init(pixels: Self.solid(2, 2, (1, 2, 3, 255)))])
         small.width = 4; small.height = 3
         #expect(throws: OwnDecodeError.corrupt) { try PDNDecoder.decode(small.data) }
+    }
+
+    @Test func noLayersThrows() {
+        #expect(throws: OwnDecodeError.self) { try PDNDecoder.decode(Self.builder([]).data) }
+        // A gigabyte canvas from a 364-byte file is refused before allocating it.
+        let start = ContinuousClock.now
+        #expect(throws: OwnDecodeError.self) { _ = try PDNDecoder.decode(PDNBuilder(width: 16384, height: 16384, layers: []).data) }
+        #expect(ContinuousClock.now - start < .milliseconds(200))
+    }
+
+    @Test func layerWithTooLittleDataThrowsBeforeAllocating() {
+        for visible in [true, false] {
+            var b = PDNBuilder(width: 16384, height: 16384, layers: [.init(pixels: Self.red, visible: visible, claimedSize: (16384, 16384))])
+            b.chunkSize = Int(Int32.max)
+            let start = ContinuousClock.now
+            #expect(throws: OwnDecodeError.self) { _ = try PDNDecoder.decode(b.data) }
+            #expect(ContinuousClock.now - start < .milliseconds(200))
+        }
+    }
+
+    @Test func blockLengthMustMatchSurface() {
+        // Paint.NET writes exactly stride × height; more would let a tiny layer inflate gigabytes.
+        #expect(throws: OwnDecodeError.corrupt) { try PDNDecoder.decode(Self.builder([.init(pixels: Self.red, extraLength: 16)]).data) }
+        #expect(throws: OwnDecodeError.corrupt) { try PDNDecoder.decode(Self.builder([.init(pixels: Self.red, extraStride: 1000)]).data) }
     }
 
     @Test func olderBodyIsUnsupported() {
