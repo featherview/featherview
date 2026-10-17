@@ -112,6 +112,25 @@ private func filter(_ configure: (inout FilterSettings) -> Void) -> FilterSettin
         #expect(near(out[127, 1], (255, 255, 255, 255), 2))
     }
 
+    @Test func autoLevelsMeasuresHalfTransparentPixelsByTheirColour() throws {
+        var ramp = RGBAImage(width: 128, height: 4)
+        for y in 0..<4 { for x in 0..<128 { let v = UInt8(64 + x); ramp[x, y] = (v, v, v, 128) } }
+        let out = try PipelineFixtures.pixels(FilterStep.apply(PipelineFixtures.fromRGBA(ramp),
+                                                               filter { $0.autoLevels = true }, scale: 1))
+        #expect(near(out[0, 1], (0, 0, 0, 128), 3))
+        #expect(near(out[127, 1], (255, 255, 255, 128), 3))
+    }
+
+    @Test func autoLevelsIgnoresTransparentPixels() throws {
+        var ramp = RGBAImage(width: 256, height: 4, pixels: [UInt8](repeating: 0, count: 256 * 4 * 4))
+        for y in 0..<4 { for x in 0..<128 { let v = UInt8(64 + x); ramp[x, y] = (v, v, v, 255) } }
+        let out = try PipelineFixtures.pixels(FilterStep.apply(PipelineFixtures.fromRGBA(ramp),
+                                                               filter { $0.autoLevels = true }, scale: 1))
+        #expect(near(out[0, 1], (0, 0, 0, 255), 2))
+        #expect(near(out[127, 1], (255, 255, 255, 255), 2))
+        #expect(out[200, 1].a == 0)
+    }
+
     @Test func autoLevelsLeavesAFlatImage() throws {
         let out = try PipelineFixtures.pixels(FilterStep.apply(grey(100), filter { $0.autoLevels = true }, scale: 1))
         #expect(near(out[3, 3], (100, 100, 100, 255)))

@@ -114,7 +114,7 @@ public enum FilterStep {
     static func autoLevels(_ image: CIImage) -> CIImage {
         let bins = 256
         let f = CIFilter.areaHistogram()
-        f.inputImage = image
+        f.inputImage = image.unpremultiplyingAlpha() // the stretch acts on straight colours, so measure those
         f.extent = image.extent
         f.count = bins
         f.scale = 1
@@ -126,7 +126,8 @@ public enum FilterStep {
         }
         var scales = [CGFloat](repeating: 1, count: 3), biases = [CGFloat](repeating: 0, count: 3)
         for channel in 0..<3 {
-            let column = (0..<bins).map { counts[$0 * 4 + channel] }
+            var column = (0..<bins).map { counts[$0 * 4 + channel] }
+            column[0] = max(0, column[0] - counts[3]) // transparent pixels (alpha bin 0) are no colour, not black
             let total = column.reduce(0, +)
             guard total > 0 else { continue }
             var sum: Float = 0, low = -1, high = -1
