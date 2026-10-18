@@ -16,3 +16,22 @@ public enum BackgroundPreset: String, CaseIterable, Sendable {
         allCases.first { $0.hex.caseInsensitiveCompare(hex) == .orderedSame }
     }
 }
+
+/// The background menu's selection: Custom stays chosen once the user picks it or a custom
+/// colour, even when that colour lands on a preset, so the colour well doesn't vanish mid-pick.
+public struct BackgroundMenu: Sendable {
+    public private(set) var customChosen = false
+
+    public init() {}
+
+    /// The menu item to show; nil is Custom.
+    public func selection(for hex: String) -> BackgroundPreset? {
+        customChosen ? nil : BackgroundPreset.matching(hex)
+    }
+
+    /// The user picked a menu item (nil is Custom).
+    public mutating func choose(_ preset: BackgroundPreset?) { customChosen = preset == nil }
+
+    /// The user picked a colour in the colour well.
+    public mutating func pickedCustomColour() { customChosen = true }
+}

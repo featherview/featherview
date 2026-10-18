@@ -34,6 +34,7 @@ private final class SettingsTabs: NSTabViewController {
         let index = tabViewItems.count
         let host = NSHostingController(rootView: view
             .formStyle(.grouped)  // wraps long labels instead of clipping them at this width
+            .toggleStyle(.switch)
             .scrollDisabled(true)
             .frame(width: 520)
             .fixedSize(horizontal: false, vertical: true)
@@ -76,14 +77,18 @@ private struct BrowsingSettings: View {
 
     var body: some View {
         Form {
-            Picker("Past the end of a folder:", selection: $pastEnd) {
-                Text("Show the folder chooser").tag(PastEndBehavior.folderChooser.rawValue)
-                Text("Start this folder again").tag(PastEndBehavior.loop.rawValue)
-                Text("Stop").tag(PastEndBehavior.stop.rawValue)
+            Section("Folders") {
+                Picker("Past the end of a folder:", selection: $pastEnd) {
+                    Text("Show the folder chooser").tag(PastEndBehavior.folderChooser.rawValue)
+                    Text("Start this folder again").tag(PastEndBehavior.loop.rawValue)
+                    Text("Stop").tag(PastEndBehavior.stop.rawValue)
+                }
+                Toggle("Show hidden files", isOn: $showHidden)
             }
-            Toggle("Show hidden files", isOn: $showHidden)
-            Toggle("Show the next image after moving or trashing one", isOn: $showNext)
-            Toggle("Move, copy and trash sidecar files (.xmp, .aae, .thm) with their image", isOn: $sidecars)
+            Section("After a move or Move to Trash") {
+                Toggle("Show the next image after moving or trashing one", isOn: $showNext)
+                Toggle("Move, copy and trash sidecar files (.xmp, .aae, .thm) with their image", isOn: $sidecars)
+            }
         }
     }
 }
@@ -93,6 +98,18 @@ private struct ViewerSettings: View {
     @AppStorage(AppSettings.checkerboard.key) private var checkerboard = AppSettings.checkerboard.defaultValue
     @AppStorage(AppSettings.rememberWindowFrame.key) private var rememberFrame = AppSettings.rememberWindowFrame.defaultValue
     @AppStorage(AppSettings.zoomStepPercent.key) private var zoomStep = AppSettings.zoomStepPercent.defaultValue
+    @AppStorage(AppSettings.hideBarsWhileViewing.key) private var hideBars = AppSettings.hideBarsWhileViewing.defaultValue
+    @State private var menu = BackgroundMenu()
+
+    /// The preset menu; nil is Custom, also whenever the stored colour matches no preset.
+    private var preset: Binding<BackgroundPreset?> {
+        Binding {
+            menu.selection(for: backgroundHex)
+        } set: { preset in
+            menu.choose(preset)
+            if let preset { backgroundHex = preset.hex }
+        }
+    }
 
     /// The stored `#RRGGBB` as a colour for the picker; picks are stored back in sRGB.
     private var background: Binding<Color> {
@@ -101,18 +118,39 @@ private struct ViewerSettings: View {
             return Color(.sRGB, red: c.red, green: c.green, blue: c.blue)
         } set: { color in
             guard let srgb = NSColor(color).usingColorSpace(.sRGB) else { return }
+            menu.pickedCustomColour()
             backgroundHex = HexColor.format(red: srgb.redComponent, green: srgb.greenComponent, blue: srgb.blueComponent)
         }
     }
 
     var body: some View {
         Form {
-            ColorPicker("Background:", selection: background, supportsOpacity: false)
-            Toggle("Checkerboard behind transparent images", isOn: $checkerboard)
-            Toggle("Remember the window's size and position", isOn: $rememberFrame)
-            Stepper(value: $zoomStep, in: 1...100) {
-                Text("Zoom step: \(zoomStep) %")
+            Section("Window") {
+                Picker("Background:", selection: preset) {
+                    ForEach(BackgroundPreset.allCases, id: \.self) { Text(name(of: $0)).tag(Optional($0)) }
+                    Text("Custom…").tag(BackgroundPreset?.none)
+                }
+                if preset.wrappedValue == nil {
+                    ColorPicker("Custom colour:", selection: background, supportsOpacity: false)
+                }
+                Toggle("Checkerboard behind transparent images", isOn: $checkerboard)
+                Toggle("Remember the window's size and position", isOn: $rememberFrame)
+                Stepper(value: $zoomStep, in: 1...100) {
+                    Text("Zoom step: \(zoomStep) %")
+                }
             }
+            Section("Bars") {
+                Toggle("Hide toolbar and status bar while viewing", isOn: $hideBars)
+            }
+        }
+    }
+
+    private func name(of preset: BackgroundPreset) -> LocalizedStringKey {
+        switch preset {
+        case .graphite: "Graphite"
+        case .black: "Black"
+        case .grey: "Grey"
+        case .white: "White"
         }
     }
 }
@@ -124,13 +162,17 @@ private struct FullScreenSettings: View {
 
     var body: some View {
         Form {
-            Toggle("Show text over the image", isOn: $showOverlay)
-            TextField("Text:", text: $template)
-                .disabled(!showOverlay)
-            Text("{name} {folder} {index} {count} {size} {date}")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Toggle("Hide the pointer", isOn: $hidePointer)
+            Section("Overlay") {
+                Toggle("Show text over the image", isOn: $showOverlay)
+                TextField("Text:", text: $template)
+                    .disabled(!showOverlay)
+                Text("{name} {folder} {index} {count} {size} {date}")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Pointer") {
+                Toggle("Hide the pointer", isOn: $hidePointer)
+            }
         }
     }
 }
@@ -141,8 +183,8 @@ private struct MoveCopySettings: View {
 
     var body: some View {
         Form {
-            Toggle("Ask before each move or copy", isOn: $ask)
             Section("Folders for F7 (move) and F8 (copy)") {
+                Toggle("Ask before each move or copy", isOn: $ask)
                 ForEach(0..<DestinationSlots.count, id: \.self) { slot in
                     LabeledContent(String(DestinationSlots.keys[slot])) {
                         Text(slots[slot]?.path ?? String(localized: "Empty"))
@@ -177,14 +219,14 @@ private struct FormatsSettings: View {
 
     var body: some View {
         Form {
-            Picker("Format:", selection: Binding { format } set: {
-                format = $0
-                options = FormatSettings.options(for: $0)
-            }) {
-                ForEach(FormatRegistry.writable) { Text($0.name).tag($0) }
-            }
-            // The options belong to the chosen format: their own group, named after it.
+            // The options belong to the chosen format: one group, named after it.
             Section("\(format.name) Options") {
+                Picker("Format:", selection: Binding { format } set: {
+                    format = $0
+                    options = FormatSettings.options(for: $0)
+                }) {
+                    ForEach(FormatRegistry.writable) { Text($0.name).tag($0) }
+                }
                 FormatOptionsView(format: format, options: Binding { options } set: {
                     options = $0
                     FormatSettings.save($0, for: format)
@@ -203,9 +245,11 @@ private struct OpenWithSettings: View {
 
     var body: some View {
         Form {
-            row("⌥1", $app1)
-            row("⌥2", $app2)
-            row("⌥3", $app3)
+            Section("Apps for ⌥1, ⌥2 and ⌥3") {
+                row("⌥1", $app1)
+                row("⌥2", $app2)
+                row("⌥3", $app3)
+            }
         }
     }
 
