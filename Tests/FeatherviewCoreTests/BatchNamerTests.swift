@@ -113,6 +113,11 @@ import Testing
         #expect(renamer.next(for: inputs[0], date: nil).lastPathComponent == "{folder}.jpg")
     }
 
+    @Test func folderExpandsTilde() {
+        let namer = BatchNamer(settings: settings(out: "~/Desktop/Out"), inputs: []) { _ in false }
+        #expect(namer.folder(for: input("/photos/x.jpg")).path == NSHomeDirectory() + "/Desktop/Out")
+    }
+
     @Test func recreateSubfoldersAddsRelativePath() {
         let namer = BatchNamer(settings: settings(safety: SafetySettings(recreateSubfolders: true)), inputs: []) { _ in false }
         #expect(namer.folder(for: input("/photos/2024/May/x.jpg", root: "/photos")).path == "/out/2024/May")

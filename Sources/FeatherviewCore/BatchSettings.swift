@@ -177,6 +177,8 @@ public struct BatchSettings: Codable, Equatable, Sendable {
     public var options = FormatOptions()
     /// A path; may contain {folder}.
     public var outputFolder = ""
+    /// A typed relative path would resolve against the app's working directory, "/"; `~` is fine (URL expands it).
+    public var hasAbsoluteOutputFolder: Bool { (outputFolder as NSString).expandingTildeInPath.hasPrefix("/") }
     public var renamePattern = "{name}"
     public var crop = CropSettings(), resize = ResizeSettings(), orientation = OrientationSettings()
     public var colour = ColourSettings(), filters = FilterSettings(), canvas = CanvasSettings()
