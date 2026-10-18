@@ -58,4 +58,12 @@ import Testing
         #expect(DiskImageArt.helpFits("a\nb\nc\nd", rightToLeft: rightToLeft))
         #expect(!DiskImageArt.helpFits("a\nb\nc\nd\ne", rightToLeft: rightToLeft))
     }
+
+    /// Arabic, Hebrew, Thai and Devanagari lines are taller than Latin ones: four still fit, five don't.
+    @Test(arguments: [("افتح", true), ("פתח", true), ("ไทย", false), ("खोलें", false)])
+    func helpBoxHoldsFourLinesInTallScripts(word: String, rightToLeft: Bool) {
+        let lines = { (n: Int) in Array(repeating: word, count: n).joined(separator: "\n") }
+        #expect(DiskImageArt.helpFits(lines(4), rightToLeft: rightToLeft))
+        #expect(!DiskImageArt.helpFits(lines(5), rightToLeft: rightToLeft))
+    }
 }

@@ -41,7 +41,7 @@ public enum DiskImageArt {
         ctx.setStrokeColor(rgb(0xffc766, 0.14))
         ctx.setLineWidth(1.25)
         ctx.setLineCap(.round)
-        let start = CGPoint(x: 612, y: 92), control = CGPoint(x: 590, y: 190), end = CGPoint(x: 520, y: 262)
+        let start = CGPoint(x: 612, y: 100), control = CGPoint(x: 590, y: 190), end = CGPoint(x: 520, y: 262)
         ctx.move(to: start)
         ctx.addQuadCurve(to: end, control: control)
         // Barbs: from points along the shaft, swept back towards the quill's base, longest in the middle.
@@ -76,26 +76,33 @@ public enum DiskImageArt {
     }
 
     static let helpMargin: CGFloat = 24, helpPad: CGFloat = 8
-    /// Four lines of 11 pt system text (about 13.1 pt each); the box then ends below the feather.
-    static let maxHelpHeight: CGFloat = 54
+    /// Lines, not a height: Arabic, Hebrew, Thai and Devanagari lines are taller than Latin ones.
+    static let maxHelpLines = 4
     static var helpWidth: CGFloat { size.width - 2 * helpMargin - 2 * helpPad }
 
     /// Whether all of `help` fits in the help box; `featherview-dmg` refuses a translation that doesn't.
     public static func helpFits(_ help: String, rightToLeft: Bool = false) -> Bool {
-        let text = attributed(help, rightToLeft: rightToLeft)
-        let setter = CTFramesetterCreateWithAttributedString(text)
-        let rect = CGRect(x: 0, y: 0, width: helpWidth, height: maxHelpHeight)
+        let setter = CTFramesetterCreateWithAttributedString(attributed(help, rightToLeft: rightToLeft))
+        return helpLines(setter).count <= maxHelpLines
+    }
+
+    /// The help laid out at the box's width with no height limit.
+    private static func helpLines(_ setter: CTFramesetter) -> [CTLine] {
+        let rect = CGRect(x: 0, y: 0, width: helpWidth, height: 10_000)
         let frame = CTFramesetterCreateFrame(setter, CFRange(), CGPath(rect: rect, transform: nil), nil)
-        return CTFrameGetVisibleStringRange(frame).length == CFAttributedStringGetLength(text)
+        return CTFrameGetLines(frame) as! [CTLine]
     }
 
     private static func helpBox(_ ctx: CGContext, _ help: String, rightToLeft: Bool) {
         let margin = helpMargin, bottom: CGFloat = 10, pad = helpPad
         let textWidth = helpWidth
         let setter = CTFramesetterCreateWithAttributedString(attributed(help, rightToLeft: rightToLeft))
-        let fitted = CTFramesetterSuggestFrameSizeWithConstraints(setter, CFRange(), nil,
-                                                                  CGSize(width: textWidth, height: maxHelpHeight), nil)
-        let textHeight = min(maxHelpHeight, fitted.height.rounded(.up))
+        // Longer help is cut after four lines (featherview-dmg refuses it before it gets here).
+        let shown = helpLines(setter).prefix(maxHelpLines).reduce(0) { $0 + CTLineGetStringRange($1).length }
+        let range = CFRange(location: 0, length: shown)
+        let fitted = CTFramesetterSuggestFrameSizeWithConstraints(setter, range, nil,
+                                                                  CGSize(width: textWidth, height: .greatestFiniteMagnitude), nil)
+        let textHeight = fitted.height.rounded(.up)
         let box = CGRect(x: margin, y: bottom, width: size.width - 2 * margin, height: textHeight + 2 * pad)
         ctx.saveGState()
         ctx.addPath(CGPath(roundedRect: box, cornerWidth: 10, cornerHeight: 10, transform: nil))
@@ -104,7 +111,7 @@ public enum DiskImageArt {
         ctx.setLineWidth(1)
         ctx.drawPath(using: .fillStroke)
         let textRect = CGRect(x: margin + pad, y: bottom + pad, width: textWidth, height: textHeight)
-        let frame = CTFramesetterCreateFrame(setter, CFRange(), CGPath(rect: textRect, transform: nil), nil)
+        let frame = CTFramesetterCreateFrame(setter, range, CGPath(rect: textRect, transform: nil), nil)
         CTFrameDraw(frame, ctx)
         ctx.restoreGState()
     }
