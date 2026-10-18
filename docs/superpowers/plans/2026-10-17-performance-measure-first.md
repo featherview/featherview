@@ -2,6 +2,8 @@
 
 > Not a milestone in `docs/roadmap.md`: fixes to the viewer's speed and memory found in a code review,
 > in the order the maintainer set. Don't add features here.
+>
+> **Done:** Tasks 1–5. Task 6 skipped for now (see its note). Open findings: "Not in this plan".
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. In this repo, run it wave by wave with the `plan-wave` workflow.
 
