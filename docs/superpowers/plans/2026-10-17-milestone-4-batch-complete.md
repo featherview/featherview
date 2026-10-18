@@ -925,8 +925,9 @@ Needs the screen: ask the maintainer before driving the GUI.
   rename only (byte-identical copies); border, text, resize, rotate, greyscale, canvas output against the
   preview; presets save/edit/load/delete; replace existing and trash originals with `.xmp` (all three in
   the Trash); keep dates; recreate subfolders; pause, resume, stop and quit mid-run on 10,000 files; copy
-  log; iPhone HDR HEIC → HEIC keeps its gain map, → JPEG has none. Not checked by hand: drag and drop
-  onto the list, crop/filters/colour sliders/watermark image against the preview (unit tests only).
+  log; iPhone HDR HEIC → HEIC keeps its gain map, → JPEG has none. Checked later the same day: drag and drop
+  (a file appends, a folder adds with its subfolders), crop (bar edges within 0.5 % of the output's),
+  colour (brightness, red), filters (sepia, temperature) and a watermark image against the output.
   QA fixes: 1e87e92 (10,000 rows froze the window, Stop missing from the toolbar, Return started a batch,
   stale ticks after Clear), "1 file" and hint spacing. Open: Core Image keeps ~2 GB of decoded inputs after
   a big batch (see Step 2).
