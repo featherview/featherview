@@ -23,6 +23,7 @@ struct FeatherviewApp: App {
             BatchView(model: batch)
                 .onAppear {
                     appDelegate.isBusy = { batch.isRunning }
+                    appDelegate.stopBatch = { await batch.stopAndWait() }
                     appDelegate.willQuit = { batch.saveNow() }
                 }
                 .modifier(OpensViewerWindows())
@@ -75,6 +76,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let viewer = ViewerModel.main
     /// True while a batch runs: quitting then would stop it part-way. Set by the Batch window.
     var isBusy: () -> Bool = { false }
+    /// Stops the batch and returns once the files being written are committed.
+    var stopBatch: @MainActor () async -> Void = {}
     /// Writes state that is saved with a delay (the batch settings).
     var willQuit: () -> Void = {}
 
@@ -117,6 +120,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             alert.addButton(withTitle: String(localized: "Keep Running"))
             alert.addButton(withTitle: String(localized: "Quit"))
             guard alert.runModal() == .alertSecondButtonReturn else { return .terminateCancel }
+            // A file being written would leave its temp file behind if the process exited now.
+            Task {
+                await stopBatch()
+                willQuit()
+                sender.reply(toApplicationShouldTerminate: true)
+            }
+            return .terminateLater
         }
         willQuit()
         return .terminateNow

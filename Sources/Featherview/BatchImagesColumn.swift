@@ -96,14 +96,19 @@ struct BatchImagesColumn: View {
     }
 }
 
-/// Thumbnail and size line of a file, read once and kept while the app runs.
+/// Thumbnail and size line of a file, read once and kept for the most recently shown rows.
 private final class RowInfo {
     let thumbnail: NSImage?
     let line: String
     init(thumbnail: NSImage?, line: String) { self.thumbnail = thumbnail; self.line = line }
 }
 
-@MainActor private let rowInfoCache = NSCache<NSURL, RowInfo>()
+/// About 20 KB per 72-px thumbnail: 500 rows keep memory bounded however long the list is.
+@MainActor private let rowInfoCache: NSCache<NSURL, RowInfo> = {
+    let cache = NSCache<NSURL, RowInfo>()
+    cache.countLimit = 500
+    return cache
+}()
 
 private struct BatchImageRow: View {
     let input: BatchInput
