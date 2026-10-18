@@ -1245,7 +1245,13 @@
         }
       }
     },
+    "cancel" : {
+
+    },
     "colours" : {
+
+    },
+    "end of folder" : {
 
     },
     "macOS %@: %@" : {
@@ -1259,6 +1265,9 @@
       }
     },
     "on" : {
+
+    },
+    "open folder" : {
 
     },
     "page %@ / %@" : {
@@ -1275,6 +1284,12 @@
 
     },
     "px" : {
+
+    },
+    "show images" : {
+
+    },
+    "up" : {
 
     },
     "{folder} in the path stands for each image's folder name." : {
@@ -1304,9 +1319,6 @@
       }
     },
     "→ %@" : {
-
-    },
-    "→ open folder · ← up · Return show images · Esc cancel" : {
 
     }
   },

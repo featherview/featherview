@@ -49,7 +49,8 @@ struct ViewerView: View {
         return NSColor(srgbRed: c.red, green: c.green, blue: c.blue, alpha: 1)
     }
 
-    var body: some View {
+    /// The picture or what stands for it, with the sheets and messages over it.
+    private var canvas: some View {
         ZStack {
             background.ignoresSafeArea()
             if let image = model.image {
@@ -69,15 +70,10 @@ struct ViewerView: View {
             } else if !model.isOpening && model.list.current == nil {
                 // Only when nothing is on its way: a loading image shows black, not the hint.
                 // Centred in the fit area, not the whole window below the toolbar.
-                EmptyHint()
-                    .padding(EdgeInsets(top: canvasInsets.top - toolbarHeight, leading: canvasInsets.leading,
-                                        bottom: canvasInsets.bottom, trailing: canvasInsets.trailing))
+                EmptyHint().padding(fitAreaPadding)
             }
         }
-        .overlay {
-            if model.chooser != nil { FolderChooserView(model: model) }
-            if let operation = model.destinationPanel { DestinationPanel(model: model, operation: operation) }
-        }
+        .overlay { sheets }
         .overlay(alignment: .bottom) {
             if let message = model.errorMessage, model.image != nil {
                 Text(message)
@@ -96,6 +92,10 @@ struct ViewerView: View {
                     .padding()
             }
         }
+    }
+
+    var body: some View {
+        canvas
         // Not onGeometryChange: it misses the restored window frame at launch, leaving fit at the 100×48 placeholder.
         // The whole window and the toolbar's height (top safe area), so fit and its zoom % use the clear area.
         .background(GeometryReader { geo in
@@ -114,8 +114,7 @@ struct ViewerView: View {
             // Nothing to report without a picture: an empty strip is just a grey bar.
             if showsStatusBar, model.image != nil {
                 StatusBar(model: model)
-                    // Ends 16 pt before an open info panel.
-                    .padding(.trailing, model.showInfo ? CanvasInsets.infoPanelSpan - Theme.stripSideInset : 0)
+                    .padding(.trailing, stripTrailing)
                     .opacity(barsVisible ? 1 : 0)
                     .animation(.easeInOut(duration: reduceMotion ? 0 : 0.2), value: barsVisible)
             }
@@ -154,16 +153,7 @@ struct ViewerView: View {
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         // Not set on the window directly: SwiftUI puts the scene's title back on its next update.
         .navigationTitle(model.title)
-        .overlay(alignment: .topTrailing) {
-            if model.showInfo {
-                // Spans the fit area's height, floating on the trailing side (docs/DESIGN.md "Elements").
-                InfoPanel(url: model.list.current, revision: model.fileRevision)
-                    .padding(.top, max(canvasInsets.top - toolbarHeight, CanvasInsets.infoPanelMargin))
-                    .padding(.bottom, max(canvasInsets.bottom, CanvasInsets.infoPanelMargin))
-                    .padding(.trailing, CanvasInsets.infoPanelMargin)
-                    .transition(.offset(x: Theme.Motion.panelTravel).combined(with: .opacity))
-            }
-        }
+        .overlay(alignment: .topTrailing) { infoPanel }
         // Here, not a withAnimation at each toggle: I, the toolbar button and the menus all count.
         // The canvas refits on the same curve (ImageCanvas).
         .animation(Theme.Motion.moving(Theme.Motion.panel, reduceMotion: reduceMotion), value: model.showInfo)
@@ -222,6 +212,41 @@ struct ViewerView: View {
         let factor: Double? = if case .factor(let factor) = model.zoom { factor } else { nil }
         return ZoomSteps.drawSize(decoded: CGSize(width: image.width, height: image.height), full: fullSize,
                                   factor: factor, view: fitArea, displayScale: displayScale)
+    }
+
+    /// The strip ends 16 pt before an open info panel.
+    private var stripTrailing: CGFloat {
+        model.showInfo ? CanvasInsets.infoPanelSpan - Theme.stripSideInset : 0
+    }
+
+    /// Spans the fit area's height, floating on the trailing side (docs/DESIGN.md "Elements").
+    @ViewBuilder private var infoPanel: some View {
+        if model.showInfo {
+            InfoPanel(url: model.list.current, revision: model.fileRevision)
+                .padding(.top, max(canvasInsets.top - toolbarHeight, CanvasInsets.infoPanelMargin))
+                .padding(.bottom, max(canvasInsets.bottom, CanvasInsets.infoPanelMargin))
+                .padding(.trailing, CanvasInsets.infoPanelMargin)
+                .transition(.offset(x: Theme.Motion.panelTravel).combined(with: .opacity))
+        }
+    }
+
+    /// The folder chooser and the F7 / F8 panel, centred in the fit area.
+    private var sheets: some View {
+        ZStack {
+            if model.chooser != nil {
+                FolderChooserView(model: model).transition(.sheet(reduceMotion: reduceMotion))
+            }
+            if let operation = model.destinationPanel {
+                DestinationPanel(model: model, operation: operation).transition(.sheet(reduceMotion: reduceMotion))
+            }
+        }
+        .padding(fitAreaPadding)
+    }
+
+    /// Insets of the safe area that leave the fit area, for things centred in it.
+    private var fitAreaPadding: EdgeInsets {
+        EdgeInsets(top: canvasInsets.top - toolbarHeight, leading: canvasInsets.leading,
+                   bottom: canvasInsets.bottom, trailing: canvasInsets.trailing)
     }
 
     /// The fit area for the current insets. `model.viewSize` is set in onChange, one render later; the picture

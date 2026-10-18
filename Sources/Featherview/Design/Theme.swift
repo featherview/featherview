@@ -233,6 +233,11 @@ enum Theme {
     static let chooserRowHeight = 40.0
     static let moveRowHeight = 32.0
     static let rowGap = 10.0
+    /// Chooser list height before it scrolls (spec silent: 10 rows).
+    static let chooserListHeight = 400.0
+    /// Footer hints: gap between hints and their 1 × 10 separators.
+    static let footerGap = 10.0
+    static let footerSeparatorHeight = 10.0
     /// Empty hint card.
     static let emptyCard = CGSize(width: 300, height: 168)
     static let emptyCardPadding = EdgeInsets(top: 24, leading: 28, bottom: 24, trailing: 28)
