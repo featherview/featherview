@@ -103,6 +103,7 @@ struct ImageCanvas: NSViewRepresentable {
         view.onFirstDraw = onFirstDraw
         view.onCommit = onCommit
         let oldSize = view.frame.size
+        let oldFrameOrigin = view.frame.origin
         let oldVisible = scrollView.clearRect
         // Keep the point at the centre of the clear area where it was, so zooming doesn't jump to a corner.
         let centre = CGPoint(x: oldSize.width > 0 ? oldVisible.midX / oldSize.width : 0.5,
@@ -112,6 +113,8 @@ struct ImageCanvas: NSViewRepresentable {
         let contentInsets = NSEdgeInsets(top: insets.top, left: rtl ? insets.trailing : insets.leading,
                                          bottom: insets.bottom, right: rtl ? insets.leading : insets.trailing)
         let oldInsets = scrollView.contentInsets
+        // Before the new insets re-centre the clip: an animation starts from where the picture is on screen.
+        let oldOrigin = scrollView.contentView.bounds.origin
         let insetsChanged = !NSEdgeInsetsEqual(oldInsets, contentInsets)
         // Only a side changed: the info panel opened or closed, and the picture refits on its curve.
         let panelMoved = insetsChanged && oldInsets.top == contentInsets.top && oldInsets.bottom == contentInsets.bottom
@@ -148,11 +151,21 @@ struct ImageCanvas: NSViewRepresentable {
         if !framed || !(animate && (resized || insetsChanged)) { view.setFramed(framed) }
         if resized || insetsChanged {
             let clip = scrollView.contentView
-            let oldOrigin = clip.bounds.origin
             cut { view.animator().setFrameSize(size) }
             let visible = scrollView.clearRect
             let point = CGPoint(x: centre.x * size.width - visible.width / 2, y: centre.y * size.height - visible.height / 2)
             guard animate else { return moveVisibleOrigin(scrollView, to: point) }
+            if panelRefit {
+                // The clip keeps a picture smaller than the clear area centred, which overrides an animated scroll
+                // position: the picture's layer moves from its old place on screen to its new one instead.
+                let old = CGRect(x: oldFrameOrigin.x - oldOrigin.x, y: oldFrameOrigin.y - oldOrigin.y,
+                                 width: oldSize.width, height: oldSize.height)
+                moveVisibleOrigin(scrollView, to: point)
+                let new = CGRect(x: view.frame.minX - clip.bounds.minX, y: view.frame.minY - clip.bounds.minY,
+                                 width: size.width, height: size.height)
+                view.slide(from: old, to: new)
+                return view.setFramed(framed)
+            }
             // The target scroll position is worked out at the final size, then both animate from the old one.
             let target = clip.constrainBoundsRect(NSRect(
                 origin: CGPoint(x: point.x - clip.contentInsets.left, y: point.y - clip.contentInsets.top),
@@ -295,6 +308,21 @@ private final class ImageLayerView: NSView {
         CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
         for layer in [imageLayer, hairline] + shadowLayers { layer.transform = transform }
         CATransaction.commit()
+    }
+
+    /// Moves the picture on screen from `old` to `new` (where it is now) with the info panel's curve.
+    func slide(from old: CGRect, to new: CGRect) {
+        guard let layer, new.width > 0 else { return }
+        let scale = old.width / new.width
+        // The layer's anchor is its top-leading corner (flipped), at `new.origin`: scale about it, then move.
+        let from = CATransform3DConcat(CATransform3DMakeScale(scale, scale, 1),
+                                       CATransform3DMakeTranslation(old.minX - new.minX, old.minY - new.minY, 0))
+        let animation = CABasicAnimation(keyPath: "transform")
+        animation.fromValue = from
+        animation.toValue = CATransform3DIdentity
+        animation.duration = Theme.Motion.panel
+        animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        layer.add(animation, forKey: "refit")
     }
 
     /// The picture fades out (opacity only, kept under Reduce Motion).
