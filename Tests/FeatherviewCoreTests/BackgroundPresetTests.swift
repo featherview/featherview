@@ -30,3 +30,20 @@ import Testing
         #expect(AppSettings.backgroundColor.value(in: defaults) == "#000000")
     }
 }
+
+@Suite struct BackgroundMenuTests {
+    @Test func customColourLandingOnAPresetStaysCustom() {
+        var menu = BackgroundMenu()
+        #expect(menu.selection(for: "#123456") == nil)
+        menu.pickedCustomColour()
+        #expect(menu.selection(for: "#FFFFFF") == nil)
+    }
+
+    @Test func choosingAPresetLeavesCustom() {
+        var menu = BackgroundMenu()
+        menu.choose(nil)
+        #expect(menu.selection(for: "#000000") == nil)
+        menu.choose(.black)
+        #expect(menu.selection(for: "#000000") == .black)
+    }
+}

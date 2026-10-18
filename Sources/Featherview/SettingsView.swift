@@ -99,15 +99,14 @@ private struct ViewerSettings: View {
     @AppStorage(AppSettings.rememberWindowFrame.key) private var rememberFrame = AppSettings.rememberWindowFrame.defaultValue
     @AppStorage(AppSettings.zoomStepPercent.key) private var zoomStep = AppSettings.zoomStepPercent.defaultValue
     @AppStorage(AppSettings.hideBarsWhileViewing.key) private var hideBars = AppSettings.hideBarsWhileViewing.defaultValue
-    /// Custom chosen while the stored colour still matches a preset: show the colour picker anyway.
-    @State private var customChosen = false
+    @State private var menu = BackgroundMenu()
 
     /// The preset menu; nil is Custom, also whenever the stored colour matches no preset.
     private var preset: Binding<BackgroundPreset?> {
         Binding {
-            customChosen ? nil : BackgroundPreset.matching(backgroundHex)
+            menu.selection(for: backgroundHex)
         } set: { preset in
-            customChosen = preset == nil
+            menu.choose(preset)
             if let preset { backgroundHex = preset.hex }
         }
     }
@@ -119,6 +118,7 @@ private struct ViewerSettings: View {
             return Color(.sRGB, red: c.red, green: c.green, blue: c.blue)
         } set: { color in
             guard let srgb = NSColor(color).usingColorSpace(.sRGB) else { return }
+            menu.pickedCustomColour()
             backgroundHex = HexColor.format(red: srgb.redComponent, green: srgb.greenComponent, blue: srgb.blueComponent)
         }
     }
