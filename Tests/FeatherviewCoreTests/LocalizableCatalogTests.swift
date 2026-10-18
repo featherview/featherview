@@ -15,4 +15,10 @@ import Testing
         ]
         for key in expected { #expect(keys.contains(key), "missing \(key)") }
     }
+
+    @Test func emptyWindowHintIsInTheCatalog() throws {
+        let keys = Set(try StringCatalog.load(StringCatalog.shippedURL).strings.keys)
+        #expect(keys.contains("Open an image or drop a folder here"))
+        #expect(!keys.contains("Open an image with ⌘O, or drop one here"))
+    }
 }
