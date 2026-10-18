@@ -25,4 +25,17 @@ import Testing
         #expect(keys.contains("Open an image or drop a folder here"))
         #expect(!keys.contains("Open an image with ⌘O, or drop one here"))
     }
+
+    /// Controls that sit side by side must read differently in every language.
+    @Test func neighbouringControlsHaveDistinctText() throws {
+        let strings = try StringCatalog.load(StringCatalog.shippedURL).strings
+        // Batch toolbar while running; the image-list bar's icon menus (VoiceOver labels).
+        for (a, b) in [("Pause", "Stop"), ("Add", "More")] {
+            for language in StringCatalog.languages where language != "en" {
+                let textA = strings[a]?.localizations?[language]?.stringUnit?.value
+                let textB = strings[b]?.localizations?[language]?.stringUnit?.value
+                if let textA { #expect(textA != textB, "\(language): \"\(a)\" and \"\(b)\" both read \(textA)") }
+            }
+        }
+    }
 }
