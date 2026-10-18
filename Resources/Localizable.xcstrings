@@ -896,7 +896,7 @@
     "Presets" : {
 
     },
-    "Press a key to pick a folder · Return uses the highlighted one · Esc cancels" : {
+    "Press a key to pick a folder" : {
 
     },
     "Previous" : {
@@ -1248,6 +1248,9 @@
     "cancel" : {
 
     },
+    "cancels" : {
+
+    },
     "colours" : {
 
     },
@@ -1290,6 +1293,9 @@
 
     },
     "up" : {
+
+    },
+    "uses the highlighted one" : {
 
     },
     "{folder} in the path stands for each image's folder name." : {

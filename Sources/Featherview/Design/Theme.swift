@@ -232,6 +232,9 @@ enum Theme {
     static let sheetHeaderHeight = 20.0
     static let chooserRowHeight = 40.0
     static let moveRowHeight = 32.0
+    /// F7 rows' leading and trailing padding (0 6 0 5).
+    static let moveRowLeading = 5.0
+    static let moveRowTrailing = 6.0
     static let rowGap = 10.0
     /// Chooser list height before it scrolls (spec silent: 10 rows).
     static let chooserListHeight = 400.0
