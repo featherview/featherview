@@ -27,7 +27,8 @@ struct ViewerView: View {
     /// In a box, not @State: pointer moves change its `hideAt`, and re-rendering the viewer on every move costs browsing.
     @State private var autoHide = AutoHideBox()
     @State private var barsVisible = true
-    @State private var hideArmed = false
+    /// Counts each arming of the rest timer: a Bool id could re-arm before SwiftUI saw it go false, and the timer task never restarted.
+    @State private var hideArm = 0
 
     private var showsStatusBar: Bool { !statusBarHidden && !model.isFullScreen }
     private var canvasInsets: CanvasInsets {
@@ -129,7 +130,7 @@ struct ViewerView: View {
             feedAutoHide(.panelOpen($1))
         }
         .onChange(of: barsVisible) { fadeBars(visible: $1) }
-        .task(id: hideArmed) { await hideBarsAtRest() }
+        .task(id: hideArm) { await hideBarsAtRest() }
         // On a new image and on entering full screen (double-click, F or Return leave the image as is).
         .onChange(of: model.image) { hidePointerInFullScreen() }
         .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
@@ -238,7 +239,9 @@ struct ViewerView: View {
     private func feedAutoHide(_ event: BarsAutoHide.Event) {
         autoHide.machine.handle(event, now: ProcessInfo.processInfo.systemUptime)
         if barsVisible != autoHide.machine.barsVisible { barsVisible = autoHide.machine.barsVisible }
-        if hideArmed != (autoHide.machine.hideAt != nil) { hideArmed = autoHide.machine.hideAt != nil }
+        let armed = autoHide.machine.hideAt != nil
+        if armed && !autoHide.armed { hideArm &+= 1 }
+        autoHide.armed = armed
     }
 
     /// Sleeps until the machine's `hideAt` (which pointer moves keep pushing back) and sends `.tick`.
@@ -455,6 +458,8 @@ struct OpenWithMenu: View {
 /// Holds the auto-hide machine outside SwiftUI's state (see `ViewerView.autoHide`).
 @MainActor private final class AutoHideBox {
     var machine = BarsAutoHide()
+    /// Whether `machine.hideAt` was set after the last event (see `ViewerView.hideArm`).
+    var armed = false
     var keyMonitor: Any?
 }
 
