@@ -100,6 +100,7 @@ public enum BatchConverter {
             results[index] = result
             onResult(result)
         }
+        PipelineRender.releaseBuffers()
         return results.compactMap { $0 }
     }
 

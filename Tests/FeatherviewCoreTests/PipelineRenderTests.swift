@@ -69,4 +69,30 @@ import Testing
         #expect(throws: EncodeError.failed) { try PipelineRender.cgImage(CIImage(color: .red)) }
         #expect(throws: EncodeError.failed) { try PipelineRender.cgImage(CIImage.empty()) }
     }
+
+    @Test func aReusedOutputBufferShowsOnlyTheNewImage() throws {
+        // The second render of the same size gets the first one's buffer back: no red may remain.
+        _ = try PipelineFixtures.pixels(PipelineFixtures.solid(RGBAColor(red: 1, green: 0, blue: 0), width: 64, height: 64))
+        let blue = try PipelineFixtures.pixels(PipelineFixtures.solid(RGBAColor(red: 0, green: 0, blue: 1), width: 64, height: 64))
+        #expect(close(blue[0, 0], (0, 0, 255, 255)) && close(blue[63, 63], (0, 0, 255, 255)))
+    }
+
+    /// Opt-in (FEATHERVIEW_MEMORY_TESTS=1): footprint is process-wide, so parallel suites would make it flaky.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["FEATHERVIEW_MEMORY_TESTS"] != nil))
+    func largeOutputsAreGivenBack() throws {
+        func footprint() -> Int {
+            var info = rusage_info_v4()
+            _ = withUnsafeMutablePointer(to: &info) {
+                $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(getpid(), RUSAGE_INFO_V4, $0) }
+            }
+            return Int(info.ri_phys_footprint) >> 20
+        }
+        let before = footprint()
+        for _ in 0..<12 {  // 4632 × 3624, a 12 MP photo with a 300 px border: ~67 MB each
+            _ = try PipelineRender.cgImage(CIImage(color: CIColor(red: 0.3, green: 0.5, blue: 0.7))
+                .cropped(to: CGRect(x: 0, y: 0, width: 4632, height: 3624)))
+        }
+        PipelineRender.releaseBuffers()
+        #expect(footprint() - before < 150)  // was ~780 MB with malloc'd buffers
+    }
 }

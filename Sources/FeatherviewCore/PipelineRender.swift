@@ -1,6 +1,7 @@
 import CoreGraphics
 import CoreImage
 import Foundation
+import os
 
 /// The one render at the end of the batch pipeline: every step builds a `CIImage` recipe, and this
 /// turns it into pixels once, in tiles, through one shared context.
@@ -46,8 +47,10 @@ public enum PipelineRender {
         // floats (Float, not Float16: Intel Macs lack it), un-premultiplied before rounding, so faint pixels keep their colour. Opaque strips stay one pass.
         let stripRows = max(1, min(height, (1 << 20) / width))
         var strip = [Float]()
-        var data = Data(count: bytesPerRow * height)
-        data.withUnsafeMutableBytes { buffer in
+        let size = bytesPerRow * height
+        guard let base = outputBuffer(size: size) else { throw EncodeError.failed }
+        let buffer = UnsafeMutableRawBufferPointer(start: base, count: size)
+        do {
             let out = buffer.bindMemory(to: UInt8.self)
             for top in stride(from: 0, to: height, by: stripRows) {
                 let rows = min(stripRows, height - top), base = top * bytesPerRow
@@ -69,12 +72,46 @@ public enum PipelineRender {
                 }
             }
         }
-        guard let provider = CGDataProvider(data: data as CFData),
-              let cg = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
+        guard let provider = CGDataProvider(dataInfo: nil, data: base, size: size,
+                                            releaseData: { _, data, size in PipelineRender.giveBack(UnsafeMutableRawPointer(mutating: data), size: size) })
+        else { giveBack(base, size: size); throw EncodeError.failed }
+        guard let cg = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
                                bytesPerRow: bytesPerRow, space: space,
                                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
                                provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
         else { throw EncodeError.failed }
         return cg
+    }
+
+    // Output buffers come straight from the kernel, not malloc: macOS 27's malloc keeps every freed block
+    // this size counted against the app (~50–70 MB per output, ~2 GB over a batch, reclaimed only under
+    // pressure). Fresh pages must be zeroed (~8 % slower), so released ones wait here for the next output
+    // of the same size, at most one per core; `releaseBuffers()` unmaps them when a batch ends.
+    private static let spare = OSAllocatedUnfairLock<[(base: UInt, size: Int)]>(initialState: [])
+
+    private static func outputBuffer(size: Int) -> UnsafeMutableRawPointer? {
+        let reused = spare.withLock { list -> UInt? in
+            list.firstIndex { $0.size == size }.map { list.remove(at: $0).base }
+        }
+        if let reused { return UnsafeMutableRawPointer(bitPattern: reused) }
+        let base = mmap(nil, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0)
+        return base == MAP_FAILED ? nil : base
+    }
+
+    private static func giveBack(_ base: UnsafeMutableRawPointer, size: Int) {
+        let address = UInt(bitPattern: base)
+        let kept = spare.withLock { list in
+            guard list.count < ProcessInfo.processInfo.activeProcessorCount else { return false }
+            list.append((address, size))
+            return true
+        }
+        if !kept { munmap(base, size) }
+    }
+
+    /// Unmaps the buffers kept for reuse.
+    public static func releaseBuffers() {
+        for buffer in spare.withLock({ list in defer { list = [] }; return list }) {
+            munmap(UnsafeMutableRawPointer(bitPattern: buffer.base), buffer.size)
+        }
     }
 }
