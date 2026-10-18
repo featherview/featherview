@@ -33,17 +33,24 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
   TIFF, GIF first frame, BMP, camera RAW, …), plus PDF (see "Formats").
 - Window title: `filename — 3 / 120`; for a multi-page file `filename — page 2 / 3 — 3 / 120`.
   A multi-page file always opens on page 1.
-- Black background. Fit mode shrinks large images to the window and never enlarges small ones.
+- Graphite background (#1c1c20, the app icon's tile) by default; black and other colours in
+  Preferences. Fit mode shrinks large images to the window and never enlarges small ones.
+- The canvas fills the whole window, under the toolbar and the status strip. Fit mode keeps the
+  image clear of both (it fits the area between them); a zoomed or panned image slides under them,
+  so the glass takes its colour from the picture.
 - The window keeps its size and position when the image changes; it never resizes itself to the
   image. Zoom changes the image inside the window, not the window.
 - EXIF orientation is always applied.
 - Status bar (milestone 3): one line along the bottom of the window, on by
   default, showing the image's pixel size, zoom %, file size, position N / M and the file's
   modification date. View › Hide Status Bar hides it (remembered). Hidden in full screen. Our own
-  order, wording and layout (leading-aligned, system small font).
-- Liquid Glass (milestone 3): on macOS 26 and later the folder chooser, the
-  F7/F8 panel and on-image messages use Liquid Glass; earlier systems keep the current material.
-  Minimum macOS stays 14.
+  order, wording and layout (leading-aligned, system small font, tabular figures). It floats as a
+  slim rounded strip a few points inside the window's bottom edge, over the canvas.
+- Liquid Glass (milestone 3, own look): on macOS 26 and later the toolbar, the status strip, the
+  folder chooser, the F7/F8 panel and on-image messages use Liquid Glass; macOS 14 and 15 use the
+  system's normal material in the same shapes, so no layout depends on glass. Minimum macOS stays 14.
+- An empty window (nothing opened yet) shows the feather mark above "Open an image or drop a folder
+  here" and the keys ⌘O and O, centred.
 - A file that can't be decoded shows "Can't open <name>"; browsing continues normally.
 
 ### Keys (no modifiers, viewer window focused)
@@ -83,6 +90,12 @@ For mouse users, the viewer window has a standard macOS toolbar: previous,
 next, rotate left, rotate right, zoom out, zoom to fit, zoom in, info panel, Move to Trash, plus previous / next page
 for a multi-page file only. Each button does what its key does and has a tooltip naming that key. View › Hide Toolbar hides it
 (remembered), and View › Customize Toolbar… changes it, as in any Mac app. Hidden in full screen; it slides in with the menu bar when the pointer is at the top (macOS 15 and later).
+
+"Hide toolbar and status bar while viewing" (Preferences › Viewer, off): in a window, once the
+pointer has rested over the picture for 2 s, the toolbar and status strip fade out (200 ms). Moving
+the pointer, reaching the window's top edge, or any key except the browsing keys (← → Space
+Backspace Page Up/Down Home End) brings them back at once; browsing keys keep them hidden. Every
+toolbar command is also in the menus, so hiding never takes a command away.
 Mac SF Symbols, never icons taken from another viewer.
 
 ### Menu commands
@@ -134,6 +147,19 @@ the next image shows. Never overwrites: a clash gets " 2", " 3", … appended.
 Opening a file from Finder while a viewer window is open opens a new viewer window with its own
 folder list.
 
+## Look
+
+Featherview looks like a Mac app with a few touches of its own; the app icon (a warm feather on a
+dark tile) carries the identity.
+
+- Colour: controls, selection and focus use the system accent colour, Start included. The feather
+  colours (#ffc766 to #ff7a59) appear only in the About window, the empty-window hint and the disk
+  image.
+- Type: the system font everywhere; tabular figures wherever numbers change in place (status strip,
+  batch progress and log).
+- Motion: browsing is instant (no crossfade). A zoom step animates in 120 ms, the info panel slides
+  in 180 ms, the hidden bars fade in 200 ms. With Reduce Motion these are plain cuts.
+
 ## Batch window (B, ⌘B)
 
 ### Window
@@ -153,6 +179,9 @@ menu and Start in its toolbar:
 - While running, the settings columns give way to progress (n of N, time left), the log, Pause,
   Stop and Copy Log; each input row shows its state (waiting, working, done with its output name,
   failed). When the run ends, the settings come back unchanged.
+- Look: the same grouped-card form as Preferences for each step's settings (labels leading,
+  controls trailing); a tinted selection in the images list; the toolbar's controls as capsules
+  (glass on macOS 26 and later).
 
 ### Mode and inputs
 
@@ -231,13 +260,16 @@ Settings can be saved as named presets and loaded later.
 
 The menu calls it "Preferences…", not macOS's "Settings…", so it matches its single key P.
 
-A standard Mac settings window with tabs; the window changes height to fit each tab. Every setting below has the default shown.
+A standard Mac settings window with symbol tabs in its toolbar; the window changes height to fit
+each tab. Each tab is a grouped form: settings in titled groups of rounded cards, labels leading,
+controls trailing, switches for on/off settings. Every setting below has the default shown.
 
 - Browsing: past the end of a folder: folder chooser (default) / loop this folder / stop; show
   hidden files (off); after Move to Trash or move to folder, show the next image (on); move,
   copy and trash sidecar files with the same name (`.xmp`, `.aae`, `.thm`) together (on).
-- Viewer: background colour (black); checkerboard behind transparent images (on); remember the
-  window's size and position (on); zoom step (10 %).
+- Viewer: background (Graphite; also Black, Grey, White, or a custom colour); checkerboard behind
+  transparent images (on); remember the window's size and position (on); zoom step (10 %); hide
+  toolbar and status bar while viewing (off, see "Toolbar").
 - Full screen: overlay text (off; template with `{name}`, `{folder}`, `{index}`, `{count}`,
   `{size}`, `{date}`); hide the pointer (on).
 - Move / copy: the 14 destination slots; ask before each move / copy (off).
@@ -360,7 +392,13 @@ See "Out of scope for v1" in `AGENTS.md`.
 ## Distribution
 
 Releases are ad-hoc signed and not notarized (no paid Apple Developer
-account). README.md tells users how to open the app the first time. Revisit if someone sponsors
+account). README.md tells users how to open the app the first time.
+
+The app ships in a disk image whose window shows the app, an arrow to an Applications link, and a
+help box for the first open: open Featherview once, then System Settings › Privacy & Security ›
+Open Anyway (since macOS 15 Control-click › Open no longer does it). Dark background in the icon's
+tile colour with faint feather lines; drawn by code at 1× and 2×, no copied artwork. The help text
+is translated: one disk image per language, built by `scripts/dmg.sh`. Revisit if someone sponsors
 the $99/year Apple Developer Program; then sign with Developer ID and notarize.
 
 ## App icon

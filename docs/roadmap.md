@@ -148,34 +148,15 @@ Space preview, open panel preview; no effect on the app's launch time.
 
 ## Own look (any time before the v1 release)
 
-The app looks like a stock macOS app; Featherview's own taste and feel is
-missing. Give it a design pass of its own (identity, colour, typography, motion, the small
-touches that make a viewer feel crafted), mockups first as an artifact, reviewed by the
-maintainer, then planned. Coordinate with milestone 4's batch-window mockups so both share one
-visual language. Clean-room rules still apply.
-
-Questions for this pass, with what Apple's guidelines say:
-- Liquid Glass and the canvas: since 78f4e39 the app links against the real SDK, so macOS 26+
-  shows glass toolbars. On our black band below them they look flat. The guidelines put glass
-  over content ("use the content layer to inform the color and appearance of the toolbar",
-  reduce toolbar backgrounds), so mock the canvas extending under the toolbar (fit still keeps
-  the image clear of it; zoomed images slide under) and the status bar the same way at the
-  bottom. Also reconsider the black default background under glass.
-- Hiding the toolbar: the guidelines say to consider hiding toolbars temporarily "when content is
-  the primary focus, such as when viewing full-screen photos", contextually, and to let people
-  restore them reliably (moving the pointer to the top of the screen). They don't ask for
-  hide-on-hover in a window, and every toolbar item must also be in the menu bar. Decide whether
-  windowed viewing hides the toolbar after the pointer rests (a media-player style) or only full
-  screen does, as now.
-- Settings window: doesn't look like a macOS 26 (Tahoe) settings window yet. Mock it in the current system style along with the rest.
-- Installer disk image: a designed `.dmg` in the own look (background art, the app and an Applications
-  link to drag it to). The app is only ad-hoc signed, so the image also shows how to get past
-  Gatekeeper: first open, then System Settings › Privacy & Security › "Open Anyway" (since macOS 15
-  Control-click › Open no longer does it). Built by a script next to `scripts/bundle.sh`.
-- Launch time: the toolbar and canvas decide it (~385 ms with glass, 350 ms without;
-  the window's first glass draw is macOS's cost). Measure launch again after this pass and set the
-  budget in `AGENTS.md` then. If the toolbar may start hidden, try showing it only after the first
-  image (saved 16 ms in a test; today it would make the image jump when the toolbar arrives).
+Decided: the maintainer accepted the mockups' recommendations (artifact KsGLFNEAZZwWU9iEmwNddZ).
+The accepted look is in `docs/spec.md` ("Viewer", "Toolbar", "Look", "Batch window › Window",
+"Preferences", "Distribution"): canvas under the glass toolbar and a floating glass status strip,
+Graphite as the default background, an optional "hide toolbar and status bar while viewing", the
+grouped-card form for Preferences and the batch steps, system accent everywhere (feather colours only
+in About, the empty-window hint and the disk image), instant browsing with short motion elsewhere, and
+a designed disk image with translated first-open help. Minimum macOS stays 14; glass on macOS 26 and
+later, the normal material before. Plan: `docs/superpowers/plans/2026-10-18-own-look.md`. Launch is
+measured again at its end (after a real ⌘Q) and that number becomes the budget in `AGENTS.md`.
 
 ## v2 (not in v1)
 
