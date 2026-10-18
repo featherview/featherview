@@ -455,6 +455,9 @@
     "DPI:" : {
 
     },
+    "Default app" : {
+
+    },
     "Delete" : {
 
     },
@@ -492,6 +495,12 @@
 
     },
     "Featherview" : {
+
+    },
+    "Featherview can open your images instead of Preview. You can change this later in Preferences › Browsing." : {
+
+    },
+    "Featherview couldn't become the default for %@." : {
 
     },
     "Featherview: %@" : {
@@ -747,6 +756,9 @@
     "Next page (⌥→)" : {
 
     },
+    "No app" : {
+
+    },
     "No images in %@" : {
 
     },
@@ -757,6 +769,9 @@
 
     },
     "None" : {
+
+    },
+    "Not Now" : {
 
     },
     "OK" : {
@@ -784,6 +799,12 @@
 
     },
     "Open an image with ⌘O, or drop one here" : {
+
+    },
+    "Open your images with Featherview?" : {
+
+    },
+    "Opens JPEG:" : {
 
     },
     "Open…  (O)" : {
@@ -1126,6 +1147,12 @@
 
     },
     "Unsharp mask:" : {
+
+    },
+    "Use Featherview" : {
+
+    },
+    "Use Featherview for Images" : {
 
     },
     "Use Viewer's Folder" : {
