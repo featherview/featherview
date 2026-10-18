@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Featherview viewer — build spec</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0b63c7}a:hover{color:#0a4f9e}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;vertical-align:top;padding:7px 10px;border-bottom:1px solid rgba(0,0,0,0.08);font-size:12.5px;line-height:17px}
+th{font-weight:600;color:rgba(0,0,0,0.55);font-size:11px;line-height:14px;letter-spacing:0.02em;text-transform:uppercase}
+td:first-child{font-weight:500;white-space:nowrap}
+code{font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:11.5px;background:rgba(0,0,0,0.05);padding:1px 4px;border-radius:4px}
+h2{font-size:18px;line-height:24px;font-weight:700;margin:0 0 4px}
+h3{font-size:13px;line-height:18px;font-weight:600;margin:0 0 6px;color:rgba(0,0,0,0.85)}
+p{margin:0;font-size:13px;line-height:19px;color:rgba(0,0,0,0.75)}
+ul{margin:0;padding-left:18px;font-size:12.5px;line-height:18px;color:rgba(0,0,0,0.75)}
+li{margin:0 0 2px}
+</style>
+</helmet>
+<div style="width: 1220px; height: 3960px; box-sizing: border-box; padding: 56px 64px; background: #f5f5f7; color: #1d1d1f; font-family: -apple-system, 'SF Pro Text', 'SF Pro', 'Helvetica Neue', sans-serif; display: flex; flex-direction: column; gap: 36px; -webkit-font-smoothing: antialiased">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; border-bottom: 1px solid rgba(0,0,0,0.12); padding-bottom: 20px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <svg viewBox="8 8 46 46" width="36" height="36" aria-hidden="true"><defs><linearGradient id="spec-mark" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffc766"></stop><stop offset="1" stop-color="#ff7a59"></stop></linearGradient></defs><path d="M46 10C28 14 18 28 16 50l4 2c2-6 5-11 9-15 8-1 14-6 17-14-4 2-8 3-12 3 5-3 10-8 12-16z" fill="url(#spec-mark)"></path></svg>
+        <span style="font-size: 28px; line-height: 34px; font-weight: 700; letter-spacing: -0.01em">Featherview viewer — build spec</span>
+      </div>
+      <p>All values in points (pt). Window shown at 1220 × 700 pt. Leading / trailing throughout; the layout mirrors for RTL, the picture never does.</p>
+    </div>
+    <p style="white-space: nowrap; color: rgba(0,0,0,0.5)">macOS 26 Liquid Glass · macOS 14/15 system material fallback</p>
+  </header>
+
+  <section style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+    <div style="background: #ffffff; border-radius: 12px; padding: 18px 20px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06)">
+      <h3>1 · The picture is the only solid thing</h3>
+      <p>Every control floats on glass and is translucent; the picture is opaque and the only element with a real shadow. Chrome never competes with it.</p>
+    </div>
+    <div style="background: #ffffff; border-radius: 12px; padding: 18px 20px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06)">
+      <h3>2 · One glass recipe, three shapes</h3>
+      <p>Capsule (toolbar groups, status strip), 16 pt card (panels, sheets), 18 pt card (empty hint). Same fill, highlight and hairline everywhere.</p>
+    </div>
+    <div style="background: #ffffff; border-radius: 12px; padding: 18px 20px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06)">
+      <h3>3 · Numbers are quiet and aligned</h3>
+      <p>Everything numeric is secondary colour with tabular figures (SF Pro monospaced digits) so the strip and panels never jitter while browsing.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Colour tokens</h2>
+    <p style="margin-bottom: 12px">The viewer window follows the background colour: Graphite and Black → dark appearance; Grey, White and light custom colours → light appearance. Semantic tokens below; use system dynamic colours where one exists.</p>
+    <table>
+      <thead><tr><th style="width: 190px">Token</th><th style="width: 280px">Dark (Graphite)</th><th style="width: 280px">Light (Grey)</th><th>Use</th></tr></thead>
+      <tbody>
+        <tr><td>Background · Graphite</td><td><code>#1C1C20</code> (default)</td><td><code>#E7E7EC</code> (proposed value for "Grey")</td><td>Window and area behind the picture. Black <code>#000000</code>, White <code>#FFFFFF</code>, custom.</td></tr>
+        <tr><td>Glass fill</td><td><code>rgba(52,52,58,0.55)</code></td><td><code>rgba(255,255,255,0.60)</code></td><td>Toolbar groups, status strip, empty hint card. Behind it: blur 40, saturation 180 %.</td></tr>
+        <tr><td>Glass fill · panel</td><td><code>rgba(44,44,50,0.62)</code></td><td><code>rgba(255,255,255,0.66)</code></td><td>Info panel (reads over the picture edge).</td></tr>
+        <tr><td>Glass fill · sheet</td><td><code>rgba(36,36,42,0.66)</code></td><td><code>rgba(255,255,255,0.72)</code></td><td>Folder chooser, Move to Folder. Slightly denser: text sits over a photo.</td></tr>
+        <tr><td>Glass highlight</td><td><code>rgba(255,255,255,0.12)</code> inset 0 1 0</td><td><code>rgba(255,255,255,0.70)</code> inset 0 1 0</td><td>1 pt top edge light. On macOS 26 the glass provides this itself: skip it there.</td></tr>
+        <tr><td>Glass hairline</td><td><code>rgba(255,255,255,0.06)</code> inset 0 0 0 1</td><td><code>rgba(0,0,0,0.06)</code> inset 0 0 0 1</td><td>Shape outline.</td></tr>
+        <tr><td>Shadows</td><td colspan="2">One elevation scale, see "Elevation" below</td><td>Never a one-off shadow value; every floating thing takes a level from the scale.</td></tr>
+        <tr><td>Picture hairline</td><td><code>rgba(255,255,255,0.06)</code> 1 pt</td><td><code>rgba(0,0,0,0.08)</code> 1 pt</td><td>With the picture's E3 shadow, only while the picture fits inside the fit area. Both go the moment it overflows (zoomed).</td></tr>
+        <tr><td>Label · primary</td><td><code>rgba(255,255,255,0.85)</code></td><td><code>rgba(0,0,0,0.85)</code></td><td>Title, row labels, glyphs. System: <code>.labelColor</code>.</td></tr>
+        <tr><td>Label · secondary</td><td><code>rgba(255,255,255,0.55)</code></td><td><code>rgba(0,0,0,0.55)</code></td><td>Counter in the title, values, counts. <code>.secondaryLabelColor</code>.</td></tr>
+        <tr><td>Label · strip</td><td><code>rgba(255,255,255,0.70)</code></td><td><code>rgba(0,0,0,0.65)</code></td><td>Status strip text (sits between primary and secondary for 11 pt legibility).</td></tr>
+        <tr><td>Label · tertiary</td><td><code>rgba(255,255,255,0.40)</code></td><td><code>rgba(0,0,0,0.40)</code></td><td>"Empty", footer hints, "end of folder". <code>.tertiaryLabelColor</code>.</td></tr>
+        <tr><td>Disabled glyph</td><td><code>rgba(255,255,255,0.30)</code></td><td><code>rgba(0,0,0,0.25)</code></td><td>Back/forward at either end, whole toolbar in the empty window.</td></tr>
+        <tr><td>Separator</td><td><code>rgba(255,255,255,0.14)</code></td><td><code>rgba(0,0,0,0.12)</code></td><td>1 pt dividers inside capsules and strip; row separators 0.10 / 0.08.</td></tr>
+        <tr><td>Key cap</td><td>fill <code>rgba(255,255,255,0.07)</code>, line <code>0.14</code>, text <code>0.70</code></td><td>fill <code>rgba(0,0,0,0.05)</code>, line <code>0.12</code>, text <code>0.60</code></td><td>⌘O, O, →, ←, ↩, esc, and the 1–0 / B–E keys in F7.</td></tr>
+        <tr><td>Accent</td><td>system accent (<code>#0A84FF</code> blue shown)</td><td>system accent (<code>#007AFF</code> blue shown)</td><td>Selected row fill with white text; toggled-on toolbar glyph. Never the feather colours.</td></tr>
+        <tr><td>Toggled pill</td><td><code>rgba(255,255,255,0.12)</code></td><td><code>rgba(0,0,0,0.08)</code></td><td>Behind an active toolbar item (Info while the panel is open), 14 pt radius.</td></tr>
+        <tr><td>Feather mark</td><td colspan="2"><code>#FFC766 → #FF7A59</code>, linear 0,0 → 1,1</td><td>Only the empty-window hint and About. Stays the one warm note in the app.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Materials</h2>
+    <table>
+      <thead><tr><th style="width: 190px">Surface</th><th style="width: 300px">macOS 26</th><th style="width: 300px">macOS 14 / 15</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Toolbar groups, strip</td><td><code>.glassEffect(.regular, in: .capsule)</code>, groups in one <code>GlassEffectContainer</code></td><td><code>NSVisualEffectView</code> <code>.hudWindow</code> (dark) / <code>.popover</code> (light), <code>.withinWindow</code>, masked to the capsule</td><td>Apply the hairline on 14/15 only (glass draws its own edge on 26); the E2 shadow applies on both.</td></tr>
+        <tr><td>Info panel</td><td><code>.glassEffect(.regular, in: .rect(cornerRadius: 16))</code></td><td>same material, 16 pt mask</td><td>Panel fill token on top of the material at 25 % to steady text over the picture edge.</td></tr>
+        <tr><td>Folder chooser, F7 sheet</td><td><code>.glassEffect(.regular, in: .rect(cornerRadius: 16))</code></td><td><code>.hudWindow</code> / <code>.sheet</code></td><td>Sheet fill token on top at 35 %. No dimming scrim behind: the picture stays readable.</td></tr>
+        <tr><td>Empty hint card</td><td><code>.glassEffect(.regular, in: .rect(cornerRadius: 18))</code></td><td>same, 18 pt</td><td>Over a flat background the blur is invisible; the tokens carry the look.</td></tr>
+        <tr><td>Selected rows, key caps</td><td colspan="2">Plain fills from the tokens (no glass inside glass).</td><td>Selection: accent at 100 %, white text, 8–9 pt radius, as in system lists.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Elevation</h2>
+    <p style="margin-bottom: 12px">One key light from above, two layers per level: a tight contact shadow that anchors the edge and a wide ambient shadow that lifts the shape. Offset and blur grow by about 1.6× per level (y : blur ≈ 1 : 2.5); only the alpha changes between appearances. No element invents its own value.</p>
+    <table>
+      <thead><tr><th style="width: 70px">Level</th><th style="width: 170px">Role</th><th style="width: 330px">Dark</th><th style="width: 330px">Light</th><th>Used by</th></tr></thead>
+      <tbody>
+        <tr><td>E0</td><td>Flat</td><td>none</td><td>none</td><td>Key caps, selected rows, toggled pills, tab pills, dark push buttons, pop-ups, badges, separators.</td></tr>
+        <tr><td>E1</td><td>Raised control</td><td><code>0 1 3 rgba(0,0,0,0.30)</code></td><td><code>0 1 3 rgba(0,0,0,0.12)</code></td><td>Switch knobs; light-appearance push buttons and pop-ups (dark ones sit flat on their fill).</td></tr>
+        <tr><td>E2</td><td>Floating chrome</td><td><code>0 1 2 rgba(0,0,0,0.20)</code> + <code>0 6 16 rgba(0,0,0,0.30)</code></td><td><code>0 1 2 rgba(0,0,0,0.06)</code> + <code>0 6 16 rgba(0,0,0,0.10)</code></td><td>Toolbar groups, status strip. Glass casts the least: it is thin and translucent.</td></tr>
+        <tr><td>E3</td><td>Surface in the window</td><td><code>0 2 4 rgba(0,0,0,0.22)</code> + <code>0 12 32 rgba(0,0,0,0.34)</code></td><td><code>0 2 4 rgba(0,0,0,0.07)</code> + <code>0 12 32 rgba(0,0,0,0.14)</code></td><td>Fitted picture (plus hairline), info panel, empty hint card. Picture and panel share a level so they read as one plane.</td></tr>
+        <tr><td>E4</td><td>Sheet / object above the surface</td><td><code>0 4 8 rgba(0,0,0,0.26)</code> + <code>0 20 48 rgba(0,0,0,0.40)</code></td><td><code>0 4 8 rgba(0,0,0,0.08)</code> + <code>0 20 48 rgba(0,0,0,0.18)</code></td><td>Folder chooser, Move to Folder, the app-icon tile in About.</td></tr>
+        <tr><td>E5</td><td>Window</td><td><code>0 8 16 rgba(0,0,0,0.28)</code> + <code>0 32 72 rgba(0,0,0,0.45)</code></td><td><code>0 8 16 rgba(0,0,0,0.10)</code> + <code>0 32 72 rgba(0,0,0,0.22)</code></td><td>Preferences and About as drawn on the canvas. In the app the system draws window shadows; this level only documents the mockups.</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top: 10px">Rules: shadows are always neutral black, never tinted. Inset highlight and hairline are part of the glass recipe, not of elevation, and stay the same at every level. Reduce Transparency keeps the shadows and swaps glass for a solid fill.</p>
+  </section>
+
+  <section>
+    <h2>Typography (SF Pro, Dynamic Type off)</h2>
+    <table>
+      <thead><tr><th style="width: 190px">Role</th><th style="width: 190px">Size / line</th><th style="width: 120px">Weight</th><th style="width: 140px">Colour</th><th>Where / notes</th></tr></thead>
+      <tbody>
+        <tr><td>Window title</td><td>13 / 16</td><td>Semibold</td><td>primary</td><td>File name only. Leading-aligned at x = 184, vertically centred in the 52 pt title bar.</td></tr>
+        <tr><td>Title counter</td><td>13 / 16</td><td>Regular</td><td>secondary, tabular</td><td>" — 1 / 4" after the name, 6 pt gap. Reads as metadata, not as part of the name.</td></tr>
+        <tr><td>Status strip</td><td>11 / 14</td><td>Regular</td><td>strip, tabular</td><td>Five items, 12 pt gap, 1 × 12 pt separators. Localised formatting as today.</td></tr>
+        <tr><td>Empty hint</td><td>13 / 16</td><td>Regular</td><td>secondary (0.70)</td><td>Centred under the 44 pt feather.</td></tr>
+        <tr><td>Key cap</td><td>11 / 14</td><td>Medium</td><td>key cap text</td><td>Padding 3 × 7, radius 5. Footer hints: padding 1 × 5, radius 4. F7 keys: 12 / 14 Semibold in a 22 × 22 square, radius 6.</td></tr>
+        <tr><td>Panel / sheet title</td><td>15 / 20</td><td>Semibold</td><td>primary (0.90)</td><td>"samples", "Move to Folder", file name in the info panel (13 Semibold there).</td></tr>
+        <tr><td>Row label</td><td>13 / 16</td><td>Regular</td><td>primary</td><td>Selected row: Medium, white.</td></tr>
+        <tr><td>Row value / count</td><td>13 / 16</td><td>Regular</td><td>secondary, tabular</td><td>Trailing-aligned.</td></tr>
+        <tr><td>Hint / caption</td><td>11 / 14</td><td>Regular</td><td>tertiary</td><td>Footer of chooser and F7, "end of folder", "F7", format badge (Medium, 11).</td></tr>
+        <tr><td>Small button</td><td>12 / 14</td><td>Medium</td><td>primary</td><td>"Choose…": height 22, padding 0 × 10, radius 6, fill key-cap fill, hairline 0.12.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Window layout</h2>
+    <div style="display: grid; grid-template-columns: 560px minmax(0, 1fr); gap: 32px; align-items: start">
+      <div style="position: relative; width: 560px; height: 321px; border-radius: 8px; background: #1c1c20; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2); overflow: hidden; font-size: 10px; line-height: 12px; color: rgba(255,255,255,0.8)">
+        <div style="position: absolute; left: 0; top: 0; right: 0; height: 24px; background: rgba(10,132,255,0.18); border-bottom: 1px dashed rgba(10,132,255,0.8)"></div>
+        <div style="position: absolute; left: 6px; top: 6px">title bar 52</div>
+        <div style="position: absolute; left: 7px; top: 27px; right: 7px; bottom: 20px; border: 1px dashed rgba(255,199,102,0.9); border-radius: 2px"></div>
+        <div style="position: absolute; left: 12px; top: 31px; color: #ffc766">fit area · insets 16 / 60 / 16 / 44</div>
+        <div style="position: absolute; left: 75px; top: 27px; width: 410px; bottom: 20px; background: rgba(255,255,255,0.14); box-shadow: 0 2px 4px rgba(0,0,0,0.22), 0 12px 32px rgba(0,0,0,0.34)"></div>
+        <div style="position: absolute; left: 230px; top: 160px; color: rgba(255,255,255,0.9)">picture 3:2 · 894 × 596</div>
+        <div style="position: absolute; left: 6px; right: 6px; bottom: 4px; height: 13px; border-radius: 7px; background: rgba(255,255,255,0.25); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3)"></div>
+        <div style="position: absolute; left: 12px; bottom: 4px; color: rgba(0,0,0,0.85); line-height: 13px">status strip 28 · inset 12 / 8</div>
+        <div style="position: absolute; left: 44px; top: 5px; width: 35px; height: 14px; border-radius: 7px; background: rgba(255,255,255,0.3)"></div>
+        <div style="position: absolute; right: 6px; top: 5px; width: 117px; height: 14px; border-radius: 7px; background: rgba(255,255,255,0.3)"></div>
+      </div>
+      <table>
+        <tbody>
+          <tr><td>Title bar</td><td>52 pt tall, transparent, full-size content view: the picture scrolls beneath it. Traffic lights at 20 / 20, 12 pt circles, 8 pt gap (system).</td></tr>
+          <tr><td>Fit area</td><td>Insets leading 16 · top 60 · trailing 16 · bottom 44 (strip 28 + 8 inset + 8 clearance). A fitted picture is centred in it; with the info panel open the trailing inset becomes 12 + 280 + 16 = 308.</td></tr>
+          <tr><td>Picture</td><td>No corner radius, no border. Shadow + hairline only while it fits. At any zoom beyond fit the picture runs edge to edge under the glass and loses both.</td></tr>
+          <tr><td>Status strip</td><td>x 12, y 664, w 1196, h 28, capsule. With the info panel open it ends 16 pt before the panel (w 900). Leading-aligned text, 14 pt inner padding.</td></tr>
+          <tr><td>Window</td><td>12 pt corner radius (system). Dark: 1 pt inset hairline <code>rgba(255,255,255,0.07)</code>; light: <code>rgba(0,0,0,0.08)</code>.</td></tr>
+          <tr><td>Resizing</td><td>Only the fit area and the strip width change. Toolbar groups keep their size; the title truncates with an ellipsis before the counter does.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Toolbar</h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+      <table>
+        <tbody>
+          <tr><td>Leading group</td><td>Capsule 76 × 32 at x 96, y 10. Padding 2. Two items 36 × 28, radius 14. Glyphs <code>chevron.backward</code> / <code>chevron.forward</code>, 13 pt Semibold (SF Symbols scale medium).</td></tr>
+          <tr><td>Trailing group</td><td>Capsule 256 × 32, trailing inset 12 (x 952), y 10. Seven items 36 × 28 with two 1 × 16 separators: rotate ⟵ rotate ⟶ │ zoom out · fit · zoom in │ info · trash.</td></tr>
+          <tr><td>Glyphs</td><td><code>rotate.left</code>, <code>rotate.right</code>, <code>minus.magnifyingglass</code>, <code>arrow.up.left.and.down.right.magnifyingglass</code>, <code>plus.magnifyingglass</code>, <code>info.circle</code>, <code>trash</code>. 15 pt, weight Medium, label primary.</td></tr>
+          <tr><td>Hover</td><td>Item background <code>rgba(255,255,255,0.08)</code> / light <code>rgba(0,0,0,0.05)</code>, 14 pt radius, 80 ms.</td></tr>
+          <tr><td>Pressed</td><td>Background 0.14 / 0.09, glyph scales to 0.94 for the press (macOS 26: the glass does this).</td></tr>
+          <tr><td>Toggled on</td><td>Info while the panel is open: toggled-pill fill, glyph in the system accent.</td></tr>
+          <tr><td>Disabled</td><td>Disabled-glyph token. Empty window: every item disabled, capsules remain (the chrome does not jump when a picture opens).</td></tr>
+          <tr><td>Trash</td><td>Same colour as the others; destructive intent is confirmed by the undo toast, not by a red glyph in the toolbar.</td></tr>
+        </tbody>
+      </table>
+      <div style="display: flex; flex-direction: column; gap: 14px">
+        <div style="background: #1c1c20; border-radius: 10px; padding: 18px; display: flex; align-items: center; gap: 24px">
+          <div style="height: 32px; width: 76px; border-radius: 16px; background: rgba(52,52,58,0.55); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), inset 0 0 0 1px rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.2), 0 6px 16px rgba(0,0,0,0.3); display: flex; align-items: center; padding: 0 2px; box-sizing: border-box; color: rgba(255,255,255,0.85)">
+            <span style="width: 36px; height: 28px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.3)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3 5 8l5 5"></path></svg></span>
+            <span style="width: 36px; height: 28px; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l5 5-5 5"></path></svg></span>
+          </div>
+          <div style="font-size: 11px; line-height: 15px; color: rgba(255,255,255,0.6)">76 × 32 · radius 16 · items 36 × 28 · padding 2<br>disabled 0.30 · enabled 0.85</div>
+        </div>
+        <div style="background: #1c1c20; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+          <div style="height: 32px; width: 256px; border-radius: 16px; background: rgba(52,52,58,0.55); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), inset 0 0 0 1px rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.2), 0 6px 16px rgba(0,0,0,0.3); display: flex; align-items: center; padding: 0 2px; box-sizing: border-box; color: rgba(255,255,255,0.85)">
+            <span style="width: 36px; height: 28px; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 2.3 2.6 4.4l2.1 1.9"></path><path d="M2.8 4.4h5.4a3 3 0 0 1 3 3V8"></path><rect x="2.8" y="8.6" width="8.2" height="4.9" rx="1.2"></rect></svg></span>
+            <span style="width: 36px; height: 28px; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.5 2.3l1.9 2.1-2.1 1.9"></path><path d="M13.2 4.4H7.8a3 3 0 0 0-3 3V8"></path><rect x="5" y="8.6" width="8.2" height="4.9" rx="1.2"></rect></svg></span>
+            <span style="width: 1px; height: 16px; background: rgba(255,255,255,0.14); margin: 0 1px"></span>
+            <span style="width: 36px; height: 28px; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.6"></circle><path d="M10.4 10.4 14 14M5 7h4"></path></svg></span>
+            <span style="width: 36px; height: 28px; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.6"></circle><path d="M10.4 10.4 14 14M5 9l4-4M5 6.4V5h1.4M9 7.6V9H7.6"></path></svg></span>
+            <span style="width: 36px; height: 28px; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.6"></circle><path d="M10.4 10.4 14 14M5 7h4M7 5v4"></path></svg></span>
+            <span style="width: 1px; height: 16px; background: rgba(255,255,255,0.14); margin: 0 1px"></span>
+            <span style="width: 36px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 14px; background: rgba(255,255,255,0.12); color: #0a84ff"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"></circle><path d="M8 7.3v3.7M8 5v.3"></path></svg></span>
+            <span style="width: 36px; height: 28px; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.8 4.5h10.4M6.4 4.5V3h3.2v1.5M4.2 4.5l.6 8.4a1 1 0 0 0 1 .9h4.4a1 1 0 0 0 1-.9l.6-8.4M6.8 7.2v4M9.2 7.2v4"></path></svg></span>
+          </div>
+          <div style="font-size: 11px; line-height: 15px; color: rgba(255,255,255,0.6)">256 × 32 · 7 × (36 × 28) · separators 1 × 16, 1 pt side margins · info shown toggled on</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Elements</h2>
+    <table>
+      <thead><tr><th style="width: 190px">Element</th><th style="width: 330px">Frame</th><th>Inside</th></tr></thead>
+      <tbody>
+        <tr><td>Status strip</td><td>1196 × 28 · x 12 · y 664 · capsule · glass fill · E2</td><td>Padding 0 × 14; items in reading order: pixel size · zoom % · file size · position · date; gap 12; separators 1 × 12 at separator token (0.16 dark). Text: strip token, 11 Regular, tabular figures.</td></tr>
+        <tr><td>Empty hint card</td><td>300 × 168 · centred in the fit area (x 460, y 274) · radius 18 · glass fill · E3</td><td>Padding 24 × 28, column, gap 12: feather 44 × 44 (gradient mark, no tile) · hint 13 Regular secondary · two key caps ⌘O and O, gap 6. Nothing else in the window; toolbar disabled; no strip.</td></tr>
+        <tr><td>Info panel (I)</td><td>280 × 596 · trailing inset 12 (x 928) · y 60 · radius 16 · panel fill · E3</td><td>Padding 16, column, gap 12. Header 24 tall, 4 pt side padding: file name 13 Semibold primary, ellipsis; format badge 11 Medium (fill 0.08, line 0.12, radius 4). Rows grouped in a 10 pt card (fill 0.04, line 0.06): rows 40 tall, padding 0 × 12, label primary · value secondary tabular, 1 pt inset separators. Opens as a slide from trailing 180 ms; the picture and the strip refit in the same animation.</td></tr>
+        <tr><td>Folder chooser</td><td>400 wide · centred in the fit area · radius 16 · sheet fill · E4</td><td>Padding 16, column, gap 12. Header 20 tall: <code>folder</code> glyph 16 secondary · folder name 15 Semibold · trailing caption "end of folder" tertiary. Rows 40 tall, radius 9, padding 0 × 12, gap 10: glyph 16 (<code>arrow.counterclockwise</code> for "This folder again", <code>arrow.up</code> for the parent) · label 13 · count secondary tabular. Highlighted row: accent fill, white label Medium, count at 0.75 white. Footer: key caps → ← ↩ esc with their verbs, 11 tertiary, separated by 1 × 10 lines.</td></tr>
+        <tr><td>Move to Folder (F7 / F8)</td><td>480 wide · centred in the fit area (x 370, y 89) · radius 16 · sheet fill · E4</td><td>Padding 16, column, gap 12. Header 20 tall: "Move to Folder" 15 Semibold · trailing "F7" tertiary (F8 shows "Copy to Folder" / "F8"). 14 rows × 32, radius 8, padding 0 6 0 5, gap 10: key cap 22 × 22 (12 Semibold tabular) · label 13 (folder name primary, "Empty" tertiary) · "Choose…" button 22 tall. Highlighted row: accent fill; key cap and button become white at 0.22 / 0.20 fill with white text. Footer hint 11 tertiary with ↩ and esc key caps.</td></tr>
+        <tr><td>Key caps</td><td>auto × 20 · radius 5 (footer: radius 4)</td><td>Fill / line / text per the key-cap token. Glyphs: ⌘ as text, arrows as text (→ ← ↑ ↩), "esc" in lowercase. Never an icon font.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+    <div>
+      <h2>Motion</h2>
+      <table>
+        <tbody>
+          <tr><td>Principle</td><td>Animation explains a state change, it never decorates. Nothing sits between a key press and the next picture. Hard ceiling 200 ms; the only exception is the About glow (300 ms fade with the window). Curves: ease-out for things that arrive, ease-in-out for things that move, linear for pure opacity.</td></tr>
+          <tr><td>Browsing</td><td>0 ms. The next picture replaces the previous one with no crossfade; title and strip update in the same frame. Strip text fades 120 ms only when a different file arrives, never on zoom.</td></tr>
+          <tr><td>Zoom</td><td>120 ms, ease-out, anchored at the cursor (centre from the keyboard), Fit included. Trackpad pinch: no easing at all, the fingers are the animation. E3 shadow and hairline switch off at the first frame beyond fit.</td></tr>
+          <tr><td>Rotation</td><td>160 ms, ease-in-out, about the picture centre, so a 90° turn reads as the same picture. Repeated presses chain without waiting.</td></tr>
+          <tr><td>Info panel</td><td>180 ms, ease-in-out: slides 24 pt from the trailing edge while fading 0 → 1; picture and strip refit on the same curve, in one movement. The toolbar toggle itself does not animate.</td></tr>
+          <tr><td>Sheets</td><td>Folder chooser and F7: 160 ms, scale 0.97 → 1 with fade; close 120 ms reverse. No overshoot.</td></tr>
+          <tr><td>Move / Trash</td><td>With "show the next image" on: the leaving picture fades out 60 ms, the next one appears hard. Undo reverses it. Reads as "gone", not "replaced".</td></tr>
+          <tr><td>Bars at rest</td><td>After 2 s without input while browsing, toolbar groups and strip fade to 0 in 200 ms, opacity only, no travel (traffic lights and title stay). Mouse move or key: back in 120 ms. Panels and sheets never fade.</td></tr>
+          <tr><td>Hover / press</td><td>80 ms fill change; on macOS 26 the glass press response. Toggled-on and disabled states switch without animation.</td></tr>
+          <tr><td>Loading</td><td>No indicator before 150 ms. After that a system spinner centred in the fit area, or the previous picture dimmed to 0.5; it disappears hard when the picture lands.</td></tr>
+          <tr><td>Drop target</td><td>A 2 pt accent outline around the fit area fades in 120 ms while a folder or image is dragged over the window; out in 120 ms. Opacity only.</td></tr>
+          <tr><td>Never</td><td>Crossfades or slides between pictures; Ken Burns, parallax, bounce at the edges beyond the system rubber band; springs on panels or sheets; eased pinch zoom; animated toolbar glyphs; morphing title text; any feather flourish beyond the About fade.</td></tr>
+          <tr><td>Reduce Motion</td><td>Zoom, rotation, panel and sheet durations become 0 and things appear in place. Pure opacity changes (bars, strip fade, drop outline, About glow) stay, as they are not motion.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h2>Direction, states, consistency</h2>
+      <table>
+        <tbody>
+          <tr><td>RTL</td><td>Back/forward group, title and the trailing group swap sides; glyph order inside the trailing group reverses; chevrons flip (<code>chevron.forward</code> is direction-aware). Info panel opens from the leading edge. Status strip text is trailing-aligned. The picture itself is never mirrored.</td></tr>
+          <tr><td>Window inactive</td><td>Glyphs drop to the secondary token; glass keeps its fill.</td></tr>
+          <tr><td>Full screen</td><td>Same chrome, same insets; bars fade as above. Background colour fills the screen.</td></tr>
+          <tr><td>Custom background</td><td>Luminance &lt; 0.5 → dark tokens, else light. Glass fills are tinted by the material, so no per-colour tuning.</td></tr>
+          <tr><td>Preferences</td><td>Window 560 wide, system appearance. Header 96: pane title 13 Semibold centred in the top 40; tab row of 72 × 46 pills (gap 4), glyph 22 + label 11 Medium, selected pill fill 0.10 / 0.07 with accent glyph and label. Content padding 22 × 24, sections 22 apart: header 13 Semibold, 8 gap, card radius 10 (dark fill 0.05 + hairline 0.06; light white + hairline 0.06), rows 44 (52 when two lines), padding 0 × 14, inset separators. Push buttons 28 tall radius 7; pop-ups 26 tall with the accent chevron square 16 × 16 radius 4; switches 38 × 22, system. The "Use Featherview for Images" button carries the 14 pt feather mark.</td></tr>
+          <tr><td>About</td><td>Window 320 × 440, close button only, system appearance. Icon tile 128, radius 28.8, tile gradient <code>#23232C → #101015</code>, E4 shadow; behind it a 280 pt radial glow in the feather colours (0.26 → 0 dark, 0.45 → 0 light): the only place the brand colours fill an area. Name 22 / 28 Semibold (SF Pro Display), tagline 13 secondary, "Version" tertiary with the build in a key cap (tabular), hairline, copyright 11 tertiary, two accent links 11.</td></tr>
+          <tr><td>Batch window</td><td>Three columns stay. Sidebar rows 32 tall, 8 pt radius, selected row accent with white text; "on" badges secondary tabular; cards as in Preferences.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1220,"height":3960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

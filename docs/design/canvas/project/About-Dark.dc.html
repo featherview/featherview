@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Featherview — About window, dark</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#8ab4ff;text-decoration:none}a:hover{color:#b8d0ff}
+button{font:inherit;cursor:default}
+</style>
+</helmet>
+<div style="position: relative; width: 320px; height: 440px; overflow: hidden; border-radius: 12px; background: #1f1f24; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07), 0 8px 16px rgba(0,0,0,0.28), 0 32px 72px rgba(0,0,0,0.45); font-family: -apple-system, 'SF Pro Text', 'SF Pro', 'Helvetica Neue', sans-serif; color: rgba(255,255,255,0.85); -webkit-font-smoothing: antialiased">
+
+  <!-- The one warm note: a soft feather-coloured glow behind the icon -->
+  <div aria-hidden="true" style="position: absolute; left: 20px; top: -30px; width: 280px; height: 280px; border-radius: 140px; background: radial-gradient(circle at 50% 50%, rgba(255,199,102,0.26) 0%, rgba(255,122,89,0.12) 42%, rgba(255,122,89,0) 70%)"></div>
+
+  <!-- Only the close light -->
+  <div style="position: absolute; left: 20px; top: 20px; width: 12px; height: 12px; border-radius: 6px; background: #ff5f57; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.2)" aria-hidden="true"></div>
+
+  <div style="position: absolute; left: 0; top: 0; width: 320px; height: 440px; box-sizing: border-box; padding: 56px 28px 24px; display: flex; flex-direction: column; align-items: center; text-align: center">
+
+    <!-- App icon: 128 pt tile, radius 28.8, same mark as the .icns -->
+    <div style="width: 128px; height: 128px; border-radius: 28.8px; background: linear-gradient(180deg, #23232c 0%, #101015 100%); box-shadow: 0 4px 8px rgba(0,0,0,0.26), 0 20px 48px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; flex: none">
+      <svg viewBox="0 0 64 64" width="128" height="128" role="img" aria-label="Featherview app icon" style="display: block; border-radius: 28.8px">
+        <defs><linearGradient id="ab-mark" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffc766"></stop><stop offset="1" stop-color="#ff7a59"></stop></linearGradient></defs>
+        <path d="M46 10C28 14 18 28 16 50l4 2c2-6 5-11 9-15 8-1 14-6 17-14-4 2-8 3-12 3 5-3 10-8 12-16z" fill="url(#ab-mark)"></path>
+      </svg>
+    </div>
+
+    <div style="margin-top: 22px; font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em; color: rgba(255,255,255,0.92)">Featherview</div>
+    <div style="margin-top: 4px; font-size: 13px; line-height: 17px; color: rgba(255,255,255,0.55)">Fast, keyboard-driven image viewer</div>
+
+    <div style="margin-top: 14px; display: flex; align-items: center; gap: 6px; font-size: 11px; line-height: 14px; color: rgba(255,255,255,0.45)">
+      <span>Version</span>
+      <span style="font-weight: 500; padding: 2px 7px; border-radius: 5px; background: rgba(255,255,255,0.07); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14); color: rgba(255,255,255,0.7); font-variant-numeric: tabular-nums">1.0 (1)</span>
+    </div>
+
+    <div style="margin-top: auto; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px">
+      <div style="width: 100%; height: 1px; background: rgba(255,255,255,0.08)" aria-hidden="true"></div>
+      <div style="font-size: 11px; line-height: 14px; color: rgba(255,255,255,0.45)">© 2026 mynetx</div>
+      <div style="display: flex; align-items: center; gap: 14px; font-size: 11px; line-height: 14px">
+        <a href="https://mynetx.net" style="color: #0a84ff">mynetx.net</a>
+        <span style="width: 1px; height: 10px; background: rgba(255,255,255,0.16)" aria-hidden="true"></span>
+        <a href="https://github.com/mynetx/featherview" style="color: #0a84ff">Source on GitHub</a>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":320,"height":440}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Featherview — empty window, light</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#0b63c7}a:hover{color:#0a4f9e}
+button{font:inherit;cursor:default}
+</style>
+</helmet>
+<div style="position: relative; width: 1220px; height: 700px; overflow: hidden; border-radius: 12px; background: {{bg}}; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08); font-family: -apple-system, 'SF Pro Text', 'SF Pro', 'Helvetica Neue', sans-serif; color: rgba(0,0,0,0.85); -webkit-font-smoothing: antialiased">
+
+  <!-- Empty-state hint card: 300×168, centred in the fit area -->
+  <div style="position: absolute; left: 460px; top: 274px; width: 300px; height: 168px; box-sizing: border-box; border-radius: 18px; background: rgba(255,255,255,0.6); backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 0 0 1px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.07), 0 12px 32px rgba(0,0,0,0.14); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px 28px">
+    <svg viewBox="8 8 46 46" width="44" height="44" role="img" aria-label="Featherview" style="display: block">
+      <defs><linearGradient id="fv-mark" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffc766"></stop><stop offset="1" stop-color="#ff7a59"></stop></linearGradient></defs>
+      <path d="M46 10C28 14 18 28 16 50l4 2c2-6 5-11 9-15 8-1 14-6 17-14-4 2-8 3-12 3 5-3 10-8 12-16z" fill="url(#fv-mark)"></path>
+    </svg>
+    <div style="font-size: 13px; line-height: 16px; color: rgba(0,0,0,0.65); text-align: center">Open an image or drop a folder here</div>
+    <div style="display: flex; gap: 6px">
+      <span style="font-size: 11px; line-height: 14px; font-weight: 500; padding: 3px 7px; border-radius: 5px; background: rgba(0,0,0,0.05); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12); color: rgba(0,0,0,0.65)">⌘O</span>
+      <span style="font-size: 11px; line-height: 14px; font-weight: 500; padding: 3px 7px; border-radius: 5px; background: rgba(0,0,0,0.05); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12); color: rgba(0,0,0,0.65)">O</span>
+    </div>
+  </div>
+
+  <!-- Traffic lights -->
+  <div style="position: absolute; left: 20px; top: 20px; display: flex; gap: 8px" aria-hidden="true">
+    <div style="width: 12px; height: 12px; border-radius: 6px; background: #ff5f57; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.2)"></div>
+    <div style="width: 12px; height: 12px; border-radius: 6px; background: #febc2e; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.2)"></div>
+    <div style="width: 12px; height: 12px; border-radius: 6px; background: #28c840; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.2)"></div>
+  </div>
+
+  <!-- Leading group: back / forward (disabled) -->
+  <div style="position: absolute; left: 96px; top: 10px; height: 32px; width: 76px; border-radius: 16px; background: rgba(255,255,255,0.6); backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 0 0 1px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.06), 0 6px 16px rgba(0,0,0,0.1); display: flex; align-items: center; padding: 0 2px; box-sizing: border-box; color: rgba(0,0,0,0.25)">
+    <button aria-label="Back" disabled style="width: 36px; height: 28px; border: 0; padding: 0; background: transparent; color: inherit; display: flex; align-items: center; justify-content: center; border-radius: 14px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3 5 8l5 5"></path></svg></button>
+    <button aria-label="Forward" disabled style="width: 36px; height: 28px; border: 0; padding: 0; background: transparent; color: inherit; display: flex; align-items: center; justify-content: center; border-radius: 14px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l5 5-5 5"></path></svg></button>
+  </div>
+
+  <!-- Title -->
+  <div style="position: absolute; left: 184px; top: 0; height: 52px; display: flex; align-items: center; font-size: 13px; line-height: 16px; font-weight: 600; color: rgba(0,0,0,0.85)">Featherview</div>
+
+  <!-- Trailing group: rotate L/R · zoom out, fit, zoom in · info, trash (disabled) -->
+  <div style="position: absolute; left: 952px; top: 10px; height: 32px; width: 256px; border-radius: 16px; background: rgba(255,255,255,0.6); backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 0 0 1px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.06), 0 6px 16px rgba(0,0,0,0.1); display: flex; align-items: center; padding: 0 2px; box-sizing: border-box; color: rgba(0,0,0,0.25)">
+    <button aria-label="Rotate left" disabled style="width: 36px; height: 28px; border: 0; padding: 0; background: transparent; color: inherit; display: flex; align-items: center; justify-content: center; border-radius: 14px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 2.3 2.6 4.4l2.1 1.9"></path><path d="M2.8 4.4h5.4a3 3 0 0 1 3 3V8"></path><rect x="2.8" y="8.6" width="8.2" height="4.9" rx="1.2"></rect></svg></button>
+    <button aria-label="Rotate right" disabled style="width: 36px; height: 28px; border: 0; padding: 0; background: transparent; color: inherit; display: flex; align-items: center; justify-content: center; border-radius: 14px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.5 2.3l1.9 2.1-2.1 1.9"></path><path d="M13.2 4.4H7.8a3 3 0 0 0-3 3V8"></path><rect x="5" y="8.6" width="8.2" height="4.9" rx="1.2"></rect></svg></button>
+    <div style="width: 1px; height: 16px; background: rgba(0,0,0,0.12); margin: 0 1px" aria-hidden="true"></div>
+    <button aria-label="Zoom out" disabled style="width: 36px; height: 28px; border: 0; padding: 0; background: transparent; color: inherit; display: flex; align-items: center; justify-content: center; border-radius: 14px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.6"></circle><path d="M10.4 10.4 14 14M5 7h4"></path></svg></button>
+    <button aria-label="Fit to window" disabled style="width: 36px; height: 28px; border: 0; padding: 0; background: transparent; color: inherit; display: flex; align-items: center; justify-content: center; border-radius: 14px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.6"></circle><path d="M10.4 10.4 14 14M5 9l4-4M5 6.4V5h1.4M9 7.6V9H7.6"></path></svg></button>
+    <button aria-label="Zoom in" disabled style="width: 36px; height: 28px; border: 0; padding: 0; background: transparent; color: inherit; display: flex; align-items: center; justify-content: center; border-radius: 14px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.6"></circle><path d="M10.4 10.4 14 14M5 7h4M7 5v4"></path></svg></button>
+    <div style="width: 1px; height: 16px; background: rgba(0,0,0,0.12); margin: 0 1px" aria-hidden="true"></div>
+    <button aria-label="Info" disabled style="width: 36px; height: 28px; border: 0; padding: 0; background: transparent; color: inherit; display: flex; align-items: center; justify-content: center; border-radius: 14px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"></circle><path d="M8 7.3v3.7M8 5v.3"></path></svg></button>
+    <button aria-label="Move to Trash" disabled style="width: 36px; height: 28px; border: 0; padding: 0; background: transparent; color: inherit; display: flex; align-items: center; justify-content: center; border-radius: 14px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.8 4.5h10.4M6.4 4.5V3h3.2v1.5M4.2 4.5l.6 8.4a1 1 0 0 0 1 .9h4.4a1 1 0 0 0 1-.9l.6-8.4M6.8 7.2v4M9.2 7.2v4"></path></svg></button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"bg":{"editor":"color","default":"#e7e7ec","options":["#e7e7ec","#ffffff","#1c1c20","#000000"],"section":"Background"},"$preview":{"width":1220,"height":700}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { bg: this.props.bg ?? '#e7e7ec' };
+  }
+}
+</script>
+</body>
+</html>

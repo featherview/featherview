@@ -1,0 +1,43 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-18T18:30:00Z" },
+  "title": "Featherview viewer design",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html":            { "x": 0,    "y": 0,    "w": 1220, "h": 700, "title": "Dark · 01 Empty window", "radius": 12 },
+    "Dark-Landscape.dc.html":  { "x": 1300, "y": 0,    "w": 1220, "h": 700, "title": "Dark · 02 Landscape fitted", "radius": 12 },
+    "Dark-Portrait.dc.html":   { "x": 2600, "y": 0,    "w": 1220, "h": 700, "title": "Dark · 03 Portrait fitted", "radius": 12 },
+    "Dark-Zoomed.dc.html":     { "x": 3900, "y": 0,    "w": 1220, "h": 700, "title": "Dark · 04 Zoomed under the glass", "radius": 12 },
+    "Dark-Info.dc.html":       { "x": 0,    "y": 820,  "w": 1220, "h": 700, "title": "Dark · 05 Info panel (I)", "radius": 12 },
+    "Dark-Chooser.dc.html":    { "x": 1300, "y": 820,  "w": 1220, "h": 700, "title": "Dark · 06 Folder chooser", "radius": 12 },
+    "Dark-Move.dc.html":       { "x": 2600, "y": 820,  "w": 1220, "h": 700, "title": "Dark · 07 Move to Folder (F7)", "radius": 12 },
+    "Light-Empty.dc.html":     { "x": 0,    "y": 2140, "w": 1220, "h": 700, "title": "Light · 01 Empty window", "radius": 12 },
+    "Light-Landscape.dc.html": { "x": 1300, "y": 2140, "w": 1220, "h": 700, "title": "Light · 02 Landscape fitted", "radius": 12 },
+    "Light-Portrait.dc.html":  { "x": 2600, "y": 2140, "w": 1220, "h": 700, "title": "Light · 03 Portrait fitted", "radius": 12 },
+    "Light-Zoomed.dc.html":    { "x": 3900, "y": 2140, "w": 1220, "h": 700, "title": "Light · 04 Zoomed under the glass", "radius": 12 },
+    "Light-Info.dc.html":      { "x": 0,    "y": 2960, "w": 1220, "h": 700, "title": "Light · 05 Info panel (I)", "radius": 12 },
+    "Light-Chooser.dc.html":   { "x": 1300, "y": 2960, "w": 1220, "h": 700, "title": "Light · 06 Folder chooser", "radius": 12 },
+    "Light-Move.dc.html":      { "x": 2600, "y": 2960, "w": 1220, "h": 700, "title": "Light · 07 Move to Folder (F7)", "radius": 12 },
+    "Pref-Dark.dc.html":       { "x": 0,    "y": 4180, "w": 560,  "h": 560, "title": "Dark · Preferences — Browsing", "radius": 12 },
+    "About-Dark.dc.html":      { "x": 640,  "y": 4180, "w": 320,  "h": 440, "title": "Dark · About Featherview", "radius": 12 },
+    "Pref-Light.dc.html":      { "x": 1040, "y": 4180, "w": 560,  "h": 560, "title": "Light · Preferences — Browsing", "radius": 12 },
+    "About-Light.dc.html":     { "x": 1680, "y": 4180, "w": 320,  "h": 440, "title": "Light · About Featherview", "radius": 12 },
+    "Spec.dc.html":            { "x": 0,    "y": 5120, "w": 1220, "h": 3960, "title": "Build spec — sizes, materials, type, motion" }
+  },
+  "order": [
+    "Main.dc.html", "Dark-Landscape.dc.html", "Dark-Portrait.dc.html", "Dark-Zoomed.dc.html",
+    "Dark-Info.dc.html", "Dark-Chooser.dc.html", "Dark-Move.dc.html",
+    "Light-Empty.dc.html", "Light-Landscape.dc.html", "Light-Portrait.dc.html", "Light-Zoomed.dc.html",
+    "Light-Info.dc.html", "Light-Chooser.dc.html", "Light-Move.dc.html",
+    "Pref-Dark.dc.html", "About-Dark.dc.html", "Pref-Light.dc.html", "About-Light.dc.html",
+    "Spec.dc.html"
+  ],
+  "notes": {
+    "t-dark":  { "x": 0, "y": -260, "text": "Featherview — dark appearance (Graphite #1C1C20, the default)", "kind": "title1", "maxW": 5120 },
+    "t-light": { "x": 0, "y": 1880, "text": "Featherview — light appearance (Grey background #E7E7EC)", "kind": "title1", "maxW": 5120 },
+    "t-pref":  { "x": 0, "y": 3920, "text": "Preferences and About — dark / light (follow the system appearance)", "kind": "title1", "maxW": 2000 },
+    "t-spec":  { "x": 0, "y": 4860, "text": "Build spec", "kind": "title1", "maxW": 1220 }
+  },
+  "designSystems": []
+}

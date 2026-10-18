@@ -77,6 +77,14 @@ docs/superpowers/plans/    implementation plans
 
 Rule of thumb: if logic can be tested without a window, it belongs in FeatherviewCore.
 
+## Design system
+
+- Tokens (colours, elevation, type, metrics, radii, motion): `Sources/Featherview/Design/Theme.swift`.
+- Spec: `docs/DESIGN.md`; artboards in `docs/design/canvas/project/`; source canvas
+  <https://claude.ai/artifact/MBFkpbRchvBUixdnsAXveQ>.
+- Never hard-code a colour, shadow, radius or duration outside `Theme.swift` (fit arithmetic keeps its
+  numbers in `CanvasInsets`, which `Theme` names).
+
 ## Performance budgets (treat a regression as a bug)
 
 | Budget | Target |
