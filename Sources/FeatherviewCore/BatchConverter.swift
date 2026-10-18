@@ -199,10 +199,20 @@ public enum BatchConverter {
            let date = (try? FileManager.default.attributesOfItem(atPath: url.resolvingSymlinksInPath().path))?[.modificationDate] as? Date {
             try? FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: output.path)
         }
+        var message = prepared.note
         if settings.safety.trashOriginals {
-            if (try? trash(url)) != nil { for sidecar in prepared.sidecars { try? trash(sidecar) } }
+            do {
+                try trash(url)
+                // An output of the same name in the same folder (converting in place) now owns the sidecars.
+                let inPlace = output.deletingLastPathComponent().standardizedFileURL == url.deletingLastPathComponent().standardizedFileURL
+                    && Sidecars.stem(of: output) == Sidecars.stem(of: url)
+                if !inPlace { for sidecar in prepared.sidecars { try? trash(sidecar) } }
+            } catch {
+                let kept = String(localized: "Can't move \(url.lastPathComponent) to the Trash")
+                message = message.map { String(localized: "\($0); \(kept)") } ?? kept
+            }
         }
-        return BatchResult(input: url, output: output, status: .converted, message: prepared.note)
+        return BatchResult(input: url, output: output, status: .converted, message: message)
     }
 
     /// Writes a hidden temp file, then moves it in without replacing: a kill mid-write never leaves a

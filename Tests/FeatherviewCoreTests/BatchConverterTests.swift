@@ -332,6 +332,33 @@ import Testing
         #expect(trash.names == ["a.jpg", "a.aae"])
     }
 
+    @Test func trashOriginalsLeavesSidecarsWithAnOutputOfTheSameName() async throws {
+        // Converting in place: a.jpg now owns a.xmp.
+        let dir = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.png"), width: 8, height: 8, type: .png)
+        let sidecar = dir.appendingPathComponent("a.xmp")
+        try Data("<xmp/>".utf8).write(to: sidecar)
+        let trash = try FakeTrash()
+
+        let results = await BatchConverter.run(job([input], out: dir, format: "jpg") { $0.safety.trashOriginals = true },
+                                               trash: trash.trash)
+
+        #expect(results.first?.output?.lastPathComponent == "a.jpg")
+        #expect(trash.names == ["a.png"])
+        #expect(FileManager.default.fileExists(atPath: sidecar.path))
+    }
+
+    @Test func trashOriginalsNotesAnOriginalItCouldNotTrash() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+
+        let results = await BatchConverter.run(job([input], out: out) { $0.safety.trashOriginals = true },
+                                               trash: { _ in throw CocoaError(.fileWriteNoPermission) })
+
+        #expect(results.first?.status == .converted)
+        #expect(results.first?.message == "Can't move a.jpg to the Trash")
+    }
+
     @Test func keepDatesCopiesModificationDate() async throws {
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
