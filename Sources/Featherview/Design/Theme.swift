@@ -246,6 +246,9 @@ enum Theme {
     static let emptyCardPadding = EdgeInsets(top: 24, leading: 28, bottom: 24, trailing: 28)
     static let emptyCardGap = 12.0
     static let featherSize = 44.0
+    /// The feather in "Use Featherview for Images", and its gap to the label.
+    static let buttonFeatherSize = 14.0
+    static let buttonIconGap = 7.0
     /// Key caps: auto × 20, padding 3 × 7; footer caps padding 1 × 5; F7 slot keys 22 × 22.
     static let keyCapPadding = EdgeInsets(top: 3, leading: 7, bottom: 3, trailing: 7)
     static let footerKeyCapPadding = EdgeInsets(top: 1, leading: 5, bottom: 1, trailing: 5)

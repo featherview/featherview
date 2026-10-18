@@ -738,14 +738,9 @@ struct ViewerCommands: Commands {
 
 /// The empty window: the feather, what to do, and the keys for it, on an 18 pt glass card (docs/DESIGN.md "Elements").
 private struct EmptyHint: View {
-    private static let feather = Bundle.main.url(forResource: "Feather", withExtension: "svg").flatMap(NSImage.init(contentsOf:))
-
     var body: some View {
         VStack(spacing: Theme.emptyCardGap) {
-            if let feather = Self.feather {
-                Image(nsImage: feather).resizable().frame(width: Theme.featherSize, height: Theme.featherSize)
-                    .accessibilityHidden(true)
-            }
+            FeatherMark(size: Theme.featherSize)
             Text("Open an image or drop a folder here")
                 .font(Theme.hintText)
                 .foregroundStyle(Theme.labelHint)

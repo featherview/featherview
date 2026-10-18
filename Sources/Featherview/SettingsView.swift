@@ -82,8 +82,13 @@ private struct BrowsingSettings: View {
         Form {
             Section("Default app") {
                 LabeledContent("Opens JPEG:") { Text(jpegApp ?? String(localized: "No app")) }
-                Button("Use Featherview for Images") {
+                Button {
                     Task { await DefaultViewerOffer.claim(); refresh() }
+                } label: {
+                    HStack(spacing: Theme.buttonIconGap) {
+                        FeatherMark(size: Theme.buttonFeatherSize)
+                        Text("Use Featherview for Images")
+                    }
                 }
                 .disabled(!canClaim)
             }
