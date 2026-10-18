@@ -32,6 +32,7 @@ public enum BatchConverter {
     static func run(
         _ job: BatchJob, control: BatchControl = BatchControl(), workers: Int = defaultWorkers,
         trash: @escaping @Sendable (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) },
+        moveSidecars: Bool = AppSettings.moveSidecars.value(),
         onResult: @escaping @Sendable (BatchResult) -> Void = { _ in },
         prepare: (@Sendable (Int, BatchInput) -> Prepared)? = nil
     ) async -> [BatchResult] {
@@ -72,7 +73,14 @@ public enum BatchConverter {
                 waiting[index] = prepared
                 while let next = waiting.removeValue(forKey: nextCommit) {
                     let input = inputs[nextCommit]
-                    let result = commit(next, input: input, settings: settings, namer: &namer, trash: trash)
+                    // Off the pool too: commits write and copy whole files. Awaited one at a time, so order holds.
+                    let (result, named) = await offPool { [namer] in
+                        var namer = namer
+                        let result = commit(next, input: input, settings: settings, moveSidecars: moveSidecars,
+                                            namer: &namer, trash: trash)
+                        return (result, namer)
+                    }
+                    namer = named
                     results[nextCommit] = result
                     onResult(result)
                     nextCommit += 1
@@ -149,31 +157,34 @@ public enum BatchConverter {
     }
 
     /// Names, writes and finishes one file, in list order: the counter only advances for files that succeeded.
-    static func commit(_ prepared: Prepared, input: BatchInput, settings: BatchSettings, namer: inout BatchNamer,
-                       trash: (URL) throws -> Void) -> BatchResult {
+    static func commit(_ prepared: Prepared, input: BatchInput, settings: BatchSettings, moveSidecars: Bool,
+                       namer: inout BatchNamer, trash: (URL) throws -> Void) -> BatchResult {
         let url = input.url
         func failed(_ message: String) -> BatchResult { BatchResult(input: url, output: nil, status: .failed, message: message) }
         if let error = prepared.error { return failed(error) }
         let cantSave = String(localized: "Can't save \(url.lastPathComponent)")
+        let unnamed = namer
         let planned = namer.next(for: input, date: prepared.date)
         let output: URL
         do {
             let fm = FileManager.default
             try fm.createDirectory(at: planned.deletingLastPathComponent(), withIntermediateDirectories: true)
-            // The namer never returns an input; with "Replace existing files" it may return an existing file.
-            if settings.safety.replaceExisting, (try? fm.attributesOfItem(atPath: planned.path)) != nil {
+            // The namer never returns an input or a folder; with "Replace existing files" it may return an existing file.
+            if settings.safety.replaceExisting, let attributes = try? fm.attributesOfItem(atPath: planned.path),
+               attributes[.type] as? FileAttributeType != .typeDirectory {
                 try trash(planned)
             }
             output = try prepared.data.map { try write($0, to: planned) } ?? BatchCopy.copy(url, to: planned)
         } catch {
+            namer = unnamed  // the name (and its number) goes to the next file that succeeds
             return failed(cantSave)
         }
         if settings.safety.keepDates,
-           let date = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date {
+           let date = (try? FileManager.default.attributesOfItem(atPath: url.resolvingSymlinksInPath().path))?[.modificationDate] as? Date {
             try? FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: output.path)
         }
         if settings.safety.trashOriginals {
-            let sidecars = Sidecars.files(for: url)
+            let sidecars = moveSidecars ? Sidecars.files(for: url) : []
             if (try? trash(url)) != nil { for sidecar in sidecars { try? trash(sidecar) } }
         }
         return BatchResult(input: url, output: output, status: .converted, message: prepared.note)

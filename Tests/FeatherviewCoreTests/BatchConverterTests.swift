@@ -305,6 +305,80 @@ import Testing
         #expect(written == date)
     }
 
+    @Test func keepDatesFollowsASymlinkedInput() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let real = try Fixtures.writeImage(to: dir.appendingPathComponent("real.jpg"), width: 8, height: 8)
+        let date = Date(timeIntervalSince1970: 1_000_000_000)
+        try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: real.path)
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+
+        let output = try #require(await BatchConverter.run(job([link], out: out) { $0.safety.keepDates = true }).first?.output)
+
+        let written = try FileManager.default.attributesOfItem(atPath: output.path)[.modificationDate] as? Date
+        #expect(written == date)
+    }
+
+    @Test func replaceExistingNeverTrashesAFolder() async throws {
+        let out = try Fixtures.makeTempDir()
+        let folder = out.appendingPathComponent("a.png", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data("notes".utf8).write(to: folder.appendingPathComponent("notes.txt"))
+        let trash = try FakeTrash()
+
+        let results = await BatchConverter.run(job([URL(fileURLWithPath: "/in/a.jpg")], out: out) {
+            $0.safety.replaceExisting = true
+        }, trash: trash.trash, prepare: { _, _ in BatchConverter.Prepared(data: Data("new".utf8)) })
+
+        #expect(trash.trashed.isEmpty)
+        #expect(results.first?.output?.lastPathComponent == "a 2.png")
+        #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("notes.txt").path))
+    }
+
+    @Test func trashOriginalsLeavesSidecarsWhenThePreferenceIsOff() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        try Data("<xmp/>".utf8).write(to: dir.appendingPathComponent("a.xmp"))
+        let trash = try FakeTrash()
+
+        let results = await BatchConverter.run(job([input], out: out) { $0.safety.trashOriginals = true },
+                                               trash: trash.trash, moveSidecars: false)
+
+        #expect(results.first?.status == .converted)
+        #expect(trash.names == ["a.jpg"])
+    }
+
+    @Test func counterSkipsFilesThatFailToSave() async throws {
+        let root = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        try Data().write(to: out.appendingPathComponent("sub"))  // input 2's subfolder can't be created
+        let inputs = ["a.jpg", "sub/b.jpg", "c.jpg"].map { root.appendingPathComponent($0) }
+
+        let results = await BatchConverter.run(job(inputs, out: out, root: root) {
+            $0.mode = .convertAndRename
+            $0.renamePattern = "Holiday {n:3}"
+            $0.safety.recreateSubfolders = true
+        }, prepare: { _, _ in BatchConverter.Prepared(data: Data("x".utf8)) })
+
+        #expect(results.map(\.status) == [.converted, .failed, .converted])
+        #expect(results.map { $0.output?.lastPathComponent } == ["Holiday 001.png", nil, "Holiday 002.png"])
+    }
+
+    @Test func commitsOffTheCooperativeThreadPool() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let labels = Box([String]())
+        let trash = try FakeTrash()
+
+        _ = await BatchConverter.run(job([input], out: out) { $0.safety.trashOriginals = true }, trash: {
+            labels.update { $0.append(String(cString: __dispatch_queue_get_label(nil))) }
+            try trash.trash($0)
+        })
+
+        // Commits write and copy whole files; on the pool they would starve the viewer's decode tasks.
+        #expect(labels.get.count == 1)
+        #expect(!labels.get.contains { $0.contains("cooperative") })
+    }
+
     @Test func recreateSubfolders() async throws {
         let root = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let sub = root.appendingPathComponent("2024/May", isDirectory: true)
