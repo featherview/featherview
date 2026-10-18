@@ -77,7 +77,7 @@ struct ImageCanvas: NSViewRepresentable {
     var onCommit: @MainActor (CGImage) -> Void = { _ in }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
+        let scrollView = WheelCancelsZoomScrollView()
         scrollView.contentView = CenteringClipView()
         scrollView.automaticallyAdjustsContentInsets = false
         // The picture never mirrors (spec "Languages"): scroll origin and dragging stay physical.
@@ -145,6 +145,16 @@ struct ImageCanvas: NSViewRepresentable {
 private extension CGImage {
     var hasAlpha: Bool {
         ![.none, .noneSkipFirst, .noneSkipLast].contains(alphaInfo)
+    }
+}
+
+/// A trackpad or wheel scroll stops a running zoom animation, which would otherwise snap the
+/// clip back to its target once it ends and undo the scroll.
+private final class WheelCancelsZoomScrollView: NSScrollView {
+    override func scrollWheel(with event: NSEvent) {
+        let clip = contentView
+        cut { clip.animator().setBoundsOrigin(clip.bounds.origin) }
+        super.scrollWheel(with: event)
     }
 }
 
