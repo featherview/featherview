@@ -75,10 +75,19 @@ public enum ImageDecoder {
 
     /// The halving step to decode an image of `size` (displayed) at for zoom `factor`, and whether that
     /// step is no larger than the image's own fit decode for `screens`, so it may go in the fit-sized cache.
-    public static func zoomDecode(size: PixelSize, factor: Double, screens: [PixelSize]) -> (step: Int, withinFit: Bool) {
+    /// `exactFit`: the image's fit decode is `fitNeededSize`, not a halving step (`decodesAtExactFit`).
+    public static func zoomDecode(size: PixelSize, factor: Double, screens: [PixelSize],
+                                  exactFit: Bool = false) -> (step: Int, withinFit: Bool) {
         let full = max(size.width, size.height)
         let step = zoomStep(full: full, factor: factor)
-        return (step, stepSize(full: full, step: step) <= fitDecodeSize(image: size, screens: screens))
+        let fit = exactFit ? fitNeededSize(image: size, screens: screens) : fitDecodeSize(image: size, screens: screens)
+        return (step, stepSize(full: full, step: step) <= fit)
+    }
+
+    /// Whether ImageIO's fit decode of `url` uses the exact needed size rather than a halving step: HEIC
+    /// (and HEIF) decode no slower at it and keep fewer bytes; PNG is 10–18 % slower, JPEG decodes steps directly.
+    public static func decodesAtExactFit(_ url: URL) -> Bool {
+        UTType(filenameExtension: url.pathExtension).map { $0.conforms(to: .heic) || $0.conforms(to: .heif) } ?? false
     }
 
     /// The longest side to decode an image of `image` (displayed size, orientation applied) at, so it
@@ -103,7 +112,8 @@ public enum ImageDecoder {
     /// or with `halvingSteps` to the faster step at or above it (see `decodeSize`), for display.
     /// Never upscales. Pixels are decoded here, not lazily at first draw, so callers can run this
     /// off the main thread and the UI never stalls on display.
-    /// `screens`, in place of `maxPixelSize`: decode at `fitDecodeSize` for them (the viewer's fit mode).
+    /// `screens`, in place of `maxPixelSize`: decode at `fitDecodeSize` for them (the viewer's fit mode), or at
+    /// `fitNeededSize` for own formats and `decodesAtExactFit` types.
     /// `step`, in place of `maxPixelSize`: decode at that halving step (`zoomStep`, the viewer's zoom).
     /// `page` is a page of a multi-page TIFF (see `pageCount`).
     /// Display decodes (`halvingSteps`) come back at 8 bits, or with `hdr` an HDR image at up to 16
@@ -146,7 +156,7 @@ public enum ImageDecoder {
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
             kCGImageSourceShouldCacheImmediately: true,
-            kCGImageSourceThumbnailMaxPixelSize: fit(size) ?? (halvingSteps
+            kCGImageSourceThumbnailMaxPixelSize: fit(size, exact: decodesAtExactFit(url)) ?? (halvingSteps
                 ? decodeSize(full: full, target: maxPixelSize ?? full)
                 : min(maxPixelSize ?? full, full)),
         ]

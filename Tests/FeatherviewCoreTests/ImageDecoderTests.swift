@@ -86,6 +86,27 @@ import UniformTypeIdentifiers
         #expect(image.height == 1964)
     }
 
+    /// HEIC decodes no slower at the exact size and keeps ~60 % fewer bytes (performance plan, Task 7);
+    /// PNG was 10–18 % slower, so it and the other ImageIO types stay at the halving step.
+    @Test func heicDecodesAtTheExactFitSize() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("big.heic"), width: 4000, height: 3000, type: .heic)
+        let image = try ImageDecoder.decode(url, halvingSteps: true, fitting: [PixelSize(width: 3024, height: 1964)])
+        #expect(image.width == 2619)
+        #expect(image.height == 1964)
+        let png = try Fixtures.writeImage(to: dir.appendingPathComponent("big.png"), width: 4000, height: 3000, type: .png)
+        #expect(try ImageDecoder.decode(png, halvingSteps: true, fitting: [PixelSize(width: 3024, height: 1964)]).width == 4000)
+    }
+
+    /// A zoom at full size is above an exact fit decode, though not above the halving step's (also full size).
+    @Test func zoomAboveAnExactFitStaysOutOfTheFitCache() {
+        let size = PixelSize(width: 4000, height: 3000), screens = [PixelSize(width: 3024, height: 1964)]
+        #expect(ImageDecoder.zoomDecode(size: size, factor: 1, screens: screens).withinFit)
+        #expect(!ImageDecoder.zoomDecode(size: size, factor: 1, screens: screens, exactFit: true).withinFit)
+        #expect(ImageDecoder.decodesAtExactFit(URL(fileURLWithPath: "/x/IMG_1.HEIC")))
+        #expect(!ImageDecoder.decodesAtExactFit(URL(fileURLWithPath: "/x/a.png")))
+    }
+
     @Test func fitDecodeUsesDisplayedOrientation() throws {
         let dir = try Fixtures.makeTempDir()
         let url = try Fixtures.writeImage(to: dir.appendingPathComponent("r.jpg"), width: 4000, height: 2000, orientation: 6)

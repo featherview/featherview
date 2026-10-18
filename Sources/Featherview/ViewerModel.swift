@@ -480,7 +480,8 @@ final class ViewerModel {
         // Read after the wait: setZoom can't re-decode before `shownStep` is set, so it must see the latest factor.
         guard case .factor(let factor) = zoom, let size else { return (.full, fullSizeCache, nil) }
         let pixels = PixelSize(width: Int(size.width), height: Int(size.height))
-        let decision = ImageDecoder.zoomDecode(size: pixels, factor: factor, screens: screens)
+        let decision = ImageDecoder.zoomDecode(size: pixels, factor: factor, screens: screens,
+                                                  exactFit: ImageDecoder.decodesAtExactFit(url))
         return (.step(decision.step), decision.withinFit ? cache : fullSizeCache, max(pixels.width, pixels.height))
     }
 
