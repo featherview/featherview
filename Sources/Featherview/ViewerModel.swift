@@ -346,11 +346,11 @@ final class ViewerModel {
 
     /// Settings › Viewer › zoom step, 10 % by default (×1.1).
     private var zoomMultiplier: Double { 1 + Double(max(AppSettings.zoomStepPercent.value(), 1)) / 100 }
-    func zoomIn() { stepZoom(by: zoomMultiplier) }
-    func zoomOut() { stepZoom(by: 1 / zoomMultiplier) }
+    func zoomIn() { zoom(by: zoomMultiplier) }
+    func zoomOut() { zoom(by: 1 / zoomMultiplier) }
 
-    /// From fit, steps from the scale the image is shown at, which needs its full pixel size.
-    private func stepZoom(by multiplier: Double) {
+    /// A zoom step, or a pinch step. From fit, steps from the scale the image is shown at, which needs its full pixel size.
+    func zoom(by multiplier: Double) {
         if case .factor(let factor) = zoom {
             setZoom(.factor(ZoomSteps.step(factor, by: multiplier)))
             return

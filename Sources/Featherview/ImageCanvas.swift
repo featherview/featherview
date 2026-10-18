@@ -50,8 +50,9 @@ private extension NSScrollView {
     }
 }
 
-/// The image in an AppKit scroll view: two-finger scroll and dragging pan a zoomed image, a small
-/// image sits centred, double-click toggles full screen. SwiftUI's ScrollView can't pan by dragging.
+/// The image in an AppKit scroll view: two-finger scroll and dragging pan a zoomed image, a pinch zooms
+/// about the pointer, a sideways swipe with nothing to pan changes images, a small image sits centred,
+/// double-click toggles full screen. SwiftUI's ScrollView can't pan by dragging.
 struct ImageCanvas: NSViewRepresentable {
     let image: CGImage
     /// Size in points the image is drawn at.
@@ -72,6 +73,10 @@ struct ImageCanvas: NSViewRepresentable {
     var leaving = false
     let panController: PanController
     let onDoubleClick: () -> Void
+    /// A pinch step: the zoom multiplier (above 1 zooms in).
+    var onPinch: (Double) -> Void = { _ in }
+    /// A completed swipe: true when it goes the way → does (fingers moving left).
+    var onSwipe: (_ likeRightArrow: Bool) -> Void = { _ in }
     /// Any click on the image, and each step of a drag: the viewer takes the keyboard back (e.g. from the
     /// Info panel's text) and counts it as activity for the auto-hiding bars, which get no hover while a button is down.
     var onClick: () -> Void = {}
@@ -81,7 +86,7 @@ struct ImageCanvas: NSViewRepresentable {
     var onCommit: @MainActor (CGImage) -> Void = { _ in }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = WheelCancelsZoomScrollView()
+        let scrollView = CanvasScrollView()
         scrollView.contentView = CenteringClipView()
         scrollView.automaticallyAdjustsContentInsets = false
         // The picture never mirrors (spec "Languages"): scroll origin and dragging stay physical.
@@ -102,12 +107,19 @@ struct ImageCanvas: NSViewRepresentable {
         view.onClick = onClick
         view.onFirstDraw = onFirstDraw
         view.onCommit = onCommit
+        let canvas = scrollView as? CanvasScrollView
+        canvas?.onPinch = onPinch
+        canvas?.onSwipe = onSwipe
+        // A pinch zooms about the pointer at once; a step or Fit about the centre of the clear area, animated.
+        let pinch = canvas?.takePinch()
         let oldSize = view.frame.size
         let oldFrameOrigin = view.frame.origin
         let oldVisible = scrollView.clearRect
-        // Keep the point at the centre of the clear area where it was, so zooming doesn't jump to a corner.
-        let centre = CGPoint(x: oldSize.width > 0 ? oldVisible.midX / oldSize.width : 0.5,
-                             y: oldSize.height > 0 ? oldVisible.midY / oldSize.height : 0.5)
+        // Keep the point under the pointer (pinch) or at the centre of the clear area where it was,
+        // so zooming doesn't jump to a corner.
+        let anchor = pinch.map { view.convert($0, from: nil) } ?? CGPoint(x: oldVisible.midX, y: oldVisible.midY)
+        let centre = CGPoint(x: oldSize.width > 0 ? anchor.x / oldSize.width : 0.5,
+                             y: oldSize.height > 0 ? anchor.y / oldSize.height : 0.5)
         // The scroll view stays left-to-right (the picture never mirrors); the panel side follows the layout.
         let rtl = context.environment.layoutDirection == .rightToLeft
         let contentInsets = NSEdgeInsets(top: insets.top, left: rtl ? insets.trailing : insets.leading,
@@ -124,7 +136,7 @@ struct ImageCanvas: NSViewRepresentable {
         }
         let zoomChanged = view.zoom != nil && view.zoom != zoom && !insetsChanged
         let panelRefit = panelMoved && view.zoom == zoom
-        let animate = view.shows(image) && (zoomChanged || panelRefit)
+        let animate = view.shows(image) && (zoomChanged || panelRefit) && pinch == nil
             && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         view.zoom = zoom
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -153,7 +165,9 @@ struct ImageCanvas: NSViewRepresentable {
             let clip = scrollView.contentView
             cut { view.animator().setFrameSize(size) }
             let visible = scrollView.clearRect
-            let point = CGPoint(x: centre.x * size.width - visible.width / 2, y: centre.y * size.height - visible.height / 2)
+            let offset = pinch == nil ? CGPoint(x: visible.width / 2, y: visible.height / 2)
+                : CGPoint(x: anchor.x - oldVisible.minX, y: anchor.y - oldVisible.minY)
+            let point = CGPoint(x: centre.x * size.width - offset.x, y: centre.y * size.height - offset.y)
             guard animate else { return moveVisibleOrigin(scrollView, to: point) }
             if panelRefit {
                 // The clip keeps a picture smaller than the clear area centred, which overrides an animated scroll
@@ -197,9 +211,42 @@ private extension CGImage {
 }
 
 /// A trackpad or wheel scroll stops a running zoom animation, which would otherwise snap the
-/// clip back to its target once it ends and undo the scroll.
-private final class WheelCancelsZoomScrollView: NSScrollView {
+/// clip back to its target once it ends and undo the scroll. Pinches and swipes go to the viewer.
+private final class CanvasScrollView: NSScrollView {
+    var onPinch: (Double) -> Void = { _ in }
+    var onSwipe: (_ likeRightArrow: Bool) -> Void = { _ in }
+    /// The pointer at the last pinch step (window coordinates) and when, until the canvas zooms about it.
+    private var pinch: (location: CGPoint, time: TimeInterval)?
+
+    /// The pointer of a pinch step just taken; nil otherwise, also for one clamped at the zoom limit
+    /// that changed nothing, so a later key zoom isn't taken for a pinch.
+    func takePinch() -> CGPoint? {
+        defer { pinch = nil }
+        guard let pinch, ProcessInfo.processInfo.systemUptime - pinch.time < 0.25 else { return nil }
+        return pinch.location
+    }
+
+    override func magnify(with event: NSEvent) {
+        guard event.magnification != 0 else { return }
+        pinch = (event.locationInWindow, event.timestamp)
+        onPinch(1 + event.magnification)
+    }
+
+    /// Three-finger swipes, when the trackpad is set to swipe between pages with three fingers.
+    override func swipe(with event: NSEvent) {
+        if event.deltaX != 0 { onSwipe(event.deltaX < 0) }
+    }
+
     override func scrollWheel(with event: NSEvent) {
+        // Two-finger swipe between pages (the system setting), only when there's nothing to pan sideways.
+        if event.phase == .began, NSEvent.isSwipeTrackingFromScrollEventsEnabled,
+           abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY),
+           let document = documentView, document.frame.width <= clearRect.width + 0.5 {
+            event.trackSwipeEvent(options: .lockDirection, dampenAmountThresholdMin: -1, max: 1) { [weak self] amount, phase, complete, _ in
+                if phase == .ended, complete { self?.onSwipe(amount < 0) }
+            }
+            return
+        }
         let clip = contentView
         cut { clip.animator().setBoundsOrigin(clip.bounds.origin) }
         super.scrollWheel(with: event)

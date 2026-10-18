@@ -53,7 +53,8 @@ struct ViewerView: View {
                             displayScale: displayScale, background: Theme.background, insets: canvasInsets, zoom: model.zoom,
                             checkerboard: checkerboard, turns: model.pendingTurns, leaving: model.isLeaving,
                             panController: panController,
-                            onDoubleClick: model.toggleFullScreen, onClick: clickedImage,
+                            onDoubleClick: model.toggleFullScreen, onPinch: model.zoom(by:), onSwipe: swiped,
+                            onClick: clickedImage,
                             onFirstDraw: { toolbarReady = true; model.firstImageDrawn() },
                             onCommit: model.imageCommitted)
                     .contextMenu { ImageContextMenu(model: model) }
@@ -281,6 +282,17 @@ struct ViewerView: View {
     }
 
     /// A click (or drag) takes the keyboard back and brings hidden bars and the pointer back, as a move does.
+    /// A swipe changes images like the arrow it goes the way of (mirrored in right-to-left languages).
+    private func swiped(likeRightArrow: Bool) {
+        guard !model.isChooserOpen, model.destinationPanel == nil else { return }
+        feedAutoHide(.key(browsing: true))
+        if ViewerKey.arrowGoesForward(isRightArrow: likeRightArrow, rightToLeft: layoutDirection == .rightToLeft) {
+            model.next()
+        } else {
+            model.previous()
+        }
+    }
+
     private func clickedImage() {
         focused = true
         feedAutoHide(.pointerMoved)

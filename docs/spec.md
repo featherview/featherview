@@ -84,7 +84,12 @@ Single keys for commands match the reference viewer, for people switching over; 
   fits. No selection rectangle.
 - Right-click (or Control-click) opens a context menu with the window's actions: Copy, Rotate
   Left / Right, Move to Folder…, Copy to Folder…, Move to Trash, Show in Finder, Open With.
-- Two-finger scroll (or a mouse wheel) pans a zoomed image; it never changes images.
+- Two-finger scroll (or a mouse wheel) pans a zoomed image.
+- Pinch zooms in and out about the pointer, following the fingers (no animation), within the
+  same 5 %–1600 % as + / −.
+- Swiping sideways changes images the way the Mac swipes between pages: with two fingers (or three,
+  per the trackpad setting), only while the image has nothing to pan sideways; a swipe goes the way of
+  the arrow key it moves towards (mirrored in right-to-left languages). A mouse wheel never changes images.
 
 ### Toolbar
 
