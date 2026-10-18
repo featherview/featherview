@@ -1473,7 +1473,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "0 = conserva"
+            "value" : "0 = mantén"
           }
         },
         "da" : {
@@ -3334,7 +3334,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Selecciona una carpeta"
+            "value" : "Tria una carpeta"
           }
         },
         "da" : {
@@ -3368,7 +3368,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Selecciona una imatge de marca d’aigua"
+            "value" : "Tria una imatge de marca d’aigua"
           }
         },
         "da" : {
@@ -3402,7 +3402,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Selecciona…"
+            "value" : "Tria…"
           }
         },
         "da" : {
@@ -6486,7 +6486,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conserva"
+            "value" : "Mantén"
           }
         },
         "da" : {
@@ -6554,7 +6554,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conserva totes les pàgines"
+            "value" : "Mantén totes les pàgines"
           }
         },
         "da" : {
@@ -6588,7 +6588,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conserva la relació d’aspecte"
+            "value" : "Mantén la relació d’aspecte"
           }
         },
         "da" : {
@@ -6622,7 +6622,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conserva les dades de la càmera, la ubicació i les paraules clau"
+            "value" : "Mantén les dades de la càmera, la ubicació i les paraules clau"
           }
         },
         "da" : {
@@ -6656,7 +6656,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conserva les dates dels fitxers"
+            "value" : "Mantén les dates dels fitxers"
           }
         },
         "da" : {
@@ -7236,7 +7236,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trasllada"
+            "value" : "Mou"
           }
         },
         "da" : {
@@ -7310,7 +7310,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trasllada / copia"
+            "value" : "Mou / copia"
           }
         },
         "da" : {
@@ -7446,7 +7446,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trasllada a una carpeta"
+            "value" : "Mou a una carpeta"
           }
         },
         "da" : {
@@ -7480,7 +7480,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trasllada a una carpeta…"
+            "value" : "Mou a una carpeta…"
           }
         },
         "da" : {
@@ -7514,7 +7514,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trasllada a una carpeta…  (F7)"
+            "value" : "Mou a una carpeta…  (F7)"
           }
         },
         "da" : {
@@ -7650,7 +7650,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trasllada, copia i llença els fitxers auxiliars (.xmp, .aae, .thm) amb la seva imatge"
+            "value" : "Mou, copia i llença els fitxers auxiliars (.xmp, .aae, .thm) amb la seva imatge"
           }
         },
         "da" : {
@@ -10082,7 +10082,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elimina"
+            "value" : "Treu"
           }
         },
         "da" : {
@@ -11070,7 +11070,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Selecciona‑ho tot"
+            "value" : "Selecciona-ho tot"
           }
         },
         "da" : {
