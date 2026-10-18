@@ -57,8 +57,10 @@ struct BatchView: View {
                 Text("Rename").tag(BatchMode.rename)
                 Text("Convert and Rename").tag(BatchMode.convertAndRename)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+            // A menu, not segments: three segments with "Convert and Rename" push Start into the overflow
+            // menu at the window's default width, and there the segments lose their names.
+            .pickerStyle(.menu)
+            .fixedSize()
             .disabled(model.isRunning)
         }
         ToolbarItem {
@@ -82,7 +84,7 @@ struct BatchView: View {
             }
             .disabled(model.isRunning)
         }
-        ToolbarItemGroup {
+        ToolbarItemGroup(placement: .primaryAction) {
             if model.isRunning {
                 if model.isPaused {
                     Button("Resume") { model.resume() }
@@ -91,8 +93,9 @@ struct BatchView: View {
                 }
                 Button("Stop") { model.stop() }
             } else {
+                // ⌘↩, not Return: Return in a field only confirms the value, it must not start a long batch.
                 Button("Start") { model.start() }
-                    .keyboardShortcut(.defaultAction)
+                    .keyboardShortcut(.return, modifiers: .command)
                     .disabled(!model.canStart)
             }
         }

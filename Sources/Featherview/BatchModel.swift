@@ -33,7 +33,15 @@ final class BatchModel {
             scheduleSave()
         }
     }
-    var inputs = BatchInputList()
+    var inputs = BatchInputList() {
+        didSet {
+            position = Dictionary(inputs.items.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
+            // Like a settings change: the last run's ticks and names belong to the old list.
+            if !isRunning { clearFinished() }
+        }
+    }
+    /// Each input's place in the list: every row asks for its state on each result, so no linear search.
+    private var position: [BatchInput: Int] = [:]
     var selection: Set<BatchInput> = []
     var step = BatchStep.output
     private(set) var isRunning = false
@@ -55,6 +63,8 @@ final class BatchModel {
 
     private var control = BatchControl()
     private var resultFor: [URL: BatchResult] = [:]
+    /// Results not yet handed to the window (see `start`).
+    @ObservationIgnored private var pending: [BatchResult] = []
     private var runStart = Date.now
     private var runTotal = 0
     private var saveTask: Task<Void, Never>?
@@ -94,7 +104,7 @@ final class BatchModel {
     }
 
     func state(of input: BatchInput) -> BatchRowState? {
-        BatchProgress.rowState(result: resultFor[input.url], index: inputs.items.firstIndex(of: input),
+        BatchProgress.rowState(result: resultFor[input.url], index: position[input],
                                isRunning: isRunning, isPaused: isPaused, committed: results.count)
     }
 
@@ -116,15 +126,32 @@ final class BatchModel {
             continuation.finish()
         }
         runTask = Task {
-            // The stream keeps list order; one Task per result would not.
-            for await result in stream {
-                results.append(result)
-                resultFor[result.input] = result
+            // Results reach the window about four times a second: each update rebuilds every row, and
+            // with 10,000 rows one update per file falls behind the converter.
+            let flusher = Task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(250))
+                    flushPending()
+                }
             }
+            // The stream keeps list order; one Task per result would not.
+            for await result in stream { pending.append(result) }
+            flusher.cancel()
+            flushPending()
             isRunning = false
             isPaused = false
             isFinished = true
         }
+    }
+
+    private func flushPending() {
+        guard !pending.isEmpty else { return }
+        results.append(contentsOf: pending)
+        // One change per flush: each change of an observed property notifies every row.
+        var map = resultFor
+        for result in pending { map[result.input] = result }
+        resultFor = map
+        pending = []
     }
 
     func pause() { control.pause(); isPaused = control.isPaused }
