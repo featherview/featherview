@@ -53,7 +53,7 @@ struct ViewerView: View {
                 ImageCanvas(image: image, size: drawSize(image), pixelWidth: pixelSize(image).width,
                             displayScale: displayScale, background: backgroundNSColor, insets: canvasInsets,
                             checkerboard: checkerboard, panController: panController,
-                            onDoubleClick: model.toggleFullScreen, onClick: { focused = true },
+                            onDoubleClick: model.toggleFullScreen, onClick: clickedImage,
                             onFirstDraw: { toolbarReady = true; model.firstImageDrawn() },
                             onCommit: model.imageCommitted)
                     .contextMenu { ImageContextMenu(model: model) }
@@ -215,6 +215,13 @@ struct ViewerView: View {
                       "index": "\(model.list.index + 1)", "count": "\(model.list.urls.count)"]
         if let file = model.fileValues, file.url == url { values.merge(file.values) { $1 } }
         return values
+    }
+
+    /// A click (or drag) takes the keyboard back and brings hidden bars and the pointer back, as a move does.
+    private func clickedImage() {
+        focused = true
+        feedAutoHide(.pointerMoved)
+        NSCursor.setHiddenUntilMouseMoves(false)
     }
 
     private func feedAutoHide(_ event: BarsAutoHide.Event) {

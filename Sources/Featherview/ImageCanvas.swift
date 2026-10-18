@@ -56,7 +56,8 @@ struct ImageCanvas: NSViewRepresentable {
     let checkerboard: Bool
     let panController: PanController
     let onDoubleClick: () -> Void
-    /// Any click on the image: the viewer takes the keyboard back (e.g. from the Info panel's text).
+    /// Any click on the image, and each step of a drag: the viewer takes the keyboard back (e.g. from the
+    /// Info panel's text) and counts it as activity for the auto-hiding bars, which get no hover while a button is down.
     var onClick: () -> Void = {}
     /// Called once the first image this canvas shows is committed to the screen.
     var onFirstDraw: @MainActor () -> Void = {}
@@ -194,6 +195,7 @@ private final class ImageLayerView: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
+        onClick()
         guard let dragStart, let scrollView = enclosingScrollView else { return }
         // The image follows the pointer: moving the pointer right shows more of the left side.
         let dx = event.locationInWindow.x - dragStart.mouse.x
