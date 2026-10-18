@@ -203,14 +203,28 @@ final class BatchModel {
 
     // MARK: - Inputs
 
-    /// Scanned and de-duplicated off the main thread (both touch the disk), then appended in the
-    /// order given; folders that couldn't be listed get a notice.
-    private func addInBackground(_ work: @escaping @Sendable () -> (list: BatchInputList, unreadable: [URL])) {
+    /// The last add still running: each add appends after the one before it, so the list keeps the order
+    /// the user added in (output numbers follow it), however long each scan takes.
+    private var lastAdd: Task<Void, Never>?
+
+    /// Runs `work` off the main thread (it touches the disk), then `append`s its result on the main
+    /// actor once every earlier add has appended.
+    private func addInOrder<T: Sendable>(_ work: @escaping @Sendable () -> T, append: @escaping (T) -> Void) {
         scans += 1
-        Task {
+        let previous = lastAdd
+        lastAdd = Task {
             let found = await Task.detached(priority: .userInitiated) { work() }.value
-            inputs.append(found.list)
+            await previous?.value
+            append(found)
             scans -= 1
+        }
+    }
+
+    /// Scanned and de-duplicated off the main thread, then appended in the order given; folders that
+    /// couldn't be listed get a notice.
+    private func addInBackground(_ work: @escaping @Sendable () -> (list: BatchInputList, unreadable: [URL])) {
+        addInOrder(work) { [self] found in
+            inputs.append(found.list)
             if let first = found.unreadable.first {
                 let name = first.lastPathComponent
                 notice = found.unreadable.count == 1
@@ -291,15 +305,12 @@ final class BatchModel {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.plainText]
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        scans += 1
-        Task {
-            let loaded = await Task.detached(priority: .userInitiated) { () -> (list: BatchInputList, missing: Int)? in
-                guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
-                var list = BatchInputList()
-                let counts = list.load(listText: text)
-                return (list, counts.missing)
-            }.value
-            scans -= 1
+        addInOrder({ () -> (list: BatchInputList, missing: Int)? in
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+            var list = BatchInputList()
+            let counts = list.load(listText: text)
+            return (list, counts.missing)
+        }) { [self] loaded in
             guard let loaded else {
                 notice = String(localized: "Can't open \(url.lastPathComponent)")
                 return

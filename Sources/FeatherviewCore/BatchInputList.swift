@@ -52,6 +52,8 @@ public struct BatchInputList: Equatable, Sendable {
                 files.append(url)
                 continue
             }
+            // A package (app bundle, Photos library) is one item in Finder, not a folder of inputs.
+            if (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isPackageKey]).isPackage) == true { continue }
             list.add(files: files)
             files = []
             do { list.append(try scan(folder: url, subfolders: true)) } catch { unreadable.append(url) }

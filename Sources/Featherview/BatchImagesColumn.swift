@@ -104,6 +104,15 @@ private final class RowInfo {
 }
 
 /// About 20 KB per 72-px thumbnail: 500 rows keep memory bounded however long the list is.
+/// Row info is read with blocking ImageIO calls: two at a time on their own threads, so a long list
+/// can't fill Swift's cooperative pool (one thread per core) and hold up the viewer's decodes.
+private let rowInfoReads: OperationQueue = {
+    let queue = OperationQueue()
+    queue.maxConcurrentOperationCount = 2
+    queue.qualityOfService = .utility
+    return queue
+}()
+
 @MainActor private let rowInfoCache: NSCache<NSURL, RowInfo> = {
     let cache = NSCache<NSURL, RowInfo>()
     cache.countLimit = 500
@@ -166,7 +175,7 @@ private struct BatchImageRow: View {
         try? await Task.sleep(for: .milliseconds(50))
         guard !Task.isCancelled else { return }
         let input = input, url = input.url
-        let read = await Task.detached(priority: .utility) { () -> (CGImage?, String) in
+        @Sendable func readRow() -> (CGImage?, String) {
             let image = try? ImageDecoder.decode(url, maxPixelSize: 72)
             let size = ImageDecoder.displaySize(of: url)
             let bytes = input.fileSize()
@@ -180,7 +189,10 @@ private struct BatchImageRow: View {
             case (nil, _): line = byteText
             }
             return (image, line)
-        }.value
+        }
+        let read = await withCheckedContinuation { (done: CheckedContinuation<(CGImage?, String), Never>) in
+            rowInfoReads.addOperation { done.resume(returning: readRow()) }
+        }
         let thumbnail = read.0.map { NSImage(cgImage: $0, size: .zero) }
         let loaded = RowInfo(thumbnail: thumbnail, line: read.1)
         rowInfoCache.setObject(loaded, forKey: key)

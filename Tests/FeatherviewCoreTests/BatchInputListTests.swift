@@ -106,6 +106,18 @@ import Testing
         #expect(dropped.unreadable.isEmpty)
     }
 
+    @Test func droppedPackageIsNotScanned() throws {
+        // An app bundle or a Photos library is one item in Finder, never a folder of inputs.
+        let dir = try Fixtures.makeTempDir()
+        let package = dir.appendingPathComponent("Pictures.photoslibrary")
+        try FileManager.default.createDirectory(at: package, withIntermediateDirectories: true)
+        _ = try image(package, "x.jpg")
+        let file = try image(dir, "a.jpg")
+        let dropped = BatchInputList.scan(dropped: [package, file])
+        #expect(names(dropped.list.items) == ["a.jpg"])
+        #expect(dropped.unreadable.isEmpty)
+    }
+
     @Test func droppedUnreadableFolderIsReported() throws {
         let dir = try Fixtures.makeTempDir()
         let locked = dir.appendingPathComponent("locked")
