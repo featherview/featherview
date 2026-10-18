@@ -324,6 +324,8 @@ Part two of the zoom finding. Today every `.factor` zoom decodes full size (`Vie
 
 **Task 8 gate: the skip no longer holds for scheduling.** On slow decodes (Measurements, "8 (gate)", 12 MP HEIC and 50 MP JPEG on the 10-core M1 Pro), a held key at 30 ms shows the last HEIC 2.0× slower than its solo fit decode (258 vs 132 ms), over the 1.5× gate; 50 MP JPEG stays under (1.4×). The scheduling part is due; the byte-budget part follows Task 10.
 
+**Task 10: the byte budget and pressure part stays skipped.** ImageIO keeps decoded pixels in purgeable volatile memory, which macOS reclaims by itself under pressure (838 → 6 MB at `memory_pressure -l warn`), and browsing under that pressure showed no main-thread re-decode and the same `Navigate` times (Measurements, "10 (purgeable)", "10 (pressure)"). So Task 6 builds only the `DecodeQueue` (scheduling): no byte budget, no memory-pressure source; `ImageCache` keeps counting images.
+
 **Don't start until** Task 3 is merged and a `browse` baseline at 300 ms and 30 ms (after Task 3) is in
 "Measurements". If the 30 ms numbers show no queueing problem, stop and report: the finding was
 estimated.
@@ -403,10 +405,10 @@ screen, 10 runs). If exact is at most 10 % slower than the step and smaller, use
 except JPEG, record the rule in `AGENTS.md` "Performance budgets" → "How", and keep the flag out of the
 commit. Otherwise record the numbers and leave ImageIO types alone.
 
-- [ ] Failing tests, `fitNeededSize`, own formats use it
-- [ ] PNG/HEIC experiment; record numbers; act on the rule above
-- [ ] `decode` with `--baseline` against the latest JSON: no row slower
-- [ ] Commit: `fix: own formats decode at the size the screen needs, not a JPEG step`
+- [x] Failing tests, `fitNeededSize`, own formats use it
+- [x] PNG/HEIC experiment; record numbers; act on the rule above
+- [x] `decode` with `--baseline` against the latest JSON: no row slower
+- [x] Commit: `fix: own formats decode at the size the screen needs, not a JPEG step`
 
 ### Task 8: Slow-decode gate for Task 6
 
@@ -435,8 +437,8 @@ median.
 - If a Mac with fewer cores is at hand (base M1/M2, MacBook Air), run the HEIC folder there too. That
   one counts more than the M1 Pro.
 
-- [ ] Corpus folders; runs; gate verdict recorded in Measurements and in Task 6's note
-- [ ] Commit: `test: bench corpus for slow decodes, and the Task 6 gate on them`
+- [x] Corpus folders; runs; gate verdict recorded in Measurements and in Task 6's note
+- [x] Commit: `test: bench corpus for slow decodes, and the Task 6 gate on them`
 
 ### Task 9: One navigation metric in the budget, and the 170 ms outlier
 
@@ -472,18 +474,18 @@ The bench's explanation is that ImageIO keeps decoded pixels in purgeable volati
 
 **Files:** none in code unless the result asks for it; Measurements; Task 6's note.
 
-- [ ] Confirm the hypothesis: while `browse` runs at 300 ms, `vmmap --summary <pid>` (or `footprint -v
+- [x] Confirm the hypothesis: while `browse` runs at 300 ms, `vmmap --summary <pid>` (or `footprint -v
       <pid>`) shows the purgeable-volatile size. Record it beside the bench's decoded bytes. Note that
       images redrawn into the screen's colour space (`ImageDecoder.redrawn`) come from a `CGContext`, not
       from ImageIO, so check which of the two the purgeable memory is
-- [ ] Browse under pressure: in the app, 39 × → through `browse/` at 300 ms, once normally and once while
+- [x] Browse under pressure: in the app, 39 × → through `browse/` at 300 ms, once normally and once while
       `memory_pressure -l warn` runs (never `critical` on the working Mac). Record `Navigate` p50/p95/max
       for both, and look in Time Profiler for ImageIO decode frames on the main thread
-- [ ] Verdict in Task 6's note:
+- [x] Verdict in Task 6's note:
       - No main-thread re-decode and p95 within 1.5×: the byte budget stays skipped, with this row as
         the reason.
       - Otherwise: Task 6's budget and pressure part is due, independent of Task 8's verdict on scheduling.
-- [ ] Commit: `docs: decoded images under memory pressure, Task 6 budget verdict`
+- [x] Commit: `docs: decoded images under memory pressure, Task 6 budget verdict`
 
 ---
 
@@ -523,5 +525,7 @@ Same Mac, same command, release build. Fill in per task; never edit an earlier r
 | 8 (gate, alone) | e2c97e6 | Apple M1 Pro, 10 cores, 32 GB / macOS 27.0.1 | Same as "8 (solo)" and "8 (gate)", nothing else building, load average 1.9–3.0 | Solo fit decode median: HEIC portrait 130.5 ms, 50 MP portrait 67.9 ms. 30 ms, last image after 1 warm-up: HEIC 242/258/223 ms, median 242 ms = **1.9× solo**; 50 MP 88/83/83 ms, median 83 ms = 1.2×. 300 ms: no superseded steps; HEIC not cached 247–255 ms (step 1, cold) and 48–58 ms (step 2); 50 MP 140–145 ms (step 1). Confirms the verdict: HEIC over 1.5×, Task 6's scheduling part is due |
 | 9 | 6205597 | Apple M1 Pro, 10 cores, 32 GB / macOS 27.0.1 | App, release, `browse/`, 39 × → at 300 ms (System Events key events), `Navigate` from `sudo log show --signpost`, 3 runs, step 0 (the open) left out, load average 4–6 | Prefetched next: p50 19.0 ms, p95 25.3 ms, max 28.3 ms (n = 117). Not prefetched (fresh launch, one jump, 5 runs each): Home to a 12 MP landscape 107 ms median (max 113), End to a portrait 61 ms (max 64). Both within budget |
 | 9 (outlier) | b3bc7d6, cff4e9a, f98ea83, 6205597 | Apple M1 Pro, 10 cores, 32 GB / macOS 27.0.1 | Same run per build | The 165–178 ms max of row "2" is step 0, the open itself, not a next/previous step: b3bc7d6 152–178 ms (3 of 3 runs), cff4e9a 152 ms, f98ea83 27–28 ms, main 24 ms. Cause: the early toolbar build before the first image, fixed by f98ea83 (issue #2). Time Profiler under `xctrace` records no signposts without admin ("log archive is corrupt"), so timings come from `log show`; no fix needed in this plan |
+| 10 (purgeable) | 0cd1155 | Apple M1 Pro, 10 cores, 32 GB / macOS 27.0.1 | `footprint` + `vmmap --summary` mid-run: bench `browse <dir>/browse --interval-ms 300`, and the app, 39 × → at 300 ms | Hypothesis confirmed. Bench: phys_footprint 7.8 MB, 931 MB reclaimable, all `Malloc Large` in `DefaultPurgeableMallocZone` (ImageIO's decoded pixels, purgeable volatile); bench counts 243 MB decoded. App: phys_footprint 149 MB (peak 195), 838 MB reclaimable, again all `Malloc Large` (837 MB) = ImageIO. Not purgeable, counted in the footprint: `CG Image` 58 MB in 2 regions (`ImageDecoder.redrawn`, `CGContext`) and `IOSurface` 42 MB (Core Animation's copies of shown images) |
+| 10 (pressure) | 0cd1155 | Apple M1 Pro, 10 cores, 32 GB / macOS 27.0.1 | App, release, 39 × → at 300 ms through `browse/`, `xctrace` Time Profiler + `Navigate` from `log show`; once normally, once with `memory_pressure -l warn` running (pressure level 2 before and after the run), load average 1.9–2.7 | Normal: p50 19.1, p95 26.1, max 26.6 ms. Under warn: p50 19.4, p95 24.4, max 25.9 ms (n = 39 each). macOS reclaimed the purgeable pixels: reclaimable 838 → 6 MB, phys_footprint 149 → 52 MB. Time Profiler: 871 main-thread samples each, no ImageIO/AppleJPEG decode frames in either (the few `decode` hits are Swift metadata and CoreSVG). **Verdict: no main-thread re-decode, p95 within 1.5×: the byte budget stays skipped** |
 
 Memory baseline for Task 6 is "peak cache … MB decoded" (`bytesPerRow × height`, what the byte budget counts); the footprint misses purgeable decoded images and is only a side number.
