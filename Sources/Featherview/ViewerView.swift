@@ -1,5 +1,6 @@
 import FeatherviewCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ViewerView: View {
     @Bindable var model: ViewerModel
@@ -32,12 +33,13 @@ struct ViewerView: View {
 
     private var showsStatusBar: Bool { !statusBarHidden && !model.isFullScreen }
     private var canvasInsets: CanvasInsets {
-        .make(toolbarHeight: toolbarHeight, statusBarShown: showsStatusBar, fullScreen: model.isFullScreen)
+        .make(toolbarHeight: toolbarHeight, statusBarShown: showsStatusBar, fullScreen: model.isFullScreen,
+              infoPanelShown: model.showInfo)
     }
 
     private func setViewSize(window: CGSize, toolbarHeight: Double) {
         let size = CanvasInsets.make(toolbarHeight: toolbarHeight, statusBarShown: showsStatusBar,
-                                     fullScreen: model.isFullScreen).fitArea(in: window)
+                                     fullScreen: model.isFullScreen, infoPanelShown: model.showInfo).fitArea(in: window)
         if model.viewSize != size { model.viewSize = size }
     }
 
@@ -112,6 +114,8 @@ struct ViewerView: View {
             // Nothing to report without a picture: an empty strip is just a grey bar.
             if showsStatusBar, model.image != nil {
                 StatusBar(model: model)
+                    // Ends 16 pt before an open info panel.
+                    .padding(.trailing, model.showInfo ? CanvasInsets.infoPanelSpan - Theme.stripSideInset : 0)
                     .opacity(barsVisible ? 1 : 0)
                     .animation(.easeInOut(duration: reduceMotion ? 0 : 0.2), value: barsVisible)
             }
@@ -150,11 +154,19 @@ struct ViewerView: View {
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         // Not set on the window directly: SwiftUI puts the scene's title back on its next update.
         .navigationTitle(model.title)
-        .inspector(isPresented: $model.showInfo) {
-            InfoPanel(url: model.list.current, revision: model.fileRevision)
+        .overlay(alignment: .topTrailing) {
+            if model.showInfo {
+                // Spans the fit area's height, floating on the trailing side (docs/DESIGN.md "Elements").
+                InfoPanel(url: model.list.current, revision: model.fileRevision)
+                    .padding(.top, max(canvasInsets.top - toolbarHeight, CanvasInsets.infoPanelMargin))
+                    .padding(.bottom, max(canvasInsets.bottom, CanvasInsets.infoPanelMargin))
+                    .padding(.trailing, CanvasInsets.infoPanelMargin)
+                    .transition(.offset(x: Theme.Motion.panelTravel).combined(with: .opacity))
+            }
         }
-        // Here, not a withAnimation at each toggle: I, the toolbar button, the menus and the panel's own close all count.
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: model.showInfo)
+        // Here, not a withAnimation at each toggle: I, the toolbar button and the menus all count.
+        // The canvas refits on the same curve (ImageCanvas).
+        .animation(Theme.Motion.moving(Theme.Motion.panel, reduceMotion: reduceMotion), value: model.showInfo)
         .focusedSceneValue(\.viewer, model)
         .onChange(of: activeState, initial: true) {
             feedAutoHide(.windowKey(activeState == .key))
@@ -209,7 +221,13 @@ struct ViewerView: View {
     private func drawSize(_ image: CGImage) -> CGSize {
         let factor: Double? = if case .factor(let factor) = model.zoom { factor } else { nil }
         return ZoomSteps.drawSize(decoded: CGSize(width: image.width, height: image.height), full: fullSize,
-                                  factor: factor, view: model.viewSize, displayScale: displayScale)
+                                  factor: factor, view: fitArea, displayScale: displayScale)
+    }
+
+    /// The fit area from this update's insets: `model.viewSize` follows a pass later (onChange), and the
+    /// picture must refit in the same update as the insets so it animates with the info panel.
+    private var fitArea: CGSize {
+        windowSize == .zero ? model.viewSize : canvasInsets.fitArea(in: windowSize)
     }
 
     /// The file's pixel size, for the current file and page only (never another file's size).
@@ -505,6 +523,7 @@ extension FocusedValues {
     @Entry var viewer: ViewerModel?
 }
 
+/// The info panel (I): file name and format, then the fields in a grouped card (docs/DESIGN.md "Elements").
 struct InfoPanel: View {
     let url: URL?
     /// Changes when the file is rewritten (rotation), so the fields are read again.
@@ -512,11 +531,55 @@ struct InfoPanel: View {
     @State private var fields: [MetadataField] = []
 
     var body: some View {
-        Form {
-            ForEach(fields, id: \.label) { field in
-                LabeledContent(field.label, value: field.value)
+        VStack(alignment: .leading, spacing: Theme.panelGap) {
+            HStack(spacing: Theme.panelGap) {
+                Text(verbatim: url?.lastPathComponent ?? "")
+                    .font(Theme.panelHeader)
+                    .foregroundStyle(Theme.labelPrimary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer(minLength: 0)
+                if let format = url.flatMap({ UTType(filenameExtension: $0.pathExtension)?.preferredFilenameExtension }) {
+                    Text(verbatim: format.uppercased())
+                        .font(Theme.badge)
+                        .foregroundStyle(Theme.labelSecondary)
+                        .padding(Theme.footerKeyCapPadding)
+                        .background(Theme.badgeFill, in: .rect(cornerRadius: Theme.Radius.small))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small).strokeBorder(Theme.badgeLine, lineWidth: 1))
+                }
             }
+            .frame(height: Theme.infoHeaderHeight)
+            .padding(.horizontal, Theme.infoHeaderPadding)
+            if !fields.isEmpty {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(Array(fields.enumerated()), id: \.offset) { index, field in
+                            if index > 0 {
+                                Theme.rowSeparator.frame(height: 1).padding(.leading, Theme.rowPadding)
+                            }
+                            HStack(spacing: Theme.panelGap) {
+                                Text(field.label).font(Theme.row).foregroundStyle(Theme.labelPrimary)
+                                Spacer(minLength: 0)
+                                Text(verbatim: field.value)
+                                    .font(Theme.rowValue)
+                                    .foregroundStyle(Theme.labelSecondary)
+                                    .multilineTextAlignment(.trailing)
+                            }
+                            .frame(minHeight: Theme.infoRowHeight)
+                            .padding(.horizontal, Theme.rowPadding)
+                        }
+                    }
+                    .background(Theme.cardFill, in: .rect(cornerRadius: Theme.Radius.group))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.group).strokeBorder(Theme.cardLine, lineWidth: 1))
+                }
+                .scrollIndicators(.automatic)
+            }
+            Spacer(minLength: 0)
         }
+        .padding(Theme.panelPadding)
+        .frame(width: Theme.infoPanelWidth)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .glass(.panel, cornerRadius: Theme.Radius.panel)
         // Reads the file off the main thread.
         .task(id: "\(revision) \(url?.path ?? "")") {
             guard let url else { return fields = [] }
@@ -524,7 +587,6 @@ struct InfoPanel: View {
             if !Task.isCancelled { fields = read }
         }
         .textSelection(.enabled)
-        .inspectorColumnWidth(min: 220, ideal: 260)
     }
 }
 

@@ -217,12 +217,15 @@ enum Theme {
     static let stripGap = 12.0
     static let stripSeparatorHeight = 12.0
     /// Info panel width, its inset from the trailing edge, and its padding / gap.
-    static let infoPanelWidth = 280.0
-    static let infoPanelInset = 12.0
+    static let infoPanelWidth = CanvasInsets.infoPanelWidth
+    static let infoPanelInset = CanvasInsets.infoPanelMargin
     static let panelPadding = 16.0
     static let panelGap = 12.0
     static let infoHeaderHeight = 24.0
     static let infoRowHeight = 40.0
+    /// Info panel header's side padding; rows' side padding (also the separators' leading inset).
+    static let infoHeaderPadding = 4.0
+    static let rowPadding = 12.0
     /// Sheet widths.
     static let chooserWidth = 400.0
     static let moveSheetWidth = 480.0

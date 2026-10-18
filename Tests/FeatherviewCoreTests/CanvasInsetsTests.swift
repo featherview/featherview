@@ -42,4 +42,19 @@ struct CanvasInsetsTests {
         let hidden = CanvasInsets.make(toolbarHeight: 52, statusBarShown: false, fullScreen: false)
         #expect(hidden.messageBottom == CanvasInsets.side)
     }
+
+    /// docs/DESIGN.md: with the info panel open the trailing inset is 12 + 280 + 16 = 308.
+    @Test func infoPanelTakesTheTrailingSide() {
+        let insets = CanvasInsets.make(toolbarHeight: 52, statusBarShown: true, fullScreen: false, infoPanelShown: true)
+        #expect(insets.trailing == 308)
+        #expect(insets.leading == 16)
+        #expect(insets.fitArea(in: CGSize(width: 1220, height: 700)).width == 896)
+    }
+
+    /// In full screen the picture fills the screen, but never runs under an open panel.
+    @Test func infoPanelInFullScreen() {
+        let insets = CanvasInsets.make(toolbarHeight: 0, statusBarShown: false, fullScreen: true, infoPanelShown: true)
+        #expect(insets.trailing == 308)
+        #expect(insets.leading == 0)
+    }
 }

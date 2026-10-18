@@ -107,12 +107,17 @@ struct ImageCanvas: NSViewRepresentable {
         let rtl = context.environment.layoutDirection == .rightToLeft
         let contentInsets = NSEdgeInsets(top: insets.top, left: rtl ? insets.trailing : insets.leading,
                                          bottom: insets.bottom, right: rtl ? insets.leading : insets.trailing)
-        let insetsChanged = !NSEdgeInsetsEqual(scrollView.contentInsets, contentInsets)
+        let oldInsets = scrollView.contentInsets
+        let insetsChanged = !NSEdgeInsetsEqual(oldInsets, contentInsets)
+        // Only a side changed: the info panel opened or closed, and the picture refits on its curve.
+        let panelMoved = insetsChanged && oldInsets.top == contentInsets.top && oldInsets.bottom == contentInsets.bottom
         if insetsChanged {
             scrollView.contentInsets = contentInsets
             scrollView.scrollerInsets = contentInsets
         }
-        let animate = view.zoom != nil && view.zoom != zoom && view.shows(image) && !insetsChanged
+        let zoomChanged = view.zoom != nil && view.zoom != zoom && !insetsChanged
+        let panelRefit = panelMoved && view.zoom == zoom
+        let animate = view.shows(image) && (zoomChanged || panelRefit)
             && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         view.zoom = zoom
         view.show(image, checkerboard: checkerboard && image.hasAlpha, 
@@ -145,8 +150,8 @@ struct ImageCanvas: NSViewRepresentable {
                 clip.animator().setBoundsOrigin(oldOrigin)
             }
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = Theme.Motion.zoom
-                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                context.duration = panelRefit ? Theme.Motion.panel : Theme.Motion.zoom
+                context.timingFunction = CAMediaTimingFunction(name: panelRefit ? .easeInEaseOut : .easeOut)
                 view.animator().setFrameSize(size)
                 clip.animator().setBoundsOrigin(target)
             } completionHandler: {
