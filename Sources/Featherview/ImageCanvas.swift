@@ -114,7 +114,11 @@ struct ImageCanvas: NSViewRepresentable {
         view.zoom = zoom
         view.show(image, checkerboard: checkerboard && image.hasAlpha, 
                   smooth: !ZoomSteps.showsPixels(drawnWidth: size.width, imageWidth: Int(pixelWidth), displayScale: displayScale))
-        if oldSize != size || insetsChanged {
+        // The size last asked for, not the frame: mid-animation the frame is part-way, and a new image
+        // at the same zoom must leave the running animation alone.
+        let resized = view.targetSize != size
+        view.targetSize = size
+        if resized || insetsChanged {
             let clip = scrollView.contentView
             let oldOrigin = clip.bounds.origin
             cut { view.animator().setFrameSize(size) }
@@ -186,6 +190,8 @@ private final class ImageLayerView: NSView {
     var onCommit: @MainActor (CGImage) -> Void = { _ in }
     /// The zoom the frame was last sized for; nil before the first update.
     var zoom: ViewerModel.Zoom?
+    /// The frame size the canvas last asked for (the animation's end while one runs); nil before the first update.
+    var targetSize: CGSize?
     private let imageLayer = CALayer()
     private var dragStart: (mouse: NSPoint, origin: NSPoint)?
 
