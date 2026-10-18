@@ -14,6 +14,7 @@ struct BatchImagesColumn: View {
             List(selection: $model.selection) {
                 ForEach(model.inputs.items, id: \.self) { input in
                     BatchImageRow(input: input, state: model.state(of: input))
+                        .background(SystemSelectionOff())
                         .listRowBackground(model.selection.contains(input)
                             ? RoundedRectangle(cornerRadius: 6).fill(Color.accentColor.opacity(0.15)) : nil)
                 }
@@ -98,6 +99,22 @@ struct BatchImagesColumn: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
     }
+}
+
+/// Turns off the accent highlight (and white text) the list's backing table draws over selected rows,
+/// so only our 15% tint shows. Sits in a row: its superviews lead to that table.
+private struct SystemSelectionOff: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            var ancestor = view.superview
+            while let current = ancestor, !(current is NSTableView) { ancestor = current.superview }
+            (ancestor as? NSTableView)?.selectionHighlightStyle = .none
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
 /// Thumbnail and size line of a file, read once and kept for the most recently shown rows.
