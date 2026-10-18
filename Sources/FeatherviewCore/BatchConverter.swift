@@ -118,7 +118,15 @@ public enum BatchConverter {
         let usesDate = (settings.mode != .convert && settings.renamePattern.contains("{date}"))
             || (settings.mode != .rename && settings.text.isOn && settings.text.text.contains("{date}"))
         let date = usesDate ? MetadataReader.dateTaken(of: url) : nil
-        if settings.mode == .rename { return Prepared(date: date) }
+        if settings.mode == .rename {
+            // The commit copies the bytes; a dangling link or a folder would copy as a link or fail as "Can't save".
+            var isFolder: ObjCBool = false
+            let target = url.resolvingSymlinksInPath().path
+            guard FileManager.default.fileExists(atPath: target, isDirectory: &isFolder), !isFolder.boolValue,
+                  FileManager.default.isReadableFile(atPath: target)
+            else { return Prepared(error: String(localized: "Can't open \(name)")) }
+            return Prepared(date: date)
+        }
 
         let watermarkImage: CIImage?
         switch watermark {

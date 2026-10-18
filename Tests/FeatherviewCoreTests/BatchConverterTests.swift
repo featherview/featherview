@@ -189,6 +189,23 @@ import Testing
         #expect(try Data(contentsOf: output) == Data(contentsOf: input))
     }
 
+    @Test func renameModeFailsForADanglingSymlink() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let link = dir.appendingPathComponent("dangling.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: dir.appendingPathComponent("gone.jpg"))
+        let trash = try FakeTrash()
+
+        let results = await BatchConverter.run(job([link], out: out) {
+            $0.mode = .rename
+            $0.safety.trashOriginals = true
+        }, trash: trash.trash)
+
+        #expect(results.first?.status == .failed)
+        #expect(results.first?.logLine == "Can't open dangling.jpg")
+        #expect(trash.trashed.isEmpty)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: out.path).isEmpty)
+    }
+
     @Test func convertAndRenameUsesPattern() async throws {
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let a = try Fixtures.writeImage(to: dir.appendingPathComponent("IMG_1.jpg"), width: 8, height: 8)
