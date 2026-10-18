@@ -60,7 +60,7 @@ struct AboutView: View {
                     Button("Acknowledgements") { sheetText = try? String(contentsOf: url, encoding: .utf8) }
                 }
             }
-            Text(verbatim: "© 2026 Joachim Rütter").font(.caption).foregroundStyle(.secondary)
+            Text(verbatim: Self.info["NSHumanReadableCopyright"] as? String ?? "© Joachim Rütter").font(.caption).foregroundStyle(.secondary)
         }
         .padding(24)
         .frame(width: 420)

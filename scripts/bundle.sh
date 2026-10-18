@@ -14,6 +14,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Featherview"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+# The copyright year is the build's year (About and Finder's Get Info show it).
+plutil -replace NSHumanReadableCopyright -string "© $(date +%Y) Joachim Rütter" "$APP/Contents/Info.plist"
 # AppIcon.icns is rendered from AppIcon.svg (rsvg-convert per size, then iconutil).
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp LICENSE "$APP/Contents/Resources/LICENSE"
