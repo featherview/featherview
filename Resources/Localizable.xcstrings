@@ -10872,7 +10872,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Arkiver som og batchvinduet starter med disse indstillinger for hvert format."
+            "value" : "Gem som og batchvinduet starter med disse indstillinger for hvert format."
           }
         },
         "fi" : {
@@ -10906,7 +10906,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Arkiver som…  (S)"
+            "value" : "Gem som…  (S)"
           }
         },
         "fi" : {
