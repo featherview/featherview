@@ -7,22 +7,23 @@ struct StatusBar: View {
     let model: ViewerModel
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Theme.stripGap) {
             ForEach(Array(fields.enumerated()), id: \.offset) { index, field in
-                if index > 0 { Divider().frame(height: 11) }
+                if index > 0 {
+                    Theme.stripSeparator.frame(width: 1, height: Theme.stripSeparatorHeight)
+                }
                 Text(field)
             }
         }
-        .font(.caption)
-        .monospacedDigit()
-        .foregroundStyle(.secondary)
+        .font(Theme.strip)
+        .foregroundStyle(Theme.labelStrip)
         .lineLimit(1)
-        .padding(.horizontal, 10)
-        .frame(maxWidth: .infinity, minHeight: CanvasInsets.stripHeight, maxHeight: CanvasInsets.stripHeight,
-               alignment: .leading)
+        .padding(.horizontal, Theme.stripPadding)
+        .frame(maxWidth: .infinity, minHeight: Theme.stripHeight, maxHeight: Theme.stripHeight, alignment: .leading)
         .glass(.chrome, in: Capsule())
-        // Floats over the canvas (spec "Look"); fit keeps the image clear of it through `CanvasInsets`.
-        .padding([.horizontal, .bottom], CanvasInsets.stripMargin)
+        // Floats over the canvas (docs/DESIGN.md "Window layout"); fit keeps the image clear of it through `CanvasInsets`.
+        .padding(.horizontal, Theme.stripSideInset)
+        .padding(.bottom, Theme.stripBottomInset)
     }
 
     private var fields: [String] {
