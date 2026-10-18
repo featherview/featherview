@@ -39,8 +39,17 @@ public enum ImageEncoder {
             var images = [first]
             if format.optionFields.contains(.keepAllPages), options.keepAllPages { images = pages }
             if let sizes = iconSizes[format.id] { images = [try iconSquare(first, allowed: sizes)] }
-            return try imageIO(images, type: type, properties: properties(format, options, metadata))
+            var props = properties(format, options, metadata)
+            if #available(macOS 15, *), ["heic", "avif"].contains(format.id), first.colorSpace.map(isHDR) == true {
+                props[kCGImageDestinationEncodeRequest] = kCGImageDestinationEncodeToISOGainmap  // else ImageIO writes SDR
+            }
+            return try imageIO(images, type: type, properties: props)
         }
+    }
+
+    /// PQ/HLG or extended range: pixels that may go above SDR white.
+    static func isHDR(_ space: CGColorSpace) -> Bool {
+        CGColorSpaceUsesITUR_2100TF(space) || CGColorSpaceUsesExtendedRange(space)
     }
 
     /// ICO and ICNS only take squares of these sizes (tested with ImageIO on macOS 27).

@@ -141,9 +141,16 @@ public enum BatchConverter {
             limit = l
             originalSize = size
         }
+        // HDR is kept only for HEIC and AVIF (spec "Formats"), and reducing colours is 8-bit.
+        let wantsHDR = ImageDecoder.supportsHDR && ["heic", "avif"].contains(format.id)
+            && !(settings.colour.isOn && settings.colour.reduceColours != nil)
         var pages: [CGImage]
-        do { pages = try ImageSaver.pages(of: url, for: format, options: options, maxPixelSize: limit) }
-        catch { return Prepared(error: String(localized: "Can't open \(name)")) }
+        do {
+            // HEIC and AVIF write one page.
+            pages = wantsHDR ? [try ImageDecoder.decode(url, maxPixelSize: limit, hdr: true)]
+                : try ImageSaver.pages(of: url, for: format, options: options, maxPixelSize: limit)
+        } catch { return Prepared(error: String(localized: "Can't open \(name)")) }
+        let hdr = wantsHDR && pages[0].colorSpace.map(ImageEncoder.isHDR) == true
 
         if settings.hasOperations {
             // The same day format as the rename pattern's {date}.
@@ -155,7 +162,7 @@ public enum BatchConverter {
                     // Only page 1's original size is known; other pages resize from their decoded size.
                     let context = PipelineContext(values: values, originalSize: page == 0 ? originalSize : nil,
                                                   watermark: watermarkImage)
-                    return try ImagePipeline.apply(image, settings, context: context)
+                    return try ImagePipeline.apply(image, settings, context: context, hdr: hdr)
                 }
             } catch CanvasError.nothingLeft {
                 return Prepared(error: String(localized: "\(name): the canvas settings leave no image"))
