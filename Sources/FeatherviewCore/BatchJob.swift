@@ -43,17 +43,36 @@ public struct BatchResult: Sendable, Equatable {
 public final class BatchControl: Sendable {
     private struct State {
         var paused = false, stopped = false
+        var pausedSince: ContinuousClock.Instant?
+        var pausedTotal = Duration.zero
         var waiters: [CheckedContinuation<Void, Never>] = []
     }
     private let state = OSAllocatedUnfairLock(initialState: State())
 
     public init() {}
 
-    public func pause() { state.withLock { if !$0.stopped { $0.paused = true } } }
-    public func resume() { wake { $0.paused = false } }
-    public func stop() { wake { $0.stopped = true; $0.paused = false } }
+    public func pause() {
+        state.withLock {
+            guard !$0.stopped, !$0.paused else { return }
+            $0.paused = true
+            $0.pausedSince = .now
+        }
+    }
+    public func resume() { wake { Self.unpause(&$0) } }
+    public func stop() { wake { $0.stopped = true; Self.unpause(&$0) } }
     public var isPaused: Bool { state.withLock { $0.paused } }
     public var isStopped: Bool { state.withLock { $0.stopped } }
+
+    /// Time spent paused so far, including a pause still going on (time left leaves it out).
+    public func pausedDuration() -> Duration {
+        state.withLock { s in s.pausedTotal + (s.pausedSince.map { .now - $0 } ?? .zero) }
+    }
+
+    private static func unpause(_ s: inout State) {
+        if let since = s.pausedSince { s.pausedTotal += .now - since }
+        s.pausedSince = nil
+        s.paused = false
+    }
 
     /// Returns once not paused (or stopped).
     func waitWhilePaused() async {

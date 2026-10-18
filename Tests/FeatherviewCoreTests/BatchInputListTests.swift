@@ -92,6 +92,45 @@ import Testing
         #expect(items.allSatisfy { $0.root == link })
     }
 
+    @Test func droppedSymlinkedFolderIsScanned() throws {
+        let dir = try Fixtures.makeTempDir()
+        let real = dir.appendingPathComponent("real")
+        try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
+        _ = try image(real, "x.jpg")
+        let file = try image(dir, "a.jpg")
+        let link = dir.appendingPathComponent("link")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+        let dropped = BatchInputList.scan(dropped: [file, link])
+        #expect(names(dropped.list.items) == ["a.jpg", "x.jpg"])
+        #expect(dropped.list.items.last?.root == link)
+        #expect(dropped.unreadable.isEmpty)
+    }
+
+    @Test func droppedPackageIsNotScanned() throws {
+        // An app bundle or a Photos library is one item in Finder, never a folder of inputs.
+        let dir = try Fixtures.makeTempDir()
+        let package = dir.appendingPathComponent("Pictures.photoslibrary")
+        try FileManager.default.createDirectory(at: package, withIntermediateDirectories: true)
+        _ = try image(package, "x.jpg")
+        let file = try image(dir, "a.jpg")
+        let dropped = BatchInputList.scan(dropped: [package, file])
+        #expect(names(dropped.list.items) == ["a.jpg"])
+        #expect(dropped.unreadable.isEmpty)
+    }
+
+    @Test func droppedUnreadableFolderIsReported() throws {
+        let dir = try Fixtures.makeTempDir()
+        let locked = dir.appendingPathComponent("locked")
+        try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: true)
+        _ = try image(locked, "x.jpg")
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: locked.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) }
+        let file = try image(dir, "a.jpg")
+        let dropped = BatchInputList.scan(dropped: [locked, file])
+        #expect(names(dropped.list.items) == ["a.jpg"])
+        #expect(dropped.unreadable == [locked])
+    }
+
     /// "Recreate subfolders" takes each input's path below its root, so the root must prefix it.
     @Test func scanKeepsItemsUnderTheChosenFolderPath() throws {
         let dir = try Fixtures.makeTempDir()  // under /var, which is a symlink to /private/var
@@ -166,6 +205,31 @@ import Testing
         l.removeAll()
         l.append([BatchInput(url: URL(fileURLWithPath: "/tmp/batch-perf/5.jpg"))])
         #expect(l.items.count == 1)
+    }
+
+    /// The app builds the incoming list off the main thread; merging it must reuse its keys, not touch the disk again.
+    @Test func appendingAListReusesItsKeys() throws {
+        let dir = try Fixtures.makeTempDir()
+        let a = try image(dir, "a.jpg")
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: a)
+        let incoming = BatchInputList([BatchInput(url: link)])
+        try FileManager.default.removeItem(at: link)  // resolving it now would give a different key
+        var list = BatchInputList([BatchInput(url: a)])
+        list.append(incoming)
+        #expect(names(list.items) == ["a.jpg"])
+        list.append(BatchInputList([BatchInput(url: dir.appendingPathComponent("b.jpg"))]))
+        #expect(names(list.items) == ["a.jpg", "b.jpg"])
+    }
+
+    @Test func fileSizeFollowsSymlinks() throws {
+        let dir = try Fixtures.makeTempDir()
+        let a = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 64, height: 64)
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: a)
+        let size = try #require(a.resourceValues(forKeys: [.fileSizeKey]).fileSize)
+        #expect(BatchInput(url: link).fileSize() == size)
+        #expect(BatchInput(url: dir.appendingPathComponent("missing.jpg")).fileSize() == 0)
     }
 
     @Test func removeAndRemoveAll() {
@@ -254,5 +318,26 @@ import Testing
         let result = l.load(listText: "\(a.path)\r\n\(b.path)\r\n")
         #expect(result.added == 2 && result.missing == 0)
         #expect(names(l.items) == ["a.jpg", "b.jpg"])
+    }
+}
+
+@Suite struct BatchInputListBytesTests {
+    @Test func totalBytesFollowsAddsAndRemoves() throws {
+        let dir = try Fixtures.makeTempDir()
+        let a = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 4, height: 4)
+        let b = try Fixtures.writeImage(to: dir.appendingPathComponent("b.jpg"), width: 8, height: 8)
+        let sizeA = BatchInput(url: a).fileSize(), sizeB = BatchInput(url: b).fileSize()
+        var built = BatchInputList()
+        built.add(files: [a, b])
+        var list = BatchInputList()
+        list.append(built)
+        #expect(list.totalBytes == sizeA + sizeB)
+        list.sortByName()
+        list.move(IndexSet([0]), by: 1)
+        #expect(list.totalBytes == sizeA + sizeB)
+        list.remove(at: IndexSet([list.items.firstIndex { $0.url == a }!]))
+        #expect(list.totalBytes == sizeB)
+        list.removeAll()
+        #expect(list.totalBytes == 0)
     }
 }

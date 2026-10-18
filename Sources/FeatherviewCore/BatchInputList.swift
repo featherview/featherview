@@ -7,6 +7,10 @@ public struct BatchInputList: Equatable, Sendable {
     private var keys: Set<String> = []
     /// Each row's key as stored at add: recomputing it on remove can differ once a symlink or volume changed.
     private var keyOf: [URL: String] = [:]
+    /// Each row's file size, read at add (off the main thread), so the total never re-reads the list.
+    private var sizeOf: [URL: Int] = [:]
+    /// Sum of the items' file sizes as read at add.
+    public private(set) var totalBytes = 0
 
     public init(_ items: [BatchInput] = []) {
         append(items)
@@ -33,6 +37,29 @@ public struct BatchInputList: Equatable, Sendable {
         var inputs: [BatchInput] = []
         try scan(folder, root: folder, subfolders: subfolders, into: &inputs)
         return inputs
+    }
+
+    /// Dropped files and folders in the order given; a folder (also through a symlink) adds with
+    /// its subfolders. Off the caller's thread, like `scan(folder:subfolders:)`. `unreadable` names
+    /// the folders that couldn't be listed.
+    public static func scan(dropped urls: [URL]) -> (list: BatchInputList, unreadable: [URL]) {
+        var list = BatchInputList()
+        var files: [URL] = []
+        var unreadable: [URL] = []
+        for url in urls {
+            var isFolder: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isFolder), isFolder.boolValue else {
+                files.append(url)
+                continue
+            }
+            // A package (app bundle, Photos library) is one item in Finder, not a folder of inputs.
+            if (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isPackageKey]).isPackage) == true { continue }
+            list.add(files: files)
+            files = []
+            do { list.append(try scan(folder: url, subfolders: true)) } catch { unreadable.append(url) }
+        }
+        list.add(files: files)
+        return (list, unreadable)
     }
 
     private static func scan(_ folder: URL, root: URL, subfolders: Bool, into inputs: inout [BatchInput]) throws {
@@ -71,13 +98,31 @@ public struct BatchInputList: Equatable, Sendable {
             let key = pathKey(input.url)
             guard keys.insert(key).inserted else { continue }
             keyOf[input.url] = key
-            items.append(input)
+            add(size: input.fileSize(), of: input)
+        }
+    }
+
+    private mutating func add(size: Int, of input: BatchInput) {
+        sizeOf[input.url] = size
+        totalBytes += size
+        items.append(input)
+    }
+
+    /// Appends `other`'s items with the keys it resolved at add, so a list built off the main
+    /// thread merges without touching the disk.
+    public mutating func append(_ other: BatchInputList) {
+        for input in other.items {
+            guard let key = other.keyOf[input.url], keys.insert(key).inserted else { continue }
+            keyOf[input.url] = key
+            add(size: other.sizeOf[input.url] ?? 0, of: input)
         }
     }
 
     public mutating func remove(at offsets: IndexSet) {
         for index in offsets.reversed() where items.indices.contains(index) {
-            if let key = keyOf.removeValue(forKey: items.remove(at: index).url) { keys.remove(key) }
+            let url = items.remove(at: index).url
+            if let key = keyOf.removeValue(forKey: url) { keys.remove(key) }
+            totalBytes -= sizeOf.removeValue(forKey: url) ?? 0
         }
     }
 
@@ -85,6 +130,8 @@ public struct BatchInputList: Equatable, Sendable {
         items.removeAll()
         keys.removeAll()
         keyOf.removeAll()
+        sizeOf.removeAll()
+        totalBytes = 0
     }
 
     /// Finder order of the file names, stable.

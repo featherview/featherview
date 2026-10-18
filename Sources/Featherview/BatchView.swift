@@ -1,153 +1,172 @@
 import FeatherviewCore
 import SwiftUI
 
-@MainActor @Observable
-final class BatchModel {
-    var inputs: [URL] = []
-    var outputFolder: URL?
-    /// The batch's own format, so Save As and batch don't change each other's (unknown id → JPEG).
-    var format: OutputFormat {
-        didSet {
-            UserDefaults.standard.set(format.id, forKey: "batchFormat")
-            options = FormatSettings.options(for: format)
-            saved = options
-        }
-    }
-    var options: FormatOptions
-    /// The options as last read or written, to tell edits here from a save in another window.
-    private var saved: FormatOptions
-    var limitSize = false
-    var maxDimension = 1920
-    var useRename = false
-    var renameTemplate = "{name}_{n:3}"
-    private(set) var isRunning = false
-    private(set) var done = 0
-    private(set) var results: [BatchResult] = []
+/// The batch window (spec "Window"): images, steps, the selected step's settings; while running,
+/// the run view in place of the last two.
+struct BatchView: View {
+    @Bindable var model: BatchModel
+    @State private var namingPreset = false
+    @State private var presetName = ""
+    @State private var confirmingReplace = false
+    @State private var confirmingDelete = false
 
-    var failures: [BatchResult] { results.filter { $0.status == .failed } }
-
-    init() {
-        let format = FormatRegistry.format(id: UserDefaults.standard.string(forKey: "batchFormat") ?? "jpg") ?? .jpeg
-        options = FormatSettings.options(for: format)
-        saved = FormatSettings.options(for: format)
-        self.format = format
-    }
-
-    /// Takes options saved by Save As or Settings since, so Convert never writes back a stale copy;
-    /// unsaved edits here survive unrelated defaults changes.
-    func reloadOptions() {
-        let current = FormatSettings.options(for: format)
-        guard current != saved else { return }
-        options = current
-        saved = current
-    }
-
-    func run() {
-        guard let outputFolder, !inputs.isEmpty, !isRunning else { return }
-        FormatSettings.save(options, for: format)
-        saved = options
-        var settings = BatchSettings()
-        settings.mode = useRename ? .convertAndRename : .convert
-        settings.formatID = format.id
-        settings.options = options
-        settings.outputFolder = outputFolder.path
-        settings.renamePattern = renameTemplate
-        settings.resize.isOn = limitSize
-        settings.resize.mode = .longestSide
-        settings.resize.side = max(16, maxDimension)
-        let job = BatchJob(inputs: inputs.map { BatchInput(url: $0) }, settings: settings)
-        isRunning = true
-        done = 0
-        results = []
-        Task {
-            results = await BatchConverter.run(job) { _ in
-                Task { @MainActor in self.done += 1 }
+    var body: some View {
+        NavigationSplitView {
+            BatchImagesColumn(model: model)
+                .navigationSplitViewColumnWidth(min: 260, ideal: 320)
+        } detail: {
+            VStack(spacing: 0) {
+                if model.isFinished && !model.isRunning {
+                    BatchSummaryBar(model: model)
+                    Divider()
+                }
+                if model.isRunning {
+                    BatchRunView(model: model)
+                } else {
+                    HStack(spacing: 0) {
+                        BatchStepsColumn(model: model)
+                            .frame(width: 230)
+                        Divider()
+                        BatchStepDetail(step: model.step, model: model)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
             }
-            isRunning = false
+        }
+        .toolbar { toolbar }
+        .frame(minWidth: 960, minHeight: 600)
+        .sheet(isPresented: $namingPreset) { presetSheet }
+        .confirmationDialog("Delete the preset \(model.loadedPreset ?? "")?", isPresented: $confirmingDelete) {
+            Button("Delete", role: .destructive) { model.deletePreset() }
+        } message: {
+            Text("Its settings are lost.")
+        }
+        .alert(model.notice ?? "", isPresented: Binding { model.notice != nil } set: { if !$0 { model.notice = nil } }) {
+            Button("OK") { model.notice = nil }
         }
     }
 
-    func addFiles() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.image]
-        panel.allowsMultipleSelection = true
-        guard panel.runModal() == .OK else { return }
-        // A file added twice would be converted twice.
-        let known = Set(inputs.map { $0.resolvingSymlinksInPath().path })
-        // Each selection is appended in Finder order; the open panel's own order is arbitrary.
-        inputs += panel.urls.filter { !known.contains($0.resolvingSymlinksInPath().path) }
-            .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+    @ToolbarContentBuilder private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            Picker("Mode", selection: $model.settings.mode) {
+                Text("Convert").tag(BatchMode.convert)
+                Text("Rename").tag(BatchMode.rename)
+                Text("Convert and Rename").tag(BatchMode.convertAndRename)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .disabled(model.isRunning)
+        }
+        ToolbarItem {
+            Menu {
+                ForEach(model.presetNames, id: \.self) { name in
+                    Toggle(name, isOn: Binding { model.loadedPreset == name } set: { _ in model.loadPreset(name) })
+                }
+                if !model.presetNames.isEmpty { Divider() }
+                Button("Save Preset…") {
+                    presetName = model.loadedPreset ?? ""
+                    namingPreset = true
+                }
+                Button("Delete Preset…") { confirmingDelete = true }
+                    .disabled(model.loadedPreset == nil)
+            } label: {
+                if let name = model.loadedPreset {
+                    Text(model.presetName == nil ? "\(name) (edited)" : name)
+                } else {
+                    Text("Presets")
+                }
+            }
+            .disabled(model.isRunning)
+        }
+        ToolbarItemGroup {
+            if model.isRunning {
+                if model.isPaused {
+                    Button("Resume") { model.resume() }
+                } else {
+                    Button("Pause") { model.pause() }
+                }
+                Button("Stop") { model.stop() }
+            } else {
+                Button("Start") { model.start() }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!model.canStart)
+            }
+        }
     }
 
-    func chooseOutputFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.canCreateDirectories = true
-        if panel.runModal() == .OK { outputFolder = panel.url }
+    private var presetSheet: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Save Preset").font(.headline)
+            TextField("Name", text: $presetName)
+                .frame(width: 260)
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) { namingPreset = false }
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") {
+                    if model.replacesAnotherPreset(presetName) { return confirmingReplace = true }
+                    model.savePreset(presetName)
+                    namingPreset = false
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(20)
+        .confirmationDialog("Replace the preset \(presetName.trimmingCharacters(in: .whitespacesAndNewlines))?",
+                            isPresented: $confirmingReplace) {
+            Button("Replace", role: .destructive) {
+                model.savePreset(presetName)
+                namingPreset = false
+            }
+        } message: {
+            Text("Its settings are lost.")
+        }
     }
 }
 
-struct BatchView: View {
+/// Output, Operations, Files; each row the step's title and summary, dimmed when the mode doesn't use it.
+private struct BatchStepsColumn: View {
     @Bindable var model: BatchModel
 
     var body: some View {
-        Form {
-            Section("Images") {
-                LabeledContent("Selected", value: "\(model.inputs.count)")
-                HStack {
-                    Button("Add Files…") { model.addFiles() }
-                    Button("Use Viewer's Folder") { model.inputs = ViewerModel.lastActive.current.list.urls }
-                        .disabled(ViewerModel.lastActive.current.list.isEmpty)
-                    Button("Clear") { model.inputs = [] }
-                }
-            }
-            Section("Output") {
-                Picker("Format", selection: $model.format) {
-                    ForEach(FormatRegistry.writable) { Text($0.name).tag($0) }
-                }
-                FormatOptionsView(format: model.format, options: $model.options)
-                Toggle("Limit size", isOn: $model.limitSize)
-                if model.limitSize {
-                    TextField("Longest side (px)", value: $model.maxDimension, format: .number.grouping(.never))
-                }
-                Toggle("Rename", isOn: $model.useRename)
-                if model.useRename {
-                    TextField("Pattern", text: $model.renameTemplate)
-                    Text("{name} = original name · {n} = number · {n:3} = 001")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                LabeledContent("Folder") {
-                    Text(model.outputFolder?.path ?? "None").lineLimit(1).truncationMode(.middle)
-                    Button("Choose…") { model.chooseOutputFolder() }
-                }
-            }
-            Section {
-                if model.isRunning {
-                    ProgressView(value: Double(model.done), total: Double(max(model.inputs.count, 1)))
-                }
-                Button("Convert") {
-                    // A clicked button doesn't take focus, so a number field still being edited
-                    // (target size, longest side) hasn't written its value yet: end editing first.
-                    NSApp.keyWindow?.makeFirstResponder(nil)
-                    model.run()
-                }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(model.isRunning || model.inputs.isEmpty || model.outputFolder == nil)
-                if !model.results.isEmpty {
-                    Text("\(model.results.count - model.failures.count) converted, \(model.failures.count) failed")
-                }
-                ForEach(model.failures, id: \.input) { result in
-                    Text(result.logLine)
-                        .foregroundStyle(.red)
-                }
-            }
+        List(selection: Binding<BatchStep?> { model.step } set: { if let step = $0 { model.step = step } }) {
+            Section("Output") { rows([.output, .rename]) }
+            Section("Operations") { rows(BatchStep.operations) }
+            Section("Files") { rows([.safety]) }
         }
-        .formStyle(.grouped)
-        .frame(minWidth: 460, minHeight: 420)
-        // The model outlives the window: catch saves from Save As or Settings › Formats.
-        .onAppear { model.reloadOptions() }
-        .onReceive(defaultsChanged) { _ in model.reloadOptions() }
+    }
+
+    private func rows(_ steps: [BatchStep]) -> some View {
+        ForEach(steps) { step in
+            HStack {
+                Image(systemName: model.isOn(step) ? "circle.fill" : "circle")
+                    .font(.system(size: 7))
+                    .foregroundStyle(model.isOn(step) ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+                    .accessibilityLabel(model.isOn(step) ? "On" : "Off")
+                Text(step.title)
+                Spacer()
+                Text(model.summary(of: step))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .opacity(model.isUsed(step) ? 1 : 0.4)
+            .tag(step)
+        }
+    }
+}
+
+/// Task 11 fills this in; Task 10 ships it showing the step's title only.
+struct BatchStepDetail: View {
+    let step: BatchStep
+    @Bindable var model: BatchModel
+
+    var body: some View {
+        VStack {
+            Text(step.title).font(.title2)
+            Spacer()
+        }
+        .padding()
     }
 }

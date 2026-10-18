@@ -137,6 +137,16 @@ import Testing
         }
     }
 
+    @Test func savingOverAnotherPresetAsksFirst() {
+        let (defaults, name) = freshDefaults()
+        defer { defaults.removePersistentDomain(forName: name) }
+        BatchPresets.save("Print", BatchSettings(), in: defaults)
+        #expect(BatchPresets.replacesAnother(" Print ", loaded: "Web", in: defaults))
+        #expect(BatchPresets.replacesAnother("Print", loaded: nil, in: defaults))
+        #expect(!BatchPresets.replacesAnother("Print", loaded: "Print", in: defaults))  // re-saving the loaded one
+        #expect(!BatchPresets.replacesAnother("New", loaded: "Web", in: defaults))
+    }
+
     @Test func presetsSaveLoadDeleteAndList() {
         let (defaults, name) = freshDefaults()
         defer { defaults.removePersistentDomain(forName: name) }

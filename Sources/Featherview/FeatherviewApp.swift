@@ -19,11 +19,16 @@ struct FeatherviewApp: App {
                 .modifier(OpensViewerWindows())
         }
 
-        Window("Batch Convert", id: "batch") {
+        Window("Batch", id: "batch") {
             BatchView(model: batch)
-                .onAppear { appDelegate.isBusy = { batch.isRunning } }
+                .onAppear {
+                    appDelegate.isBusy = { batch.isRunning }
+                    appDelegate.stopBatch = { await batch.stopAndWait() }
+                    appDelegate.willQuit = { batch.saveNow() }
+                }
                 .modifier(OpensViewerWindows())
         }
+        .defaultSize(width: 1100, height: 700)
 
         Window("About Featherview", id: "about") {
             AboutView()
@@ -71,6 +76,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let viewer = ViewerModel.main
     /// True while a batch runs: quitting then would stop it part-way. Set by the Batch window.
     var isBusy: () -> Bool = { false }
+    /// Stops the batch and returns once the files being written are committed.
+    var stopBatch: @MainActor () async -> Void = {}
+    /// Writes state that is saved with a delay (the batch settings).
+    var willQuit: () -> Void = {}
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         AppSettings.registerDefaults()
@@ -102,4 +111,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // shortcut: once the batch ends with no window open the app stays running, until the user quits; fine for v1.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { !isBusy() }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if isBusy() {
+            let alert = NSAlert()
+            alert.messageText = String(localized: "Quit while the batch is running?")
+            alert.informativeText = String(localized: "Files not converted yet are left as they are.")
+            alert.addButton(withTitle: String(localized: "Keep Running"))
+            alert.addButton(withTitle: String(localized: "Quit"))
+            guard alert.runModal() == .alertSecondButtonReturn else { return .terminateCancel }
+            // A file being written would leave its temp file behind if the process exited now.
+            Task {
+                await stopBatch()
+                willQuit()
+                sender.reply(toApplicationShouldTerminate: true)
+            }
+            return .terminateLater
+        }
+        willQuit()
+        return .terminateNow
+    }
 }
