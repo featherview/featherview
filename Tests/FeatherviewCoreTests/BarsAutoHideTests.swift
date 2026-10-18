@@ -2,11 +2,12 @@ import Testing
 @testable import FeatherviewCore
 
 @Suite struct BarsAutoHideTests {
-    /// Enabled at 0 in the key window, the pointer over the picture.
+    /// Enabled at 0 in the key window, a picture shown, the pointer over it.
     private func enabled() -> BarsAutoHide {
         var machine = BarsAutoHide()
         machine.handle(.enabled(true), now: 0)
         machine.handle(.windowKey(true), now: 0)
+        machine.handle(.pictureShown(true), now: 0)
         machine.handle(.pointerOverBars(false), now: 0)
         return machine
     }
@@ -96,6 +97,8 @@ import Testing
 
     @Test func noHidingWhilePanelOpen() { expectNoHiding(while: .panelOpen(true), until: .panelOpen(false)) }
     @Test func noHidingOverBars() { expectNoHiding(while: .pointerOverBars(true), until: .pointerOverBars(false)) }
+    /// The empty window, "No images in…" or a full-window error: nothing to rest the pointer over.
+    @Test func noHidingWithoutPicture() { expectNoHiding(while: .pictureShown(false), until: .pictureShown(true)) }
     @Test func fullScreenNeverHides() { expectNoHiding(while: .fullScreen(true), until: .fullScreen(false)) }
 
     private func expectNoHiding(while block: BarsAutoHide.Event, until unblock: BarsAutoHide.Event) {

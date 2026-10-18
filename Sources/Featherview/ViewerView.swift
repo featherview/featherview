@@ -124,6 +124,7 @@ struct ViewerView: View {
         }
         .onChange(of: hideBars, initial: true) { feedAutoHide(.enabled($1)) }
         .onChange(of: model.isFullScreen, initial: true) { feedAutoHide(.fullScreen($1)) }
+        .onChange(of: model.image != nil, initial: true) { feedAutoHide(.pictureShown($1)) }
         .onChange(of: model.chooser != nil || model.destinationPanel != nil || model.showInfo, initial: true) {
             feedAutoHide(.panelOpen($1))
         }

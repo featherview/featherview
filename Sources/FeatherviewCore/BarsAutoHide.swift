@@ -6,6 +6,8 @@ public struct BarsAutoHide: Sendable, Equatable {
 
     public enum Event: Sendable, Equatable {
         case enabled(Bool), fullScreen(Bool), panelOpen(Bool), windowKey(Bool)
+        /// An image is on screen (not the empty hint, "No images in…" or a full-window error).
+        case pictureShown(Bool)
         /// The pointer is off the picture: over the bars, or outside the window.
         case pointerOverBars(Bool)
         case pointerMoved, pointerAtTopEdge
@@ -22,10 +24,11 @@ public struct BarsAutoHide: Sendable, Equatable {
     private var fullScreen = false
     private var panelOpen = false
     private var windowKey = false
+    private var pictureShown = false
     /// Until a hover says otherwise: the bars hide only once the pointer rests over the picture.
     private var overBars = true
 
-    private var mayHide: Bool { enabled && windowKey && !fullScreen && !panelOpen && !overBars }
+    private var mayHide: Bool { enabled && windowKey && !fullScreen && !panelOpen && pictureShown && !overBars }
 
     public init() {}
 
@@ -35,6 +38,7 @@ public struct BarsAutoHide: Sendable, Equatable {
         case .fullScreen(let on): fullScreen = on
         case .panelOpen(let on): panelOpen = on
         case .windowKey(let on): windowKey = on
+        case .pictureShown(let on): pictureShown = on
         case .pointerOverBars(let on): overBars = on
         case .pointerMoved, .pointerAtTopEdge, .key(browsing: false):
             barsVisible = true
