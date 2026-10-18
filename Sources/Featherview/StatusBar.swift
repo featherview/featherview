@@ -18,8 +18,11 @@ struct StatusBar: View {
         .foregroundStyle(.secondary)
         .lineLimit(1)
         .padding(.horizontal, 10)
-        .frame(maxWidth: .infinity, minHeight: 22, alignment: .leading)
-        .background(.bar)
+        .frame(maxWidth: .infinity, minHeight: CanvasInsets.stripHeight, maxHeight: CanvasInsets.stripHeight,
+               alignment: .leading)
+        .panelBackground(cornerRadius: CanvasInsets.stripHeight / 2)
+        // Floats over the canvas (spec "Look"); fit keeps the image clear of it through `CanvasInsets`.
+        .padding([.horizontal, .bottom], CanvasInsets.stripMargin)
     }
 
     private var fields: [String] {

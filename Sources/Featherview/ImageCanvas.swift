@@ -11,7 +11,7 @@ final class PanController {
     /// (the arrow then changes images). `dx`/`dy` are -1, 0 or 1; physical directions, never mirrored.
     func pan(dx: CGFloat, dy: CGFloat) -> Bool {
         guard let scrollView, let document = scrollView.documentView else { return false }
-        let visible = scrollView.contentView.bounds
+        let visible = scrollView.clearRect
         let canPan = dx != 0 ? document.frame.width > visible.width + 0.5 : document.frame.height > visible.height + 0.5
         guard canPan else { return false }
         let step: CGFloat = 80
@@ -20,11 +20,24 @@ final class PanController {
     }
 }
 
+/// Moves the clear area (between the bars) so its top-leading corner is at `point` in the document.
 @MainActor
 private func moveVisibleOrigin(_ scrollView: NSScrollView, to point: CGPoint) {
     let clip = scrollView.contentView
-    clip.scroll(to: clip.constrainBoundsRect(NSRect(origin: point, size: clip.bounds.size)).origin)
+    let origin = CGPoint(x: point.x - clip.contentInsets.left, y: point.y - clip.contentInsets.top)
+    clip.scroll(to: clip.constrainBoundsRect(NSRect(origin: origin, size: clip.bounds.size)).origin)
     scrollView.reflectScrolledClipView(clip)
+}
+
+private extension NSScrollView {
+    /// The part of the view not under the toolbar or the status strip, in document coordinates
+    /// (the document view is flipped, so the top inset is at the low y).
+    @MainActor var clearRect: NSRect {
+        let bounds = contentView.bounds, insets = contentInsets
+        return NSRect(x: bounds.minX + insets.left, y: bounds.minY + insets.top,
+                      width: bounds.width - insets.left - insets.right,
+                      height: bounds.height - insets.top - insets.bottom)
+    }
 }
 
 /// The image in an AppKit scroll view: two-finger scroll and dragging pan a zoomed image, a small
@@ -37,6 +50,9 @@ struct ImageCanvas: NSViewRepresentable {
     let pixelWidth: Double
     let displayScale: Double
     let background: NSColor
+    /// How far the toolbar and the status strip reach over the canvas: fit stays clear of them,
+    /// a zoomed image scrolls under them.
+    let insets: CanvasInsets
     let checkerboard: Bool
     let panController: PanController
     let onDoubleClick: () -> Void
@@ -50,6 +66,7 @@ struct ImageCanvas: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
         scrollView.contentView = CenteringClipView()
+        scrollView.automaticallyAdjustsContentInsets = false
         // The picture never mirrors (spec "Languages"): scroll origin and dragging stay physical.
         scrollView.userInterfaceLayoutDirection = .leftToRight
         scrollView.hasHorizontalScroller = true
@@ -69,14 +86,21 @@ struct ImageCanvas: NSViewRepresentable {
         view.onFirstDraw = onFirstDraw
         view.onCommit = onCommit
         let oldSize = view.frame.size
-        let visible = scrollView.contentView.bounds
-        // Keep the point at the centre of the view where it was, so zooming doesn't jump to a corner.
-        let centre = CGPoint(x: oldSize.width > 0 ? visible.midX / oldSize.width : 0.5,
-                             y: oldSize.height > 0 ? visible.midY / oldSize.height : 0.5)
+        let oldVisible = scrollView.clearRect
+        // Keep the point at the centre of the clear area where it was, so zooming doesn't jump to a corner.
+        let centre = CGPoint(x: oldSize.width > 0 ? oldVisible.midX / oldSize.width : 0.5,
+                             y: oldSize.height > 0 ? oldVisible.midY / oldSize.height : 0.5)
+        let contentInsets = NSEdgeInsets(top: insets.top, left: 0, bottom: insets.bottom, right: 0)
+        let insetsChanged = !NSEdgeInsetsEqual(scrollView.contentInsets, contentInsets)
+        if insetsChanged {
+            scrollView.contentInsets = contentInsets
+            scrollView.scrollerInsets = contentInsets
+        }
         view.show(image, checkerboard: checkerboard && image.hasAlpha, 
                   smooth: !ZoomSteps.showsPixels(drawnWidth: size.width, imageWidth: Int(pixelWidth), displayScale: displayScale))
-        if oldSize != size {
+        if oldSize != size || insetsChanged {
             view.frame.size = size
+            let visible = scrollView.clearRect
             moveVisibleOrigin(scrollView, to: CGPoint(x: centre.x * size.width - visible.width / 2,
                                            y: centre.y * size.height - visible.height / 2))
         }
@@ -89,13 +113,22 @@ private extension CGImage {
     }
 }
 
-/// Keeps a document smaller than the view in the middle instead of the bottom-left corner.
+/// Keeps a document smaller than the clear area (inside the content insets) in its middle
+/// instead of the bottom-left corner.
 private final class CenteringClipView: NSClipView {
     override func constrainBoundsRect(_ proposedBounds: NSRect) -> NSRect {
         var rect = super.constrainBoundsRect(proposedBounds)
         guard let document = documentView else { return rect }
-        if document.frame.width < rect.width { rect.origin.x = (document.frame.width - rect.width) / 2 }
-        if document.frame.height < rect.height { rect.origin.y = (document.frame.height - rect.height) / 2 }
+        let insets = contentInsets
+        let clearWidth = rect.width - insets.left - insets.right
+        let clearHeight = rect.height - insets.top - insets.bottom
+        if document.frame.width < clearWidth {
+            rect.origin.x = -insets.left - (clearWidth - document.frame.width) / 2
+        }
+        // The document view is flipped: the top inset is at the low y.
+        if document.frame.height < clearHeight {
+            rect.origin.y = -insets.top - (clearHeight - document.frame.height) / 2
+        }
         return rect
     }
 }
@@ -156,8 +189,8 @@ private final class ImageLayerView: NSView {
     override func mouseDown(with event: NSEvent) {
         onClick()
         if event.clickCount == 2 { return onDoubleClick() }
-        guard let clip = enclosingScrollView?.contentView else { return }
-        dragStart = (event.locationInWindow, clip.bounds.origin)
+        guard let scrollView = enclosingScrollView else { return }
+        dragStart = (event.locationInWindow, scrollView.clearRect.origin)
     }
 
     override func mouseDragged(with event: NSEvent) {
