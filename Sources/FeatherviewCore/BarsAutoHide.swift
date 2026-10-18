@@ -5,7 +5,11 @@ public struct BarsAutoHide: Sendable, Equatable {
     public static let rest: Double = 2
 
     public enum Event: Sendable, Equatable {
-        case enabled(Bool), fullScreen(Bool), panelOpen(Bool), pointerOverBars(Bool)
+        case enabled(Bool), fullScreen(Bool), panelOpen(Bool), windowKey(Bool)
+        /// An image is on screen (not the empty hint, "No images in…" or a full-window error).
+        case pictureShown(Bool)
+        /// The pointer is off the picture: over the bars, or outside the window.
+        case pointerOverBars(Bool)
         case pointerMoved, pointerAtTopEdge
         /// `browsing`: ← → Space ⌫ Page Up/Down Home End, which keep hidden bars hidden.
         case key(browsing: Bool)
@@ -19,9 +23,12 @@ public struct BarsAutoHide: Sendable, Equatable {
     private var enabled = false
     private var fullScreen = false
     private var panelOpen = false
-    private var overBars = false
+    private var windowKey = false
+    private var pictureShown = false
+    /// Until a hover says otherwise: the bars hide only once the pointer rests over the picture.
+    private var overBars = true
 
-    private var mayHide: Bool { enabled && !fullScreen && !panelOpen && !overBars }
+    private var mayHide: Bool { enabled && windowKey && !fullScreen && !panelOpen && pictureShown && !overBars }
 
     public init() {}
 
@@ -30,6 +37,8 @@ public struct BarsAutoHide: Sendable, Equatable {
         case .enabled(let on): enabled = on
         case .fullScreen(let on): fullScreen = on
         case .panelOpen(let on): panelOpen = on
+        case .windowKey(let on): windowKey = on
+        case .pictureShown(let on): pictureShown = on
         case .pointerOverBars(let on): overBars = on
         case .pointerMoved, .pointerAtTopEdge, .key(browsing: false):
             barsVisible = true
@@ -43,7 +52,8 @@ public struct BarsAutoHide: Sendable, Equatable {
             return
         }
         guard mayHide else {
-            barsVisible = true
+            // Browsing onto a file that can't be decoded (no picture, a browsing key) leaves hidden bars hidden.
+            if event != .pictureShown(false), event != .key(browsing: true) { barsVisible = true }
             hideAt = nil
             return
         }

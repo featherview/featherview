@@ -22,6 +22,13 @@ struct ViewerView: View {
     @AppStorage(statusBarHiddenKey) private var statusBarHidden = false
     @State private var windowSize = CGSize.zero
     @State private var toolbarHeight = 0.0
+    @AppStorage(AppSettings.hideBarsWhileViewing.key) private var hideBars = AppSettings.hideBarsWhileViewing.defaultValue
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// In a box, not @State: pointer moves change its `hideAt`, and re-rendering the viewer on every move costs browsing.
+    @State private var autoHide = AutoHideBox()
+    @State private var barsVisible = true
+    /// Counts each arming of the rest timer: a Bool id could re-arm before SwiftUI saw it go false, and the timer task never restarted.
+    @State private var hideArm = 0
 
     private var showsStatusBar: Bool { !statusBarHidden && !model.isFullScreen }
     private var canvasInsets: CanvasInsets {
@@ -47,7 +54,7 @@ struct ViewerView: View {
                 ImageCanvas(image: image, size: drawSize(image), pixelWidth: pixelSize(image).width,
                             displayScale: displayScale, background: backgroundNSColor, insets: canvasInsets,
                             checkerboard: checkerboard, panController: panController,
-                            onDoubleClick: model.toggleFullScreen, onClick: { focused = true },
+                            onDoubleClick: model.toggleFullScreen, onClick: clickedImage,
                             onFirstDraw: { toolbarReady = true; model.firstImageDrawn() },
                             onCommit: model.imageCommitted)
                     .contextMenu { ImageContextMenu(model: model) }
@@ -99,8 +106,31 @@ struct ViewerView: View {
         // Hiding the status bar or entering full screen changes the insets without changing the geometry.
         .onChange(of: canvasInsets) { setViewSize(window: windowSize, toolbarHeight: toolbarHeight) }
         .overlay(alignment: .bottom) {
-            if showsStatusBar { StatusBar(model: model) }
+            if showsStatusBar {
+                StatusBar(model: model)
+                    .opacity(barsVisible ? 1 : 0)
+                    .animation(.easeInOut(duration: reduceMotion ? 0 : 0.2), value: barsVisible)
+            }
         }
+        .onContinuousHover(coordinateSpace: .global) { phase in
+            switch phase {
+            case .active(let point):
+                let overStrip = showsStatusBar && point.y > windowSize.height - canvasInsets.bottom
+                feedAutoHide(.pointerOverBars(point.y < toolbarHeight || overStrip))
+                feedAutoHide(point.y < 4 ? .pointerAtTopEdge : .pointerMoved)
+            case .ended:
+                // Onto the toolbar, which takes the hover, or out of the window: off the picture either way.
+                feedAutoHide(.pointerOverBars(true))
+            }
+        }
+        .onChange(of: hideBars, initial: true) { feedAutoHide(.enabled($1)) }
+        .onChange(of: model.isFullScreen, initial: true) { feedAutoHide(.fullScreen($1)) }
+        .onChange(of: model.image != nil, initial: true) { feedAutoHide(.pictureShown($1)) }
+        .onChange(of: model.chooser != nil || model.destinationPanel != nil || model.showInfo, initial: true) {
+            feedAutoHide(.panelOpen($1))
+        }
+        .onChange(of: barsVisible) { fadeBars(visible: $1) }
+        .task(id: hideArm) { await hideBarsAtRest() }
         // On a new image and on entering full screen (double-click, F or Return leave the image as is).
         .onChange(of: model.image) { hidePointerInFullScreen() }
         .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
@@ -117,6 +147,7 @@ struct ViewerView: View {
         }
         .focusedSceneValue(\.viewer, model)
         .onChange(of: activeState, initial: true) {
+            feedAutoHide(.windowKey(activeState == .key))
             guard activeState == .key else { return }
             ViewerModel.lastActive.use(model)
             model.becameActive()
@@ -145,8 +176,18 @@ struct ViewerView: View {
         .onAppear {
             focused = true
             ViewerModel.windows.viewerOpened()
+            // Menu key equivalents (⌘C, ⌥1…) never reach onKeyPress; none of them is a browsing key.
+            autoHide.keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                if event.window === model.window, !event.modifierFlags.isDisjoint(with: [.command, .control, .option]) {
+                    feedAutoHide(.key(browsing: false))
+                }
+                return event
+            }
         }
-        .onDisappear { ViewerModel.windows.viewerClosed() }
+        .onDisappear {
+            ViewerModel.windows.viewerClosed()
+            if let monitor = autoHide.keyMonitor { NSEvent.removeMonitor(monitor) }
+        }
         .onKeyPress(action: handle)
         .frame(minWidth: 480, minHeight: 320)
     }
@@ -188,6 +229,51 @@ struct ViewerView: View {
         return values
     }
 
+    /// A click (or drag) takes the keyboard back and brings hidden bars and the pointer back, as a move does.
+    private func clickedImage() {
+        focused = true
+        feedAutoHide(.pointerMoved)
+        NSCursor.setHiddenUntilMouseMoves(false)
+    }
+
+    private func feedAutoHide(_ event: BarsAutoHide.Event) {
+        autoHide.machine.handle(event, now: ProcessInfo.processInfo.systemUptime)
+        if barsVisible != autoHide.machine.barsVisible { barsVisible = autoHide.machine.barsVisible }
+        let armed = autoHide.machine.hideAt != nil
+        if armed && !autoHide.armed { hideArm &+= 1 }
+        autoHide.armed = armed
+    }
+
+    /// Sleeps until the machine's `hideAt` (which pointer moves keep pushing back) and sends `.tick`.
+    private func hideBarsAtRest() async {
+        while let hideAt = autoHide.machine.hideAt {
+            let wait = hideAt - ProcessInfo.processInfo.systemUptime
+            if wait > 0 {
+                try? await Task.sleep(for: .seconds(wait))
+                if Task.isCancelled { return }
+                continue
+            }
+            // A context menu or a sheet is open: keep the bars, as for the panels.
+            if RunLoop.main.currentMode == .eventTracking || model.window?.attachedSheet != nil {
+                feedAutoHide(.pointerMoved)
+            } else {
+                feedAutoHide(.tick)
+            }
+        }
+    }
+
+    /// The strip fades by its opacity; the toolbar by the titlebar container's alpha, never `.toolbar(.hidden)`,
+    /// which would change the layout and move a fit image.
+    private func fadeBars(visible: Bool) {
+        if let titlebar = model.window?.standardWindowButton(.closeButton)?.superview?.superview {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = reduceMotion ? 0 : 0.2
+                titlebar.animator().alphaValue = visible ? 1 : 0
+            }
+        }
+        if !visible { NSCursor.setHiddenUntilMouseMoves(true) }
+    }
+
     /// Viewer shortcuts live here, not in the menus: a menu shortcut would also fire while typing
     /// in the Batch window's text fields (⌘⌫ there means "delete to start of line").
     /// The Mac's ⌫ key sends U+007F; SwiftUI's `.delete` is U+0008 and never matches it.
@@ -213,6 +299,10 @@ struct ViewerView: View {
         // so only these modifiers count.
         let modifiers = press.modifiers.intersection([.command, .control, .option, .shift])
         let rtl = layoutDirection == .rightToLeft
+        // Both arrows count, so the right-to-left swap needs nothing extra.
+        let browsing = modifiers.isEmpty && [.leftArrow, .rightArrow, .space, Self.backspace, .pageUp, .pageDown,
+                                             .home, .end].contains(press.key)
+        feedAutoHide(.key(browsing: browsing))
         if model.isChooserOpen { return handleChooser(press, modifiers) }
         if let operation = model.destinationPanel { return handleDestinations(press, modifiers, operation) }
         if modifiers == .option {
@@ -363,6 +453,14 @@ struct OpenWithMenu: View {
             }
         }
     }
+}
+
+/// Holds the auto-hide machine outside SwiftUI's state (see `ViewerView.autoHide`).
+@MainActor private final class AutoHideBox {
+    var machine = BarsAutoHide()
+    /// Whether `machine.hideAt` was set after the last event (see `ViewerView.hideArm`).
+    var armed = false
+    var keyMonitor: Any?
 }
 
 /// Reports the hosting window once it exists.

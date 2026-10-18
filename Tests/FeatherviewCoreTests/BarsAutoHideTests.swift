@@ -2,10 +2,13 @@ import Testing
 @testable import FeatherviewCore
 
 @Suite struct BarsAutoHideTests {
-    /// Enabled at 0, as the app starts it when the setting is on.
+    /// Enabled at 0 in the key window, a picture shown, the pointer over it.
     private func enabled() -> BarsAutoHide {
         var machine = BarsAutoHide()
         machine.handle(.enabled(true), now: 0)
+        machine.handle(.windowKey(true), now: 0)
+        machine.handle(.pictureShown(true), now: 0)
+        machine.handle(.pointerOverBars(false), now: 0)
         return machine
     }
 
@@ -22,6 +25,18 @@ import Testing
         #expect(machine.barsVisible)
         #expect(machine.hideAt == nil)
     }
+
+    @Test func noTimerUntilThePointerIsOverThePicture() {
+        var machine = BarsAutoHide()
+        machine.handle(.enabled(true), now: 0)
+        machine.handle(.windowKey(true), now: 0)
+        machine.handle(.key(browsing: false), now: 0)
+        #expect(machine.hideAt == nil)
+        machine.handle(.tick, now: 10)
+        #expect(machine.barsVisible)
+    }
+
+    @Test func noHidingInTheBackground() { expectNoHiding(while: .windowKey(false), until: .windowKey(true)) }
 
     @Test func hidesAfterTheRest() {
         var machine = enabled()
@@ -59,6 +74,22 @@ import Testing
         #expect(machine.hideAt == nil)
     }
 
+    /// Browsing onto a file that can't be decoded: no picture, but only browsing keys were pressed.
+    @Test func browsingOntoABadFileKeepsHidden() {
+        var machine = hidden()
+        machine.handle(.key(browsing: true), now: 4)
+        machine.handle(.pictureShown(false), now: 4)
+        #expect(machine.barsVisible == false)
+        #expect(machine.hideAt == nil)
+        machine.handle(.key(browsing: true), now: 5)
+        machine.handle(.pictureShown(true), now: 5)
+        #expect(machine.barsVisible == false)
+        #expect(machine.hideAt == nil)
+        machine.handle(.pictureShown(false), now: 6)
+        machine.handle(.pointerMoved, now: 7)
+        #expect(machine.barsVisible)
+    }
+
     @Test func browsingKeyWhileVisibleRestartsTheRest() {
         var machine = enabled()
         machine.handle(.key(browsing: true), now: 5)
@@ -82,6 +113,8 @@ import Testing
 
     @Test func noHidingWhilePanelOpen() { expectNoHiding(while: .panelOpen(true), until: .panelOpen(false)) }
     @Test func noHidingOverBars() { expectNoHiding(while: .pointerOverBars(true), until: .pointerOverBars(false)) }
+    /// The empty window, "No images in…" or a full-window error: nothing to rest the pointer over.
+    @Test func noHidingWithoutPicture() { expectNoHiding(while: .pictureShown(false), until: .pictureShown(true)) }
     @Test func fullScreenNeverHides() { expectNoHiding(while: .fullScreen(true), until: .fullScreen(false)) }
 
     private func expectNoHiding(while block: BarsAutoHide.Event, until unblock: BarsAutoHide.Event) {
@@ -98,6 +131,7 @@ import Testing
         #expect(machine.barsVisible)
         #expect(machine.hideAt == 14)
 
+        guard block != .pictureShown(false) else { return }  // browsingOntoABadFileKeepsHidden
         var wasHidden = hidden()
         wasHidden.handle(block, now: 4)
         #expect(wasHidden.barsVisible)
