@@ -1,134 +1,146 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "": {
-      "shouldTranslate": false
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+      "shouldTranslate" : false
     },
-    "%": {
-      "shouldTranslate": false
+    "%" : {
+      "shouldTranslate" : false
     },
-    "% of the output's width": {},
-    "% of the shorter side": {},
-    "%@ (edited)": {
-      "comment": "Preset menu: a preset with unsaved changes"
+    "% of the output's width" : {
+
     },
-    "%@ / %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ / %2$@"
+    "% of the shorter side" : {
+
+    },
+    "%@ (edited)" : {
+      "comment" : "Preset menu: a preset with unsaved changes"
+    },
+    "%@ / %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ / %2$@"
           }
         }
       },
-      "shouldTranslate": false
+      "shouldTranslate" : false
     },
-    "%@ MP": {},
-    "%@ Options": {},
-    "%@ wasn't converted": {},
-    "%@ × %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ × %2$@"
+    "%@ MP" : {
+
+    },
+    "%@ Options" : {
+
+    },
+    "%@ wasn't converted" : {
+
+    },
+    "%@ × %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ × %2$@"
           }
         }
       },
-      "shouldTranslate": false
+      "shouldTranslate" : false
     },
-    "%@ → %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ → %2$@"
+    "%@ → %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ → %2$@"
           }
         }
       },
-      "shouldTranslate": false
+      "shouldTranslate" : false
     },
-    "%@ → %@ · %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ → %2$@ · %3$@"
+    "%@ → %@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ → %2$@ · %3$@"
           }
         }
       },
-      "shouldTranslate": false
+      "shouldTranslate" : false
     },
-    "%@, %@": {
-      "comment": "Batch text: font name and size as a share of the picture",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@, %2$@"
+    "%@, %@" : {
+      "comment" : "Batch text: font name and size as a share of the picture",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
           }
         }
       },
-      "shouldTranslate": false
+      "shouldTranslate" : false
     },
-    "%@: the canvas settings leave no image": {},
-    "%@; %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@; %2$@"
+    "%@: the canvas settings leave no image" : {
+
+    },
+    "%@; %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@; %2$@"
           }
         }
       },
-      "shouldTranslate": false
+      "shouldTranslate" : false
     },
-    "%lld": {
-      "shouldTranslate": false
+    "%lld" : {
+      "shouldTranslate" : false
     },
-    "%lld converted, %lld failed": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%#@converted@, %#@failed@"
+    "%lld converted, %lld failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@converted@, %#@failed@"
           },
-          "substitutions": {
-            "converted": {
-              "argNum": 1,
-              "formatSpecifier": "lld",
-              "variations": {
-                "plural": {
-                  "one": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg converted"
+          "substitutions" : {
+            "converted" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg converted"
                     }
                   },
-                  "other": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg converted"
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg converted"
                     }
                   }
                 }
               }
             },
-            "failed": {
-              "argNum": 2,
-              "formatSpecifier": "lld",
-              "variations": {
-                "plural": {
-                  "one": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg failed"
+            "failed" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg failed"
                     }
                   },
-                  "other": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg failed"
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg failed"
                     }
                   }
                 }
@@ -138,69 +150,69 @@
         }
       }
     },
-    "%lld converted, %lld failed, %lld not converted": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%#@converted@, %#@failed@, %#@notConverted@"
+    "%lld converted, %lld failed, %lld not converted" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@converted@, %#@failed@, %#@notConverted@"
           },
-          "substitutions": {
-            "converted": {
-              "argNum": 1,
-              "formatSpecifier": "lld",
-              "variations": {
-                "plural": {
-                  "one": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg converted"
+          "substitutions" : {
+            "converted" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg converted"
                     }
                   },
-                  "other": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg converted"
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg converted"
                     }
                   }
                 }
               }
             },
-            "failed": {
-              "argNum": 2,
-              "formatSpecifier": "lld",
-              "variations": {
-                "plural": {
-                  "one": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg failed"
+            "failed" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg failed"
                     }
                   },
-                  "other": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg failed"
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg failed"
                     }
                   }
                 }
               }
             },
-            "notConverted": {
-              "argNum": 3,
-              "formatSpecifier": "lld",
-              "variations": {
-                "plural": {
-                  "one": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg not converted"
+            "notConverted" : {
+              "argNum" : 3,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg not converted"
                     }
                   },
-                  "other": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg not converted"
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg not converted"
                     }
                   }
                 }
@@ -210,21 +222,21 @@
         }
       }
     },
-    "%lld files of %@ no longer exist": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld file of %@ no longer exists"
+    "%lld files of %@ no longer exist" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld file of %@ no longer exists"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld files of %@ no longer exist"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld files of %@ no longer exist"
                 }
               }
             }
@@ -232,22 +244,22 @@
         }
       }
     },
-    "%lld files · %@": {
-      "comment": "Batch input list: file count and total size",
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld file · %@"
+    "%lld files · %@" : {
+      "comment" : "Batch input list: file count and total size",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld file · %@"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld files · %@"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld files · %@"
                 }
               }
             }
@@ -255,50 +267,50 @@
         }
       }
     },
-    "%lld of %lld": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$lld of %2$lld"
+    "%lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld"
           }
         }
       }
     },
-    "%lld × %lld · %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$lld × %2$lld · %3$@"
+    "%lld × %lld · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld × %2$lld · %3$@"
           }
         }
       },
-      "shouldTranslate": false
+      "shouldTranslate" : false
     },
-    "%lld × %lld · %@ · %lld pages": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld × %lld · %@ · %#@pages@"
+    "%lld × %lld · %@ · %lld pages" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld × %lld · %@ · %#@pages@"
           },
-          "substitutions": {
-            "pages": {
-              "argNum": 4,
-              "formatSpecifier": "lld",
-              "variations": {
-                "plural": {
-                  "one": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg page"
+          "substitutions" : {
+            "pages" : {
+              "argNum" : 4,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg page"
                     }
                   },
-                  "other": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg pages"
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg pages"
                     }
                   }
                 }
@@ -308,69 +320,144 @@
         }
       }
     },
-    "0 = keep": {},
-    "0 = to the edge": {},
-    "1/%lld s": {
-      "comment": "exposure time, a fraction of a second"
+    "0 = keep" : {
+
     },
-    "About %@ left": {},
-    "About Featherview": {},
-    "About Featherview  (A)": {},
-    "Acknowledgements": {},
-    "Actual Size  (1)": {},
-    "Add": {},
-    "Add Files…": {},
-    "Add Folder with Subfolders…": {},
-    "Add Folder…": {},
-    "After a move or Move to Trash": {},
-    "An inner width of 0 draws one border.": {},
-    "Aperture": {
-      "comment": "Info panel label"
+    "0 = to the edge" : {
+
     },
-    "App %lld not set": {},
-    "Apps for ⌥1, ⌥2 and ⌥3": {},
-    "Ask before each move or copy": {},
-    "Aspect Ratio": {},
-    "Auto levels": {},
-    "Auto-adjust colours": {},
-    "Auto-crop uniform borders first": {},
-    "Background box": {},
-    "Background:": {},
-    "Bars": {},
-    "Batch": {},
-    "Batch Convert…  (B)": {},
-    "Batch List.txt": {},
-    "Black": {},
-    "Blue:": {},
-    "Blur:": {},
-    "Border": {},
-    "Bottom:": {},
-    "Box colour": {},
-    "Brightness:": {},
-    "Browsing": {},
-    "By Name": {},
-    "Camera": {
-      "comment": "Info panel label"
+    "1/%lld s" : {
+      "comment" : "exposure time, a fraction of a second"
     },
-    "Can't convert %@": {},
-    "Can't delete the preset %@": {},
-    "Can't move %@ to the Trash": {},
-    "Can't open %@": {},
-    "Can't open %@ and %lld more folders": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Can't open %@ and %lld more folder"
+    "About %@ left" : {
+
+    },
+    "About Featherview" : {
+
+    },
+    "About Featherview  (A)" : {
+
+    },
+    "Acknowledgements" : {
+
+    },
+    "Actual Size  (1)" : {
+
+    },
+    "Add" : {
+
+    },
+    "Add Files…" : {
+
+    },
+    "Add Folder with Subfolders…" : {
+
+    },
+    "Add Folder…" : {
+
+    },
+    "After a move or Move to Trash" : {
+
+    },
+    "An inner width of 0 draws one border." : {
+
+    },
+    "Aperture" : {
+      "comment" : "Info panel label"
+    },
+    "App %lld not set" : {
+
+    },
+    "Appearance:" : {
+
+    },
+    "Apps for ⌥1, ⌥2 and ⌥3" : {
+
+    },
+    "Ask before each move or copy" : {
+
+    },
+    "Aspect Ratio" : {
+
+    },
+    "Auto levels" : {
+
+    },
+    "Auto-adjust colours" : {
+
+    },
+    "Auto-crop uniform borders first" : {
+
+    },
+    "Background box" : {
+
+    },
+    "Bars" : {
+
+    },
+    "Batch" : {
+
+    },
+    "Batch Convert…  (B)" : {
+
+    },
+    "Batch List.txt" : {
+
+    },
+    "Blue:" : {
+
+    },
+    "Blur:" : {
+
+    },
+    "Border" : {
+
+    },
+    "Bottom:" : {
+
+    },
+    "Box colour" : {
+
+    },
+    "Brightness:" : {
+
+    },
+    "Browsing" : {
+
+    },
+    "By Name" : {
+
+    },
+    "Camera" : {
+      "comment" : "Info panel label"
+    },
+    "Can't convert %@" : {
+
+    },
+    "Can't delete the preset %@" : {
+
+    },
+    "Can't move %@ to the Trash" : {
+
+    },
+    "Can't open %@" : {
+
+    },
+    "Can't open %@ and %lld more folders" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Can't open %@ and %lld more folder"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Can't open %@ and %lld more folders"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Can't open %@ and %lld more folders"
                 }
               }
             }
@@ -378,579 +465,1159 @@
         }
       }
     },
-    "Can't open %@ with %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Can't open %1$@ with %2$@"
+    "Can't open %@ with %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Can't open %1$@ with %2$@"
           }
         }
       }
     },
-    "Can't preview %@": {},
-    "Can't read the watermark image %@": {},
-    "Can't save %@": {},
-    "Can't save the preset %@": {},
-    "Can't write %@ as %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Can't write %1$@ as %2$@"
+    "Can't preview %@" : {
+
+    },
+    "Can't read the watermark image %@" : {
+
+    },
+    "Can't save %@" : {
+
+    },
+    "Can't save the preset %@" : {
+
+    },
+    "Can't write %@ as %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Can't write %1$@ as %2$@"
           }
         }
       }
     },
-    "Cancel": {},
-    "Canvas": {},
-    "Canvas:": {},
-    "Checkerboard behind transparent images": {},
-    "Choose a folder": {},
-    "Choose a watermark image": {},
-    "Choose…": {},
-    "Clear": {},
-    "Click to copy the version, macOS version and Mac model": {},
-    "Close": {},
-    "Colour": {},
-    "Colour temperature:": {},
-    "Colour:": {},
-    "Colours": {},
-    "Compression:": {},
-    "Contrast:": {},
-    "Convert": {},
-    "Convert and Rename": {},
-    "Copy": {},
-    "Copy %@ to %@?": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Copy %1$@ to %2$@?"
+    "Cancel" : {
+
+    },
+    "Canvas" : {
+
+    },
+    "Canvas:" : {
+
+    },
+    "Checkerboard behind transparent images" : {
+
+    },
+    "Choose a folder" : {
+
+    },
+    "Choose a watermark image" : {
+
+    },
+    "Choose…" : {
+
+    },
+    "Clear" : {
+
+    },
+    "Click to copy the version, macOS version and Mac model" : {
+
+    },
+    "Close" : {
+
+    },
+    "Colour" : {
+
+    },
+    "Colour temperature:" : {
+
+    },
+    "Colour:" : {
+
+    },
+    "Colours" : {
+
+    },
+    "Compression:" : {
+
+    },
+    "Contrast:" : {
+
+    },
+    "Convert" : {
+
+    },
+    "Convert and Rename" : {
+
+    },
+    "Copy" : {
+
+    },
+    "Copy %@ to %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Copy %1$@ to %2$@?"
           }
         }
       }
     },
-    "Copy Log": {},
-    "Copy to Folder": {},
-    "Copy to Folder…": {},
-    "Copy to Folder…  (F8)": {},
-    "Couldn't copy %@": {},
-    "Couldn't copy %@ to %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Couldn't copy %1$@ to %2$@"
+    "Copy Log" : {
+
+    },
+    "Copy to Folder" : {
+
+    },
+    "Copy to Folder…" : {
+
+    },
+    "Copy to Folder…  (F8)" : {
+
+    },
+    "Couldn't copy %@" : {
+
+    },
+    "Couldn't copy %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn't copy %1$@ to %2$@"
           }
         }
       }
     },
-    "Couldn't move %@ to %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Couldn't move %1$@ to %2$@"
+    "Couldn't move %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn't move %1$@ to %2$@"
           }
         }
       }
     },
-    "Couldn't move %@ to the Trash": {},
-    "Couldn't rotate %@": {},
-    "Couldn't save %@": {},
-    "Crop": {},
-    "Custom colour:": {},
-    "Customize Toolbar…": {},
-    "Custom…": {},
-    "Cut": {},
-    "DPI:": {},
-    "Default app": {},
-    "Delete": {},
-    "Delete Preset…": {},
-    "Delete Profile": {},
-    "Delete the preset %@?": {},
-    "Dimensions": {
-      "comment": "Info panel label"
+    "Couldn't move %@ to the Trash" : {
+
     },
-    "Dither": {},
-    "Don't enlarge smaller images": {},
-    "Don't shrink larger images": {},
-    "Done": {},
-    "Drawing": {},
-    "Effort:": {},
-    "Empty": {
-      "comment": "Folder slot with no folder chosen"
+    "Couldn't rotate %@" : {
+
     },
-    "Exposure": {
-      "comment": "Info panel label"
+    "Couldn't save %@" : {
+
     },
-    "Failed": {},
-    "Fast, keyboard-driven image viewer": {},
-    "Featherview": {},
-    "Featherview can open your images instead of Preview. You can change this later in Preferences › Browsing.": {},
-    "Featherview couldn't become the default for %@.": {},
-    "Featherview: %@": {},
-    "File size": {
-      "comment": "Info panel label"
+    "Crop" : {
+
     },
-    "Files": {},
-    "Files not converted yet are left as they are.": {},
-    "Filters": {},
-    "First open: open Featherview once from Applications. When macOS says it can't check it, go to System Settings › Privacy & Security and click Open Anyway. After that it opens normally.": {},
-    "Flip:": {},
-    "Focal length": {
-      "comment": "Info panel label"
+    "Customize Toolbar…" : {
+
     },
-    "Folder:": {},
-    "Folders": {},
-    "Folders for F7 (move) and F8 (copy)": {},
-    "Font:": {},
-    "Format and Folder": {},
-    "Format:": {},
-    "Formats": {},
-    "From:": {},
-    "Full Screen": {},
-    "Gamma:": {},
-    "Graphite": {},
-    "Green:": {},
-    "Grey": {},
-    "Greyscale": {},
-    "Height": {},
-    "Height:": {},
-    "Hide Status Bar": {},
-    "Hide Toolbar": {},
-    "Hide the pointer": {},
-    "Hide toolbar and status bar while viewing": {},
-    "Higher is slower and makes smaller files": {},
-    "Horizontally": {},
-    "ISO": {
-      "comment": "Info panel label"
+    "Cut" : {
+
     },
-    "Icon": {},
-    "Image": {},
-    "Image:": {},
-    "Images": {},
-    "In the Image": {},
-    "Info": {},
-    "Inner colour": {},
-    "Inner:": {},
-    "Interlaced": {},
-    "Into %@": {},
-    "Its settings are lost.": {},
-    "JPEG": {},
-    "KB": {},
-    "Keep": {},
-    "Keep Running": {},
-    "Keep all pages": {},
-    "Keep aspect ratio": {},
-    "Keep camera data, location and keywords": {},
-    "Keep file dates": {},
-    "LZW": {},
-    "Left": {
-      "comment": "Batch rotation: a quarter turn counter-clockwise"
+    "DPI:" : {
+
     },
-    "Left:": {},
-    "Lens": {
-      "comment": "Info panel label"
+    "Dark" : {
+
     },
-    "Load List…": {},
-    "Longest Side": {},
-    "Lossless": {},
-    "Lossless rotation works with JPEG, HEIC and TIFF only": {},
-    "MIT License": {},
-    "MP": {},
-    "Margin:": {},
-    "Megapixels": {},
-    "Megapixels:": {},
-    "Mode": {},
-    "More": {},
-    "Move": {},
-    "Move %@ to %@?": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Move %1$@ to %2$@?"
+    "Default app" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete Preset…" : {
+
+    },
+    "Delete Profile" : {
+
+    },
+    "Delete the preset %@?" : {
+
+    },
+    "Dimensions" : {
+      "comment" : "Info panel label"
+    },
+    "Dither" : {
+
+    },
+    "Don't enlarge smaller images" : {
+
+    },
+    "Don't shrink larger images" : {
+
+    },
+    "Done" : {
+
+    },
+    "Drawing" : {
+
+    },
+    "Effort:" : {
+
+    },
+    "Empty" : {
+      "comment" : "Folder slot with no folder chosen"
+    },
+    "Exposure" : {
+      "comment" : "Info panel label"
+    },
+    "Failed" : {
+
+    },
+    "Fast, keyboard-driven image viewer" : {
+
+    },
+    "Featherview" : {
+
+    },
+    "Featherview can open your images instead of Preview. You can change this later in Preferences › Browsing." : {
+
+    },
+    "Featherview couldn't become the default for %@." : {
+
+    },
+    "Featherview: %@" : {
+
+    },
+    "File size" : {
+      "comment" : "Info panel label"
+    },
+    "Files" : {
+
+    },
+    "Files not converted yet are left as they are." : {
+
+    },
+    "Filters" : {
+
+    },
+    "First open: open Featherview once from Applications. When macOS says it can't check it, go to System Settings › Privacy & Security and click Open Anyway. After that it opens normally." : {
+
+    },
+    "Flip:" : {
+
+    },
+    "Focal length" : {
+      "comment" : "Info panel label"
+    },
+    "Folder:" : {
+
+    },
+    "Folders" : {
+
+    },
+    "Folders for F7 (move) and F8 (copy)" : {
+
+    },
+    "Font:" : {
+
+    },
+    "Format and Folder" : {
+
+    },
+    "Format:" : {
+
+    },
+    "Formats" : {
+
+    },
+    "From:" : {
+
+    },
+    "Full Screen" : {
+
+    },
+    "Gamma:" : {
+
+    },
+    "Green:" : {
+
+    },
+    "Greyscale" : {
+
+    },
+    "Height" : {
+
+    },
+    "Height:" : {
+
+    },
+    "Hide Status Bar" : {
+
+    },
+    "Hide Toolbar" : {
+
+    },
+    "Hide the pointer" : {
+
+    },
+    "Hide toolbar and status bar while viewing" : {
+
+    },
+    "Higher is slower and makes smaller files" : {
+
+    },
+    "Horizontally" : {
+
+    },
+    "ISO" : {
+      "comment" : "Info panel label"
+    },
+    "Icon" : {
+
+    },
+    "Image" : {
+
+    },
+    "Image:" : {
+
+    },
+    "Images" : {
+
+    },
+    "In the Image" : {
+
+    },
+    "Info" : {
+
+    },
+    "Inner colour" : {
+
+    },
+    "Inner:" : {
+
+    },
+    "Interlaced" : {
+
+    },
+    "Into %@" : {
+
+    },
+    "Its settings are lost." : {
+
+    },
+    "JPEG" : {
+
+    },
+    "KB" : {
+
+    },
+    "Keep" : {
+
+    },
+    "Keep Running" : {
+
+    },
+    "Keep all pages" : {
+
+    },
+    "Keep aspect ratio" : {
+
+    },
+    "Keep camera data, location and keywords" : {
+
+    },
+    "Keep file dates" : {
+
+    },
+    "LZW" : {
+
+    },
+    "Left" : {
+      "comment" : "Batch rotation: a quarter turn counter-clockwise"
+    },
+    "Left:" : {
+
+    },
+    "Lens" : {
+      "comment" : "Info panel label"
+    },
+    "Light" : {
+
+    },
+    "Load List…" : {
+
+    },
+    "Longest Side" : {
+
+    },
+    "Lossless" : {
+
+    },
+    "Lossless rotation works with JPEG, HEIC and TIFF only" : {
+
+    },
+    "MIT License" : {
+
+    },
+    "MP" : {
+
+    },
+    "Margin:" : {
+
+    },
+    "Megapixels" : {
+
+    },
+    "Megapixels:" : {
+
+    },
+    "Mode" : {
+
+    },
+    "More" : {
+
+    },
+    "Move" : {
+
+    },
+    "Move %@ to %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Move %1$@ to %2$@?"
           }
         }
       }
     },
-    "Move / Copy": {},
-    "Move Down": {},
-    "Move Up": {},
-    "Move originals to the Trash after converting": {},
-    "Move to Folder": {},
-    "Move to Folder…": {},
-    "Move to Folder…  (F7)": {},
-    "Move to Trash": {},
-    "Move to Trash  (⌘⌫ or ⌦)": {},
-    "Move to Trash (⌘⌫)": {},
-    "Move, copy and trash sidecar files (.xmp, .aae, .thm) with their image": {},
-    "Name": {},
-    "Negative": {},
-    "Negative values cut into the image": {},
-    "Next": {},
-    "Next  (→ or Space)": {},
-    "Next Page": {},
-    "Next Page  (⌥→)": {},
-    "Next image (→)": {},
-    "Next page (⌥→)": {},
-    "No app": {},
-    "No images in %@": {},
-    "No options for %@": {},
-    "Noise reduction:": {},
-    "None": {},
-    "Not Now": {},
-    "OK": {},
-    "Off": {},
-    "On": {},
-    "On a Strip Above": {},
-    "On a Strip Below": {},
-    "Only page 1 of %@ can be rotated losslessly": {},
-    "Opacity:": {},
-    "Open With": {},
-    "Open an image or drop a folder here": {},
-    "Open your images with Featherview?": {},
-    "Opens JPEG:": {},
-    "Open…  (O)": {},
-    "Operations": {},
-    "Options…": {},
-    "Original %lld × %lld": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Original %1$lld × %2$lld"
+    "Move / Copy" : {
+
+    },
+    "Move Down" : {
+
+    },
+    "Move Up" : {
+
+    },
+    "Move originals to the Trash after converting" : {
+
+    },
+    "Move to Folder" : {
+
+    },
+    "Move to Folder…" : {
+
+    },
+    "Move to Folder…  (F7)" : {
+
+    },
+    "Move to Trash" : {
+
+    },
+    "Move to Trash  (⌘⌫ or ⌦)" : {
+
+    },
+    "Move to Trash (⌘⌫)" : {
+
+    },
+    "Move, copy and trash sidecar files (.xmp, .aae, .thm) with their image" : {
+
+    },
+    "Name" : {
+
+    },
+    "Negative" : {
+
+    },
+    "Negative values cut into the image" : {
+
+    },
+    "Next" : {
+
+    },
+    "Next  (→ or Space)" : {
+
+    },
+    "Next Page" : {
+
+    },
+    "Next Page  (⌥→)" : {
+
+    },
+    "Next image (→)" : {
+
+    },
+    "Next page (⌥→)" : {
+
+    },
+    "No app" : {
+
+    },
+    "No images in %@" : {
+
+    },
+    "No options for %@" : {
+
+    },
+    "Noise reduction:" : {
+
+    },
+    "None" : {
+
+    },
+    "Not Now" : {
+
+    },
+    "OK" : {
+
+    },
+    "Off" : {
+
+    },
+    "On" : {
+
+    },
+    "On a Strip Above" : {
+
+    },
+    "On a Strip Below" : {
+
+    },
+    "Only page 1 of %@ can be rotated losslessly" : {
+
+    },
+    "Opacity:" : {
+
+    },
+    "Open With" : {
+
+    },
+    "Open an image or drop a folder here" : {
+
+    },
+    "Open your images with Featherview?" : {
+
+    },
+    "Opens JPEG:" : {
+
+    },
+    "Open…  (O)" : {
+
+    },
+    "Operations" : {
+
+    },
+    "Options…" : {
+
+    },
+    "Original %lld × %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Original %1$lld × %2$lld"
           }
         }
       }
     },
-    "Outer colour": {},
-    "Outer:": {},
-    "Output": {},
-    "Output %lld × %lld": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Output %1$lld × %2$lld"
+    "Outer colour" : {
+
+    },
+    "Outer:" : {
+
+    },
+    "Output" : {
+
+    },
+    "Output %lld × %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Output %1$lld × %2$lld"
           }
         }
       }
     },
-    "Overlay": {},
-    "PackBits": {},
-    "Past the end of a folder:": {},
-    "Paste": {},
-    "Pattern:": {},
-    "Pause": {},
-    "Paused · %lld of %lld": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Paused · %1$lld of %2$lld"
+    "Overlay" : {
+
+    },
+    "PackBits" : {
+
+    },
+    "Past the end of a folder:" : {
+
+    },
+    "Paste" : {
+
+    },
+    "Pattern:" : {
+
+    },
+    "Pause" : {
+
+    },
+    "Paused · %lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Paused · %1$lld of %2$lld"
           }
         }
       }
     },
-    "Percentage": {},
-    "Photo": {},
-    "Picture": {},
-    "Place at:": {},
-    "Place:": {},
-    "Pointer": {},
-    "Position:": {},
-    "Preferences…": {},
-    "Preset:": {},
-    "Presets": {},
-    "Press a key to pick a folder": {},
-    "Previous": {},
-    "Previous  (← or ⌫)": {},
-    "Previous Page": {},
-    "Previous Page  (⌥←)": {},
-    "Previous image (←)": {},
-    "Previous page (⌥←)": {},
-    "Profile name": {},
-    "Profiles:": {},
-    "Progressive": {},
-    "Quality:": {},
-    "Quit": {},
-    "Quit while the batch is running?": {},
-    "Ratio:": {},
-    "Read": {},
-    "Recreate subfolders": {},
-    "Red:": {},
-    "Reduce to:": {},
-    "Remember the window's size and position": {},
-    "Remove": {},
-    "Rename": {},
-    "Replace": {},
-    "Replace existing files (they move to the Trash)": {},
-    "Replace the preset %@?": {},
-    "Report a Problem": {},
-    "Resize": {},
-    "Resize to:": {},
-    "Resume": {},
-    "Right": {
-      "comment": "Batch rotation: a quarter turn clockwise"
+    "Percentage" : {
+
     },
-    "Right:": {},
-    "Rotate Left": {},
-    "Rotate Left  (L)": {},
-    "Rotate Right": {},
-    "Rotate Right  (R)": {},
-    "Rotate and Flip": {},
-    "Rotate left (L)": {},
-    "Rotate right (R)": {},
-    "Rotate:": {},
-    "Safety and Dates": {},
-    "Same format": {
-      "comment": "Batch step summary: rename keeps each file's format"
+    "Photo" : {
+
     },
-    "Saturation:": {},
-    "Save": {},
-    "Save As and the batch window start with these options for each format.": {},
-    "Save As…  (S)": {},
-    "Save List…": {},
-    "Save Preset": {},
-    "Save Preset…": {},
-    "Save as Profile…": {},
-    "Select All": {},
-    "Sepia:": {},
-    "Settings…": {},
-    "Shadow": {},
-    "Sharpen:": {},
-    "Shortest Side": {},
-    "Show Info  (I)": {},
-    "Show Status Bar": {},
-    "Show Toolbar": {},
-    "Show hidden files": {},
-    "Show in Finder": {},
-    "Show info (I)": {},
-    "Show text over the image": {},
-    "Show the folder chooser": {},
-    "Show the next image after moving or trashing one": {},
-    "Side:": {},
-    "Size:": {},
-    "Sort": {},
-    "Source Code": {},
-    "Start": {},
-    "Start this folder again": {},
-    "Stop": {},
-    "Supported Formats": {},
-    "Taken": {
-      "comment": "Info panel label"
+    "Picture" : {
+
     },
-    "Target file size:": {},
-    "Text": {},
-    "Text:": {},
-    "The canvas settings leave no image": {},
-    "The counter counts only the files that are converted.": {},
-    "This folder again": {},
-    "Top:": {},
-    "Total Size": {},
-    "Unsharp mask:": {},
-    "Use Featherview": {},
-    "Use Featherview for Images": {},
-    "Use Viewer's Folder": {},
-    "Use the Input's Folder": {},
-    "Version": {},
-    "Vertically": {},
-    "Viewer": {},
-    "Waiting": {},
-    "Watermark": {},
-    "Website": {},
-    "White": {},
-    "Width": {},
-    "Width and Height": {},
-    "Width per Side": {},
-    "Width:": {},
-    "Window": {},
-    "Working": {},
-    "Write": {},
-    "X:": {},
-    "Y:": {},
-    "ZIP": {},
-    "Zoom In": {},
-    "Zoom In  (+)": {},
-    "Zoom Out": {},
-    "Zoom Out  (−)": {},
-    "Zoom in (+)": {},
-    "Zoom out (−)": {},
-    "Zoom step: %@": {},
-    "Zoom to Fit": {},
-    "Zoom to Fit  (0)": {},
-    "Zoom to fit (0)": {},
-    "anchor.bottom": {
-      "comment": "Picture position",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Bottom"
+    "Place at:" : {
+
+    },
+    "Place:" : {
+
+    },
+    "Pointer" : {
+
+    },
+    "Position:" : {
+
+    },
+    "Preferences…" : {
+
+    },
+    "Preset:" : {
+
+    },
+    "Presets" : {
+
+    },
+    "Press a key to pick a folder" : {
+
+    },
+    "Previous" : {
+
+    },
+    "Previous  (← or ⌫)" : {
+
+    },
+    "Previous Page" : {
+
+    },
+    "Previous Page  (⌥←)" : {
+
+    },
+    "Previous image (←)" : {
+
+    },
+    "Previous page (⌥←)" : {
+
+    },
+    "Profile name" : {
+
+    },
+    "Profiles:" : {
+
+    },
+    "Progressive" : {
+
+    },
+    "Quality:" : {
+
+    },
+    "Quit" : {
+
+    },
+    "Quit while the batch is running?" : {
+
+    },
+    "Ratio:" : {
+
+    },
+    "Read" : {
+
+    },
+    "Recreate subfolders" : {
+
+    },
+    "Red:" : {
+
+    },
+    "Reduce to:" : {
+
+    },
+    "Remember the window's size and position" : {
+
+    },
+    "Remove" : {
+
+    },
+    "Rename" : {
+
+    },
+    "Replace" : {
+
+    },
+    "Replace existing files (they move to the Trash)" : {
+
+    },
+    "Replace the preset %@?" : {
+
+    },
+    "Report a Problem" : {
+
+    },
+    "Resize" : {
+
+    },
+    "Resize to:" : {
+
+    },
+    "Resume" : {
+
+    },
+    "Right" : {
+      "comment" : "Batch rotation: a quarter turn clockwise"
+    },
+    "Right:" : {
+
+    },
+    "Rotate Left" : {
+
+    },
+    "Rotate Left  (L)" : {
+
+    },
+    "Rotate Right" : {
+
+    },
+    "Rotate Right  (R)" : {
+
+    },
+    "Rotate and Flip" : {
+
+    },
+    "Rotate left (L)" : {
+
+    },
+    "Rotate right (R)" : {
+
+    },
+    "Rotate:" : {
+
+    },
+    "Safety and Dates" : {
+
+    },
+    "Same format" : {
+      "comment" : "Batch step summary: rename keeps each file's format"
+    },
+    "Saturation:" : {
+
+    },
+    "Save" : {
+
+    },
+    "Save As and the batch window start with these options for each format." : {
+
+    },
+    "Save As…  (S)" : {
+
+    },
+    "Save List…" : {
+
+    },
+    "Save Preset" : {
+
+    },
+    "Save Preset…" : {
+
+    },
+    "Save as Profile…" : {
+
+    },
+    "Select All" : {
+
+    },
+    "Sepia:" : {
+
+    },
+    "Settings…" : {
+
+    },
+    "Shadow" : {
+
+    },
+    "Sharpen:" : {
+
+    },
+    "Shortest Side" : {
+
+    },
+    "Show Info  (I)" : {
+
+    },
+    "Show Status Bar" : {
+
+    },
+    "Show Toolbar" : {
+
+    },
+    "Show hidden files" : {
+
+    },
+    "Show in Finder" : {
+
+    },
+    "Show info (I)" : {
+
+    },
+    "Show text over the image" : {
+
+    },
+    "Show the folder chooser" : {
+
+    },
+    "Show the next image after moving or trashing one" : {
+
+    },
+    "Side:" : {
+
+    },
+    "Size:" : {
+
+    },
+    "Sort" : {
+
+    },
+    "Source Code" : {
+
+    },
+    "Start" : {
+
+    },
+    "Start this folder again" : {
+
+    },
+    "Stop" : {
+
+    },
+    "Supported Formats" : {
+
+    },
+    "System" : {
+
+    },
+    "Taken" : {
+      "comment" : "Info panel label"
+    },
+    "Target file size:" : {
+
+    },
+    "Text" : {
+
+    },
+    "Text:" : {
+
+    },
+    "The canvas settings leave no image" : {
+
+    },
+    "The counter counts only the files that are converted." : {
+
+    },
+    "This folder again" : {
+
+    },
+    "Top:" : {
+
+    },
+    "Total Size" : {
+
+    },
+    "Unsharp mask:" : {
+
+    },
+    "Use Featherview" : {
+
+    },
+    "Use Featherview for Images" : {
+
+    },
+    "Use Viewer's Folder" : {
+
+    },
+    "Use the Input's Folder" : {
+
+    },
+    "Version" : {
+
+    },
+    "Vertically" : {
+
+    },
+    "Viewer" : {
+
+    },
+    "Waiting" : {
+
+    },
+    "Watermark" : {
+
+    },
+    "Website" : {
+
+    },
+    "Width" : {
+
+    },
+    "Width and Height" : {
+
+    },
+    "Width per Side" : {
+
+    },
+    "Width:" : {
+
+    },
+    "Window" : {
+
+    },
+    "Working" : {
+
+    },
+    "Write" : {
+
+    },
+    "X:" : {
+
+    },
+    "Y:" : {
+
+    },
+    "ZIP" : {
+
+    },
+    "Zoom In" : {
+
+    },
+    "Zoom In  (+)" : {
+
+    },
+    "Zoom Out" : {
+
+    },
+    "Zoom Out  (−)" : {
+
+    },
+    "Zoom in (+)" : {
+
+    },
+    "Zoom out (−)" : {
+
+    },
+    "Zoom step: %@" : {
+
+    },
+    "Zoom to Fit" : {
+
+    },
+    "Zoom to Fit  (0)" : {
+
+    },
+    "Zoom to fit (0)" : {
+
+    },
+    "anchor.bottom" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Bottom"
           }
         }
       }
     },
-    "anchor.bottomLeft": {
-      "comment": "Picture position",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Bottom left"
+    "anchor.bottomLeft" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Bottom left"
           }
         }
       }
     },
-    "anchor.bottomRight": {
-      "comment": "Picture position",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Bottom right"
+    "anchor.bottomRight" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Bottom right"
           }
         }
       }
     },
-    "anchor.center": {
-      "comment": "Picture position",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Centre"
+    "anchor.center" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Centre"
           }
         }
       }
     },
-    "anchor.left": {
-      "comment": "Picture position",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Left"
+    "anchor.left" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Left"
           }
         }
       }
     },
-    "anchor.right": {
-      "comment": "Picture position",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Right"
+    "anchor.right" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Right"
           }
         }
       }
     },
-    "anchor.top": {
-      "comment": "Picture position",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Top"
+    "anchor.top" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Top"
           }
         }
       }
     },
-    "anchor.topLeft": {
-      "comment": "Picture position",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Top left"
+    "anchor.topLeft" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Top left"
           }
         }
       }
     },
-    "anchor.topRight": {
-      "comment": "Picture position",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Top right"
+    "anchor.topRight" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Top right"
           }
         }
       }
     },
-    "cancel": {},
-    "cancels": {},
-    "colours": {},
-    "end of folder": {},
-    "macOS %@: %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "macOS %1$@: %2$@"
+    "cancel" : {
+
+    },
+    "cancels" : {
+
+    },
+    "colours" : {
+
+    },
+    "end of folder" : {
+
+    },
+    "macOS %@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "macOS %1$@: %2$@"
           }
         }
       }
     },
-    "on": {
-      "comment": "Batch step summary: the step is turned on"
+    "on" : {
+      "comment" : "Batch step summary: the step is turned on"
     },
-    "open folder": {},
-    "page %@ / %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "page %1$@ / %2$@"
+    "open folder" : {
+
+    },
+    "page %@ / %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "page %1$@ / %2$@"
           }
         }
       }
     },
-    "page 1 of %lld": {
-      "comment": "Batch log note: only the first page of a multi-page file was converted"
+    "page 1 of %lld" : {
+      "comment" : "Batch log note: only the first page of a multi-page file was converted"
     },
-    "px": {},
-    "show images": {},
-    "up": {},
-    "uses the highlighted one": {},
-    "{folder} in the path stands for each image's folder name.": {},
-    "{name} {folder} {index} {count} {size} {date}": {},
-    "— page %lld / %lld — %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "— page %1$lld / %2$lld — %3$@"
+    "px" : {
+
+    },
+    "show images" : {
+
+    },
+    "up" : {
+
+    },
+    "uses the highlighted one" : {
+
+    },
+    "{folder} in the path stands for each image's folder name." : {
+
+    },
+    "{name} {folder} {index} {count} {size} {date}" : {
+
+    },
+    "— page %lld / %lld — %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "— page %1$lld / %2$lld — %3$@"
           }
         }
       }
     },
-    "… %lld more · into %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "… %1$lld more · into %2$@"
+    "… %lld more · into %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "… %1$lld more · into %2$@"
           }
         }
       }
     },
-    "→ %@": {
-      "shouldTranslate": false
+    "→ %@" : {
+      "shouldTranslate" : false
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }
