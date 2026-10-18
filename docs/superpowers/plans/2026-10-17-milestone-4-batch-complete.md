@@ -929,8 +929,8 @@ Needs the screen: ask the maintainer before driving the GUI.
   (a file appends, a folder adds with its subfolders), crop (bar edges within 0.5 % of the output's),
   colour (brightness, red), filters (sepia, temperature) and a watermark image against the output.
   QA fixes: 1e87e92 (10,000 rows froze the window, Stop missing from the toolbar, Return started a batch,
-  stale ticks after Clear), "1 file" and hint spacing. Open: Core Image keeps ~2 GB of decoded inputs after
-  a big batch (see Step 2).
+  stale ticks after Clear), "1 file" and hint spacing. The ~2 GB kept after a big batch is fixed
+  (see Step 2).
 - [x] **Step 2:** Measure: 100 × 12 MP JPEG → JPEG with no operations, before (main before this
   milestone) and after: not slower. Same with resize + text: note the time.
   Measured (M1 Pro 10 cores, `BatchConverter.run` from a release test build, 3 runs, load average 3.3–4.3):
@@ -938,7 +938,9 @@ Needs the screen: ask the maintainer before driving the GUI.
   Memory: a 10,000-file run (12 MP, border) holds 2.3–2.6 GB footprint, and about 2 GB stays after
   the run ends: Core Image keeps the decoded inputs it has drawn (≈48 MB each); `clearCaches()`, a
   context per file and `cacheImmediately: false` don't release them, warn pressure frees part.
-  Bounded, left open as a finding.
+  Bounded, left open as a finding. Fixed later (1453610): not Core Image but malloc keeping freed
+  output buffers; outputs now use mmap'd buffers with a small reuse pool, 100 × 12 MP + border leaves
+  84–91 MB instead of ~2 GB and runs 3.55–3.64 s instead of 3.78–3.88 s.
 - [x] **Step 3:** Update `README.md` if it lists batch features, `docs/roadmap.md` (milestone 4
   done), `docs/parity.md` rows for batch that change status, tick this plan.
 - [x] **Step 4: Commit.** `docs: milestone 4 done after manual QA`
