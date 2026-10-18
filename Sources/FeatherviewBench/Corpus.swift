@@ -15,7 +15,9 @@ enum Corpus {
     }
 
     static func write(to dir: URL) throws {
-        try FileManager.default.createDirectory(at: dir.appendingPathComponent("browse"), withIntermediateDirectories: true)
+        for folder in ["browse", "browse-heic", "browse-50mp"] {
+            try FileManager.default.createDirectory(at: dir.appendingPathComponent(folder), withIntermediateDirectories: true)
+        }
         var files = [
             File(name: "12mp-landscape.jpg", width: 4032, height: 3024, type: .jpeg),
             File(name: "12mp-portrait.jpg", width: 3024, height: 4032, type: .jpeg),
@@ -31,6 +33,13 @@ enum Corpus {
             let landscape = i % 2 == 1
             files.append(File(name: String(format: "browse/%04d.jpg", i), width: landscape ? 4032 : 3024,
                               height: landscape ? 3024 : 4032, type: .jpeg, seed: UInt32(i)))
+            // Slow decodes, for the Task 6 gate: HEIC (the iPhone's default) and 50 MP JPEG.
+            files.append(File(name: String(format: "browse-heic/%04d.heic", i), width: landscape ? 4032 : 3024,
+                              height: landscape ? 3024 : 4032, type: .heic, quality: 0.8, seed: UInt32(i)))
+            if i <= 20 {
+                files.append(File(name: String(format: "browse-50mp/%04d.jpg", i), width: landscape ? 8688 : 5792,
+                                  height: landscape ? 5792 : 8688, type: .jpeg, seed: UInt32(i)))
+            }
         }
         for file in files {
             let url = dir.appendingPathComponent(file.name)
