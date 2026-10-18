@@ -7,6 +7,8 @@ let package = Package(
     products: [
         // Decode and browse timings without a window; not part of the app bundle.
         .executable(name: "featherview-bench", targets: ["FeatherviewBench"]),
+        // The disk image background per language, for scripts/dmg.sh; not part of the app bundle.
+        .executable(name: "featherview-dmg", targets: ["FeatherviewDMG"]),
     ],
     dependencies: [
         // libwebp (BSD), compiled from Google's C sources by SwiftPM; only WebPEncoder uses it.
@@ -18,6 +20,7 @@ let package = Package(
         // The SwiftUI app. Thin: wires FeatherviewCore to windows, menus and keys.
         .executableTarget(name: "Featherview", dependencies: ["FeatherviewCore"]),
         .executableTarget(name: "FeatherviewBench", dependencies: ["FeatherviewCore"]),
+        .executableTarget(name: "FeatherviewDMG", dependencies: ["FeatherviewCore"]),
         .testTarget(name: "FeatherviewCoreTests", dependencies: ["FeatherviewCore"]),
         .testTarget(name: "FeatherviewBenchTests", dependencies: ["FeatherviewBench"]),
     ]
