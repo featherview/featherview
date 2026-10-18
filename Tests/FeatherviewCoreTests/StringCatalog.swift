@@ -93,12 +93,22 @@ private struct Check {
 
     mutating func localization(_ l: StringCatalog.Localization, source: String, en: StringCatalog.Localization?) {
         if let unit = l.stringUnit { leaf(unit, source: source, form: nil) }
-        if let plural = l.variations?.plural { forms(plural, source: source, what: "plural") }
+        if let plural = l.variations?.plural {
+            let counts = Specifiers(source).byIndex.values.filter { $0 == "integer" }.count
+            if counts != 1 { report("has a plural for a source with \(counts) counts, use %#@name@ substitutions") }
+            forms(plural, source: source, what: "plural")
+        }
         for (name, substitution) in (l.substitutions ?? [:]).sorted(by: { $0.key < $1.key }) {
-            let enOther = en?.substitutions?[name]?.variations.plural?["other"]?.stringUnit?.value
+            let enSubstitution = en?.substitutions?[name]
+            if let enSubstitution, substitution.argNum != enSubstitution.argNum
+                || Specifiers.type(substitution.formatSpecifier) != Specifiers.type(enSubstitution.formatSpecifier) {
+                report("has substitution \(name) for another argument than the source")
+            }
+            let enOther = enSubstitution?.variations.plural?["other"]?.stringUnit?.value
             forms(substitution.variations.plural ?? [:], source: enOther ?? source, what: "substitution \(name)")
         }
-        if l.stringUnit == nil && l.variations == nil { report("has no text") }
+        // Only stringUnit and plural are checked; any other variations (device) count as no text.
+        if l.stringUnit == nil && l.variations?.plural == nil { report("has no text") }
         let texts = [l.stringUnit?.value] + (l.variations?.plural ?? [:]).values.map { $0.stringUnit?.value }
         let used = texts.compactMap { $0 }.reduce(into: Set<String>()) { $0.formUnion(Specifiers($1).tokens) }
         for name in used.sorted() where l.substitutions?[name] == nil { report("has no substitution for %#@\(name)@") }
@@ -197,20 +207,25 @@ private struct Specifiers: CustomStringConvertible {
             guard let type = match.output[2].substring else { byIndex[0] = "arg"; continue }
             let index = match.output[1].substring.flatMap { Int($0) } ?? next
             if match.output[1].substring == nil { next += 1 }
-            byIndex[index] = switch type.first! {
-            case "@": "object"
-            case "d", "D", "i", "u", "U", "x", "X", "o", "O", "c", "C": "integer"
-            case "f", "F", "e", "E", "g", "G", "a", "A": "double"
-            default: String(type)
-            }
+            byIndex[index] = Self.type(String(type))
         }
     }
 
-    /// A zero/one/two form may leave out the plural's own count ("one file").
-    func omittingOneCount(is other: [Int: String]) -> Bool {
-        byIndex.contains { index, type in
-            (type == "integer" || type == "arg") && byIndex.filter { $0.key != index } == other
+    /// A conversion's normalized type; also takes a substitution's formatSpecifier ("lld", "@").
+    static func type(_ conversion: String) -> String {
+        switch conversion.last {
+        case "@": "object"
+        case "d", "D", "i", "u", "U", "x", "X", "o", "O", "c", "C": "integer"
+        case "f", "F", "e", "E", "g", "G", "a", "A": "double"
+        default: conversion
         }
+    }
+
+    /// A zero/one/two form may leave out the plural's own count ("one file"): a substitution's %arg,
+    /// or a whole-string plural's only integer.
+    func omittingOneCount(is other: [Int: String]) -> Bool {
+        let counts = byIndex[0] != nil ? [0] : byIndex.filter { $0.value == "integer" }.map(\.key)
+        return counts.count == 1 && byIndex.filter { $0.key != counts[0] } == other
     }
 
     var description: String {

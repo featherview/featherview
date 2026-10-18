@@ -153,6 +153,31 @@ import Testing
         #expect(problems(de, "de") == [])
     }
 
+    @Test func wholeStringPluralNeedsExactlyOneCount() throws {
+        let en = plural(["one": "%lld of %lld file", "other": "%lld of %lld files"])
+        let de = try catalog(
+            "%lld of %lld files", en: en, "de", plural(["one": "eine von %lld Dateien", "other": "%lld von %lld Dateien"]))
+        #expect(problems(de, "de").count == 2)
+    }
+
+    @Test func substitutionArgumentMustMatchTheSource() throws {
+        func files(_ argNum: Int, _ specifier: String, _ one: String, _ other: String) -> [String: Any] {
+            ["argNum": argNum, "formatSpecifier": specifier,
+             "variations": ["plural": ["one": unit(one), "other": unit(other)]]]
+        }
+        var en = unit("%#@files@ done")
+        en["substitutions"] = ["files": files(1, "lld", "%arg file", "%arg files")]
+        var de = unit("%#@files@ fertig")
+        de["substitutions"] = ["files": files(2, "@", "%arg Datei", "%arg Dateien")]
+        #expect(problems(try catalog("%#@files@ done", en: en, "de", de), "de").count == 1)
+    }
+
+    @Test func variationsWithoutPluralHaveNoText() throws {
+        #expect(problems(try catalog("Open…", "de", ["variations": [:]]), "de").count == 1)
+        let device: [String: Any] = ["variations": ["device": ["mac": unit("", "new")]]]
+        #expect(problems(try catalog("Open…", "de", device), "de").count == 1)
+    }
+
     @Test func shippedCatalogHasNoProblemsInItsLanguages() throws {
         let catalog = try StringCatalog.load(StringCatalog.shippedURL)
         #expect(catalog.problems(languages: catalog.presentLanguages) == [])
