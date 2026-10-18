@@ -7,6 +7,10 @@ public struct BatchInputList: Equatable, Sendable {
     private var keys: Set<String> = []
     /// Each row's key as stored at add: recomputing it on remove can differ once a symlink or volume changed.
     private var keyOf: [URL: String] = [:]
+    /// Each row's file size, read at add (off the main thread), so the total never re-reads the list.
+    private var sizeOf: [URL: Int] = [:]
+    /// Sum of the items' file sizes as read at add.
+    public private(set) var totalBytes = 0
 
     public init(_ items: [BatchInput] = []) {
         append(items)
@@ -92,8 +96,14 @@ public struct BatchInputList: Equatable, Sendable {
             let key = pathKey(input.url)
             guard keys.insert(key).inserted else { continue }
             keyOf[input.url] = key
-            items.append(input)
+            add(size: input.fileSize(), of: input)
         }
+    }
+
+    private mutating func add(size: Int, of input: BatchInput) {
+        sizeOf[input.url] = size
+        totalBytes += size
+        items.append(input)
     }
 
     /// Appends `other`'s items with the keys it resolved at add, so a list built off the main
@@ -102,13 +112,15 @@ public struct BatchInputList: Equatable, Sendable {
         for input in other.items {
             guard let key = other.keyOf[input.url], keys.insert(key).inserted else { continue }
             keyOf[input.url] = key
-            items.append(input)
+            add(size: other.sizeOf[input.url] ?? 0, of: input)
         }
     }
 
     public mutating func remove(at offsets: IndexSet) {
         for index in offsets.reversed() where items.indices.contains(index) {
-            if let key = keyOf.removeValue(forKey: items.remove(at: index).url) { keys.remove(key) }
+            let url = items.remove(at: index).url
+            if let key = keyOf.removeValue(forKey: url) { keys.remove(key) }
+            totalBytes -= sizeOf.removeValue(forKey: url) ?? 0
         }
     }
 
@@ -116,6 +128,8 @@ public struct BatchInputList: Equatable, Sendable {
         items.removeAll()
         keys.removeAll()
         keyOf.removeAll()
+        sizeOf.removeAll()
+        totalBytes = 0
     }
 
     /// Finder order of the file names, stable.

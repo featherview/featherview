@@ -3,12 +3,7 @@ import FeatherviewCore
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The batch window's steps column (spec "Window"): output, rename, the operations in spec order, safety.
-enum BatchStep: String, CaseIterable, Identifiable {
-    case output, rename, crop, resize, orientation, colour, filters, canvas, border, text, watermark, safety
-
-    var id: String { rawValue }
-
+extension BatchStep {
     var title: LocalizedStringKey {
         switch self {
         case .output: "Format and Folder"
@@ -25,15 +20,6 @@ enum BatchStep: String, CaseIterable, Identifiable {
         case .safety: "Safety and Dates"
         }
     }
-
-    static let operations: [BatchStep] = [.crop, .resize, .orientation, .colour, .filters, .canvas, .border, .text, .watermark]
-}
-
-/// An input row's state during and after a run.
-enum BatchRowState: Equatable {
-    case waiting, working
-    case done(String)
-    case failed(String)
 }
 
 @MainActor @Observable
@@ -47,9 +33,7 @@ final class BatchModel {
             scheduleSave()
         }
     }
-    var inputs = BatchInputList() {
-        didSet { if inputs != oldValue { updateTotalBytes() } }
-    }
+    var inputs = BatchInputList()
     var selection: Set<BatchInput> = []
     var step = BatchStep.output
     private(set) var isRunning = false
@@ -60,8 +44,6 @@ final class BatchModel {
     private(set) var isFinished = false
     /// Background folder scans and list loads in flight (the header's spinner).
     private(set) var scans = 0
-    /// Sum of the inputs' file sizes; nil while it's being read.
-    private(set) var totalBytes: Int?
     /// A short sentence for the user (e.g. missing files of a loaded list); the view shows and clears it.
     var notice: String?
 
@@ -76,7 +58,6 @@ final class BatchModel {
     private var runStart = Date.now
     private var runTotal = 0
     private var saveTask: Task<Void, Never>?
-    private var bytesTask: Task<Void, Never>?
     /// Reads the run's results; ends once every file in flight is committed.
     private var runTask: Task<Void, Never>?
 
@@ -86,62 +67,14 @@ final class BatchModel {
 
     // MARK: - Steps column
 
-    func isUsed(_ step: BatchStep) -> Bool {
-        switch step {
-        case .rename: settings.mode != .convert
-        case _ where BatchStep.operations.contains(step): settings.mode != .rename
-        default: true
-        }
-    }
-
-    func isOn(_ step: BatchStep) -> Bool {
-        let s = settings
-        switch step {
-        case .output: return true
-        case .rename: return s.mode != .convert
-        case .crop: return s.crop.isOn
-        case .resize: return s.resize.isOn
-        case .orientation: return s.orientation.isOn
-        case .colour: return s.colour.isOn
-        case .filters: return s.filters.isOn
-        case .canvas: return s.canvas.isOn
-        case .border: return s.border.isOn
-        case .text: return s.text.isOn
-        case .watermark: return s.watermark.isOn
-        case .safety:
-            let f = s.safety
-            return f.replaceExisting || f.trashOriginals || f.keepDates || f.recreateSubfolders
-        }
-    }
-
-    /// "HEIC", "2048", "on", "" (off or unused).
-    func summary(of step: BatchStep) -> String {
-        guard isUsed(step) else { return "" }
-        switch step {
-        case .output:
-            return settings.mode == .rename ? String(localized: "Same format") : settings.format.name
-        case .rename:
-            return settings.renamePattern
-        case .resize:
-            guard settings.resize.isOn else { return "" }
-            let r = settings.resize
-            switch r.mode {
-            case .longestSide, .shortestSide: return "\(r.side)"
-            case .widthHeight:
-                return String(localized: "\(r.width.map(String.init) ?? "–") × \(r.height.map(String.init) ?? "–")")
-            case .megapixels: return String(localized: "\(r.megapixels.formatted()) MP")
-            case .percent: return String(localized: "\(r.percentWidth.formatted()) %")
-            }
-        default:
-            return isOn(step) ? String(localized: "on") : ""
-        }
-    }
+    func isUsed(_ step: BatchStep) -> Bool { step.isUsed(in: settings) }
+    func isOn(_ step: BatchStep) -> Bool { step.isOn(in: settings) }
+    func summary(of step: BatchStep) -> String { step.summary(in: settings) }
 
     // MARK: - Running
 
     var canStart: Bool {
-        // A scan still in flight would append files the run never sees.
-        !isRunning && scans == 0 && !inputs.items.isEmpty && (settings.mode == .rename || !settings.outputFolder.isEmpty)
+        BatchProgress.canStart(isRunning: isRunning, scans: scans, inputCount: inputs.items.count, settings: settings)
     }
 
     /// Done files (converted or failed) of the current run.
@@ -150,9 +83,9 @@ final class BatchModel {
 
     /// Estimated seconds left, once 3 files are done.
     var secondsLeft: Double? {
-        guard isRunning, doneCount >= 3, doneCount < runTotal else { return nil }
-        let active = Date.now.timeIntervalSince(runStart) - control.pausedDuration() / .seconds(1)
-        return active / Double(doneCount) * Double(runTotal - doneCount)
+        guard isRunning else { return nil }
+        return BatchProgress.secondsLeft(elapsed: Date.now.timeIntervalSince(runStart),
+                                         paused: control.pausedDuration() / .seconds(1), done: doneCount, total: runTotal)
     }
 
     /// "N converted, M failed" of the last run.
@@ -161,19 +94,8 @@ final class BatchModel {
     }
 
     func state(of input: BatchInput) -> BatchRowState? {
-        if let result = resultFor[input.url] {
-            switch result.status {
-            case .converted: return .done(result.output?.lastPathComponent ?? "")
-            case .failed: return .failed(result.logLine)
-            case .notStarted: return nil
-            }
-        }
-        guard isRunning else { return nil }
-        // shortcut: the converter doesn't report starts; files run in list order, so the next
-        // `workers` uncommitted rows are shown working. Exact once the converter reports starts.
-        guard let index = inputs.items.firstIndex(of: input) else { return .waiting }
-        return !isPaused && index < results.count + max(1, ProcessInfo.processInfo.activeProcessorCount - 1)
-            ? .working : .waiting
+        BatchProgress.rowState(result: resultFor[input.url], index: inputs.items.firstIndex(of: input),
+                               isRunning: isRunning, isPaused: isPaused, committed: results.count)
     }
 
     func start() {
@@ -386,19 +308,6 @@ final class BatchModel {
             if loaded.missing > 0 {
                 notice = String(localized: "\(loaded.missing) files of \(url.lastPathComponent) no longer exist")
             }
-        }
-    }
-
-    private func updateTotalBytes() {
-        bytesTask?.cancel()
-        totalBytes = nil
-        let items = inputs.items
-        bytesTask = Task {
-            let total = await Task.detached(priority: .utility) {
-                items.reduce(0) { $0 + $1.fileSize() }
-            }.value
-            guard !Task.isCancelled else { return }
-            totalBytes = total
         }
     }
 }

@@ -308,3 +308,24 @@ import Testing
         #expect(names(l.items) == ["a.jpg", "b.jpg"])
     }
 }
+
+@Suite struct BatchInputListBytesTests {
+    @Test func totalBytesFollowsAddsAndRemoves() throws {
+        let dir = try Fixtures.makeTempDir()
+        let a = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 4, height: 4)
+        let b = try Fixtures.writeImage(to: dir.appendingPathComponent("b.jpg"), width: 8, height: 8)
+        let sizeA = BatchInput(url: a).fileSize(), sizeB = BatchInput(url: b).fileSize()
+        var built = BatchInputList()
+        built.add(files: [a, b])
+        var list = BatchInputList()
+        list.append(built)
+        #expect(list.totalBytes == sizeA + sizeB)
+        list.sortByName()
+        list.move(IndexSet([0]), by: 1)
+        #expect(list.totalBytes == sizeA + sizeB)
+        list.remove(at: IndexSet([list.items.firstIndex { $0.url == a }!]))
+        #expect(list.totalBytes == sizeB)
+        list.removeAll()
+        #expect(list.totalBytes == 0)
+    }
+}

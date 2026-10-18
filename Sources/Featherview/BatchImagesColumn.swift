@@ -46,7 +46,7 @@ struct BatchImagesColumn: View {
 
     private var countLine: String {
         let count = model.inputs.items.count
-        guard let bytes = model.totalBytes else { return String(localized: "\(count) files") }
+        let bytes = model.inputs.totalBytes
         return String(localized: "\(count) files · \(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file))")
     }
 

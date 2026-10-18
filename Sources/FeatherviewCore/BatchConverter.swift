@@ -21,7 +21,7 @@ public enum BatchConverter {
     }
 
     /// All cores but one (spec "Running").
-    static let defaultWorkers = max(1, ProcessInfo.processInfo.activeProcessorCount - 1)
+    public static let defaultWorkers = max(1, ProcessInfo.processInfo.activeProcessorCount - 1)
 
     /// Calls `onResult` once per input, in list order, as each is committed (off the main thread).
     /// Returns every result (not-started ones after a Stop).
