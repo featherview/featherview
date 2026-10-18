@@ -24,7 +24,7 @@ final class BatchModel {
     private(set) var done = 0
     private(set) var results: [BatchResult] = []
 
-    var failures: [BatchResult] { results.filter { $0.error != nil } }
+    var failures: [BatchResult] { results.filter { $0.status == .failed } }
 
     init() {
         let format = FormatRegistry.format(id: UserDefaults.standard.string(forKey: "batchFormat") ?? "jpg") ?? .jpeg
@@ -46,16 +46,22 @@ final class BatchModel {
         guard let outputFolder, !inputs.isEmpty, !isRunning else { return }
         FormatSettings.save(options, for: format)
         saved = options
-        let job = BatchJob(
-            inputs: inputs, outputFolder: outputFolder, format: format, options: options,
-            maxDimension: limitSize ? max(16, maxDimension) : nil,
-            rename: useRename ? RenamePattern(renameTemplate) : nil)
+        var settings = BatchSettings()
+        settings.mode = useRename ? .convertAndRename : .convert
+        settings.formatID = format.id
+        settings.options = options
+        settings.outputFolder = outputFolder.path
+        settings.renamePattern = renameTemplate
+        settings.resize.isOn = limitSize
+        settings.resize.mode = .longestSide
+        settings.resize.side = max(16, maxDimension)
+        let job = BatchJob(inputs: inputs.map { BatchInput(url: $0) }, settings: settings)
         isRunning = true
         done = 0
         results = []
         Task {
-            results = await BatchConverter.run(job) { done, _ in
-                Task { @MainActor in self.done = max(self.done, done) }
+            results = await BatchConverter.run(job) { _ in
+                Task { @MainActor in self.done += 1 }
             }
             isRunning = false
         }
@@ -133,7 +139,7 @@ struct BatchView: View {
                     Text("\(model.results.count - model.failures.count) converted, \(model.failures.count) failed")
                 }
                 ForEach(model.failures, id: \.input) { result in
-                    Text("\(result.input.lastPathComponent): \(result.error ?? "")")
+                    Text(result.logLine)
                         .foregroundStyle(.red)
                 }
             }

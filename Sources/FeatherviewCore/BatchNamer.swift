@@ -46,7 +46,7 @@ public struct BatchNamer: Sendable {
     /// output format's, or in `.rename` mode the input's own, as it is.
     /// Without `replaceExisting`: never an existing file, an input, or a name given earlier in
     /// this run (case-insensitive) — " 2", " 3", … appended. With it: an existing non-input file
-    /// may be returned (the caller trashes it first); inputs and names given in this run still
+    /// may be returned (the caller trashes it first), never a folder; inputs and names given in this run still
     /// get suffixes.
     public mutating func next(for input: BatchInput, date: Date?) -> URL {
         let original = input.url.deletingPathExtension().lastPathComponent
@@ -58,7 +58,7 @@ public struct BatchNamer: Sendable {
         let suffixKey = folderKey(folder) + "/" + Self.normalized(base + "." + ext)
         var url = Self.fitted(base, suffix: "", ext: ext, in: folder)
         var n = nextSuffix[suffixKey] ?? 2
-        while taken.contains(key(url)) || (!settings.safety.replaceExisting && fileExists(url)) {
+        while taken.contains(key(url)) || ((!settings.safety.replaceExisting || Self.isFolder(url)) && fileExists(url)) {
             url = Self.fitted(base, suffix: " \(n)", ext: ext, in: folder)
             n += 1
         }
@@ -76,6 +76,12 @@ public struct BatchNamer: Sendable {
         // An extension too long for any base leaves an over-long name; writing it fails for that file only.
         while !trimmed.isEmpty, bytes(trimmed) > 255 - bytes(tail) { trimmed = trimmed.dropLast() }
         return folder.appendingPathComponent(trimmed + tail, isDirectory: false)
+    }
+
+    /// "Replace existing files" replaces files only, never a folder.
+    static func isFolder(_ url: URL) -> Bool {
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
     }
 
     /// Folded like APFS compares names (ß = ss, ς = σ, ﬀ = ff), which `lowercased()` misses.

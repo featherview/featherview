@@ -1,62 +1,91 @@
 import Foundation
+import os
 
 public struct BatchJob: Sendable {
-    public var inputs: [URL]
-    public var outputFolder: URL
-    public var format: OutputFormat
-    /// The format's options (spec "Format options"); its defaults unless given.
-    public var options: FormatOptions
-    /// Longest side in pixels; nil keeps the size. Never upscales.
-    public var maxDimension: Int?
-    /// nil keeps the original base name.
-    public var rename: RenamePattern?
+    public var inputs: [BatchInput]
+    public var settings: BatchSettings
 
-    public init(inputs: [URL], outputFolder: URL, format: OutputFormat, options: FormatOptions? = nil,
-                maxDimension: Int? = nil, rename: RenamePattern? = nil) {
+    public init(inputs: [BatchInput], settings: BatchSettings) {
         self.inputs = inputs
-        self.outputFolder = outputFolder
-        self.format = format
-        self.options = options ?? format.defaultOptions
-        self.maxDimension = maxDimension
-        self.rename = rename
+        self.settings = settings
     }
 }
 
-public enum BatchPlanner {
-    /// One output URL per input, in input order. Never an existing file, never an input,
-    /// never the same name twice: clashes get " 2", " 3", ... appended.
-    public static func outputURLs(
-        for job: BatchJob,
-        // attributesOfItem doesn't follow symlinks, so a dangling link still counts as taken.
-        fileExists: (URL) -> Bool = { (try? FileManager.default.attributesOfItem(atPath: $0.path)) != nil }
-    ) -> [URL] {
-        var taken = Set(job.inputs.map(pathKey))
-        // Resolve the folder once: pathKey per probe hits the filesystem and made clashes quadratic.
-        let folderKey = pathKey(job.outputFolder)
-        func key(_ url: URL) -> String { folderKey + "/" + url.lastPathComponent.lowercased() }
-        var nextSuffix: [String: Int] = [:]
-        return job.inputs.enumerated().map { offset, input in
-            let original = input.deletingPathExtension().lastPathComponent
-            let base = job.rename?.baseName(original: original, index: offset + 1) ?? original
-            func candidate(_ suffix: String) -> URL {
-                // APFS names are at most 255 bytes: shorten the base, whole characters only.
-                // Measured decomposed, because file URLs store names that way (é is 3 bytes).
-                func bytes(_ s: some StringProtocol) -> Int { s.decomposedStringWithCanonicalMapping.utf8.count }
-                let room = 255 - bytes(suffix + "." + job.format.fileExtension)
-                var trimmed = Substring(base)
-                while bytes(trimmed) > room { trimmed = trimmed.dropLast() }
-                return job.outputFolder.appendingPathComponent(trimmed + suffix)
-                    .appendingPathExtension(job.format.fileExtension)
-            }
-            var url = candidate("")
-            var counter = nextSuffix[base.lowercased()] ?? 2
-            while taken.contains(key(url)) || fileExists(url) {
-                url = candidate(" \(counter)")
-                counter += 1
-            }
-            nextSuffix[base.lowercased()] = counter
-            taken.insert(key(url))
-            return url
+public enum BatchStatus: Sendable, Equatable { case converted, failed, notStarted }
+
+public struct BatchResult: Sendable, Equatable {
+    public let input: URL
+    /// nil when failed or not started.
+    public let output: URL?
+    public let status: BatchStatus
+    /// The error sentence, or a note such as "page 1 of 3".
+    public let message: String?
+
+    public init(input: URL, output: URL?, status: BatchStatus, message: String?) {
+        self.input = input; self.output = output; self.status = status; self.message = message
+    }
+
+    /// "IMG_1.jpg → Holiday 001.heic", "Can't open broken.jpg", "… · page 1 of 3".
+    public var logLine: String {
+        let name = input.lastPathComponent
+        switch status {
+        case .failed: return message ?? String(localized: "Can't convert \(name)")
+        case .notStarted: return String(localized: "\(name) wasn't converted")
+        case .converted:
+            let target = output?.lastPathComponent ?? ""
+            if let message { return String(localized: "\(name) → \(target) · \(message)") }
+            return String(localized: "\(name) → \(target)")
         }
+    }
+}
+
+/// Stop / Pause / Resume, shared between the window and the running batch.
+public final class BatchControl: Sendable {
+    private struct State {
+        var paused = false, stopped = false
+        var waiters: [CheckedContinuation<Void, Never>] = []
+    }
+    private let state = OSAllocatedUnfairLock(initialState: State())
+
+    public init() {}
+
+    public func pause() { state.withLock { if !$0.stopped { $0.paused = true } } }
+    public func resume() { wake { $0.paused = false } }
+    public func stop() { wake { $0.stopped = true; $0.paused = false } }
+    public var isPaused: Bool { state.withLock { $0.paused } }
+    public var isStopped: Bool { state.withLock { $0.stopped } }
+
+    /// Returns once not paused (or stopped).
+    func waitWhilePaused() async {
+        await withCheckedContinuation { (waiter: CheckedContinuation<Void, Never>) in
+            let waiting = state.withLock { s in
+                guard s.paused, !s.stopped else { return false }
+                s.waiters.append(waiter)
+                return true
+            }
+            if !waiting { waiter.resume() }
+        }
+    }
+
+    private func wake(_ change: @Sendable (inout State) -> Void) {
+        let waiters = state.withLock { s in
+            change(&s)
+            defer { s.waiters = [] }
+            return s.waiters
+        }
+        for waiter in waiters { waiter.resume() }
+    }
+}
+
+public enum BatchLog {
+    /// One line per result, then "N converted, M failed" (and ", K not converted" after a Stop).
+    public static func text(_ results: [BatchResult]) -> String {
+        let converted = results.filter { $0.status == .converted }.count
+        let failed = results.filter { $0.status == .failed }.count
+        let notStarted = results.count - converted - failed
+        let summary = notStarted > 0
+            ? String(localized: "\(converted) converted, \(failed) failed, \(notStarted) not converted")
+            : String(localized: "\(converted) converted, \(failed) failed")
+        return (results.map(\.logLine) + [summary]).joined(separator: "\n")
     }
 }

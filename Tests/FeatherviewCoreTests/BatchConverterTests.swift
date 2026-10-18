@@ -5,12 +5,38 @@ import Testing
 @testable import FeatherviewCore
 
 @Suite struct BatchConverterTests {
-    final class Counter: @unchecked Sendable {
+    final class Box<T: Sendable>: @unchecked Sendable {
         private let lock = NSLock()
-        private var value = 0
-        func increment() { lock.withLock { value += 1 } }
-        var count: Int { lock.withLock { value } }
+        private var value: T
+        init(_ value: T) { self.value = value }
+        func update(_ change: (inout T) -> Void) { lock.withLock { change(&value) } }
+        var get: T { lock.withLock { value } }
     }
+
+    func job(_ inputs: [URL], out: URL, format: String = "png", root: URL? = nil,
+             _ edit: (inout BatchSettings) -> Void = { _ in }) -> BatchJob {
+        var s = BatchSettings()
+        s.formatID = format
+        s.outputFolder = out.path
+        edit(&s)
+        return BatchJob(inputs: inputs.map { BatchInput(url: $0, root: root) }, settings: s)
+    }
+
+    /// A Trash stand-in: records each URL and moves it to a folder of its own.
+    final class FakeTrash: @unchecked Sendable {
+        let folder: URL
+        private let lock = NSLock()
+        private var items: [URL] = []
+        init() throws { folder = try Fixtures.makeTempDir() }
+        var trashed: [URL] { lock.withLock { items } }
+        var names: [String] { trashed.map(\.lastPathComponent) }
+        func trash(_ url: URL) throws {
+            lock.withLock { items.append(url) }
+            try FileManager.default.moveItem(at: url, to: folder.appendingPathComponent(UUID().uuidString + url.lastPathComponent))
+        }
+    }
+
+    // MARK: Milestone 1 cases
 
     @Test func convertsResizesAndReportsFailuresWithoutStopping() async throws {
         let dir = try Fixtures.makeTempDir()
@@ -18,39 +44,41 @@ import Testing
         let big = try Fixtures.writeImage(to: dir.appendingPathComponent("big.png"), width: 4000, height: 2000, type: .png)
         let bad = try Fixtures.writeCorrupt(to: dir.appendingPathComponent("bad.jpg"))
         let out = try Fixtures.makeTempDir()
-        let job = BatchJob(inputs: [rotated, big, bad], outputFolder: out, format: .jpeg, maxDimension: 100)
-        let progress = Counter()
+        let job = job([rotated, big, bad], out: out, format: "jpg") {
+            $0.resize.isOn = true
+            $0.resize.side = 100
+        }
+        let seen = Box([URL]())
 
-        let results = await BatchConverter.run(job) { _, _ in progress.increment() }
+        let results = await BatchConverter.run(job) { r in seen.update { $0.append(r.input) } }
 
-        #expect(results.map(\.input) == job.inputs)
-        #expect(results.map { $0.error == nil } == [true, true, false])
-        #expect(progress.count == 3)
-        #expect(ImageDecoder.displaySize(of: results[0].output) == CGSize(width: 20, height: 40))  // upright, not upscaled
-        #expect(ImageDecoder.displaySize(of: results[1].output) == CGSize(width: 100, height: 50))
-        #expect(!FileManager.default.fileExists(atPath: results[2].output.path))
+        #expect(results.map(\.input) == [rotated, big, bad])
+        #expect(seen.get == [rotated, big, bad])
+        #expect(results.map(\.status) == [.converted, .converted, .failed])
+        #expect(ImageDecoder.displaySize(of: try #require(results[0].output)) == CGSize(width: 20, height: 40))  // upright, not upscaled
+        #expect(ImageDecoder.displaySize(of: try #require(results[1].output)) == CGSize(width: 100, height: 50))
+        #expect(results[2].output == nil)
+        #expect(results[2].message == "Can't open bad.jpg")
+        #expect(try FileManager.default.contentsOfDirectory(atPath: out.path).count == 2)
     }
 
     @Test func encodesHEIC() async throws {
         let dir = try Fixtures.makeTempDir()
         let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 64, height: 64)
-        let results = await BatchConverter.run(BatchJob(inputs: [input], outputFolder: dir, format: .heic))
-        #expect(results.first?.error == nil)
+        let results = await BatchConverter.run(job([input], out: dir, format: "heic"))
+        #expect(results.first?.status == .converted)
     }
 
-    @Test func neverReplacesAFileThatAppearedAfterPlanning() throws {
-        let dir = try Fixtures.makeTempDir()
-        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+    @Test func neverReplacesAFileThatAppearedAfterNaming() throws {
         let out = try Fixtures.makeTempDir()
         let planned = out.appendingPathComponent("a.png")
         try Data("precious".utf8).write(to: planned)  // e.g. a sync client dropped it there mid-batch
 
-        let result = BatchConverter.convert(input, to: planned, job: BatchJob(inputs: [input], outputFolder: out, format: .png))
+        let written = try BatchConverter.write(Data("new".utf8), to: planned)
 
-        #expect(result.error == nil)
         #expect(try Data(contentsOf: planned) == Data("precious".utf8))
-        #expect(result.output.lastPathComponent == "a 2.png")
-        #expect(ImageDecoder.displaySize(of: result.output) == CGSize(width: 8, height: 8))
+        #expect(written.lastPathComponent == "a 2.png")
+        #expect(try Data(contentsOf: written) == Data("new".utf8))
         // No temp file is left behind.
         #expect(Set(try FileManager.default.contentsOfDirectory(atPath: out.path)) == ["a.png", "a 2.png"])
     }
@@ -59,16 +87,16 @@ import Testing
         let dir = try Fixtures.makeTempDir()
         let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
         let out = try Fixtures.makeTempDir()
-        let job = BatchJob(inputs: [input], outputFolder: out, format: .png)
+        let job = job([input], out: out)
         async let first = BatchConverter.run(job)
         async let second = BatchConverter.run(job)
-        let outputs = await (first + second).map(\.output.path)
+        let outputs = await (first + second).compactMap { $0.output?.path }
         #expect(Set(outputs).count == 2)
         #expect(try FileManager.default.contentsOfDirectory(atPath: out.path).count == 2)
     }
 
-    @Test(arguments: [OutputFormat.jpeg, .png, .heic, .tiff])
-    func keepsCameraExifGpsAndIptcMetadata(format: OutputFormat) async throws {
+    @Test(arguments: ["jpg", "png", "heic", "tiff"])
+    func keepsCameraExifGpsAndIptcMetadata(format: String) async throws {
         let dir = try Fixtures.makeTempDir()
         let input = try Fixtures.writeImage(
             to: dir.appendingPathComponent("meta.jpg"), width: 40, height: 20, orientation: 6,
@@ -80,10 +108,10 @@ import Testing
             ])
         let out = try Fixtures.makeTempDir()
 
-        let result = try #require(await BatchConverter.run(BatchJob(inputs: [input], outputFolder: out, format: format)).first)
+        let result = try #require(await BatchConverter.run(job([input], out: out, format: format)).first)
 
-        #expect(result.error == nil)
-        let source = try #require(CGImageSourceCreateWithURL(result.output as CFURL, nil))
+        let output = try #require(result.output)
+        let source = try #require(CGImageSourceCreateWithURL(output as CFURL, nil))
         let props = try #require(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
         let tiff = props[kCGImagePropertyTIFFDictionary] as? [CFString: Any]
         let exif = props[kCGImagePropertyExifDictionary] as? [CFString: Any]
@@ -100,14 +128,15 @@ import Testing
     @Test func convertsOffTheCooperativeThreadPool() async throws {
         let dir = try Fixtures.makeTempDir()
         let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
-        let labels = Labels()
-        _ = await BatchConverter.run(BatchJob(inputs: [input], outputFolder: dir, format: .png)) { input, output, job in
-            labels.add(String(cString: __dispatch_queue_get_label(nil)))
-            return BatchConverter.convert(input, to: output, job: job)
-        }
+        let labels = Box([String]())
+        let job = job([input], out: dir)
+        _ = await BatchConverter.run(job, prepare: { index, input in
+            labels.update { $0.append(String(cString: __dispatch_queue_get_label(nil))) }
+            return BatchConverter.prepare(input, index: index, settings: job.settings, watermark: .success(nil))
+        })
         // Blocking ImageIO work on the pool would starve the viewer's decode tasks.
-        #expect(labels.all.count == 1)
-        #expect(!labels.all.contains { $0.contains("cooperative") })
+        #expect(labels.get.count == 1)
+        #expect(!labels.get.contains { $0.contains("cooperative") })
     }
 
     // exFAT (camera cards, USB sticks) answers RENAME_EXCL with ENOTSUP.
@@ -124,10 +153,469 @@ import Testing
         #expect(try Data(contentsOf: target) == Data("new".utf8))  // existing file untouched
     }
 
-    final class Labels: @unchecked Sendable {
-        private let lock = NSLock()
-        private var values: [String] = []
-        func add(_ s: String) { lock.withLock { values.append(s) } }
-        var all: [String] { lock.withLock { values } }
+    // MARK: Order and counter
+
+    @Test func counterFollowsListOrderAndSkipsFailures() async throws {
+        let out = try Fixtures.makeTempDir()
+        let inputs = (1...5).map { URL(fileURLWithPath: "/in/\($0).jpg") }
+        let job = job(inputs, out: out) {
+            $0.mode = .convertAndRename
+            $0.renamePattern = "{n:3}"
+        }
+        let order = Box([URL]())
+
+        let results = await BatchConverter.run(job, workers: 4, onResult: { r in order.update { $0.append(r.input) } },
+                                               prepare: { index, _ in
+            if index == 1 { return BatchConverter.Prepared(error: "Can't open 2.jpg") }
+            if index != 3 { Thread.sleep(forTimeInterval: 0.1) }  // input 4 finishes first
+            return BatchConverter.Prepared(data: Data("\(index)".utf8))
+        })
+
+        #expect(order.get == inputs)
+        #expect(results.map { $0.output?.lastPathComponent } == ["001.png", nil, "002.png", "003.png", "004.png"])
+        #expect(try Data(contentsOf: out.appendingPathComponent("003.png")) == Data("3".utf8))
+        #expect(results[1].logLine == "Can't open 2.jpg")
+    }
+
+    @Test func renameModeCopiesBytes() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("IMG_1.jpg"), width: 8, height: 8)
+        let results = await BatchConverter.run(job([input], out: out) {
+            $0.mode = .rename
+            $0.renamePattern = "Holiday {n:3}"
+        })
+        let output = try #require(results.first?.output)
+        #expect(output.lastPathComponent == "Holiday 001.jpg")
+        #expect(try Data(contentsOf: output) == Data(contentsOf: input))
+    }
+
+    @Test func renameModeFailsForADanglingSymlink() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let link = dir.appendingPathComponent("dangling.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: dir.appendingPathComponent("gone.jpg"))
+        let trash = try FakeTrash()
+
+        let results = await BatchConverter.run(job([link], out: out) {
+            $0.mode = .rename
+            $0.safety.trashOriginals = true
+        }, trash: trash.trash)
+
+        #expect(results.first?.status == .failed)
+        #expect(results.first?.logLine == "Can't open dangling.jpg")
+        #expect(trash.trashed.isEmpty)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: out.path).isEmpty)
+    }
+
+    @Test func convertAndRenameUsesPattern() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let a = try Fixtures.writeImage(to: dir.appendingPathComponent("IMG_1.jpg"), width: 8, height: 8)
+        let b = try Fixtures.writeImage(to: dir.appendingPathComponent("IMG_2.jpg"), width: 8, height: 8)
+        let results = await BatchConverter.run(job([a, b], out: out) {
+            $0.mode = .convertAndRename
+            $0.renamePattern = "Holiday {n:3}"
+        })
+        #expect(results.map { $0.output?.lastPathComponent } == ["Holiday 001.png", "Holiday 002.png"])
+        #expect(results[0].logLine == "IMG_1.jpg → Holiday 001.png")
+    }
+
+    // MARK: Pages
+
+    @Test func multiPageNotesPageOneOfN() async throws {
+        let dir = try Fixtures.makeTempDir()
+        let tiff = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("scan.tiff"), pages: 3)
+        let result = try #require(await BatchConverter.run(job([tiff], out: dir, format: "jpg")).first)
+        #expect(result.status == .converted)
+        #expect(result.message == "page 1 of 3")
+        #expect(result.logLine == "scan.tiff → scan.jpg · page 1 of 3")
+    }
+
+    @Test func keepAllPagesTIFFHasNoNote() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let tiff = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("scan.tiff"), pages: 3)
+        let result = try #require(await BatchConverter.run(job([tiff], out: out, format: "tiff")).first)
+        #expect(result.status == .converted)
+        #expect(result.message == nil)
+        #expect(ImageDecoder.pageCount(of: try #require(result.output)) == 3)
+    }
+
+    // MARK: Safety
+
+    @Test func replaceExistingTrashesOldFile() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let old = out.appendingPathComponent("a.png")
+        try Data("old".utf8).write(to: old)
+        let trash = try FakeTrash()
+
+        let results = await BatchConverter.run(job([input], out: out) { $0.safety.replaceExisting = true }, trash: trash.trash)
+
+        #expect(results.first?.output?.lastPathComponent == "a.png")
+        #expect(trash.names == ["a.png"])
+        #expect(ImageDecoder.displaySize(of: old) == CGSize(width: 8, height: 8))
+    }
+
+    @Test func replaceExistingNeverTouchesInputs() async throws {
+        let dir = try Fixtures.makeTempDir()
+        let jpg = try Fixtures.writeImage(to: dir.appendingPathComponent("x.jpg"), width: 8, height: 8)
+        let png = try Fixtures.writeImage(to: dir.appendingPathComponent("x.png"), width: 4, height: 4, type: .png)
+        let before = try Data(contentsOf: png)
+        let trash = try FakeTrash()
+
+        let results = await BatchConverter.run(job([jpg, png], out: dir) { $0.safety.replaceExisting = true }, trash: trash.trash)
+
+        #expect(results.map(\.status) == [.converted, .converted])
+        #expect(!results.contains { $0.output == png })
+        #expect(trash.trashed.isEmpty)
+        #expect(try Data(contentsOf: png) == before)
+    }
+
+    @Test func fileAppearingDuringRunIsKept() async throws {
+        let out = try Fixtures.makeTempDir()
+        let appeared = out.appendingPathComponent("a.png")
+        let results = await BatchConverter.run(job([URL(fileURLWithPath: "/in/a.jpg")], out: out), prepare: { _, _ in
+            try? Data("precious".utf8).write(to: appeared)
+            return BatchConverter.Prepared(data: Data("new".utf8))
+        })
+        #expect(try Data(contentsOf: appeared) == Data("precious".utf8))
+        #expect(results.first?.output?.lastPathComponent == "a 2.png")
+    }
+
+    @Test func trashOriginalsOnlyAfterWrite() async throws {
+        let dir = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let blocker = dir.appendingPathComponent("file")
+        try Data().write(to: blocker)  // the output folder can't be created inside a file
+        let trash = try FakeTrash()
+
+        let results = await BatchConverter.run(job([input], out: blocker.appendingPathComponent("out")) {
+            $0.safety.trashOriginals = true
+        }, trash: trash.trash)
+
+        #expect(results.first?.status == .failed)
+        #expect(results.first?.message == "Can't save a.jpg")
+        #expect(trash.trashed.isEmpty)
+        #expect(FileManager.default.fileExists(atPath: input.path))
+    }
+
+    @Test func trashOriginalsTakesSidecars() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        try Data("<xmp/>".utf8).write(to: dir.appendingPathComponent("a.xmp"))
+        let trash = try FakeTrash()
+
+        let results = await BatchConverter.run(job([input], out: out) { $0.safety.trashOriginals = true }, trash: trash.trash)
+
+        #expect(results.first?.status == .converted)
+        #expect(Set(trash.names) == ["a.jpg", "a.xmp"])
+        #expect(trash.names.first == "a.jpg")
+    }
+
+    @Test func commitTrashesTheSidecarsFoundBeforeIt() throws {
+        // The serial commit never lists the input's folder; the parallel prepare stage did.
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let found = dir.appendingPathComponent("a.aae"), unlisted = dir.appendingPathComponent("a.xmp")
+        try Data().write(to: found)
+        try Data().write(to: unlisted)
+        var settings = BatchSettings()
+        settings.formatID = "png"
+        settings.outputFolder = out.path
+        settings.safety.trashOriginals = true
+        let batchInput = BatchInput(url: input, root: nil)
+        var namer = BatchNamer(settings: settings, inputs: [batchInput])
+        let trash = try FakeTrash()
+
+        let result = BatchConverter.commit(BatchConverter.Prepared(data: Data("x".utf8), sidecars: [found]),
+                                           input: batchInput, settings: settings, namer: &namer, trash: trash.trash)
+
+        #expect(result.status == .converted)
+        #expect(trash.names == ["a.jpg", "a.aae"])
+    }
+
+    @Test func trashOriginalsLeavesSidecarsWithAnOutputOfTheSameName() async throws {
+        // Converting in place: a.jpg now owns a.xmp.
+        let dir = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.png"), width: 8, height: 8, type: .png)
+        let sidecar = dir.appendingPathComponent("a.xmp")
+        try Data("<xmp/>".utf8).write(to: sidecar)
+        let trash = try FakeTrash()
+
+        let results = await BatchConverter.run(job([input], out: dir, format: "jpg") { $0.safety.trashOriginals = true },
+                                               trash: trash.trash)
+
+        #expect(results.first?.output?.lastPathComponent == "a.jpg")
+        #expect(trash.names == ["a.png"])
+        #expect(FileManager.default.fileExists(atPath: sidecar.path))
+    }
+
+    @Test func trashOriginalsLeavesSidecarsAnEarlierOutputTookOver() async throws {
+        // a.png converts in place to a.heic and keeps a.xmp; a.jpg's output "a 2.heic" must not take it away.
+        let dir = try Fixtures.makeTempDir()
+        let png = try Fixtures.writeImage(to: dir.appendingPathComponent("a.png"), width: 8, height: 8, type: .png)
+        let jpg = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let sidecar = dir.appendingPathComponent("a.xmp")
+        try Data("<xmp/>".utf8).write(to: sidecar)
+        let trash = try FakeTrash()
+
+        _ = await BatchConverter.run(job([png, jpg], out: dir, format: "heic") { $0.safety.trashOriginals = true },
+                                     trash: trash.trash)
+
+        #expect(Set(trash.names) == ["a.png", "a.jpg"])
+        #expect(FileManager.default.fileExists(atPath: sidecar.path))
+    }
+
+    @Test func trashOriginalsLeavesSidecarsAnotherImageOfTheSameNameStillHas() async throws {
+        // A RAW+JPEG pair: converting only the JPEG leaves a.xmp with the RAW.
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let jpg = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        try Data("raw".utf8).write(to: dir.appendingPathComponent("a.dng"))
+        let sidecar = dir.appendingPathComponent("a.xmp")
+        try Data("<xmp/>".utf8).write(to: sidecar)
+        let trash = try FakeTrash()
+
+        _ = await BatchConverter.run(job([jpg], out: out) { $0.safety.trashOriginals = true }, trash: trash.trash)
+
+        #expect(trash.names == ["a.jpg"])
+        #expect(FileManager.default.fileExists(atPath: sidecar.path))
+    }
+
+    @Test func trashOriginalsNotesAnOriginalItCouldNotTrash() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+
+        let results = await BatchConverter.run(job([input], out: out) { $0.safety.trashOriginals = true },
+                                               trash: { _ in throw CocoaError(.fileWriteNoPermission) })
+
+        #expect(results.first?.status == .converted)
+        #expect(results.first?.message == "Can't move a.jpg to the Trash")
+    }
+
+    @Test func keepDatesCopiesModificationDate() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let date = Date(timeIntervalSince1970: 1_000_000_000)
+        try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: input.path)
+
+        let output = try #require(await BatchConverter.run(job([input], out: out) { $0.safety.keepDates = true }).first?.output)
+
+        let written = try FileManager.default.attributesOfItem(atPath: output.path)[.modificationDate] as? Date
+        #expect(written == date)
+    }
+
+    @Test func keepDatesFollowsASymlinkedInput() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let real = try Fixtures.writeImage(to: dir.appendingPathComponent("real.jpg"), width: 8, height: 8)
+        let date = Date(timeIntervalSince1970: 1_000_000_000)
+        try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: real.path)
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+
+        let output = try #require(await BatchConverter.run(job([link], out: out) { $0.safety.keepDates = true }).first?.output)
+
+        let written = try FileManager.default.attributesOfItem(atPath: output.path)[.modificationDate] as? Date
+        #expect(written == date)
+    }
+
+    @Test func replaceExistingNeverTrashesAFolder() async throws {
+        let out = try Fixtures.makeTempDir()
+        let folder = out.appendingPathComponent("a.png", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data("notes".utf8).write(to: folder.appendingPathComponent("notes.txt"))
+        let trash = try FakeTrash()
+
+        let results = await BatchConverter.run(job([URL(fileURLWithPath: "/in/a.jpg")], out: out) {
+            $0.safety.replaceExisting = true
+        }, trash: trash.trash, prepare: { _, _ in BatchConverter.Prepared(data: Data("new".utf8)) })
+
+        #expect(trash.trashed.isEmpty)
+        #expect(results.first?.output?.lastPathComponent == "a 2.png")
+        #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("notes.txt").path))
+    }
+
+    @Test func trashOriginalsLeavesSidecarsWhenThePreferenceIsOff() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        try Data("<xmp/>".utf8).write(to: dir.appendingPathComponent("a.xmp"))
+        let trash = try FakeTrash()
+
+        let results = await BatchConverter.run(job([input], out: out) { $0.safety.trashOriginals = true },
+                                               trash: trash.trash, moveSidecars: false)
+
+        #expect(results.first?.status == .converted)
+        #expect(trash.names == ["a.jpg"])
+    }
+
+    @Test func counterSkipsFilesThatFailToSave() async throws {
+        let root = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        try Data().write(to: out.appendingPathComponent("sub"))  // input 2's subfolder can't be created
+        let inputs = ["a.jpg", "sub/b.jpg", "c.jpg"].map { root.appendingPathComponent($0) }
+
+        let results = await BatchConverter.run(job(inputs, out: out, root: root) {
+            $0.mode = .convertAndRename
+            $0.renamePattern = "Holiday {n:3}"
+            $0.safety.recreateSubfolders = true
+        }, prepare: { _, _ in BatchConverter.Prepared(data: Data("x".utf8)) })
+
+        #expect(results.map(\.status) == [.converted, .failed, .converted])
+        #expect(results.map { $0.output?.lastPathComponent } == ["Holiday 001.png", nil, "Holiday 002.png"])
+    }
+
+    @Test func commitsOffTheCooperativeThreadPool() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let labels = Box([String]())
+        let trash = try FakeTrash()
+
+        _ = await BatchConverter.run(job([input], out: out) { $0.safety.trashOriginals = true }, trash: {
+            labels.update { $0.append(String(cString: __dispatch_queue_get_label(nil))) }
+            try trash.trash($0)
+        })
+
+        // Commits write and copy whole files; on the pool they would starve the viewer's decode tasks.
+        #expect(labels.get.count == 1)
+        #expect(!labels.get.contains { $0.contains("cooperative") })
+    }
+
+    @Test func recreateSubfolders() async throws {
+        let root = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let sub = root.appendingPathComponent("2024/May", isDirectory: true)
+        try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
+        let input = try Fixtures.writeImage(to: sub.appendingPathComponent("a.jpg"), width: 8, height: 8)
+
+        let output = try #require(await BatchConverter.run(job([input], out: out, root: root) {
+            $0.safety.recreateSubfolders = true
+        }).first?.output)
+
+        #expect(output.standardizedFileURL.path == out.appendingPathComponent("2024/May/a.png").standardizedFileURL.path)
+        #expect(FileManager.default.fileExists(atPath: output.path))
+    }
+
+    // MARK: Stop, pause, memory
+
+    @Test func stopFinishesInFlightAndStartsNoMore() async throws {
+        let out = try Fixtures.makeTempDir()
+        let control = BatchControl()
+        let secondStarted = DispatchSemaphore(value: 0)
+        let inputs = (1...10).map { URL(fileURLWithPath: "/in/\($0).jpg") }
+
+        let results = await BatchConverter.run(job(inputs, out: out), control: control, workers: 2, prepare: { index, _ in
+            if index == 0 { secondStarted.wait(); control.stop() }
+            if index == 1 { secondStarted.signal(); Thread.sleep(forTimeInterval: 0.05) }
+            return BatchConverter.Prepared(data: Data("\(index)".utf8))
+        })
+
+        #expect(results.count == 10)
+        #expect(results.map(\.status) == [.converted, .converted] + Array(repeating: .notStarted, count: 8))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: out.path).count == 2)
+        #expect(BatchLog.text(results).hasSuffix("2 converted, 0 failed, 8 not converted"))
+    }
+
+    @Test func pauseHoldsThenResumes() async throws {
+        let out = try Fixtures.makeTempDir()
+        let control = BatchControl()
+        let started = Box(0), committed = Box(0)
+        let inputs = (1...4).map { URL(fileURLWithPath: "/in/\($0).jpg") }
+
+        let run = Task {
+            await BatchConverter.run(job(inputs, out: out), control: control, workers: 1,
+                                     onResult: { _ in committed.update { $0 += 1 } }, prepare: { index, _ in
+                started.update { $0 += 1 }
+                if index == 0 { control.pause() }
+                return BatchConverter.Prepared(data: Data("\(index)".utf8))
+            })
+        }
+        while committed.get < 1 { try await Task.sleep(for: .milliseconds(10)) }
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(control.isPaused)
+        #expect(started.get == 1)  // the in-flight file finished and was written, nothing new started
+        #expect(committed.get == 1)
+
+        control.resume()
+        let results = await run.value
+
+        #expect(results.map(\.status) == Array(repeating: .converted, count: 4))
+        #expect(started.get == 4)
+    }
+
+    @Test func commitWindowIsBounded() async throws {
+        let out = try Fixtures.makeTempDir()
+        let started = Box(0), committed = Box(0), most = Box(0)
+        let inputs = (1...30).map { URL(fileURLWithPath: "/in/\($0).jpg") }
+
+        _ = await BatchConverter.run(job(inputs, out: out), workers: 2, onResult: { _ in committed.update { $0 += 1 } },
+                                     prepare: { index, _ in
+            started.update { $0 += 1 }
+            let ahead = started.get - committed.get
+            most.update { $0 = max($0, ahead) }
+            if index == 0 { Thread.sleep(forTimeInterval: 0.3) }  // everything after it waits for its commit
+            return BatchConverter.Prepared(data: Data("\(index)".utf8))
+        })
+
+        #expect(most.get <= 2 * 2)
+        #expect(committed.get == 30)
+    }
+
+    // MARK: Watermark, DPI, log
+
+    @Test func watermarkMissingFailsEveryFileOnce() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let a = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let b = try Fixtures.writeImage(to: dir.appendingPathComponent("b.jpg"), width: 8, height: 8)
+        let results = await BatchConverter.run(job([a, b], out: out) {
+            $0.watermark.isOn = true
+            $0.watermark.path = dir.appendingPathComponent("nope.png").path
+        })
+        #expect(results.map(\.status) == [.failed, .failed])
+        #expect(results.map(\.message) == Array(repeating: "Can't read the watermark image nope.png", count: 2))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: out.path).isEmpty)
+    }
+
+    @Test(arguments: ["jpg", "png", "tiff"]) func dpiIsWritten(format: String) async throws {
+        let dir = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let output = try #require(await BatchConverter.run(job([input], out: dir, format: format) {
+            $0.resize.isOn = true
+            $0.resize.dpi = 300
+        }).first?.output)
+        let source = try #require(CGImageSourceCreateWithURL(output as CFURL, nil))
+        let props = try #require(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+        #expect((props[kCGImagePropertyDPIWidth] as? Double)?.rounded() == 300)
+        #expect((props[kCGImagePropertyDPIHeight] as? Double)?.rounded() == 300)
+    }
+
+    @Test func logTextSummary() {
+        let results = [
+            BatchResult(input: URL(fileURLWithPath: "/in/a.jpg"), output: URL(fileURLWithPath: "/out/a.png"),
+                        status: .converted, message: nil),
+            BatchResult(input: URL(fileURLWithPath: "/in/b.jpg"), output: nil, status: .failed, message: "Can't open b.jpg"),
+        ]
+        #expect(BatchLog.text(results) == "a.jpg → a.png\nCan't open b.jpg\n1 converted, 1 failed")
+    }
+}
+
+// Moved from the old BatchPlannerTests: RenamePattern stays.
+@Suite struct RenamePatternTests {
+    @Test func tokens() {
+        #expect(RenamePattern("{name}_{n:3}").baseName(original: "IMG", index: 7) == "IMG_007")
+        #expect(RenamePattern("x{n}").baseName(original: "a", index: 12) == "x12")
+        #expect(RenamePattern("{n:2}").baseName(original: "a", index: 123) == "123")
+    }
+
+    @Test func padWidthIsCapped() {
+        // A typo like {n:200000000} must not build a huge string for every file.
+        #expect(RenamePattern("{n:20}").baseName(original: "a", index: 1) == "0000000001")
+        #expect(RenamePattern("{n:200000000}").baseName(original: "a", index: 1).count == 10)
+    }
+
+    @Test func cannotEscapeTheOutputFolder() {
+        #expect(RenamePattern("a/b:c").baseName(original: "z", index: 1) == "a-b-c")
+    }
+
+    @Test func emptyTemplateKeepsOriginal() {
+        #expect(RenamePattern("").baseName(original: "z", index: 1) == "z")
+    }
+
+    @Test func originalNameIsNeverTreatedAsATemplate() {
+        #expect(RenamePattern("{name}").baseName(original: "my{n}", index: 5) == "my{n}")
     }
 }

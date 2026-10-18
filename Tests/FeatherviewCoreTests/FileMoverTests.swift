@@ -18,6 +18,23 @@ import Testing
         for name in ["IMG_1.CR2", "IMG_1.xmp"] { try Data("x".utf8).write(to: dir.appendingPathComponent(name)) }
         #expect(Sidecars.files(for: jpeg).map(\.lastPathComponent) == ["IMG_1.xmp"])  // spec: no RAW+JPEG exception
     }
+
+    @Test func finderListsEachFolderOnce() throws {
+        // A batch of 10,000 files from one folder must not list that folder 10,000 times.
+        let dir = try Fixtures.makeTempDir()
+        for name in ["a.jpg", "b.jpg", "c.jpg", "A.xmp", "b.aae"] { try Data("x".utf8).write(to: dir.appendingPathComponent(name)) }
+        final class Count: @unchecked Sendable { var value = 0 }
+        let listings = Count()
+        let finder = Sidecars.Finder { folder in
+            listings.value += 1
+            return (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
+        }
+
+        let found = ["a.jpg", "b.jpg", "c.jpg"].map { finder.files(for: dir.appendingPathComponent($0)).map(\.lastPathComponent) }
+
+        #expect(found == [["A.xmp"], ["b.aae"], []])
+        #expect(listings.value == 1)
+    }
 }
 
 @Suite struct FileMoverTests {
