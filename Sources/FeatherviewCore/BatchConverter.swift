@@ -51,7 +51,7 @@ public enum BatchConverter {
             }
             return { index, input in Self.prepare(input, index: index, settings: settings, watermark: watermark) }
         }()
-        let findSidecars = settings.safety.trashOriginals && moveSidecars
+        let sidecars = settings.safety.trashOriginals && moveSidecars ? Sidecars.Finder() : nil
         var namer = BatchNamer(settings: settings, inputs: inputs)
         var results = [BatchResult?](repeating: nil, count: total)
         var waiting: [Int: Prepared] = [:]
@@ -65,7 +65,7 @@ public enum BatchConverter {
                     group.addTask {
                         (index, await offPool {
                             var prepared = prepare(index, inputs[index])
-                            if findSidecars, prepared.error == nil { prepared.sidecars = Sidecars.files(for: inputs[index].url) }
+                            if let sidecars, prepared.error == nil { prepared.sidecars = sidecars.files(for: inputs[index].url) }
                             return prepared
                         })
                     }
