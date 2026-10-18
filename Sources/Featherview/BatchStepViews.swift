@@ -538,9 +538,11 @@ private struct IntRow: View {
 
     var body: some View {
         LabeledContent(label) {
-            IntField($value)
-            Text(unit)
-            if let hint { Text(hint).font(.caption).foregroundStyle(.secondary) }
+            HStack(spacing: 4) {
+                IntField($value)
+                Text(unit)
+                if let hint { Text(hint).font(.caption).foregroundStyle(.secondary).padding(.leading, 6) }
+            }
         }
     }
 }
