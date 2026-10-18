@@ -52,7 +52,8 @@ public struct BarsAutoHide: Sendable, Equatable {
             return
         }
         guard mayHide else {
-            barsVisible = true
+            // Browsing onto a file that can't be decoded (no picture, a browsing key) leaves hidden bars hidden.
+            if event != .pictureShown(false), event != .key(browsing: true) { barsVisible = true }
             hideAt = nil
             return
         }

@@ -74,6 +74,22 @@ import Testing
         #expect(machine.hideAt == nil)
     }
 
+    /// Browsing onto a file that can't be decoded: no picture, but only browsing keys were pressed.
+    @Test func browsingOntoABadFileKeepsHidden() {
+        var machine = hidden()
+        machine.handle(.key(browsing: true), now: 4)
+        machine.handle(.pictureShown(false), now: 4)
+        #expect(machine.barsVisible == false)
+        #expect(machine.hideAt == nil)
+        machine.handle(.key(browsing: true), now: 5)
+        machine.handle(.pictureShown(true), now: 5)
+        #expect(machine.barsVisible == false)
+        #expect(machine.hideAt == nil)
+        machine.handle(.pictureShown(false), now: 6)
+        machine.handle(.pointerMoved, now: 7)
+        #expect(machine.barsVisible)
+    }
+
     @Test func browsingKeyWhileVisibleRestartsTheRest() {
         var machine = enabled()
         machine.handle(.key(browsing: true), now: 5)
@@ -115,6 +131,7 @@ import Testing
         #expect(machine.barsVisible)
         #expect(machine.hideAt == 14)
 
+        guard block != .pictureShown(false) else { return }  // browsingOntoABadFileKeepsHidden
         var wasHidden = hidden()
         wasHidden.handle(block, now: 4)
         #expect(wasHidden.barsVisible)
