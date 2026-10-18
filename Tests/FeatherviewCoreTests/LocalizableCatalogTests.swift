@@ -26,6 +26,27 @@ import Testing
         #expect(!keys.contains("Open an image with ⌘O, or drop one here"))
     }
 
+    /// Commands use macOS's own word in that language, so ours match the system's panels and menus
+    /// (AppKit's Document, MenuCommands, Toolbar and Common loctables).
+    @Test func commandsUseTheMacOSTerms() throws {
+        let catalog = try StringCatalog.load(StringCatalog.shippedURL)
+        func value(_ key: String, _ language: String) -> String? {
+            catalog.strings[key]?.localizations?[language]?.stringUnit?.value
+        }
+        let terms: [(String, String, String)] = [
+            ("da", "Save", "Gem"), ("da", "Save As…  (S)", "Gem som…  (S)"),
+            ("ca", "Cancel", "Cancel·la"), ("ca", "Save", "Desa"), ("ca", "Save As…  (S)", "Desa com a…  (S)"),
+            ("ca", "Close", "Tanca"), ("ca", "Delete", "Elimina"), ("ca", "Copy", "Copia"), ("ca", "Cut", "Retalla"),
+            ("ca", "Paste", "Enganxa"), ("ca", "Select All", "Selecciona\u{2011}ho tot"), ("ca", "Open With", "Obre amb"),
+            ("ca", "Customize Toolbar…", "Personalitza la barra d’eines…"), ("ca", "Hide Toolbar", "Oculta la barra d’eines"),
+            ("ca", "Show Toolbar", "Mostra la barra d’eines"), ("ca", "Replace", "Substitueix"), ("ca", "Quit", "Surt"),
+            ("ca", "Keep", "Conserva"), ("ca", "Rename", "Canvia el nom"),
+        ]
+        for (language, key, term) in terms { #expect(value(key, language) == term, "\(language): \(key)") }
+        #expect(value("Save As and the batch window start with these options for each format.", "da")?.hasPrefix("Gem som") == true)
+        #expect(value("Save As and the batch window start with these options for each format.", "ca")?.hasPrefix("Desa com a") == true)
+    }
+
     /// In any other formatting, the next sync or Xcode save rewrites every line and buries the real change.
     @Test func catalogKeepsXcodeFormatting() throws {
         let text = try String(contentsOf: StringCatalog.shippedURL, encoding: .utf8)

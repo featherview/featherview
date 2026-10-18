@@ -1473,7 +1473,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "0 = mantenir"
+            "value" : "0 = conserva"
           }
         },
         "da" : {
@@ -1746,7 +1746,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afegir"
+            "value" : "Afegeix"
           }
         },
         "da" : {
@@ -1780,7 +1780,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afegir fitxers…"
+            "value" : "Afegeix fitxers…"
           }
         },
         "da" : {
@@ -1814,7 +1814,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afegir una carpeta amb subcarpetes…"
+            "value" : "Afegeix una carpeta amb subcarpetes…"
           }
         },
         "da" : {
@@ -1848,7 +1848,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afegir una carpeta…"
+            "value" : "Afegeix una carpeta…"
           }
         },
         "da" : {
@@ -2087,7 +2087,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preguntar abans de cada moviment o còpia"
+            "value" : "Pregunta abans de cada moviment o còpia"
           }
         },
         "da" : {
@@ -2189,7 +2189,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajustar els colors automàticament"
+            "value" : "Ajusta els colors automàticament"
           }
         },
         "da" : {
@@ -2223,7 +2223,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Retallar primer les vores uniformes automàticament"
+            "value" : "Retalla primer les vores uniformes automàticament"
           }
         },
         "da" : {
@@ -3198,7 +3198,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cancel·lar"
+            "value" : "Cancel·la"
           }
         },
         "da" : {
@@ -3334,7 +3334,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Triar una carpeta"
+            "value" : "Selecciona una carpeta"
           }
         },
         "da" : {
@@ -3368,7 +3368,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Triar una imatge de marca d’aigua"
+            "value" : "Selecciona una imatge de marca d’aigua"
           }
         },
         "da" : {
@@ -3402,7 +3402,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Triar…"
+            "value" : "Selecciona…"
           }
         },
         "da" : {
@@ -3436,7 +3436,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esborrar"
+            "value" : "Esborra"
           }
         },
         "da" : {
@@ -3504,7 +3504,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tancar"
+            "value" : "Tanca"
           }
         },
         "da" : {
@@ -3742,7 +3742,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Convertir"
+            "value" : "Converteix"
           }
         },
         "da" : {
@@ -3776,7 +3776,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Convertir i canviar el nom"
+            "value" : "Converteix i canvia el nom"
           }
         },
         "da" : {
@@ -3810,7 +3810,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copiar"
+            "value" : "Copia"
           }
         },
         "da" : {
@@ -3884,7 +3884,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copiar el registre"
+            "value" : "Copia el registre"
           }
         },
         "da" : {
@@ -3918,7 +3918,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copiar a una carpeta"
+            "value" : "Copia a una carpeta"
           }
         },
         "da" : {
@@ -3952,7 +3952,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copiar a una carpeta…"
+            "value" : "Copia a una carpeta…"
           }
         },
         "da" : {
@@ -3986,7 +3986,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copiar a una carpeta…  (F8)"
+            "value" : "Copia a una carpeta…  (F8)"
           }
         },
         "da" : {
@@ -4236,7 +4236,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Retall"
+            "value" : "Retalla"
           }
         },
         "da" : {
@@ -4270,7 +4270,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Personalitzar la barra d’eines…"
+            "value" : "Personalitza la barra d’eines…"
           }
         },
         "da" : {
@@ -4304,7 +4304,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Retallar"
+            "value" : "Retalla"
           }
         },
         "da" : {
@@ -4440,7 +4440,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eliminar"
+            "value" : "Elimina"
           }
         },
         "da" : {
@@ -4474,7 +4474,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eliminar el valor predefinit…"
+            "value" : "Elimina el valor predefinit…"
           }
         },
         "da" : {
@@ -4508,7 +4508,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eliminar el perfil"
+            "value" : "Elimina el perfil"
           }
         },
         "da" : {
@@ -4645,7 +4645,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No ampliar les imatges més petites"
+            "value" : "No amplies les imatges més petites"
           }
         },
         "da" : {
@@ -4679,7 +4679,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No reduir les imatges més grans"
+            "value" : "No redueixis les imatges més grans"
           }
         },
         "da" : {
@@ -5226,7 +5226,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Primera obertura: obre el Featherview una vegada des d’Aplicacions. Quan el macOS digui que no el pot comprovar, ves a Configuració del Sistema › Privacitat i seguretat i fes clic a Obrir igualment. Després s’obrirà amb normalitat."
+            "value" : "Primera obertura: obre el Featherview una vegada des d’Aplicacions. Quan el macOS digui que no el pot comprovar, ves a Configuració del Sistema › Privacitat i seguretat i fes clic a Obre igualment. Després s’obrirà amb normalitat."
           }
         },
         "da" : {
@@ -5805,7 +5805,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ocultar la barra d’estat"
+            "value" : "Oculta la barra d’estat"
           }
         },
         "da" : {
@@ -5839,7 +5839,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ocultar la barra d’eines"
+            "value" : "Oculta la barra d’eines"
           }
         },
         "da" : {
@@ -5873,7 +5873,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ocultar el punter"
+            "value" : "Oculta el punter"
           }
         },
         "da" : {
@@ -5907,7 +5907,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ocultar la barra d’eines i la d’estat mentre es miren imatges"
+            "value" : "Oculta la barra d’eines i la d’estat mentre es miren imatges"
           }
         },
         "da" : {
@@ -6486,7 +6486,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mantenir"
+            "value" : "Conserva"
           }
         },
         "da" : {
@@ -6520,7 +6520,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Continuar"
+            "value" : "Continua"
           }
         },
         "da" : {
@@ -6554,7 +6554,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mantenir totes les pàgines"
+            "value" : "Conserva totes les pàgines"
           }
         },
         "da" : {
@@ -6588,7 +6588,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mantenir la relació d’aspecte"
+            "value" : "Conserva la relació d’aspecte"
           }
         },
         "da" : {
@@ -6622,7 +6622,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mantenir les dades de la càmera, la ubicació i les paraules clau"
+            "value" : "Conserva les dades de la càmera, la ubicació i les paraules clau"
           }
         },
         "da" : {
@@ -6656,7 +6656,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mantenir les dates dels fitxers"
+            "value" : "Conserva les dates dels fitxers"
           }
         },
         "da" : {
@@ -6862,7 +6862,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Carregar una llista…"
+            "value" : "Carrega una llista…"
           }
         },
         "da" : {
@@ -7236,7 +7236,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moure"
+            "value" : "Trasllada"
           }
         },
         "da" : {
@@ -7310,7 +7310,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moure / copiar"
+            "value" : "Trasllada / copia"
           }
         },
         "da" : {
@@ -7344,7 +7344,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moure avall"
+            "value" : "Mou avall"
           }
         },
         "da" : {
@@ -7378,7 +7378,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moure amunt"
+            "value" : "Mou amunt"
           }
         },
         "da" : {
@@ -7412,7 +7412,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Traslladar els originals a la paperera després de convertir-los"
+            "value" : "Trasllada els originals a la paperera després de convertir-los"
           }
         },
         "da" : {
@@ -7446,7 +7446,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moure a una carpeta"
+            "value" : "Trasllada a una carpeta"
           }
         },
         "da" : {
@@ -7480,7 +7480,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moure a una carpeta…"
+            "value" : "Trasllada a una carpeta…"
           }
         },
         "da" : {
@@ -7514,7 +7514,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moure a una carpeta…  (F7)"
+            "value" : "Trasllada a una carpeta…  (F7)"
           }
         },
         "da" : {
@@ -7548,7 +7548,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Traslladar a la paperera"
+            "value" : "Trasllada a la paperera"
           }
         },
         "da" : {
@@ -7582,7 +7582,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Traslladar a la paperera  (⌘⌫ or ⌦)"
+            "value" : "Trasllada a la paperera  (⌘⌫ or ⌦)"
           }
         },
         "da" : {
@@ -7616,7 +7616,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Traslladar a la paperera (⌘⌫)"
+            "value" : "Trasllada a la paperera (⌘⌫)"
           }
         },
         "da" : {
@@ -7650,7 +7650,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moure, copiar i llençar els fitxers auxiliars (.xmp, .aae, .thm) amb la seva imatge"
+            "value" : "Trasllada, copia i llença els fitxers auxiliars (.xmp, .aae, .thm) amb la seva imatge"
           }
         },
         "da" : {
@@ -8432,7 +8432,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obrir amb"
+            "value" : "Obre amb"
           }
         },
         "da" : {
@@ -8568,7 +8568,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obrir…  (O)"
+            "value" : "Obre…  (O)"
           }
         },
         "da" : {
@@ -8954,7 +8954,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enganxar"
+            "value" : "Enganxa"
           }
         },
         "da" : {
@@ -9810,7 +9810,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sortir"
+            "value" : "Surt"
           }
         },
         "da" : {
@@ -9946,7 +9946,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recrear les subcarpetes"
+            "value" : "Recrea les subcarpetes"
           }
         },
         "da" : {
@@ -10048,7 +10048,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recordar la mida i la posició de la finestra"
+            "value" : "Recorda la mida i la posició de la finestra"
           }
         },
         "da" : {
@@ -10082,7 +10082,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Treure"
+            "value" : "Elimina"
           }
         },
         "da" : {
@@ -10116,7 +10116,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Canviar el nom"
+            "value" : "Canvia el nom"
           }
         },
         "da" : {
@@ -10150,7 +10150,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Substituir"
+            "value" : "Substitueix"
           }
         },
         "da" : {
@@ -10184,7 +10184,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Substituir els fitxers existents (van a la paperera)"
+            "value" : "Substitueix els fitxers existents (van a la paperera)"
           }
         },
         "da" : {
@@ -10252,7 +10252,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Informar d’un problema"
+            "value" : "Informa d’un problema"
           }
         },
         "da" : {
@@ -10286,7 +10286,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Canviar la mida"
+            "value" : "Canvia la mida"
           }
         },
         "da" : {
@@ -10354,7 +10354,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reprendre"
+            "value" : "Reprèn"
           }
         },
         "da" : {
@@ -10457,7 +10457,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Girar a l’esquerra"
+            "value" : "Gira a l’esquerra"
           }
         },
         "da" : {
@@ -10491,7 +10491,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Girar a l’esquerra  (L)"
+            "value" : "Gira a l’esquerra  (L)"
           }
         },
         "da" : {
@@ -10525,7 +10525,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Girar a la dreta"
+            "value" : "Gira a la dreta"
           }
         },
         "da" : {
@@ -10559,7 +10559,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Girar a la dreta  (R)"
+            "value" : "Gira a la dreta  (R)"
           }
         },
         "da" : {
@@ -10593,7 +10593,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Girar i capgirar"
+            "value" : "Gira i capgira"
           }
         },
         "da" : {
@@ -10627,7 +10627,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Girar a l’esquerra (L)"
+            "value" : "Gira a l’esquerra (L)"
           }
         },
         "da" : {
@@ -10661,7 +10661,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Girar a la dreta (R)"
+            "value" : "Gira a la dreta (R)"
           }
         },
         "da" : {
@@ -10832,7 +10832,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desar"
+            "value" : "Desa"
           }
         },
         "da" : {
@@ -10866,7 +10866,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desar com a i la finestra de lots comencen amb aquestes opcions per a cada format."
+            "value" : "Desa com a i la finestra de lots comencen amb aquestes opcions per a cada format."
           }
         },
         "da" : {
@@ -10900,7 +10900,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desar com a…  (S)"
+            "value" : "Desa com a…  (S)"
           }
         },
         "da" : {
@@ -10934,7 +10934,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desar la llista…"
+            "value" : "Desa la llista…"
           }
         },
         "da" : {
@@ -10968,7 +10968,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desar el valor predefinit"
+            "value" : "Desa el valor predefinit"
           }
         },
         "da" : {
@@ -11002,7 +11002,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desar el valor predefinit…"
+            "value" : "Desa el valor predefinit…"
           }
         },
         "da" : {
@@ -11036,7 +11036,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desar com a perfil…"
+            "value" : "Desa com a perfil…"
           }
         },
         "da" : {
@@ -11070,7 +11070,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seleccionar-ho tot"
+            "value" : "Selecciona‑ho tot"
           }
         },
         "da" : {
@@ -11274,7 +11274,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar la informació  (I)"
+            "value" : "Mostra la informació  (I)"
           }
         },
         "da" : {
@@ -11308,7 +11308,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar la barra d’estat"
+            "value" : "Mostra la barra d’estat"
           }
         },
         "da" : {
@@ -11342,7 +11342,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar la barra d’eines"
+            "value" : "Mostra la barra d’eines"
           }
         },
         "da" : {
@@ -11376,7 +11376,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar els fitxers ocults"
+            "value" : "Mostra els fitxers ocults"
           }
         },
         "da" : {
@@ -11410,7 +11410,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar al Finder"
+            "value" : "Mostra al Finder"
           }
         },
         "da" : {
@@ -11444,7 +11444,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar la informació (I)"
+            "value" : "Mostra la informació (I)"
           }
         },
         "da" : {
@@ -11478,7 +11478,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar text sobre la imatge"
+            "value" : "Mostra text sobre la imatge"
           }
         },
         "da" : {
@@ -11512,7 +11512,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar el selector de carpetes"
+            "value" : "Mostra el selector de carpetes"
           }
         },
         "da" : {
@@ -11546,7 +11546,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar la imatge següent després de moure’n o llençar-ne una"
+            "value" : "Mostra la imatge següent després de moure’n o llençar-ne una"
           }
         },
         "da" : {
@@ -11648,7 +11648,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ordenar"
+            "value" : "Ordena"
           }
         },
         "da" : {
@@ -11716,7 +11716,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Començar"
+            "value" : "Comença"
           }
         },
         "da" : {
@@ -11750,7 +11750,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tornar a començar aquesta carpeta"
+            "value" : "Torna a començar aquesta carpeta"
           }
         },
         "da" : {
@@ -11784,7 +11784,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aturar"
+            "value" : "Atura"
           }
         },
         "da" : {
@@ -12227,7 +12227,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Utilitzar el Featherview"
+            "value" : "Utilitza el Featherview"
           }
         },
         "da" : {
@@ -12261,7 +12261,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Utilitzar el Featherview per a les imatges"
+            "value" : "Utilitza el Featherview per a les imatges"
           }
         },
         "da" : {
@@ -12295,7 +12295,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Utilitzar la carpeta del visor"
+            "value" : "Utilitza la carpeta del visor"
           }
         },
         "da" : {
@@ -12329,7 +12329,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Utilitzar la carpeta d’origen"
+            "value" : "Utilitza la carpeta d’origen"
           }
         },
         "da" : {
@@ -12907,7 +12907,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ampliar"
+            "value" : "Amplia"
           }
         },
         "da" : {
@@ -12941,7 +12941,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ampliar  (+)"
+            "value" : "Amplia  (+)"
           }
         },
         "da" : {
@@ -12975,7 +12975,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reduir"
+            "value" : "Redueix"
           }
         },
         "da" : {
@@ -13009,7 +13009,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reduir  (−)"
+            "value" : "Redueix  (−)"
           }
         },
         "da" : {
@@ -13043,7 +13043,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ampliar (+)"
+            "value" : "Amplia (+)"
           }
         },
         "da" : {
@@ -13077,7 +13077,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reduir (−)"
+            "value" : "Redueix (−)"
           }
         },
         "da" : {
@@ -13145,7 +13145,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajustar a la finestra"
+            "value" : "Ajusta a la finestra"
           }
         },
         "da" : {
@@ -13179,7 +13179,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajustar a la finestra  (0)"
+            "value" : "Ajusta a la finestra  (0)"
           }
         },
         "da" : {
@@ -13213,7 +13213,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajustar a la finestra (0)"
+            "value" : "Ajusta a la finestra (0)"
           }
         },
         "da" : {
@@ -13625,7 +13625,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "cancel·lar"
+            "value" : "cancel·la"
           }
         },
         "da" : {
@@ -13836,7 +13836,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "obrir la carpeta"
+            "value" : "obre la carpeta"
           }
         },
         "da" : {
@@ -13979,7 +13979,7 @@
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "mostrar les imatges"
+            "value" : "mostra les imatges"
           }
         },
         "da" : {
