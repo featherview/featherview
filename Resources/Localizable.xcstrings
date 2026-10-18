@@ -9022,13 +9022,13 @@
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "ตำแหน่ง:"
+            "value": "วาง:"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vị trí:"
+            "value": "Đặt:"
           }
         },
         "id": {
