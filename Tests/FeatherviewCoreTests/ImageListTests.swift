@@ -72,6 +72,13 @@ import Testing
         #expect(ImageList(urls: [urls[0]]).neighbors(radius: 2).isEmpty)
     }
 
+    @Test func neighborsAheadOfTheRunFirst() {
+        let list = ImageList(urls: urls, current: urls[1])
+        #expect(list.neighbors(radius: 2, forward: true) == [urls[2], urls[3], urls[0]])
+        #expect(list.neighbors(radius: 2, forward: false) == [urls[0], urls[2], urls[3]])
+        #expect(list.neighbors(radius: 0, forward: true).isEmpty)
+    }
+
     @Test func removeCurrentShowsFollowingImage() {
         var middle = ImageList(urls: urls, current: urls[1])
         middle.removeCurrent()

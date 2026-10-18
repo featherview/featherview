@@ -183,7 +183,8 @@ struct Step: Sendable {
     guard !urls.isEmpty else { fail("No images in \(folder.path). Run `corpus` first.") }
     let target = DecodeTarget.fit(pixelSizes(screen))
     // As ViewerModel sets up its fit cache.
-    let cache = ImageCache(capacity: 8, hdr: ImageDecoder.supportsHDR, colorSpace: displayP3)
+    let decodes = DecodeQueue()
+    let cache = ImageCache(capacity: 8, hdr: ImageDecoder.supportsHDR, colorSpace: displayP3, queue: decodes)
     var list = ImageList(urls: urls)
     var steps: [Task<Step, Never>] = []
     var peak: UInt64 = 0, peakCache = 0
@@ -192,12 +193,13 @@ struct Step: Sendable {
         peakCache = max(peakCache, await cache.decodedBytes)
     }
 
-    // As ViewerModel.show(): cancel the last step, await the image, then prefetch the neighbours.
+    // As ViewerModel.show(): cancel the last step, focus the queue, await the image, then prefetch the neighbours.
     for index in urls.indices {
         let start = ContinuousClock.now
         steps.last?.cancel()
         guard let url = list.current else { break }
-        let neighbors = list.neighbors(radius: 2)
+        let neighbors = list.neighbors(radius: 2, forward: true)
+        decodes.focus([url] + neighbors)
         let cached = await cache.contains(url)
         steps.append(Task {
             let image = try? await cache.image(for: url, target: target)

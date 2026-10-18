@@ -107,10 +107,14 @@ final class ViewerModel {
     /// shortcut: the main screen's at launch; on another display CA converts again (slower, and clipped to the first
     /// display's gamut), follow the window's screen if people browse on two displays.
     private static let screenSpace = NSScreen.main?.colorSpace?.cgColorSpace
-    private let cache = ImageCache(capacity: 8, hdr: ImageDecoder.supportsHDR, colorSpace: screenSpace)
+    /// Every display decode of this viewer runs here: nearest the image shown first, stale ones dropped (`focusDecodes`).
+    private let decodes = DecodeQueue()
+    private let cache: ImageCache
     /// Zoom decodes larger than the fit decode: one kept, and ones nobody waits for any more are skipped.
     /// Zoom steps at or below fit size go in `cache`, as large as fit decodes.
-    private let fullSizeCache = ImageCache(capacity: 1, hdr: ImageDecoder.supportsHDR, colorSpace: screenSpace)
+    private let fullSizeCache: ImageCache
+    /// The way the user last browsed: the neighbours ahead of it are decoded first.
+    @ObservationIgnored private var forward = true
     /// The halving step the image on screen was decoded at while zoomed (page 0), with the longest side it was
     /// worked out from (`fileInfo` is still the previous file's until the decode lands); zooming within it decodes nothing.
     @ObservationIgnored private var shownStep: (step: Int, full: Int)?
@@ -137,6 +141,8 @@ final class ViewerModel {
     @ObservationIgnored private var navigation: (state: OSSignpostIntervalState, url: URL, prefetched: Bool, image: CGImage?)?
 
     init() {
+        cache = ImageCache(capacity: 8, hdr: ImageDecoder.supportsHDR, colorSpace: Self.screenSpace, queue: decodes)
+        fullSizeCache = ImageCache(capacity: 1, hdr: ImageDecoder.supportsHDR, colorSpace: Self.screenSpace, queue: decodes)
         chooserSession.onListed = { [weak self] in self?.countImages() }
     }
 
@@ -173,9 +179,11 @@ final class ViewerModel {
         let prefetch: DecodeTarget? = zoom != .fit ? nil : .fit(screens)
         ready = [:]
         knownInfo = [:]
+        // The old folder's waiting decodes go; a folder's first image is known only after its scan, which refocuses.
+        decodes.focus(isFolder ? [] : [url])
         // A folder's first image is known only after its scan, so the scan runs here too, alongside the
         // window build, and its first image starts decoding at once (it used to wait for both).
-        let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache] () -> Result<[URL], Error>? in
+        let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache, decodes] () -> Result<[URL], Error>? in
             await cache.removeAll()
             await fullSizeCache.removeAll()
             guard isFolder else {
@@ -188,6 +196,7 @@ final class ViewerModel {
                 }
             }
             if let prefetch, let first = FolderScanner.firstInFinderOrder((try? scan.get()) ?? []) {
+                decodes.focus([first])
                 await cache.prefetch([first], target: prefetch)
             }
             return scan.map(FolderScanner.inFinderOrder)
@@ -218,7 +227,7 @@ final class ViewerModel {
                     show()
                 } else if zoom == .fit, prefetchesNeighbors {
                     // show() ran before the neighbours were known; calling it again could restart the decode.
-                    let neighbors = list.neighbors(radius: 2)
+                    let neighbors = focusDecodes()
                     await cache.prefetch(neighbors, target: .fit(screens))
                     guard !Task.isCancelled else { return }
                     await fillReady(neighbors, screens: screens)
@@ -233,10 +242,12 @@ final class ViewerModel {
     }
 
     func next() {
+        forward = true
         if list.next() { show() } else { pastEnd(forward: true) }
     }
 
     func previous() {
+        forward = false
         if list.previous() { show() } else { pastEnd(forward: false) }
     }
     func first() { list.first(); show() }
@@ -340,7 +351,7 @@ final class ViewerModel {
             return
         }
         let size: [PixelSize]? = zoom == .fit ? screens : nil
-        let neighbors = list.neighbors(radius: 2)
+        let neighbors = focusDecodes()
         let started = ContinuousClock.now
         let prefetched = page == 0 && size != nil ? ready[url] : nil
         navigation = (Signposts.poster.beginInterval("Navigate", id: Signposts.poster.makeSignpostID(),
@@ -361,10 +372,12 @@ final class ViewerModel {
                     // would otherwise run a full-size decode per key press at once.
                     _ = await pageDecode?.result
                     guard !Task.isCancelled else { return }
-                    let space = Self.screenSpace
+                    let space = Self.screenSpace, decodes = decodes
                     let decode = Task.detached(priority: .userInitiated) {
-                        try ImageDecoder.decode(url, halvingSteps: true, fitting: size, page: page,
-                                                hdr: ImageDecoder.supportsHDR, colorSpace: space)
+                        try await decodes.run(url) {
+                            try ImageDecoder.decode(url, halvingSteps: true, fitting: size, page: page,
+                                                    hdr: ImageDecoder.supportsHDR, colorSpace: space)
+                        }
                     }
                     pageDecode = decode
                     // A finished decode would otherwise keep its page in memory, outside both caches.
@@ -413,21 +426,34 @@ final class ViewerModel {
                 if let image, list.current == url { ready[url] = image }
                 await fillReady(neighbors, screens: size)
             } else if zoomed, prefetchesNeighbors {
-                // ±1, not ±2 as at fit: zoomed images are large. Each at its own step, and only into `cache` when
+                // ±1 (focusDecodes), not ±2 as at fit: zoomed images are large. Each at its own step, and only into `cache` when
                 // that step is within its own fit size: a larger neighbour would break the cache's memory budget.
                 // shortcut: steps above fit size (fullSizeCache, one image) prefetch nothing, give it room if browsing at 100 % is common.
-                let around = list.neighbors(radius: 1)
-                let wanted = Set(around + [url])
+                let wanted = Set(neighbors + [url])
                 knownInfo = knownInfo.filter { wanted.contains($0.key) }
                 // Fit decodes, read only at fit: step decodes replace them in `cache`, so kept here they'd sit outside its budget.
                 ready = [:]
-                for neighbor in around {
+                for neighbor in neighbors {
                     let decode = await zoomDecode(neighbor)
                     guard !Task.isCancelled else { return }
                     if decode.cache === cache { await cache.prefetch([neighbor], target: decode.target) }
                 }
             }
         }
+    }
+
+    /// Tells `decodes` what is wanted now and returns the neighbours to prefetch: the image shown, then ±2 at fit,
+    /// ±1 zoomed, none in a background window, those ahead of the browsing direction first. Waiting decodes of
+    /// other files are dropped, so a held key doesn't leave stale prefetches in front of the image the user stops at.
+    @discardableResult
+    private func focusDecodes() -> [URL] {
+        guard let url = list.current else {
+            decodes.focus([])
+            return []
+        }
+        let neighbors = list.neighbors(radius: !prefetchesNeighbors ? 0 : zoom == .fit ? 2 : 1, forward: forward)
+        decodes.focus([url] + neighbors)
+        return neighbors
     }
 
     /// The halving step to decode zoomed `url` at, for the current factor, and the cache it goes in: `cache`
@@ -529,7 +555,7 @@ final class ViewerModel {
     /// Called when this viewer's window becomes key: now its neighbours are worth decoding.
     func becameActive() {
         guard zoom == .fit, !list.isEmpty else { return }
-        let neighbors = list.neighbors(radius: 2)
+        let neighbors = focusDecodes()
         Task { await cache.prefetch(neighbors, target: .fit(screens)) }
     }
 
