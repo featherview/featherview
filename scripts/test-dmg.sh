@@ -1,6 +1,6 @@
 #!/bin/bash
-# Checks scripts/dmg.sh's attach step without Finder: it must refuse when another volume
-# called Featherview is mounted, and attach normally when none is.
+# Checks scripts/dmg.sh without Finder: the window bounds leave the background its full height, and the
+# attach step refuses when another volume called Featherview is mounted, and attaches normally when none is.
 set -uo pipefail
 source "$(dirname "$0")/dmg.sh"
 WORK="$(mktemp -d)"
@@ -12,6 +12,9 @@ for n in decoy new; do
     hdiutil create -quiet -srcfolder "$WORK/s" -volname "$VOLUME" -fs HFS+ -format UDRW -size 5m "$WORK/$n.dmg"
 done
 fail=0
+
+# Finder's bounds are the whole window frame: the 640 x 400 background needs the title bar on top.
+[ "$WINDOW_BOUNDS" = "200, 120, 840, $((120 + 400 + TITLE_BAR))" ] || { echo "FAIL: window bounds $WINDOW_BOUNDS leave no room for the title bar"; fail=1; }
 
 if mount | grep -q " on /Volumes/$VOLUME "; then echo "skip: eject /Volumes/$VOLUME first"; exit 1; fi
 attach_rw "$WORK/new.dmg" || { echo "FAIL: attach with no other $VOLUME volume"; fail=1; }

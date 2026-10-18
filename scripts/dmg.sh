@@ -5,6 +5,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VOLUME="Featherview"
+# Finder's window bounds include the title bar; the content below it must be the 640 x 400 background.
+# shortcut: 28 pt is the title bar without a toolbar on macOS 14 and later, measure again if a macOS changes it.
+TITLE_BAR=28
+WINDOW_BOUNDS="200, 120, 840, $((120 + 400 + TITLE_BAR))"
 
 # Attaches a read-write image and sets DEVICE. Finder addresses the disk by name, so it stops when
 # another volume called $VOLUME is mounted (the new one would land at "/Volumes/$VOLUME 1").
@@ -64,7 +68,7 @@ tell application "Finder"
         set current view of container window to icon view
         set toolbar visible of container window to false
         set statusbar visible of container window to false
-        set the bounds of container window to {200, 120, 840, 520}
+        set the bounds of container window to {$WINDOW_BOUNDS}
         set viewOptions to the icon view options of container window
         set arrangement of viewOptions to not arranged
         set icon size of viewOptions to 96
