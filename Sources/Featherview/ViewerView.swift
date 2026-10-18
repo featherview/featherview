@@ -224,8 +224,8 @@ struct ViewerView: View {
                                   factor: factor, view: fitArea, displayScale: displayScale)
     }
 
-    /// The fit area from this update's insets: `model.viewSize` follows a pass later (onChange), and the
-    /// picture must refit in the same update as the insets so it animates with the info panel.
+    /// The fit area for the current insets. `model.viewSize` is set in onChange, one render later; the picture
+    /// takes its new size in the same render as the new insets, so it refits together with the info panel.
     private var fitArea: CGSize {
         windowSize == .zero ? model.viewSize : canvasInsets.fitArea(in: windowSize)
     }

@@ -181,7 +181,7 @@ enum Theme {
     static let hint = Font.system(size: 11)
     /// Format badge: 11 Medium.
     static let badge = Font.system(size: 11, weight: .medium)
-    /// Error and "No images" message boxes' padding (spec silent: kept from before).
+    /// Error and "No images" message boxes' padding (spec silent).
     static let messagePadding = 8.0
     /// Small button ("Choose…"): 12 Medium.
     static let smallButton = Font.system(size: 12, weight: .medium)
@@ -269,7 +269,7 @@ enum Theme {
         static let keyCap = 5.0
         /// Footer key cap, format badge, pop-up chevron square.
         static let small = 4.0
-        /// Error and "No images" message boxes (spec silent: the size they had before the design).
+        /// Error and "No images" message boxes (spec silent).
         static let message = 6.0
         /// About icon tile.
         static let aboutTile = 28.8
