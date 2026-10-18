@@ -83,4 +83,58 @@ import UniformTypeIdentifiers
         }
         #expect(try !isHDR(output))
     }
+
+    /// A 16×8 32-bit float greyscale TIFF of 0.5: ImageIO decodes it as extended linear grey.
+    func greyFloatTIFF() throws -> URL {
+        let url = try Fixtures.makeTempDir().appendingPathComponent("g.tiff")
+        let context = try #require(CGContext(
+            data: nil, width: 16, height: 8, bitsPerComponent: 32, bytesPerRow: 0,
+            space: CGColorSpace(name: CGColorSpace.extendedLinearGray)!,
+            bitmapInfo: CGImageAlphaInfo.none.rawValue | CGBitmapInfo.floatComponents.rawValue
+                | CGBitmapInfo.byteOrder32Little.rawValue))
+        context.setFillColor(gray: 0.5, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: 16, height: 8))
+        let dest = try #require(CGImageDestinationCreateWithURL(url as CFURL, UTType.tiff.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(dest, try #require(context.makeImage()), nil)
+        #expect(CGImageDestinationFinalize(dest))
+        return url
+    }
+
+    func firstPixel(_ url: URL) throws -> [UInt8] {
+        let pixels = try #require(RGBAImage(try ImageDecoder.decode(url)))
+        return Array(pixels.pixels.prefix(4))
+    }
+
+    func hasGainMap(_ url: URL) throws -> Bool {
+        let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
+        guard #available(macOS 15, *) else { return false }
+        return CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, kCGImageAuxiliaryDataTypeISOGainMap) != nil
+    }
+
+    @Test(.enabled(if: ImageDecoder.supportsHDR), arguments: ["heic", "avif"])
+    func greyFloatTIFFKeepsItsPixels(format: String) async throws {
+        let input = try greyFloatTIFF()
+        let pixel = try firstPixel(try await convert(input, to: format))
+        #expect(pixel[3] == 255 && pixel[0] > 100, "\(pixel)")
+        let saved = try Fixtures.makeTempDir().appendingPathComponent("g.\(format)")
+        try ImageSaver.save(input, page: 0, to: saved, as: try #require(FormatRegistry.format(id: format)),
+                            options: FormatOptions())
+        let savedPixel = try firstPixel(saved)
+        #expect(savedPixel[3] == 255 && savedPixel[0] > 100, "\(savedPixel)")
+    }
+
+    /// ImageIO gives float TIFFs extended range even when every pixel is SDR: no gain map for those.
+    @Test(.enabled(if: ImageDecoder.supportsHDR)) func sdrFloatTIFFGetsNoGainMap() async throws {
+        let input = try Fixtures.writeImage(to: try Fixtures.makeTempDir().appendingPathComponent("f.tiff"),
+                                            width: 16, height: 8, type: .tiff, bitsPerComponent: 32)
+        #expect(try !hasGainMap(try await convert(input, to: "heic")))
+        let saved = try Fixtures.makeTempDir().appendingPathComponent("f.heic")
+        try ImageSaver.save(input, page: 0, to: saved, as: try #require(FormatRegistry.format(id: "heic")),
+                            options: FormatOptions())
+        #expect(try !hasGainMap(saved))
+    }
+
+    @Test(.enabled(if: ImageDecoder.supportsHDR)) func hdrHEICHasGainMap() async throws {
+        #expect(try hasGainMap(try await convert(try hdrInput(), to: "heic")))  // the check itself works
+    }
 }

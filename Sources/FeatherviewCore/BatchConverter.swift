@@ -150,7 +150,8 @@ public enum BatchConverter {
             pages = wantsHDR ? [try ImageDecoder.decode(url, maxPixelSize: limit, hdr: true)]
                 : try ImageSaver.pages(of: url, for: format, options: options, maxPixelSize: limit)
         } catch { return Prepared(error: String(localized: "Can't open \(name)")) }
-        let hdr = wantsHDR && pages[0].colorSpace.map(ImageEncoder.isHDR) == true
+        let hdr = wantsHDR && ImageDecoder.isHDR(pages[0].colorSpace,
+                                                 type: CGImageSourceCreateWithURL(url as CFURL, nil).flatMap(CGImageSourceGetType))
 
         if settings.hasOperations {
             // The same day format as the rename pattern's {date}.
@@ -172,7 +173,7 @@ public enum BatchConverter {
         }
         let dpi = settings.resize.isOn ? settings.resize.dpi : nil
         let data: Data
-        do { data = try ImageEncoder.encode(pages, as: format, options: options, metadataFrom: url, dpi: dpi) }
+        do { data = try ImageEncoder.encode(pages, as: format, options: options, metadataFrom: url, dpi: dpi, hdr: hdr) }
         catch { return Prepared(error: String(localized: "Can't write \(name) as \(format.name)")) }
         let count = pages.count == 1 ? ImageDecoder.pageCount(of: url) : 1
         let note = count > 1 ? String(localized: "page 1 of \(count)") : nil
