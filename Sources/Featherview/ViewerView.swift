@@ -142,6 +142,7 @@ struct ViewerView: View {
         // The background shows behind the glass toolbar in every state, not only under a picture's scroll view.
         .toolbarBackground(.hidden, for: .windowToolbar)
         .onChange(of: backgroundHex) { matchAppearance() }
+        .onChange(of: toolbarReady && !toolbarHidden) { matchTitle() }
         .modifier(ToolbarHiddenInFullScreen())
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         // Not set on the window directly: SwiftUI puts the scene's title back on its next update.
@@ -161,6 +162,7 @@ struct ViewerView: View {
         .background(WindowAccessor { window in
             model.window = window
             matchAppearance()
+            matchTitle()
             // A restored or reopened window may already be in full screen; no didEnter notification follows.
             model.isFullScreen = window.styleMask.contains(.fullScreen)
             if !rememberFrame, !model.isFullScreen { Self.place(window) }
@@ -247,6 +249,12 @@ struct ViewerView: View {
     /// whatever the system appearance.
     private func matchAppearance() {
         model.window?.appearance = Theme.appearance(background: backgroundHex)
+    }
+
+    /// The toolbar's title item shows the name and counter; the window's own title stays for the Window menu
+    /// and comes back when the toolbar is hidden or not built yet.
+    private func matchTitle() {
+        model.window?.titleVisibility = toolbarReady && !toolbarHidden ? .hidden : .visible
     }
 
     private func feedAutoHide(_ event: BarsAutoHide.Event) {
@@ -585,11 +593,10 @@ struct ViewerCommands: Commands {
         }
         CommandMenu("Image") {
             // Disabled as the toolbar buttons are, so menu and toolbar agree.
-            Group {
-                Button("Next  (→ or Space)") { model?.next() }
-                Button("Previous  (← or ⌫)") { model?.previous() }
-            }
-            .disabled(model?.availability.canBrowse != true)
+            Button("Next  (→ or Space)") { model?.next() }
+                .disabled(model?.availability.canGoForward != true)
+            Button("Previous  (← or ⌫)") { model?.previous() }
+                .disabled(model?.availability.canGoBack != true)
             Group {
                 Button("Next Page  (⌥→)") { model?.nextPage() }
                 Button("Previous Page  (⌥←)") { model?.previousPage() }

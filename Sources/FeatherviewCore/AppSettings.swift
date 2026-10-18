@@ -14,6 +14,13 @@ public struct Setting<Value: Sendable>: Sendable {
 /// What → does past the last image (and ← before the first).
 public enum PastEndBehavior: String, CaseIterable, Sendable {
     case folderChooser, loop, stop
+
+    /// Whether back (or forward) can act at `index` of `count` images: only Stop ends at the folder's ends;
+    /// the chooser and Start Again act there too.
+    public func canStep(forward: Bool, index: Int, count: Int) -> Bool {
+        guard self == .stop else { return true }
+        return forward ? index < count - 1 : index > 0
+    }
 }
 
 /// Every setting from spec "Settings" with its default. The app binds them with

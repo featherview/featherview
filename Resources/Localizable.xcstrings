@@ -45,16 +45,6 @@
         }
       }
     },
-    "%@ — page %lld / %lld — %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ — page %2$lld / %3$lld — %4$@"
-          }
-        }
-      }
-    },
     "%@ → %@" : {
       "localizations" : {
         "en" : {
@@ -1292,6 +1282,16 @@
     },
     "{name} {folder} {index} {count} {size} {date}" : {
 
+    },
+    "— page %lld / %lld — %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "— page %1$lld / %2$lld — %3$@"
+          }
+        }
+      }
     },
     "… %lld more · into %@" : {
       "localizations" : {

@@ -202,6 +202,8 @@ enum Theme {
     static let titleBarHeight = 52.0
     /// Fit-area insets: leading, top, trailing, bottom (bottom = strip 28 + 8 inset + 8 clearance).
     static let fitInsets = EdgeInsets(top: 60, leading: CanvasInsets.side, bottom: 44, trailing: CanvasInsets.side)
+    /// Between the file name and its counter in the title.
+    static let titleGap = 6.0
     /// Toolbar capsules and their items.
     static let leadingGroup = CGSize(width: 76, height: 32)
     static let trailingGroup = CGSize(width: 256, height: 32)

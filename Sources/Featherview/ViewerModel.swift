@@ -15,7 +15,7 @@ final class ViewerModel {
     private(set) var image: CGImage?
     var errorMessage: String?
     /// True while a folder is being scanned, so the view shows nothing instead of the open hint.
-    private(set) var isOpening = false
+    private(set) var isOpening = false { didSet { updateAvailability() } }
     var showInfo = false
     private(set) var zoom = Zoom.fit
     /// Bumped when the current file changes on disk (rotation), so views reading it refresh.
@@ -42,8 +42,10 @@ final class ViewerModel {
 
     /// When toolbar buttons and menu items can act; the methods they call guard on the same.
     struct Availability: Equatable {
-        /// ← / → work with no images too, as long as a folder is known (the chooser leaves it).
-        var canBrowse = false
+        /// ← / → work with no images too, as long as a folder is known (the chooser leaves it);
+        /// with "Past the end: Stop" not past the folder's ends.
+        var canGoBack = false
+        var canGoForward = false
         var hasCurrent = false
         /// Rotate, Trash, F7 / F8: not on a held (already removed) image.
         var canChangeFile = false
@@ -52,7 +54,12 @@ final class ViewerModel {
     /// Stored, and set only when a value flips: buttons reading `list` would all re-evaluate on every image.
     private(set) var availability = Availability()
     private func updateAvailability() {
-        let new = Availability(canBrowse: folder != nil, hasCurrent: list.current != nil,
+        // While the folder is listed its ends aren't known yet.
+        let pastEnd = isOpening ? .loop : AppSettings.pastEndBehavior
+        let canBrowse = folder != nil
+        let new = Availability(canGoBack: canBrowse && pastEnd.canStep(forward: false, index: list.index, count: list.urls.count),
+                               canGoForward: canBrowse && pastEnd.canStep(forward: true, index: list.index, count: list.urls.count),
+                               hasCurrent: list.current != nil,
                                canChangeFile: list.current != nil && !list.isHolding,
                                hasPages: pageCount > 1 && !list.isHolding)
         if new != availability { availability = new }
@@ -148,14 +155,18 @@ final class ViewerModel {
         chooserSession.onListed = { [weak self] in self?.countImages() }
     }
 
-    var title: String {
-        guard let url = list.current else { return emptyFolder?.lastPathComponent ?? "Featherview" }
+    /// The window's title: the file name, then the counter.
+    var title: String { titleCounter.map { "\(titleName) \($0)" } ?? titleName }
+
+    /// The file (or empty folder) name; the toolbar title shows it in the title font.
+    var titleName: String { list.current?.lastPathComponent ?? emptyFolder?.lastPathComponent ?? "Featherview" }
+
+    /// "— 1 / 4" (with the page for multi-page files), shown quieter after the name; nil without a position.
+    var titleCounter: String? {
         // While the folder is listed the position isn't known yet; "1 / 1" would be wrong.
-        if isOpening { return url.lastPathComponent }
-        if pageCount > 1 {
-            return String(localized: "\(url.lastPathComponent) — page \(page + 1) / \(pageCount) — \(list.position)")
-        }
-        return "\(url.lastPathComponent) — \(list.position)"
+        guard list.current != nil, !isOpening else { return nil }
+        if pageCount > 1 { return String(localized: "— page \(page + 1) / \(pageCount) — \(list.position)") }
+        return "— \(list.position)"
     }
 
     /// The folder being browsed, also when it has no images. It's the path the folder was opened by:
@@ -571,6 +582,7 @@ final class ViewerModel {
 
     /// Called when this viewer's window becomes key: now its neighbours are worth decoding.
     func becameActive() {
+        updateAvailability()  // "Past the end of a folder" may have changed in Preferences
         guard zoom == .fit, !list.isEmpty else { return }
         let neighbors = focusDecodes()
         Task { await cache.prefetch(neighbors, target: .fit(screens)) }
