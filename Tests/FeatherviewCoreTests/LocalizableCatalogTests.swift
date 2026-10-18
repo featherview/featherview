@@ -25,4 +25,11 @@ import Testing
         #expect(keys.contains("Open an image or drop a folder here"))
         #expect(!keys.contains("Open an image with ⌘O, or drop one here"))
     }
+
+    /// In any other formatting, the next sync or Xcode save rewrites every line and buries the real change.
+    @Test func catalogKeepsXcodeFormatting() throws {
+        let text = try String(contentsOf: StringCatalog.shippedURL, encoding: .utf8)
+        #expect(text.hasPrefix("{\n  \"sourceLanguage\" : \"en\",\n"))
+        #expect(!text.contains("\": "), "a line uses `\"key\": value` instead of Xcode's `\"key\" : value`")
+    }
 }
