@@ -1,87 +1,200 @@
-import Foundation
 import CoreGraphics
-
-public struct BatchResult: Sendable {
-    public let input: URL
-    public let output: URL
-    /// nil = converted.
-    public let error: String?
-}
+import CoreImage
+import Foundation
 
 public enum BatchConverter {
-    /// Converts every input, several at a time. One failure never stops the batch.
-    /// `progress(done, total)` is called off the main thread.
-    public static func run(
-        _ job: BatchJob,
-        progress: @escaping @Sendable (Int, Int) -> Void = { _, _ in }
-    ) async -> [BatchResult] {
-        await run(job, progress: progress) { convert($0, to: $1, job: $2) }
+    /// One file's work before its commit.
+    struct Prepared: Sendable {
+        /// The encoded output; nil in rename mode (the input's bytes are copied at commit).
+        var data: Data?
+        /// For `{date}` in the rename pattern.
+        var date: Date?
+        /// "page 1 of 3".
+        var note: String?
+        var error: String?
+
+        init(data: Data? = nil, date: Date? = nil, note: String? = nil, error: String? = nil) {
+            self.data = data; self.date = date; self.note = note; self.error = error
+        }
     }
 
-    /// `convert` is a seam for tests.
+    /// All cores but one (spec "Running").
+    static let defaultWorkers = max(1, ProcessInfo.processInfo.activeProcessorCount - 1)
+
+    /// Calls `onResult` once per input, in list order, as each is committed (off the main thread).
+    /// Returns every result (not-started ones after a Stop).
+    public static func run(_ job: BatchJob, control: BatchControl = BatchControl(),
+                           onResult: @escaping @Sendable (BatchResult) -> Void = { _ in }) async -> [BatchResult] {
+        await run(job, control: control, workers: defaultWorkers, onResult: onResult, prepare: nil)
+    }
+
+    /// `trash` and `prepare` are seams for tests; `prepare` defaults to the real decode, pipeline and encode.
     static func run(
-        _ job: BatchJob,
-        progress: @escaping @Sendable (Int, Int) -> Void = { _, _ in },
-        convert: @escaping @Sendable (URL, URL, BatchJob) -> BatchResult
+        _ job: BatchJob, control: BatchControl = BatchControl(), workers: Int = defaultWorkers,
+        trash: @escaping @Sendable (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) },
+        onResult: @escaping @Sendable (BatchResult) -> Void = { _ in },
+        prepare: (@Sendable (Int, BatchInput) -> Prepared)? = nil
     ) async -> [BatchResult] {
-        let outputs = BatchPlanner.outputURLs(for: job)
-        let total = job.inputs.count
-        let width = max(1, ProcessInfo.processInfo.activeProcessorCount - 1)
-        var results = [BatchResult?](repeating: nil, count: total)
-        await withTaskGroup(of: (Int, BatchResult).self) { group in
-            var started = 0
-            var done = 0
-            while started < min(width, total) {
-                let i = started
-                group.addTask { (i, await offPool { convert(job.inputs[i], outputs[i], job) }) }
-                started += 1
+        let settings = job.settings, inputs = job.inputs, total = inputs.count
+        let prepare = prepare ?? {
+            // Loaded once per batch; when it can't be read every file fails with that sentence.
+            let watermark: Result<CIImage?, WatermarkError>
+            if settings.mode != .rename, settings.watermark.isOn {
+                do { watermark = .success(try WatermarkStep.load(settings.watermark.path)) }
+                catch let error as WatermarkError { watermark = .failure(error) }
+                catch { watermark = .failure(.unreadable(settings.watermark.path)) }
+            } else {
+                watermark = .success(nil)
             }
-            for await (i, result) in group {
-                results[i] = result
-                done += 1
-                progress(done, total)
-                if started < total {
-                    let next = started
-                    group.addTask { (next, await offPool { convert(job.inputs[next], outputs[next], job) }) }
+            return { index, input in Self.prepare(input, index: index, settings: settings, watermark: watermark) }
+        }()
+        var namer = BatchNamer(settings: settings, inputs: inputs)
+        var results = [BatchResult?](repeating: nil, count: total)
+        var waiting: [Int: Prepared] = [:]
+        var started = 0, inFlight = 0, nextCommit = 0
+        await withTaskGroup(of: (Int, Prepared).self) { group in
+            while true {
+                // Ahead of the commit by at most 2 × workers files, so finished outputs can't pile up in memory.
+                while started < total, inFlight < workers, started - nextCommit < 2 * workers,
+                      !control.isPaused, !control.isStopped {
+                    let index = started
+                    group.addTask { (index, await offPool { prepare(index, inputs[index]) }) }
                     started += 1
+                    inFlight += 1
+                }
+                if inFlight == 0 {
+                    if started == total || control.isStopped { break }
+                    await control.waitWhilePaused()
+                    continue
+                }
+                guard let (index, prepared) = await group.next() else { break }
+                inFlight -= 1
+                waiting[index] = prepared
+                while let next = waiting.removeValue(forKey: nextCommit) {
+                    let input = inputs[nextCommit]
+                    let result = commit(next, input: input, settings: settings, namer: &namer, trash: trash)
+                    results[nextCommit] = result
+                    onResult(result)
+                    nextCommit += 1
                 }
             }
+        }
+        for index in nextCommit..<total {
+            let result = BatchResult(input: inputs[index].url, output: nil, status: .notStarted, message: nil)
+            results[index] = result
+            onResult(result)
         }
         return results.compactMap { $0 }
     }
 
     /// Blocking ImageIO work runs on GCD, so it never ties up the cooperative pool the viewer's
     /// decode tasks need. The task group still caps how many run at once.
-    private static func offPool(_ work: @escaping @Sendable () -> BatchResult) async -> BatchResult {
+    private static func offPool<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
         await withCheckedContinuation { done in
             DispatchQueue.global(qos: .userInitiated).async { done.resume(returning: work()) }
         }
     }
 
-    static func convert(_ input: URL, to output: URL, job: BatchJob) -> BatchResult {
-        let pages: [CGImage]
-        do { pages = try ImageSaver.pages(of: input, for: job.format, options: job.options, maxPixelSize: job.maxDimension) }
-        catch { return BatchResult(input: input, output: output, error: "Can't read this image") }
+    /// Decode (all pages the format needs), the pipeline per page, encode. Rename mode only reads the date.
+    static func prepare(_ input: BatchInput, index: Int, settings: BatchSettings,
+                        watermark: Result<CIImage?, WatermarkError>) -> Prepared {
+        let url = input.url, name = url.lastPathComponent
+        let usesDate = (settings.mode != .convert && settings.renamePattern.contains("{date}"))
+            || (settings.mode != .rename && settings.text.isOn && settings.text.text.contains("{date}"))
+        let date = usesDate ? MetadataReader.dateTaken(of: url) : nil
+        if settings.mode == .rename { return Prepared(date: date) }
+
+        let watermarkImage: CIImage?
+        switch watermark {
+        case .success(let image): watermarkImage = image
+        case .failure(.unreadable(let file)):
+            return Prepared(error: String(localized: "Can't read the watermark image \(file)"))
+        }
+        let format = settings.format, options = settings.options
+        var limit: Int?, originalSize: CGSize?
+        if settings.hasOperations, let size = ImageDecoder.displaySize(of: url),
+           let l = ResizeStep.decodeLimit(settings, originalSize: size) {
+            limit = l
+            originalSize = size
+        }
+        var pages: [CGImage]
+        do { pages = try ImageSaver.pages(of: url, for: format, options: options, maxPixelSize: limit) }
+        catch { return Prepared(error: String(localized: "Can't open \(name)")) }
+
+        if settings.hasOperations {
+            // The same day format as the rename pattern's {date}.
+            let day = date.map { RenamePattern("{date}").baseName(original: "", index: 1, date: $0) } ?? ""
+            let values = TextValues(name: url.deletingPathExtension().lastPathComponent,
+                                    folder: url.deletingLastPathComponent().lastPathComponent, date: day, index: index + 1)
+            do {
+                pages = try pages.enumerated().map { page, image in
+                    // Only page 1's original size is known; other pages resize from their decoded size.
+                    let context = PipelineContext(values: values, originalSize: page == 0 ? originalSize : nil,
+                                                  watermark: watermarkImage)
+                    return try ImagePipeline.apply(image, settings, context: context)
+                }
+            } catch CanvasError.nothingLeft {
+                return Prepared(error: String(localized: "\(name): the canvas settings leave no image"))
+            } catch {
+                return Prepared(error: String(localized: "Can't write \(name) as \(format.name)"))
+            }
+        }
+        let dpi = settings.resize.isOn ? settings.resize.dpi : nil
         let data: Data
-        do { data = try ImageEncoder.encode(pages, as: job.format, options: job.options, metadataFrom: input) }
-        catch { return BatchResult(input: input, output: output, error: "Can't write \(job.format.name)") }
-        // Write a hidden temp file, then move it in without replacing: a kill mid-write never
-        // leaves a partial file under the real name, and a file that appeared there is never touched.
+        do { data = try ImageEncoder.encode(pages, as: format, options: options, metadataFrom: url, dpi: dpi) }
+        catch { return Prepared(error: String(localized: "Can't write \(name) as \(format.name)")) }
+        let count = pages.count == 1 ? ImageDecoder.pageCount(of: url) : 1
+        let note = count > 1 ? String(localized: "page 1 of \(count)") : nil
+        return Prepared(data: data, date: date, note: note)
+    }
+
+    /// Names, writes and finishes one file, in list order: the counter only advances for files that succeeded.
+    static func commit(_ prepared: Prepared, input: BatchInput, settings: BatchSettings, namer: inout BatchNamer,
+                       trash: (URL) throws -> Void) -> BatchResult {
+        let url = input.url
+        func failed(_ message: String) -> BatchResult { BatchResult(input: url, output: nil, status: .failed, message: message) }
+        if let error = prepared.error { return failed(error) }
+        let cantSave = String(localized: "Can't save \(url.lastPathComponent)")
+        let planned = namer.next(for: input, date: prepared.date)
+        let output: URL
+        do {
+            let fm = FileManager.default
+            try fm.createDirectory(at: planned.deletingLastPathComponent(), withIntermediateDirectories: true)
+            // The namer never returns an input; with "Replace existing files" it may return an existing file.
+            if settings.safety.replaceExisting, (try? fm.attributesOfItem(atPath: planned.path)) != nil {
+                try trash(planned)
+            }
+            output = try prepared.data.map { try write($0, to: planned) } ?? BatchCopy.copy(url, to: planned)
+        } catch {
+            return failed(cantSave)
+        }
+        if settings.safety.keepDates,
+           let date = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date {
+            try? FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: output.path)
+        }
+        if settings.safety.trashOriginals {
+            let sidecars = Sidecars.files(for: url)
+            if (try? trash(url)) != nil { for sidecar in sidecars { try? trash(sidecar) } }
+        }
+        return BatchResult(input: url, output: output, status: .converted, message: prepared.note)
+    }
+
+    /// Writes a hidden temp file, then moves it in without replacing: a kill mid-write never leaves a
+    /// partial file under the real name, and a file that appeared there is never touched (" 2" appended).
+    static func write(_ data: Data, to output: URL) throws -> URL {
         let temp = output.deletingLastPathComponent().appendingPathComponent(".featherview-\(UUID().uuidString).tmp")
         defer { try? FileManager.default.removeItem(at: temp) }
-        do { try data.write(to: temp) }
-        catch { return BatchResult(input: input, output: output, error: "Writing failed") }
+        try data.write(to: temp)
         let base = output.deletingPathExtension().lastPathComponent
         var target = output
-        // shortcut: no 255-byte trim on the retry names, so a near-limit name fails instead; trim if anyone hits it.
         for counter in 2...10_000 {
             let err = moveExclusive(temp.path, target.path)
-            if err == 0 { return BatchResult(input: input, output: target, error: nil) }
-            guard err == EEXIST else { break }
-            target = output.deletingLastPathComponent().appendingPathComponent("\(base) \(counter)")
-                .appendingPathExtension(output.pathExtension)
+            if err == 0 { return target }
+            guard err == EEXIST else { throw POSIXError(POSIXErrorCode(rawValue: err) ?? .EIO) }
+            target = BatchNamer.fitted(base, suffix: " \(counter)", ext: output.pathExtension,
+                                       in: output.deletingLastPathComponent())
         }
-        return BatchResult(input: input, output: output, error: "Writing failed")
+        throw POSIXError(.EEXIST)
     }
 
     /// Moves `from` to `to` without replacing anything; returns 0 or an errno. `renameExcl` is a seam for tests.

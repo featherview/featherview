@@ -10,9 +10,9 @@ public enum EncodeError: Error, Equatable {
 public enum ImageEncoder {
     /// `pages` are upright (orientation applied); only TIFF with "keep all pages" and PDF write more
     /// than the first. Metadata of `source` (camera, EXIF, GPS, IPTC) is kept where the format and
-    /// "keep metadata" allow; the orientation tag is always 1.
+    /// "keep metadata" allow; the orientation tag is always 1. `dpi` is written for ImageIO formats.
     public static func encode(_ pages: [CGImage], as format: OutputFormat, options: FormatOptions,
-                              metadataFrom source: URL? = nil) throws -> Data {
+                              metadataFrom source: URL? = nil, dpi: Int? = nil) throws -> Data {
         guard let first = pages.first else { throw EncodeError.failed }
         switch format.writer {
         case .pdf: return try pdf(pages, options)
@@ -27,7 +27,11 @@ public enum ImageEncoder {
             guard let data = try? PCXCodec.encode(try rgba(first)) else { throw EncodeError.failed }
             return data
         case .imageIO(let type):
-            let metadata = options.keepMetadata ? source.map(metadataProperties) ?? [:] : [:]
+            var metadata = options.keepMetadata ? source.map(metadataProperties) ?? [:] : [:]
+            if let dpi, dpi > 0 {
+                metadata[kCGImagePropertyDPIWidth] = dpi
+                metadata[kCGImagePropertyDPIHeight] = dpi
+            }
             if format.optionFields.contains(.targetSize), let kb = options.targetSizeKB, kb > 0 {
                 return try targetSize(first, type: type, format: format, options: options, metadata: metadata,
                                       bytes: min(kb, Int.max / 1024) * 1024)  // a stored setting may be any Int
