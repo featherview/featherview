@@ -118,9 +118,8 @@ struct ViewerView: View {
                 feedAutoHide(.pointerOverBars(point.y < toolbarHeight || overStrip))
                 feedAutoHide(point.y < 4 ? .pointerAtTopEdge : .pointerMoved)
             case .ended:
-                // Still in the window: the pointer went onto the toolbar, which takes the hover.
-                let inWindow = model.window.map { $0.frame.contains(NSEvent.mouseLocation) } ?? false
-                feedAutoHide(.pointerOverBars(inWindow))
+                // Onto the toolbar, which takes the hover, or out of the window: off the picture either way.
+                feedAutoHide(.pointerOverBars(true))
             }
         }
         .onChange(of: hideBars, initial: true) { feedAutoHide(.enabled($1)) }
@@ -146,6 +145,7 @@ struct ViewerView: View {
         }
         .focusedSceneValue(\.viewer, model)
         .onChange(of: activeState, initial: true) {
+            feedAutoHide(.windowKey(activeState == .key))
             guard activeState == .key else { return }
             ViewerModel.lastActive.use(model)
             model.becameActive()

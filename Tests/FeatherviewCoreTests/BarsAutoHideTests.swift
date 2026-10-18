@@ -2,10 +2,12 @@ import Testing
 @testable import FeatherviewCore
 
 @Suite struct BarsAutoHideTests {
-    /// Enabled at 0, as the app starts it when the setting is on.
+    /// Enabled at 0 in the key window, the pointer over the picture.
     private func enabled() -> BarsAutoHide {
         var machine = BarsAutoHide()
         machine.handle(.enabled(true), now: 0)
+        machine.handle(.windowKey(true), now: 0)
+        machine.handle(.pointerOverBars(false), now: 0)
         return machine
     }
 
@@ -22,6 +24,18 @@ import Testing
         #expect(machine.barsVisible)
         #expect(machine.hideAt == nil)
     }
+
+    @Test func noTimerUntilThePointerIsOverThePicture() {
+        var machine = BarsAutoHide()
+        machine.handle(.enabled(true), now: 0)
+        machine.handle(.windowKey(true), now: 0)
+        machine.handle(.key(browsing: false), now: 0)
+        #expect(machine.hideAt == nil)
+        machine.handle(.tick, now: 10)
+        #expect(machine.barsVisible)
+    }
+
+    @Test func noHidingInTheBackground() { expectNoHiding(while: .windowKey(false), until: .windowKey(true)) }
 
     @Test func hidesAfterTheRest() {
         var machine = enabled()
