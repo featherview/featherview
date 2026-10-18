@@ -192,17 +192,14 @@ final class BatchPreviewModel {
             }
             watermark = loaded
         }
-        let scale = Double(max(image.width, image.height)) / Double(max(size.width, size.height))
         // Same values as the converter, so the preview shows the text the output gets.
         let date = s.text.isOn && s.text.text.contains("{date}") ? MetadataReader.dateTaken(of: url) : nil
         let day = date.map { RenamePattern("{date}").baseName(original: "", index: 1, date: $0) } ?? ""
         let values = TextValues(name: url.deletingPathExtension().lastPathComponent,
                                 folder: url.deletingLastPathComponent().lastPathComponent, date: day, index: key.index + 1)
         do {
-            let output = try ImagePipeline.apply(image, s, context: PipelineContext(values: values, scale: scale, watermark: watermark))
-            // shortcut: the output size is the preview's size divided by its scale, off by a pixel or so
-            // from rounding at preview size; exact if the pipeline reports the full-size target.
-            let outputSize = CGSize(width: (Double(output.width) / scale).rounded(), height: (Double(output.height) / scale).rounded())
+            let (output, outputSize) = try ImagePipeline.preview(image, originalSize: size, s,
+                                                                 context: PipelineContext(values: values, watermark: watermark))
             return Rendered(cache: cache, output: output, outputSize: outputSize)
         } catch CanvasError.nothingLeft {
             return Rendered(cache: cache, error: String(localized: "The canvas settings leave no image"))
