@@ -307,7 +307,8 @@ window, nothing to configure.
   encoders (see "Formats"), with the macOS version they come from.
 - "MIT License" and "Acknowledgements": the licence text of every bundled library (libwebp), each
   in a scrollable sheet. Copyright line.
-- A "Copy" button copies version, macOS version and Mac model as text, for bug reports.
+- Clicking the version shows a small "Copy" bubble (as a value in iOS settings does); it copies
+  version, macOS version and Mac model as text, for bug reports.
 - Translated like the rest of the UI; no third-party names except in the acknowledgements.
 
 ## Languages

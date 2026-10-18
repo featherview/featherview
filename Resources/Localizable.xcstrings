@@ -359,6 +359,9 @@
     "Clear" : {
 
     },
+    "Click to copy the version, macOS version and Mac model" : {
+
+    },
     "Close" : {
 
     },
@@ -906,7 +909,7 @@
     "Profile name" : {
 
     },
-    "Profiles" : {
+    "Profiles:" : {
 
     },
     "Progressive" : {
@@ -1006,6 +1009,9 @@
 
     },
     "Save" : {
+
+    },
+    "Save As and the batch window start with these options for each format." : {
 
     },
     "Save As…  (S)" : {

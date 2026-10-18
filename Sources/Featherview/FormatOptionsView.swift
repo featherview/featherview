@@ -89,7 +89,7 @@ struct FormatOptionsView: View {
     }
 
     private var profilesMenu: some View {
-        Menu("Profiles") {
+        LabeledContent("Profiles:") { Menu("Choose…") {
             ForEach(profiles, id: \.name) { profile in
                 Button(profile.name) { options = profile.options }
             }
@@ -108,7 +108,7 @@ struct FormatOptionsView: View {
             }
             .disabled(profiles.isEmpty)
         }
-        .fixedSize()
+        .fixedSize() }
     }
 
     private var nameSheet: some View {

@@ -7,6 +7,7 @@ struct AboutView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
     @State private var sheetText: String?
+    @State private var showingCopy = false
 
     private static let info = Bundle.main.infoDictionary ?? [:]
     private static let version = info["CFBundleShortVersionString"] as? String ?? "?"
@@ -24,9 +25,25 @@ struct AboutView: View {
                 .resizable()
                 .frame(width: 96, height: 96)
             Text("Featherview").font(.title.bold())
-            Text(verbatim: "\(Self.version) (\(Self.build))")
-                .foregroundStyle(.secondary)
-                .textSelection(.enabled)
+            // Like a value in iOS settings: click it, and a "Copy" bubble offers the details for a bug report.
+            Button { showingCopy = true } label: {
+                Text(verbatim: "\(Self.version) (\(Self.build))").foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Click to copy the version, macOS version and Mac model")
+            .popover(isPresented: $showingCopy, arrowEdge: .bottom) {
+                Button("Copy") {
+                    let text = AboutInfo.reportText(version: Self.version, build: Self.build,
+                                                    macOS: ProcessInfo.processInfo.operatingSystemVersionString,
+                                                    model: AboutInfo.modelIdentifier())
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(text, forType: .string)
+                    showingCopy = false
+                }
+                .buttonStyle(.borderless)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+            }
             Text("A fast, keyboard-driven image viewer with batch conversion")
                 .multilineTextAlignment(.center)
             HStack {
@@ -41,13 +58,6 @@ struct AboutView: View {
                 }
                 if let url = Self.acknowledgementsURL {
                     Button("Acknowledgements") { sheetText = try? String(contentsOf: url, encoding: .utf8) }
-                }
-                Button("Copy") {
-                    let text = AboutInfo.reportText(version: Self.version, build: Self.build,
-                                                    macOS: ProcessInfo.processInfo.operatingSystemVersionString,
-                                                    model: AboutInfo.modelIdentifier())
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(text, forType: .string)
                 }
             }
             Text(verbatim: "© 2026 Joachim Rütter").font(.caption).foregroundStyle(.secondary)

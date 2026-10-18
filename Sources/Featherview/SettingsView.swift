@@ -219,14 +219,19 @@ private struct FormatsSettings: View {
 
     var body: some View {
         Form {
-            // The options belong to the chosen format: one group, named after it.
-            Section("\(format.name) Options") {
+            // Pick the format first; its options follow in their own group, named after it.
+            Section {
                 Picker("Format:", selection: Binding { format } set: {
                     format = $0
                     options = FormatSettings.options(for: $0)
                 }) {
                     ForEach(FormatRegistry.writable) { Text($0.name).tag($0) }
                 }
+            } footer: {
+                Text("Save As and the batch window start with these options for each format.")
+                    .foregroundStyle(.secondary)
+            }
+            Section("\(format.name) Options") {
                 FormatOptionsView(format: format, options: Binding { options } set: {
                     options = $0
                     FormatSettings.save($0, for: format)
