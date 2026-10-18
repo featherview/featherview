@@ -306,7 +306,7 @@ Part two of the zoom finding. Today every `.factor` zoom decodes full size (`Vie
 
 - [x] Interfaces + failing tests (step choice per factor, no re-decode within a step)
 - [x] Viewer: target per factor; prefetch ±1 while zoomed
-- [ ] Bench before/after (done, see Measurements); by hand: browse 50 MP images at 50 % zoom, next image shows without waiting for a full decode
+- [x] Bench before/after (done, see Measurements); by hand: browse 50 MP images at 50 % zoom, next image shows without waiting for a full decode (app, 8 × 50 MP landscape, zoomed in 6 steps from fit, Space × 7 at 1.5 s: every next image shown in 19–25 ms, prefetched; the two zoom steps that needed a new decode took 81 and 154 ms)
 - [x] Commit: `perf: zoom decodes at the step it shows and prefetches while zoomed`
 
 ### Task 6: Decode scheduling and a byte budget, together
