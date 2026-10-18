@@ -28,7 +28,7 @@ struct FolderChooserView: View {
             }
             .padding()
             .frame(width: 360)
-            .panelBackground(cornerRadius: 10)
+            .glass(.sheet, cornerRadius: Theme.Radius.panel)
         }
     }
 

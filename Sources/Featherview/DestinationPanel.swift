@@ -35,6 +35,6 @@ struct DestinationPanel: View {
         }
         .padding()
         .frame(width: 400)
-        .panelBackground(cornerRadius: 10)
+        .glass(.sheet, cornerRadius: Theme.Radius.panel)
     }
 }

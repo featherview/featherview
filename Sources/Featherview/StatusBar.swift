@@ -20,7 +20,7 @@ struct StatusBar: View {
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity, minHeight: CanvasInsets.stripHeight, maxHeight: CanvasInsets.stripHeight,
                alignment: .leading)
-        .panelBackground(cornerRadius: CanvasInsets.stripHeight / 2)
+        .glass(.chrome, in: Capsule())
         // Floats over the canvas (spec "Look"); fit keeps the image clear of it through `CanvasInsets`.
         .padding([.horizontal, .bottom], CanvasInsets.stripMargin)
     }

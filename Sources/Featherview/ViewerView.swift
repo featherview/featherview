@@ -668,18 +668,7 @@ private struct EmptyHint: View {
 private extension View {
     /// Readable on any background colour the user picks (grey text vanishes on black).
     func messageBox() -> some View {
-        padding(8).panelBackground(cornerRadius: 6)
-    }
-}
-
-extension View {
-    /// Liquid Glass on macOS 26+ (spec "Viewer"); the material before.
-    @ViewBuilder func panelBackground(cornerRadius: CGFloat) -> some View {
-        if #available(macOS 26, *) {
-            glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
-        } else {
-            background(.regularMaterial, in: .rect(cornerRadius: cornerRadius))
-        }
+        padding(Theme.messagePadding).glass(.card, cornerRadius: Theme.Radius.message)
     }
 }
 
