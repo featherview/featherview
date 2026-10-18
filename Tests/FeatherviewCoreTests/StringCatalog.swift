@@ -181,35 +181,37 @@ private struct Check {
     }
 }
 
-/// A format string's arguments: printf specifiers by argument index (types normalized), `%#@name@` tokens,
-/// and a substitution form's `%arg` (index 0).
+/// A format string's arguments: printf specifiers and `%#@name@` tokens by argument index (types normalized;
+/// a token takes a position as Foundation formats it, `%1$#@name@` too), the tokens' names, and a
+/// substitution form's `%arg` (index 0).
 private struct Specifiers: CustomStringConvertible {
     var byIndex: [Int: String] = [:]
     var tokens: Set<String> = []
 
     // nonisolated(unsafe): Regex isn't Sendable; these are read-only after init and never mutated.
+    // Tokens first, so `%1$#@name@` isn't read as an object specifier with the # flag.
     // No space flag: "% of the shorter side" is a percent sign, not "% o".
-    nonisolated(unsafe) private static let specifier =
-        try! Regex(#"%arg|%(?:(\d+)\$)?[-+#0']*\d*(?:\.\d+)?(?:hh|h|ll|l|q|z|t|j|L)?([@dDiuUxXoOfFeEgGaAcCsSp])"#)
-    nonisolated(unsafe) private static let token = try! Regex(#"%#@([A-Za-z0-9_]+)@"#)
+    nonisolated(unsafe) private static let argument = try! Regex(
+        #"%(?:(\d+)\$)?#@([A-Za-z0-9_]+)@|%arg|%(?:(\d+)\$)?[-+#0']*\d*(?:\.\d+)?(?:hh|h|ll|l|q|z|t|j|L)?([@dDiuUxXoOfFeEgGaAcCsSp])"#)
 
     /// The text without its specifiers and tokens.
     static func stripped(_ text: String) -> String {
-        text.replacingOccurrences(of: "%%", with: "").replacing(token, with: "").replacing(specifier, with: "")
+        text.replacingOccurrences(of: "%%", with: "").replacing(argument, with: "")
     }
 
     init(_ text: String) {
-        var rest = text.replacingOccurrences(of: "%%", with: "")
-        for match in rest.matches(of: Self.token) {
-            if let name = match.output[1].substring { tokens.insert(String(name)) }
-        }
-        rest.replace(Self.token, with: "")
+        let rest = text.replacingOccurrences(of: "%%", with: "")
         var next = 1
-        for match in rest.matches(of: Self.specifier) {
-            guard let type = match.output[2].substring else { byIndex[0] = "arg"; continue }
-            let index = match.output[1].substring.flatMap { Int($0) } ?? next
-            if match.output[1].substring == nil { next += 1 }
-            let new = Self.type(String(type))
+        for match in rest.matches(of: Self.argument) {
+            let new: String, number: Substring?
+            if let name = match.output[2].substring {
+                tokens.insert(String(name))
+                (new, number) = ("%#@\(name)@", match.output[1].substring)
+            } else if let type = match.output[4].substring {
+                (new, number) = (Self.type(String(type)), match.output[3].substring)
+            } else { byIndex[0] = "arg"; continue }
+            let index = number.flatMap { Int($0) } ?? next
+            if number == nil { next += 1 }
             // One argument used twice with two types never matches the source's one type.
             if let old = byIndex[index], old != new { byIndex[index] = "\(old) and \(new)" } else { byIndex[index] = new }
         }
@@ -234,7 +236,6 @@ private struct Specifiers: CustomStringConvertible {
 
     var description: String {
         let parts = byIndex.sorted { $0.key < $1.key }.map { $0.key == 0 ? "%arg" : "\($0.key): \($0.value)" }
-            + tokens.sorted().map { "%#@\($0)@" }
         return parts.isEmpty ? "no arguments" : parts.joined(separator: ", ")
     }
 }

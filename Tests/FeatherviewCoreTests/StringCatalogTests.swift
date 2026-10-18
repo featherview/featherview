@@ -184,6 +184,28 @@ import Testing
         #expect(problems(try catalog("%#@files@ done", en: en, "de", de), "de").count == 1)
     }
 
+    /// A `%#@name@` token takes an argument position, as Foundation formats it: a translation may move it
+    /// with `%1$#@name@` or number around it, and an unnumbered specifier after it reads the next one.
+    @Test func tokensTakeAnArgumentPosition() throws {
+        let files: [String: Any] = [
+            "argNum": 1, "formatSpecifier": "lld",
+            "variations": ["plural": ["one": unit("%arg file"), "other": unit("%arg files")]],
+        ]
+        var en = unit("%#@files@ in %@")
+        en["substitutions"] = ["files": files]
+        func translation(_ text: String, substitution: Bool = true) -> [String: Any] {
+            var t = unit(text)
+            if substitution { t["substitutions"] = ["files": files] }
+            return t
+        }
+        let key = "%#@files@ in %@"
+        #expect(problems(try catalog(key, en: en, "de", translation("%2$@: %1$#@files@")), "de") == [])
+        #expect(problems(try catalog(key, en: en, "de", translation("%2$@: %#@files@")), "de") == [])
+        #expect(problems(try catalog(key, en: en, "de", translation("%2$@: %1$#@files@", substitution: false)), "de").count == 1)
+        // The unnumbered %@ reads argument 1, the count: a crash.
+        #expect(problems(try catalog(key, en: en, "fr", translation("%@ : %#@files@")), "fr").count >= 1)
+    }
+
     @Test func variationsWithoutPluralHaveNoText() throws {
         #expect(problems(try catalog("Open…", "de", ["variations": [:]]), "de").count == 1)
         let device: [String: Any] = ["variations": ["device": ["mac": unit("", "new")]]]
