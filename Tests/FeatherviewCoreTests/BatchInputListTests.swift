@@ -92,6 +92,33 @@ import Testing
         #expect(items.allSatisfy { $0.root == link })
     }
 
+    @Test func droppedSymlinkedFolderIsScanned() throws {
+        let dir = try Fixtures.makeTempDir()
+        let real = dir.appendingPathComponent("real")
+        try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
+        _ = try image(real, "x.jpg")
+        let file = try image(dir, "a.jpg")
+        let link = dir.appendingPathComponent("link")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+        let dropped = BatchInputList.scan(dropped: [file, link])
+        #expect(names(dropped.items) == ["a.jpg", "x.jpg"])
+        #expect(dropped.items.last?.root == link)
+        #expect(dropped.unreadable.isEmpty)
+    }
+
+    @Test func droppedUnreadableFolderIsReported() throws {
+        let dir = try Fixtures.makeTempDir()
+        let locked = dir.appendingPathComponent("locked")
+        try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: true)
+        _ = try image(locked, "x.jpg")
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: locked.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) }
+        let file = try image(dir, "a.jpg")
+        let dropped = BatchInputList.scan(dropped: [locked, file])
+        #expect(names(dropped.items) == ["a.jpg"])
+        #expect(dropped.unreadable == [locked])
+    }
+
     /// "Recreate subfolders" takes each input's path below its root, so the root must prefix it.
     @Test func scanKeepsItemsUnderTheChosenFolderPath() throws {
         let dir = try Fixtures.makeTempDir()  // under /var, which is a symlink to /private/var

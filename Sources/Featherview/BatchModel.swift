@@ -77,6 +77,8 @@ final class BatchModel {
     private var runTotal = 0
     private var saveTask: Task<Void, Never>?
     private var bytesTask: Task<Void, Never>?
+    /// Reads the run's results; ends once every file in flight is committed.
+    private var runTask: Task<Void, Never>?
 
     init() {
         settings = BatchPresets.current()
@@ -138,7 +140,8 @@ final class BatchModel {
     // MARK: - Running
 
     var canStart: Bool {
-        !isRunning && !inputs.items.isEmpty && (settings.mode == .rename || !settings.outputFolder.isEmpty)
+        // A scan still in flight would append files the run never sees.
+        !isRunning && scans == 0 && !inputs.items.isEmpty && (settings.mode == .rename || !settings.outputFolder.isEmpty)
     }
 
     /// Done files (converted or failed) of the current run.
@@ -189,7 +192,7 @@ final class BatchModel {
             _ = await BatchConverter.run(job, control: control) { continuation.yield($0) }
             continuation.finish()
         }
-        Task {
+        runTask = Task {
             // The stream keeps list order; one Task per result would not.
             for await result in stream {
                 results.append(result)
@@ -204,6 +207,12 @@ final class BatchModel {
     func pause() { control.pause(); isPaused = control.isPaused }
     func resume() { control.resume(); isPaused = false }
     func stop() { control.stop(); isPaused = false }
+
+    /// Stops the run and returns once the files in flight are committed (no temp file is left).
+    func stopAndWait() async {
+        stop()
+        await runTask?.value
+    }
 
     func copyLog() {
         NSPasteboard.general.clearContents()
@@ -266,13 +275,20 @@ final class BatchModel {
 
     // MARK: - Inputs
 
-    /// Off the main thread (it touches the disk), then appended in the order given.
-    private func addInBackground(_ work: @escaping @Sendable () throws -> [BatchInput]) {
+    /// Off the main thread (it touches the disk), then appended in the order given; folders that
+    /// couldn't be listed get a notice.
+    private func addInBackground(_ work: @escaping @Sendable () -> (items: [BatchInput], unreadable: [URL])) {
         scans += 1
         Task {
-            let found = await Task.detached(priority: .userInitiated) { try? work() }.value
-            if let found { inputs.append(found) }
+            let found = await Task.detached(priority: .userInitiated) { work() }.value
+            inputs.append(found.items)
             scans -= 1
+            if let first = found.unreadable.first {
+                let name = first.lastPathComponent
+                notice = found.unreadable.count == 1
+                    ? String(localized: "Can't open \(name)")
+                    : String(localized: "Can't open \(name) and \(found.unreadable.count - 1) more folders")
+            }
         }
     }
 
@@ -280,36 +296,20 @@ final class BatchModel {
         addInBackground {
             var list = BatchInputList()
             list.add(files: files)
-            return list.items
+            return (list.items, [])
         }
     }
 
     func add(folder: URL, subfolders: Bool) {
-        addInBackground { try BatchInputList.scan(folder: folder, subfolders: subfolders) }
+        addInBackground {
+            do { return (try BatchInputList.scan(folder: folder, subfolders: subfolders), []) }
+            catch { return ([], [folder]) }
+        }
     }
 
     /// Dropped files and folders; folders add with their subfolders.
     func add(dropped urls: [URL]) {
-        addInBackground {
-            var inputs: [BatchInput] = []
-            var files: [URL] = []
-            func flushFiles() {
-                var list = BatchInputList()
-                list.add(files: files)
-                inputs += list.items
-                files = []
-            }
-            for url in urls {
-                if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
-                    flushFiles()
-                    inputs += (try? BatchInputList.scan(folder: url, subfolders: true)) ?? []
-                } else {
-                    files.append(url)
-                }
-            }
-            flushFiles()
-            return inputs
-        }
+        addInBackground { BatchInputList.scan(dropped: urls) }
     }
 
     func addFilesPanel() {

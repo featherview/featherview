@@ -35,6 +35,27 @@ public struct BatchInputList: Equatable, Sendable {
         return inputs
     }
 
+    /// Dropped files and folders in the order given; a folder (also through a symlink) adds with
+    /// its subfolders. Off the caller's thread, like `scan(folder:subfolders:)`. `unreadable` names
+    /// the folders that couldn't be listed.
+    public static func scan(dropped urls: [URL]) -> (items: [BatchInput], unreadable: [URL]) {
+        var list = BatchInputList()
+        var files: [URL] = []
+        var unreadable: [URL] = []
+        for url in urls {
+            var isFolder: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isFolder), isFolder.boolValue else {
+                files.append(url)
+                continue
+            }
+            list.add(files: files)
+            files = []
+            do { list.append(try scan(folder: url, subfolders: true)) } catch { unreadable.append(url) }
+        }
+        list.add(files: files)
+        return (list.items, unreadable)
+    }
+
     private static func scan(_ folder: URL, root: URL, subfolders: Bool, into inputs: inout [BatchInput]) throws {
         let keys: [URLResourceKey] = [.isDirectoryKey, .isPackageKey, .isRegularFileKey, .isSymbolicLinkKey]
         // Resource values come from the directory listing: no file is opened.
