@@ -460,17 +460,17 @@ Each task translates every key of `Resources/Localizable.xcstrings` into its lan
 
 Steps for each task:
 
-- [x] **Step 1:** For each language, write `.build/l10n/<lang>.json`: an object mapping each catalog
+- [ ] **Step 1:** For each language, write `.build/l10n/<lang>.json`: an object mapping each catalog
   key (from `xcrun xcstringstool print Resources/Localizable.xcstrings`, skipping `shouldTranslate: false`)
   to its localization object (`{"stringUnit":{"state":"translated","value":"…"}}` or
   `{"variations":{"plural":{…}}}`).
-- [x] **Step 2:** Fold each into the catalog:
+- [ ] **Step 2:** Fold each into the catalog:
   `jq --arg l <lang> --slurpfile t .build/l10n/<lang>.json '.strings |= with_entries(if $t[0][.key] then .value.localizations[$l] = $t[0][.key] else . end)' Resources/Localizable.xcstrings > .build/l10n/out.json && mv .build/l10n/out.json Resources/Localizable.xcstrings`,
   then `scripts/strings.sh` (reformats; must add no keys and mark none stale).
-- [x] **Step 3:** `swift test --filter StringCatalogTests` → PASS, and
+- [ ] **Step 3:** `swift test --filter StringCatalogTests` → PASS, and
   `xcrun xcstringstool compile Resources/Localizable.xcstrings -o .build/l10n/compiled -l <lang>`
   writes `<lang>.lproj` for each of the task's languages.
-- [x] **Step 4:** Read your translations once more against the English, for meaning (not just form),
+- [ ] **Step 4:** Read your translations once more against the English, for meaning (not just form),
   then commit: `git commit -m "feat: <languages> translations"` (only `Resources/Localizable.xcstrings`).
 
 ### Task 5: German, French, Spanish, Italian, Portuguese (Brazil)
