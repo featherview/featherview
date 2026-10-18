@@ -243,9 +243,10 @@ struct ViewerView: View {
         NSCursor.setHiddenUntilMouseMoves(false)
     }
 
-    /// The title and toolbar sit on the background: a dark one gets the dark appearance, or they'd be black on Graphite.
+    /// The title, toolbar and glass sit on the background: a dark one gets the dark tokens, a light one the light ones,
+    /// whatever the system appearance.
     private func matchAppearance() {
-        model.window?.appearance = HexColor.isDark(backgroundHex) ? NSAppearance(named: .darkAqua) : nil
+        model.window?.appearance = Theme.appearance(background: backgroundHex)
     }
 
     private func feedAutoHide(_ event: BarsAutoHide.Event) {

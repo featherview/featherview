@@ -103,7 +103,10 @@ struct ImageCanvas: NSViewRepresentable {
         // Keep the point at the centre of the clear area where it was, so zooming doesn't jump to a corner.
         let centre = CGPoint(x: oldSize.width > 0 ? oldVisible.midX / oldSize.width : 0.5,
                              y: oldSize.height > 0 ? oldVisible.midY / oldSize.height : 0.5)
-        let contentInsets = NSEdgeInsets(top: insets.top, left: 0, bottom: insets.bottom, right: 0)
+        // The scroll view stays left-to-right (the picture never mirrors); the panel side follows the layout.
+        let rtl = context.environment.layoutDirection == .rightToLeft
+        let contentInsets = NSEdgeInsets(top: insets.top, left: rtl ? insets.trailing : insets.leading,
+                                         bottom: insets.bottom, right: rtl ? insets.leading : insets.trailing)
         let insetsChanged = !NSEdgeInsetsEqual(scrollView.contentInsets, contentInsets)
         if insetsChanged {
             scrollView.contentInsets = contentInsets
@@ -118,6 +121,13 @@ struct ImageCanvas: NSViewRepresentable {
         // at the same zoom must leave the running animation alone.
         let resized = view.targetSize != size
         view.targetSize = size
+        // E3 shadow and hairline only while the picture fits the clear area (a transparent one would show it through).
+        let clear = scrollView.contentView.bounds.size
+        let fits = size.width <= clear.width - contentInsets.left - contentInsets.right + 0.5
+            && size.height <= clear.height - contentInsets.top - contentInsets.bottom + 0.5
+        let framed = fits && (!image.hasAlpha || checkerboard)
+        // Off at the first frame beyond fit; on once a zoom back into fit has landed.
+        if !framed || !(animate && (resized || insetsChanged)) { view.setFramed(framed) }
         if resized || insetsChanged {
             let clip = scrollView.contentView
             let oldOrigin = clip.bounds.origin
@@ -135,12 +145,15 @@ struct ImageCanvas: NSViewRepresentable {
                 clip.animator().setBoundsOrigin(oldOrigin)
             }
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.12
+                context.duration = Theme.Motion.zoom
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 view.animator().setFrameSize(size)
                 clip.animator().setBoundsOrigin(target)
             } completionHandler: {
-                MainActor.assumeIsolated { scrollView.reflectScrolledClipView(clip) }
+                MainActor.assumeIsolated {
+                    scrollView.reflectScrolledClipView(clip)
+                    if framed, view.targetSize == size { view.setFramed(true) }
+                }
             }
         }
     }
@@ -193,6 +206,10 @@ private final class ImageLayerView: NSView {
     /// The frame size the canvas last asked for (the animation's end while one runs); nil before the first update.
     var targetSize: CGSize?
     private let imageLayer = CALayer()
+    /// The E3 elevation's contact and ambient shadows and the picture hairline, while the picture fits.
+    private let shadowLayers = Theme.Elevation.e3.layers.map { _ in CALayer() }
+    private let hairline = CALayer()
+    private var framed = false
     private var dragStart: (mouse: NSPoint, origin: NSPoint)?
 
     override init(frame: NSRect) {
@@ -200,7 +217,41 @@ private final class ImageLayerView: NSView {
         wantsLayer = true
         imageLayer.contentsGravity = .resize
         imageLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+        for shadow in shadowLayers.reversed() { layer?.addSublayer(shadow) }
+        hairline.borderWidth = 1
+        layer?.addSublayer(hairline)
         layer?.addSublayer(imageLayer)
+        setFramed(false)
+    }
+
+    func setFramed(_ on: Bool) {
+        framed = on
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        let dark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        for (layer, spec) in zip(shadowLayers, Theme.Elevation.e3.layers) {
+            layer.shadowColor = NSColor.black.cgColor
+            layer.shadowOpacity = on ? Float(dark ? spec.dark : spec.light) : 0
+            layer.shadowRadius = spec.radius
+            layer.shadowOffset = CGSize(width: 0, height: spec.y)  // the layer is flipped: positive is down
+        }
+        effectiveAppearance.performAsCurrentDrawingAppearance { hairline.borderColor = Theme.pictureHairline.cgColor }
+        hairline.isHidden = !on
+        layoutFrameLayers()
+        CATransaction.commit()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        setFramed(framed)
+    }
+
+    private func layoutFrameLayers() {
+        for layer in shadowLayers {
+            layer.frame = bounds
+            layer.shadowPath = CGPath(rect: CGRect(origin: .zero, size: bounds.size), transform: nil)
+        }
+        hairline.frame = bounds.insetBy(dx: -1, dy: -1)
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
@@ -238,6 +289,7 @@ private final class ImageLayerView: NSView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         imageLayer.frame = bounds
+        if framed { layoutFrameLayers() }
         CATransaction.commit()
     }
 

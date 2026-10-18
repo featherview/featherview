@@ -22,10 +22,13 @@ enum Theme {
     // MARK: Colours
 
     /// One colour token: its dark and light value, resolved by the effective appearance.
-    static func colour(dark: NSColor, light: NSColor) -> Color {
-        Color(nsColor: NSColor(name: nil) { appearance in
+    static func colour(dark: NSColor, light: NSColor) -> Color { Color(nsColor: dynamic(dark: dark, light: light)) }
+
+    /// The same, for AppKit and Core Animation (resolve a CGColor inside the view's appearance).
+    static func dynamic(dark: NSColor, light: NSColor) -> NSColor {
+        NSColor(name: nil) { appearance in
             appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
-        })
+        }
     }
 
     private static func white(_ alpha: CGFloat) -> NSColor { NSColor(white: 1, alpha: alpha) }
@@ -52,7 +55,7 @@ enum Theme {
     /// Glass hairline: 1 pt inset outline of the shape (macOS 14/15 only).
     static let glassHairline = colour(dark: white(0.06), light: black(0.06))
     /// Picture hairline: 1 pt, with the E3 shadow, only while the picture fits.
-    static let pictureHairline = colour(dark: white(0.06), light: black(0.08))
+    static let pictureHairline = dynamic(dark: white(0.06), light: black(0.08))
 
     /// Label · primary: title, row labels, glyphs.
     static let labelPrimary = colour(dark: white(0.85), light: black(0.85))
@@ -198,7 +201,7 @@ enum Theme {
     /// Title bar height (the unified toolbar on macOS 26).
     static let titleBarHeight = 52.0
     /// Fit-area insets: leading, top, trailing, bottom (bottom = strip 28 + 8 inset + 8 clearance).
-    static let fitInsets = EdgeInsets(top: 60, leading: 16, bottom: 44, trailing: 16)
+    static let fitInsets = EdgeInsets(top: 60, leading: CanvasInsets.side, bottom: 44, trailing: CanvasInsets.side)
     /// Toolbar capsules and their items.
     static let leadingGroup = CGSize(width: 76, height: 32)
     static let trailingGroup = CGSize(width: 256, height: 32)
@@ -206,7 +209,7 @@ enum Theme {
     static let toolbarSeparator = CGSize(width: 1, height: 16)
     /// Status strip: 28 tall, 12 side and 8 bottom inset, 14 inner padding, 12 between items, 1 × 12 separators.
     static let stripHeight = CanvasInsets.stripHeight
-    static let stripSideInset = 12.0
+    static let stripSideInset = CanvasInsets.stripSideMargin
     static let stripBottomInset = CanvasInsets.stripMargin
     static let stripPadding = 14.0
     static let stripGap = 12.0
