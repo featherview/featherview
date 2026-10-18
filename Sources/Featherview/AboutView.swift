@@ -21,25 +21,17 @@ struct AboutView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // The app icon's 824 pt tile on its 1024 pt grid, drawn so the tile is 128 pt.
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .frame(width: Theme.aboutIconSize, height: Theme.aboutIconSize)
-                .elevation(.e4)
-                .frame(width: Theme.aboutTileSize, height: Theme.aboutTileSize)
-                .background { glow }
+            tile
             Text("Featherview")
                 .font(Theme.aboutName)
-                .foregroundStyle(Theme.labelTitle)
+                .foregroundStyle(Theme.aboutNameColour)
                 .padding(.top, Theme.aboutNameGap)
-            Text("A fast, keyboard-driven image viewer with batch conversion")
+            Text("Fast, keyboard-driven image viewer")
                 .font(Theme.aboutTagline)
                 .foregroundStyle(Theme.labelSecondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, Theme.aboutTaglineGap)
             HStack(spacing: Theme.keyCapGap) {
-                Text("Version").foregroundStyle(Theme.labelTertiary)
+                Text("Version").foregroundStyle(Theme.aboutCaption)
                 // Like a value in iOS settings: click it, and a "Copy" bubble offers the details for a bug report.
                 Button { showingCopy = true } label: {
                     Text(verbatim: "\(Self.version) (\(Self.build))")
@@ -68,32 +60,39 @@ struct AboutView: View {
             .font(Theme.aboutSmall)
             .padding(.top, Theme.aboutVersionGap)
             VStack(spacing: Theme.aboutFooterGap) {
-                Theme.separator.frame(height: 1)
+                Theme.aboutHairline.frame(height: 1)
                 Text(verbatim: Self.info["NSHumanReadableCopyright"] as? String ?? "© Joachim Rütter")
-                    .foregroundStyle(Theme.labelTertiary)
+                    .foregroundStyle(Theme.aboutCaption)
+                // Two to a row, centred, so none wraps at 320 pt.
                 HStack(spacing: Theme.aboutLinkGap) {
                     link("Website") { openURL(URL(string: "https://featherview.github.io")!) }
-                    FooterSeparator()
+                    LinkSeparator()
                     link("Source Code") { openURL(URL(string: "https://github.com/mynetx/featherview")!) }
-                    FooterSeparator()
-                    link("Report a Problem") { openURL(URL(string: "https://github.com/mynetx/featherview/issues/new")!) }
                 }
                 HStack(spacing: Theme.aboutLinkGap) {
-                    if let url = Self.licenseURL {
-                        link("MIT License") { sheetText = try? String(contentsOf: url, encoding: .utf8) }
-                    }
-                    if Self.licenseURL != nil, Self.acknowledgementsURL != nil { FooterSeparator() }
-                    if let url = Self.acknowledgementsURL {
-                        link("Acknowledgements") { sheetText = try? String(contentsOf: url, encoding: .utf8) }
+                    link("Report a Problem") { openURL(URL(string: "https://github.com/mynetx/featherview/issues/new")!) }
+                    LinkSeparator()
+                    link("Supported Formats") { sheetText = Self.formatsText }
+                }
+                if Self.licenseURL != nil || Self.acknowledgementsURL != nil {
+                    HStack(spacing: Theme.aboutLinkGap) {
+                        if let url = Self.licenseURL {
+                            link("MIT License") { sheetText = try? String(contentsOf: url, encoding: .utf8) }
+                        }
+                        if Self.licenseURL != nil, Self.acknowledgementsURL != nil { LinkSeparator() }
+                        if let url = Self.acknowledgementsURL {
+                            link("Acknowledgements") { sheetText = try? String(contentsOf: url, encoding: .utf8) }
+                        }
                     }
                 }
-                DisclosureGroup("Supported Formats") { formats }
             }
             .font(Theme.aboutSmall)
             .padding(.top, Theme.aboutFooterTop)
         }
         .padding(Theme.aboutPadding)
         .frame(width: Theme.aboutWidth)
+        .background { glow }
+        .background(Theme.aboutBackground)
         // Esc closes the window, wherever the focus is (a hidden button's shortcut doesn't need focus).
         .background { Button("Close") { dismiss() }.keyboardShortcut(.cancelAction).opacity(0) }
         .background(WindowAccessor { window in
@@ -116,36 +115,58 @@ struct AboutView: View {
         }
     }
 
+    /// The app icon as the design draws it: the tile gradient with the feather, 128 pt, E4.
+    private var tile: some View {
+        RoundedRectangle(cornerRadius: Theme.Radius.aboutTile, style: .continuous)
+            .fill(Theme.aboutTile)
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.Radius.aboutTile, style: .continuous)
+                    .subtracting(RoundedRectangle(cornerRadius: Theme.Radius.aboutTile, style: .continuous).offset(y: 1))
+                    .fill(Theme.aboutTileHighlight)
+            }
+            .elevation(.e4)
+            .overlay(alignment: .topLeading) {
+                // Feather.svg spans 8…54 of the icon's 64-unit grid.
+                FeatherMark(size: Theme.aboutTileSize * 46 / 64)
+                    .offset(x: Theme.aboutTileSize * 8 / 64, y: Theme.aboutTileSize * 8 / 64)
+            }
+            .frame(width: Theme.aboutTileSize, height: Theme.aboutTileSize)
+    }
+
     /// The one place the feather colours fill an area: a soft radial glow behind the icon.
     private var glow: some View {
+        // CSS's default radial size reaches the box's corner: radius √2 × half the box.
         RadialGradient(stops: [.init(color: Theme.aboutGlowStart, location: 0),
                                .init(color: Theme.aboutGlowMid, location: 0.42),
                                .init(color: .clear, location: 0.70)],
-                       center: .center, startRadius: 0, endRadius: Theme.aboutGlowSize / 2)
+                       center: .center, startRadius: 0, endRadius: Theme.aboutGlowSize / 2 * 2.squareRoot())
             .frame(width: Theme.aboutGlowSize, height: Theme.aboutGlowSize)
-            .offset(y: Theme.aboutGlowOffset)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .offset(y: Theme.aboutGlowTop)
             .allowsHitTesting(false)
+    }
+
+    /// The formats Featherview reads and writes, for the text sheet.
+    private static var formatsText: String {
+        let read = FormatRegistry.readableNames
+        return [String(localized: "Read"),
+                String(localized: "macOS \(macOSVersion): \(read.macOS.joined(separator: ", "))"),
+                String(localized: "Featherview: \(read.own.joined(separator: ", "))"),
+                "",
+                String(localized: "Write"),
+                FormatRegistry.writable.map(\.name).joined(separator: ", ")].joined(separator: "\n")
     }
 
     /// An accent link.
     private func link(_ title: LocalizedStringKey, action: @escaping () -> Void) -> some View {
         Button(title, action: action)
             .buttonStyle(.link)
+            .fixedSize()
             .foregroundStyle(Theme.accent)
     }
+}
 
-    private var formats: some View {
-        let read = FormatRegistry.readableNames
-        return VStack(alignment: .leading, spacing: 8) {
-            Text("Read").font(.headline)
-            Text("macOS \(Self.macOSVersion): \(read.macOS.joined(separator: ", "))")
-            Text("Featherview: \(read.own.joined(separator: ", "))")
-            Text("Write").font(.headline)
-            Text(FormatRegistry.writable.map(\.name).joined(separator: ", "))
-        }
-        .font(.callout)
-        .textSelection(.enabled)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 4)
-    }
+/// The 1 × 10 line between links.
+private struct LinkSeparator: View {
+    var body: some View { Theme.stripSeparator.frame(width: 1, height: Theme.footerSeparatorHeight) }
 }

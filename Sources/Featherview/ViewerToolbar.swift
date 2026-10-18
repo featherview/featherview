@@ -34,34 +34,39 @@ struct ViewerToolbar: CustomizableToolbarContent {
                 ToolbarItem(id: "title", placement: .navigation) { WindowTitle(model: model) }
                     .customizationBehavior(.disabled)
             }
+            // The window's own title, which took the space between, is removed: a flexible space pushes the rest
+            // to the trailing edge.
+            if #available(macOS 26, *) {
+                ToolbarSpacer(.flexible)
+            }
             if model.pageCount > 1 {
-                ToolbarItem(id: "previousPage") {
+                ToolbarItem(id: "previousPage", placement: .primaryAction) {
                     ToolbarButton("Previous Page", "arrow.up.doc", "Previous page (⌥←)", enabled: { $0.availability.hasPages }, model) { $0.previousPage() }
                 }
-                ToolbarItem(id: "nextPage") {
+                ToolbarItem(id: "nextPage", placement: .primaryAction) {
                     ToolbarButton("Next Page", "arrow.down.doc", "Next page (⌥→)", enabled: { $0.availability.hasPages }, model) { $0.nextPage() }
                 }
             }
-            ToolbarItem(id: "rotateLeft") {
+            ToolbarItem(id: "rotateLeft", placement: .primaryAction) {
                 ToolbarButton("Rotate Left", "rotate.left", "Rotate left (L)", enabled: { $0.availability.canChangeFile }, model) { $0.rotate(.counterClockwise) }
             }
-            ToolbarItem(id: "rotateRight") {
+            ToolbarItem(id: "rotateRight", placement: .primaryAction) {
                 ToolbarButton("Rotate Right", "rotate.right", "Rotate right (R)", enabled: { $0.availability.canChangeFile }, model) { $0.rotate(.clockwise) }
             }
-            ToolbarItem(id: "zoomOut") {
+            ToolbarItem(id: "zoomOut", placement: .primaryAction) {
                 ToolbarButton("Zoom Out", "minus.magnifyingglass", "Zoom out (−)", enabled: { $0.availability.hasCurrent }, model) { $0.zoomOut() }
             }
-            ToolbarItem(id: "fit") {
+            ToolbarItem(id: "fit", placement: .primaryAction) {
                 ToolbarButton("Zoom to Fit", "arrow.up.left.and.down.right.magnifyingglass", "Zoom to fit (0)",
                               enabled: { $0.availability.hasCurrent }, model) { $0.setZoom(.fit) }
             }
-            ToolbarItem(id: "zoomIn") {
+            ToolbarItem(id: "zoomIn", placement: .primaryAction) {
                 ToolbarButton("Zoom In", "plus.magnifyingglass", "Zoom in (+)", enabled: { $0.availability.hasCurrent }, model) { $0.zoomIn() }
             }
-            ToolbarItem(id: "info") {
+            ToolbarItem(id: "info", placement: .primaryAction) {
                 InfoToggle(model: model)
             }
-            ToolbarItem(id: "trash") {
+            ToolbarItem(id: "trash", placement: .primaryAction) {
                 ToolbarButton("Move to Trash", "trash", "Move to Trash (⌘⌫)", enabled: { $0.availability.canChangeFile }, model) { $0.moveCurrentToTrash() }
             }
         }

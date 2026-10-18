@@ -77,7 +77,7 @@ private struct SystemMaterial: NSViewRepresentable {
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
         view.blendingMode = .withinWindow
-        view.state = .followsWindowActiveState
+        view.state = .followsWindowActiveState  // as Liquid Glass and the toolbar do
         return view
     }
 
@@ -109,3 +109,4 @@ private struct ShadowOnly<S: Shape>: View {
         }
     }
 }
+

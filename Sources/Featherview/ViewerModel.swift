@@ -744,6 +744,8 @@ final class ViewerModel {
         let page = page
         let turn = rotation == .clockwise ? 1 : -1
         pendingTurns += turn
+        // The rotated file shows once the canvas has finished turning the picture, not part-way.
+        let turned = ContinuousClock.now + .seconds(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : Theme.Motion.rotation)
         let previous = rotateTask
         rotateTask = Task {
             await previous?.value
@@ -755,6 +757,7 @@ final class ViewerModel {
                 }
                 await cache.remove(url)
                 await fullSizeCache.remove(url)
+                try? await Task.sleep(until: turned)
                 knownInfo[url] = nil
                 ready[url] = nil
                 fileRevision += 1

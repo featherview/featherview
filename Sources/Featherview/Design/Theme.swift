@@ -116,18 +116,22 @@ enum Theme {
     static let aboutTile = LinearGradient(colors: [Color(nsColor: rgb(0x23, 0x23, 0x2C, 1)), Color(nsColor: rgb(0x10, 0x10, 0x15, 1))],
                                           startPoint: .top, endPoint: .bottom)
     static let aboutGlowStart = colour(dark: featherStart.withAlphaComponent(0.26), light: featherStart.withAlphaComponent(0.45))
-    static let aboutGlowMid = colour(dark: featherEnd.withAlphaComponent(0.12), light: featherEnd.withAlphaComponent(0.2))
+    static let aboutGlowMid = colour(dark: featherEnd.withAlphaComponent(0.12), light: featherEnd.withAlphaComponent(0.18))
+    /// About: window background, name, captions ("Version", copyright), hairline, tile highlight.
+    static let aboutBackground = colour(dark: rgb(0x1F, 0x1F, 0x24, 1), light: rgb(0xEC, 0xEC, 0xEF, 1))
+    static let aboutNameColour = colour(dark: white(0.92), light: black(0.90))
+    static let aboutCaption = colour(dark: white(0.45), light: black(0.45))
+    static let aboutHairline = colour(dark: white(0.08), light: black(0.08))
+    static let aboutTileHighlight = Color.white.opacity(0.08)
     static let aboutGlowSize = 280.0
-    /// The glow's centre above the icon tile's centre.
-    static let aboutGlowOffset = -10.0
+    /// The glow box's top edge in the window (it runs off the top).
+    static let aboutGlowTop = -30.0
 
     // MARK: About (320 wide; padding 56 / 28 / 24 under the close button)
 
     static let aboutWidth = 320.0
     static let aboutPadding = EdgeInsets(top: 56, leading: 28, bottom: 24, trailing: 28)
     static let aboutTileSize = 128.0
-    /// The app icon drawn so its tile (824 of 1024 on the macOS icon grid) is `aboutTileSize`.
-    static let aboutIconSize = aboutTileSize * 1024 / 824
     static let aboutNameGap = 22.0
     static let aboutTaglineGap = 4.0
     static let aboutVersionGap = 14.0

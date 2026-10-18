@@ -157,9 +157,6 @@
     "0 = to the edge" : {
 
     },
-    "A fast, keyboard-driven image viewer with batch conversion" : {
-
-    },
     "About %@ left" : {
 
     },
@@ -485,6 +482,9 @@
 
     },
     "Failed" : {
+
+    },
+    "Fast, keyboard-driven image viewer" : {
 
     },
     "Featherview" : {

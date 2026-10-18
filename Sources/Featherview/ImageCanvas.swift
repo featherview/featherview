@@ -128,7 +128,12 @@ struct ImageCanvas: NSViewRepresentable {
         let sameImage = view.shows(image)
         view.show(image, checkerboard: checkerboard && image.hasAlpha, 
                   smooth: !ZoomSteps.showsPixels(drawnWidth: size.width, imageWidth: Int(pixelWidth), displayScale: displayScale))
-        view.turn(to: turns, animated: sameImage && !reduceMotion)
+        // A fit picture turned a quarter ends at the size it will fit at, not overflowing.
+        let clearSize = CGSize(width: scrollView.contentView.bounds.width - contentInsets.left - contentInsets.right,
+                               height: scrollView.contentView.bounds.height - contentInsets.top - contentInsets.bottom)
+        let turnScale = zoom == .fit && turns % 2 != 0 && size.width > 0 && size.height > 0
+            ? min(1, clearSize.width / size.height, clearSize.height / size.width) : 1
+        view.turn(to: turns, scale: turnScale, animated: sameImage && !reduceMotion)
         if leaving, sameImage { view.fadeOut() }
         // The size last asked for, not the frame: mid-animation the frame is part-way, and a new image
         // at the same zoom must leave the running animation alone.
@@ -279,11 +284,11 @@ private final class ImageLayerView: NSView {
     override var isFlipped: Bool { true }
 
     /// Turns the picture, its shadow and hairline about the centre; a new image takes `turns` without animation.
-    func turn(to turns: Int, animated: Bool) {
+    func turn(to turns: Int, scale: CGFloat, animated: Bool) {
         guard turns != shownTurns else { return }
         shownTurns = turns
         // The view is flipped, so a positive angle turns clockwise on screen.
-        let transform = CATransform3DMakeRotation(CGFloat(turns) * .pi / 2, 0, 0, 1)
+        let transform = CATransform3DScale(CATransform3DMakeRotation(CGFloat(turns) * .pi / 2, 0, 0, 1), scale, scale, 1)
         CATransaction.begin()
         CATransaction.setDisableActions(!animated)
         CATransaction.setAnimationDuration(Theme.Motion.rotation)

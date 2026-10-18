@@ -151,6 +151,7 @@ struct ViewerView: View {
         .toolbarBackground(.hidden, for: .windowToolbar)
         .onChange(of: backgroundHex) { matchAppearance() }
         .onChange(of: toolbarReady && !toolbarHidden) { matchTitle() }
+        .modifier(RemovesWindowTitle(removed: toolbarReady && !toolbarHidden))
         .modifier(ToolbarHiddenInFullScreen())
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         // Not set on the window directly: SwiftUI puts the scene's title back on its next update.
@@ -206,6 +207,9 @@ struct ViewerView: View {
         }
         .onKeyPress(action: handle)
         .frame(minWidth: 480, minHeight: 320)
+        // The tokens follow the background, not the system (docs/DESIGN.md "Custom background"); outermost, so the
+        // toolbar's title item gets it too. The window's appearance (matchAppearance) covers AppKit's parts.
+        .environment(\.colorScheme, Theme.isDark(background: backgroundHex) ? .dark : .light)
     }
 
     /// Fit shrinks large images to the view; a zoom factor scales the file's full pixel size, so a smaller
@@ -225,8 +229,9 @@ struct ViewerView: View {
     @ViewBuilder private var infoPanel: some View {
         if model.showInfo {
             InfoPanel(url: model.list.current, revision: model.fileRevision)
-                .padding(.top, max(canvasInsets.top - toolbarHeight, CanvasInsets.infoPanelMargin))
-                .padding(.bottom, max(canvasInsets.bottom, CanvasInsets.infoPanelMargin))
+                // Level with the fit area; in full screen (no insets) the panel's own margin.
+                .padding(.top, model.isFullScreen ? CanvasInsets.infoPanelMargin : canvasInsets.top - toolbarHeight)
+                .padding(.bottom, model.isFullScreen ? CanvasInsets.infoPanelMargin : canvasInsets.bottom)
                 .padding(.trailing, CanvasInsets.infoPanelMargin)
                 .transition(.offset(x: Theme.Motion.panelTravel).combined(with: .opacity))
         }
@@ -302,6 +307,7 @@ struct ViewerView: View {
     /// The toolbar's title item shows the name and counter; the window's own title stays for the Window menu
     /// and comes back when the toolbar is hidden or not built yet.
     private func matchTitle() {
+        guard #unavailable(macOS 26) else { return }  // RemovesWindowTitle
         model.window?.titleVisibility = toolbarReady && !toolbarHidden ? .hidden : .visible
     }
 
@@ -760,6 +766,17 @@ private extension View {
     /// Readable on any background colour the user picks (grey text vanishes on black).
     func messageBox() -> some View {
         padding(Theme.messagePadding).glass(.card, cornerRadius: Theme.Radius.message)
+    }
+}
+
+/// The window's own title gives way to the toolbar's title item on macOS 26, where SwiftUI shows it again on
+/// each update if only the window's `titleVisibility` is changed (ViewerToolbar's flexible space takes its place).
+/// Optional kind: no change of view identity.
+private struct RemovesWindowTitle: ViewModifier {
+    let removed: Bool
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) { content.toolbar(removing: removed ? .title : nil) } else { content }
     }
 }
 
