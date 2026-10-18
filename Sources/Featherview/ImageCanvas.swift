@@ -25,8 +25,18 @@ final class PanController {
 private func moveVisibleOrigin(_ scrollView: NSScrollView, to point: CGPoint) {
     let clip = scrollView.contentView
     let origin = CGPoint(x: point.x - clip.contentInsets.left, y: point.y - clip.contentInsets.top)
-    clip.scroll(to: clip.constrainBoundsRect(NSRect(origin: origin, size: clip.bounds.size)).origin)
+    let target = clip.constrainBoundsRect(NSRect(origin: origin, size: clip.bounds.size)).origin
+    cut { clip.animator().setBoundsOrigin(target) }
     scrollView.reflectScrolledClipView(clip)
+}
+
+/// Applies the changes at once and replaces a zoom animation still running on them:
+/// a plain setter doesn't stop an animator animation, which would step on to its old target.
+@MainActor private func cut(_ changes: () -> Void) {
+    NSAnimationContext.runAnimationGroup { context in
+        context.duration = 0
+        changes()
+    }
 }
 
 private extension NSScrollView {
@@ -105,16 +115,21 @@ struct ImageCanvas: NSViewRepresentable {
         view.show(image, checkerboard: checkerboard && image.hasAlpha, 
                   smooth: !ZoomSteps.showsPixels(drawnWidth: size.width, imageWidth: Int(pixelWidth), displayScale: displayScale))
         if oldSize != size || insetsChanged {
-            view.frame.size = size
+            let clip = scrollView.contentView
+            let oldOrigin = clip.bounds.origin
+            cut { view.animator().setFrameSize(size) }
             let visible = scrollView.clearRect
             let point = CGPoint(x: centre.x * size.width - visible.width / 2, y: centre.y * size.height - visible.height / 2)
             guard animate else { return moveVisibleOrigin(scrollView, to: point) }
             // The target scroll position is worked out at the final size, then both animate from the old one.
-            let clip = scrollView.contentView
             let target = clip.constrainBoundsRect(NSRect(
                 origin: CGPoint(x: point.x - clip.contentInsets.left, y: point.y - clip.contentInsets.top),
                 size: clip.bounds.size)).origin
-            view.frame.size = oldSize
+            // Shrinking the document clamped (or centred) the clip's origin: put back where the user was looking.
+            cut {
+                view.animator().setFrameSize(oldSize)
+                clip.animator().setBoundsOrigin(oldOrigin)
+            }
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.12
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
