@@ -407,7 +407,7 @@ the key):
 9. `{…}` placeholders (`\{[a-z]+(?::\d+)?\}`) equal the source's as a set;
 10. `shouldTranslate == false` on a key containing a letter.
 
-- [ ] **Step 1: Write the failing unit tests** on small inline catalogs (each builds a one-key JSON,
+- [x] **Step 1: Write the failing unit tests** on small inline catalogs (each builds a one-key JSON,
   `#expect` on `problems(languages: ["en", "de"])` or `["en", "ar"]`): `completeCatalogHasNoProblems`,
   `missingLanguageIsReported`, `emptyTranslationIsReported`, `untranslatedStateIsReported`,
   `mismatchedSpecifierIsReported` (`"Can't open %@"` → `"%lld lässt sich nicht öffnen"`),
@@ -418,10 +418,10 @@ the key):
   passes, ar `"التالي  (→ or Space)"` fails), `arrowsSwapInRightToLeftOnly` (`"Next image (→)"`:
   de with ← fails; he with ← passes; `"%@ → %@"`-style text outside parentheses swapped in he fails),
   `placeholdersInBracesStay`, `staleKeyIsReported`, `untranslatableKeyWithLettersIsReported`.
-- [ ] **Step 2: Run** `swift test --filter StringCatalogTests` → FAIL (no `StringCatalog`).
-- [ ] **Step 3: Implement `StringCatalog`** (Decodable model, `load`, `decode`, `presentLanguages`,
+- [x] **Step 2: Run** `swift test --filter StringCatalogTests` → FAIL (no `StringCatalog`).
+- [x] **Step 3: Implement `StringCatalog`** (Decodable model, `load`, `decode`, `presentLanguages`,
   `problems`), each problem a sentence like `"de: \"Can't open %@\" has %lld where the source has %@"`.
-- [ ] **Step 4: Add the shipped-catalog tests:**
+- [x] **Step 4: Add the shipped-catalog tests:**
 
 ```swift
 @Test func shippedCatalogHasNoProblemsInItsLanguages() throws {
@@ -438,10 +438,10 @@ func shippedCatalogIsComplete() throws {
 }
 ```
 
-- [ ] **Step 5: Run** `swift test --filter StringCatalogTests` → PASS (one skipped). If
+- [x] **Step 5: Run** `swift test --filter StringCatalogTests` → PASS (one skipped). If
   `shippedCatalogHasNoProblemsInItsLanguages` fails on stale keys or `shouldTranslate` marks, that
   is Task 3's catalog: report it, don't edit the catalog here.
-- [ ] **Step 6: Commit** — `git commit -m "test: catalog check for languages, placeholders, menu keys and arrows"`.
+- [x] **Step 6: Commit** — `git commit -m "test: catalog check for languages, placeholders, menu keys and arrows"`.
 
 ### Translation tasks (5–10): the shared steps
 
@@ -460,17 +460,17 @@ Each task translates every key of `Resources/Localizable.xcstrings` into its lan
 
 Steps for each task:
 
-- [ ] **Step 1:** For each language, write `.build/l10n/<lang>.json`: an object mapping each catalog
+- [x] **Step 1:** For each language, write `.build/l10n/<lang>.json`: an object mapping each catalog
   key (from `xcrun xcstringstool print Resources/Localizable.xcstrings`, skipping `shouldTranslate: false`)
   to its localization object (`{"stringUnit":{"state":"translated","value":"…"}}` or
   `{"variations":{"plural":{…}}}`).
-- [ ] **Step 2:** Fold each into the catalog:
+- [x] **Step 2:** Fold each into the catalog:
   `jq --arg l <lang> --slurpfile t .build/l10n/<lang>.json '.strings |= with_entries(if $t[0][.key] then .value.localizations[$l] = $t[0][.key] else . end)' Resources/Localizable.xcstrings > .build/l10n/out.json && mv .build/l10n/out.json Resources/Localizable.xcstrings`,
   then `scripts/strings.sh` (reformats; must add no keys and mark none stale).
-- [ ] **Step 3:** `swift test --filter StringCatalogTests` → PASS, and
+- [x] **Step 3:** `swift test --filter StringCatalogTests` → PASS, and
   `xcrun xcstringstool compile Resources/Localizable.xcstrings -o .build/l10n/compiled -l <lang>`
   writes `<lang>.lproj` for each of the task's languages.
-- [ ] **Step 4:** Read your translations once more against the English, for meaning (not just form),
+- [x] **Step 4:** Read your translations once more against the English, for meaning (not just form),
   then commit: `git commit -m "feat: <languages> translations"` (only `Resources/Localizable.xcstrings`).
 
 ### Task 5: German, French, Spanish, Italian, Portuguese (Brazil)
