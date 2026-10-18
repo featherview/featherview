@@ -101,8 +101,18 @@ enum Theme {
     /// Preferences tab pill, selected.
     static let tabPill = colour(dark: white(0.10), light: black(0.07))
 
-    /// Accent: selections and toggled glyphs. Never the feather colours.
+    /// Accent: selections and toggled glyphs; the app's AccentColor (feather coral in dark, brown in light).
     static let accent = Color.accentColor
+
+    /// Appearance tiles in Preferences: the miniature picture is a dusk landscape, sky over two hills.
+    static let previewSky = LinearGradient(colors: [Color(nsColor: rgb(0x8E, 0xB8, 0xF0, 1)), Color(nsColor: rgb(0xC9, 0xB8, 0xF2, 1))],
+                                           startPoint: .top, endPoint: .bottom)
+    static let previewHillBack = Color(nsColor: rgb(0x6A, 0x86, 0xC8, 1))
+    static let previewHillFront = Color(nsColor: rgb(0x3F, 0x5A, 0x9E, 1))
+    /// Appearance tile: the miniature window, its selection ring (outside, 3 pt) and the gap between tiles.
+    static let previewSize = CGSize(width: 128, height: 82)
+    static let previewRing = 3.0
+    static let previewGap = 20.0
 
     /// Feather mark: #FFC766 → #FF7A59, top-leading to bottom-trailing. Only the empty hint and About.
     static let featherStart = rgb(0xFF, 0xC7, 0x66, 1)
@@ -177,6 +187,9 @@ enum Theme {
 
     /// Window title: 13 Semibold.
     static let windowTitle = Font.system(size: 13, weight: .semibold)
+    /// Appearance tile name in Preferences; the chosen one semibold in the accent.
+    static let previewLabel = Font.system(size: 11)
+    static let previewLabelSelected = Font.system(size: 11, weight: .semibold)
     /// Title counter " — n / N": 13 Regular, tabular.
     static let counter = Font.system(size: 13).monospacedDigit()
     /// Status strip: 11 Regular, tabular.
@@ -293,6 +306,8 @@ enum Theme {
         static let moveRow = 8.0
         /// Push buttons.
         static let pushButton = 7.0
+        /// Appearance tile in Preferences.
+        static let preview = 8.0
         /// F7 slot key, small button.
         static let slotKey = 6.0
         /// Key cap.

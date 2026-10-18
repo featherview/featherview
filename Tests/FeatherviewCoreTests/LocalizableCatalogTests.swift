@@ -10,8 +10,8 @@ import Testing
         let keys = Set((catalog?["strings"] as? [String: Any] ?? [:]).keys)
         let expected = [
             "Folders", "After a move or Move to Trash", "Window", "Bars", "Overlay", "Pointer",
-            "Apps for ⌥1, ⌥2 and ⌥3", "Graphite", "Black", "Grey", "White", "Custom…",
-            "Custom colour:", "Hide toolbar and status bar while viewing",
+            "Apps for ⌥1, ⌥2 and ⌥3", "Appearance", "System", "Light", "Dark",
+            "Hide toolbar and status bar while viewing",
         ]
         for key in expected { #expect(keys.contains(key), "missing \(key)") }
     }

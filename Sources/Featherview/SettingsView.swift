@@ -125,13 +125,11 @@ private struct ViewerSettings: View {
 
     var body: some View {
         Form {
+            Section("Appearance") {
+                AppearancePicker(selection: $appearance)
+                    .onChange(of: appearance) { Theme.apply(AppearanceMode(stored: $1)) }
+            }
             Section("Window") {
-                Picker("Appearance:", selection: $appearance) {
-                    Text("System").tag(AppearanceMode.system.rawValue)
-                    Text("Light").tag(AppearanceMode.light.rawValue)
-                    Text("Dark").tag(AppearanceMode.dark.rawValue)
-                }
-                .onChange(of: appearance) { Theme.apply(AppearanceMode(stored: $1)) }
                 Toggle("Checkerboard behind transparent images", isOn: $checkerboard)
                 Toggle("Remember the window's size and position", isOn: $rememberFrame)
                 Stepper(value: $zoomStep, in: 1...100) {

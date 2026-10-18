@@ -96,6 +96,8 @@ struct AboutView: View {
         // Esc closes the window, wherever the focus is (a hidden button's shortcut doesn't need focus).
         .background { Button("Close") { dismiss() }.keyboardShortcut(.cancelAction).opacity(0) }
         .background(WindowAccessor { window in
+            // A relaunch never brings About back, as in other Mac apps.
+            window.isRestorable = false
             // Close button only (docs/DESIGN.md "About").
             window.standardWindowButton(.miniaturizeButton)?.isHidden = true
             window.standardWindowButton(.zoomButton)?.isHidden = true

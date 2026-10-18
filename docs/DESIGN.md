@@ -49,7 +49,7 @@ toolbar, title bar and glass with it. Use system dynamic colours where one exist
 | Disabled glyph | rgba(255,255,255,0.30) | rgba(0,0,0,0.25) | Back/forward at either end, whole toolbar in the empty window. |
 | Separator | rgba(255,255,255,0.14) | rgba(0,0,0,0.12) | 1 pt dividers inside capsules and strip; row separators 0.10 / 0.08. |
 | Key cap | fill rgba(255,255,255,0.07), line 0.14, text 0.70 | fill rgba(0,0,0,0.05), line 0.12, text 0.60 | ⌘O, O, →, ←, ↩, esc, and the 1–0 / B–E keys in F7. |
-| Accent | system accent (#0A84FF shown) | system accent (#007AFF shown) | Selected row fill with white text; toggled-on toolbar glyph. Never the feather colours. |
+| Accent | #FF7A59 (feather coral) | #B8552B (feather brown) | The app's accent colour (`Resources/Assets.xcassets`, `NSAccentColorName`): selected row fill with white text, toggled-on toolbar glyph, switches, Preferences tab. macOS uses it while the system accent is Multicolor. |
 | Toggled pill | rgba(255,255,255,0.12) | rgba(0,0,0,0.08) | Behind an active toolbar item (Info while the panel is open), 14 pt radius. |
 | Feather mark | #FFC766 → #FF7A59, linear 0,0 → 1,1 | same | Only the empty-window hint and About. The one warm note in the app. |
 
@@ -117,7 +117,7 @@ elevation. Reduce Transparency keeps the shadows and swaps glass for a solid fil
 | Glyphs | rotate.left, rotate.right, minus.magnifyingglass, arrow.up.left.and.down.right.magnifyingglass, plus.magnifyingglass, info.circle, trash. 15 pt Medium, label primary. |
 | Hover | Item background rgba(255,255,255,0.08) / light rgba(0,0,0,0.05), 14 pt radius, 80 ms. |
 | Pressed | Background 0.14 / 0.09, glyph scales to 0.94 (macOS 26: the glass does this). |
-| Toggled on | Info while the panel is open: toggled-pill fill, glyph in the system accent. |
+| Toggled on | Info while the panel is open: toggled-pill fill, glyph in the accent. |
 | Disabled | Disabled-glyph token. Empty window: every item disabled, capsules remain. |
 | Trash | Same colour as the others. |
 
@@ -161,6 +161,6 @@ are not available there and become the system's group gaps.
 | RTL | Back/forward group, title and trailing group swap sides; glyph order reverses; chevrons flip. Info panel opens from the leading edge. Strip text trailing-aligned. The picture is never mirrored. |
 | Window inactive | Glyphs drop to secondary; glass keeps its fill. |
 | Full screen | Same chrome, same insets; bars fade as above. Background fills the screen. |
-| Preferences | 560 wide, system appearance. Header 96: pane title 13 Semibold in the top 40; tab row of 72 × 46 pills (gap 4), glyph 22 + label 11 Medium, selected pill 0.10 / 0.07 with accent glyph and label. Content padding 22 × 24, sections 22 apart: header 13 Semibold, 8 gap, card radius 10, rows 44 (52 two-line), padding 0 × 14, inset separators. Push buttons 28 radius 7; pop-ups 26 with accent chevron square 16 × 16 radius 4; switches 38 × 22, system. "Use Featherview for Images" carries the 14 pt feather mark. |
-| About | 320 × 440, close button only, system appearance. Icon tile 128, radius 28.8, gradient #23232C → #101015, E4. Behind it a 280 pt radial glow in the feather colours (0.26 → 0 dark, 0.45 → 0 light). Name 22 / 28 Semibold, tagline 13 secondary, "Version" tertiary with the build in a key cap (tabular), hairline, copyright 11 tertiary, two accent links 11. Featherview keeps About's other content (Report a Problem, formats, licence) below the hairline. |
+| Preferences | 560 wide, the app's appearance. Viewer › Appearance: three 128 × 82 miniature viewer windows (System split corner to corner, Light, Dark), radius 8, chosen one with a 3 pt accent ring and its name semibold in the accent. Header 96: pane title 13 Semibold in the top 40; tab row of 72 × 46 pills (gap 4), glyph 22 + label 11 Medium, selected pill 0.10 / 0.07 with accent glyph and label. Content padding 22 × 24, sections 22 apart: header 13 Semibold, 8 gap, card radius 10, rows 44 (52 two-line), padding 0 × 14, inset separators. Push buttons 28 radius 7; pop-ups 26 with accent chevron square 16 × 16 radius 4; switches 38 × 22, system. "Use Featherview for Images" carries the 14 pt feather mark. |
+| About | 320 × 440, close button only, the app's appearance, never restored at launch. Icon tile 128, radius 28.8, gradient #23232C → #101015, E4. Behind it a 280 pt radial glow in the feather colours (0.26 → 0 dark, 0.45 → 0 light). Name 22 / 28 Semibold, tagline 13 secondary, "Version" tertiary with the build in a key cap (tabular), hairline, copyright 11 tertiary, two accent links 11. Featherview keeps About's other content (Report a Problem, formats, licence) below the hairline. |
 | Batch window | Three columns stay. Sidebar rows 32 tall, 8 pt radius, selected row accent with white text; "on" badges secondary tabular; cards as in Preferences. |
