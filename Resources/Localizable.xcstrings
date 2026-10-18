@@ -1,0 +1,1236 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+
+    },
+    "%" : {
+
+    },
+    "% of the output's width" : {
+
+    },
+    "% of the shorter side" : {
+
+    },
+    "%@ %%" : {
+
+    },
+    "%@ / %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "%@ MP" : {
+
+    },
+    "%@ Options" : {
+
+    },
+    "%@ wasn't converted" : {
+
+    },
+    "%@ × %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ × %2$@"
+          }
+        }
+      }
+    },
+    "%@ — page %lld / %lld — %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ — page %2$lld / %3$lld — %4$@"
+          }
+        }
+      }
+    },
+    "%@ → %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ → %2$@"
+          }
+        }
+      }
+    },
+    "%@ → %@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ → %2$@ · %3$@"
+          }
+        }
+      }
+    },
+    "%@, %@ %%" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@ %%"
+          }
+        }
+      }
+    },
+    "%@: the canvas settings leave no image" : {
+
+    },
+    "%@; %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@; %2$@"
+          }
+        }
+      }
+    },
+    "%lld" : {
+
+    },
+    "%lld converted, %lld failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld converted, %2$lld failed"
+          }
+        }
+      }
+    },
+    "%lld converted, %lld failed, %lld not converted" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld converted, %2$lld failed, %3$lld not converted"
+          }
+        }
+      }
+    },
+    "%lld files of %@ no longer exist" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld files of %2$@ no longer exist"
+          }
+        }
+      }
+    },
+    "%lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "%lld × %lld · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld × %2$lld · %3$@"
+          }
+        }
+      }
+    },
+    "%lld × %lld · %@ · %lld pages" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld × %2$lld · %3$@ · %4$lld pages"
+          }
+        }
+      }
+    },
+    "0 = keep" : {
+
+    },
+    "0 = to the edge" : {
+
+    },
+    "A fast, keyboard-driven image viewer with batch conversion" : {
+
+    },
+    "About %@ left" : {
+
+    },
+    "About Featherview" : {
+
+    },
+    "About Featherview  (A)" : {
+
+    },
+    "Acknowledgements" : {
+
+    },
+    "Actual Size  (1)" : {
+
+    },
+    "Add" : {
+
+    },
+    "Add Files…" : {
+
+    },
+    "Add Folder with Subfolders…" : {
+
+    },
+    "Add Folder…" : {
+
+    },
+    "An inner width of 0 draws one border." : {
+
+    },
+    "App %lld not set" : {
+
+    },
+    "Ask before each move or copy" : {
+
+    },
+    "Aspect Ratio" : {
+
+    },
+    "Auto levels" : {
+
+    },
+    "Auto-adjust colours" : {
+
+    },
+    "Auto-crop uniform borders first" : {
+
+    },
+    "Background box" : {
+
+    },
+    "Background:" : {
+
+    },
+    "Batch" : {
+
+    },
+    "Batch Convert…  (B)" : {
+
+    },
+    "Batch List.txt" : {
+
+    },
+    "Blue:" : {
+
+    },
+    "Blur:" : {
+
+    },
+    "Border" : {
+
+    },
+    "Bottom" : {
+
+    },
+    "Bottom left" : {
+
+    },
+    "Bottom right" : {
+
+    },
+    "Bottom:" : {
+
+    },
+    "Box colour" : {
+
+    },
+    "Brightness:" : {
+
+    },
+    "Browsing" : {
+
+    },
+    "By Name" : {
+
+    },
+    "Can't convert %@" : {
+
+    },
+    "Can't delete the preset %@" : {
+
+    },
+    "Can't move %@ to the Trash" : {
+
+    },
+    "Can't open %@" : {
+
+    },
+    "Can't open %@ and %lld more folders" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Can't open %1$@ and %2$lld more folders"
+          }
+        }
+      }
+    },
+    "Can't open %@ with %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Can't open %1$@ with %2$@"
+          }
+        }
+      }
+    },
+    "Can't preview %@" : {
+
+    },
+    "Can't read the watermark image %@" : {
+
+    },
+    "Can't save %@" : {
+
+    },
+    "Can't save the preset %@" : {
+
+    },
+    "Can't write %@ as %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Can't write %1$@ as %2$@"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+
+    },
+    "Canvas" : {
+
+    },
+    "Canvas:" : {
+
+    },
+    "Centre" : {
+
+    },
+    "Checkerboard behind transparent images" : {
+
+    },
+    "Choose a folder" : {
+
+    },
+    "Choose a watermark image" : {
+
+    },
+    "Choose…" : {
+
+    },
+    "Clear" : {
+
+    },
+    "Close" : {
+
+    },
+    "Colour" : {
+
+    },
+    "Colour temperature:" : {
+
+    },
+    "Colour:" : {
+
+    },
+    "Colours" : {
+
+    },
+    "Compression:" : {
+
+    },
+    "Contrast:" : {
+
+    },
+    "Convert" : {
+
+    },
+    "Convert and Rename" : {
+
+    },
+    "Copy" : {
+
+    },
+    "Copy %@ to %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Copy %1$@ to %2$@?"
+          }
+        }
+      }
+    },
+    "Copy Log" : {
+
+    },
+    "Copy to Folder" : {
+
+    },
+    "Copy to Folder…" : {
+
+    },
+    "Copy to Folder…  (F8)" : {
+
+    },
+    "Couldn't copy %@" : {
+
+    },
+    "Couldn't copy %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn't copy %1$@ to %2$@"
+          }
+        }
+      }
+    },
+    "Couldn't move %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn't move %1$@ to %2$@"
+          }
+        }
+      }
+    },
+    "Couldn't save %@" : {
+
+    },
+    "Crop" : {
+
+    },
+    "Customize Toolbar…" : {
+
+    },
+    "Cut" : {
+
+    },
+    "DPI:" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete Preset…" : {
+
+    },
+    "Delete Profile" : {
+
+    },
+    "Delete the preset %@?" : {
+
+    },
+    "Dither" : {
+
+    },
+    "Don't enlarge smaller images" : {
+
+    },
+    "Don't shrink larger images" : {
+
+    },
+    "Done" : {
+
+    },
+    "Drawing" : {
+
+    },
+    "Effort:" : {
+
+    },
+    "Empty" : {
+
+    },
+    "Failed" : {
+
+    },
+    "Featherview" : {
+
+    },
+    "Featherview: %@" : {
+
+    },
+    "Files" : {
+
+    },
+    "Files not converted yet are left as they are." : {
+
+    },
+    "Filters" : {
+
+    },
+    "Flip:" : {
+
+    },
+    "Folder:" : {
+
+    },
+    "Folders for F7 (move) and F8 (copy)" : {
+
+    },
+    "Font:" : {
+
+    },
+    "Format and Folder" : {
+
+    },
+    "Format:" : {
+
+    },
+    "Formats" : {
+
+    },
+    "From:" : {
+
+    },
+    "Full Screen" : {
+
+    },
+    "Gamma:" : {
+
+    },
+    "Green:" : {
+
+    },
+    "Greyscale" : {
+
+    },
+    "Height" : {
+
+    },
+    "Height:" : {
+
+    },
+    "Hide Status Bar" : {
+
+    },
+    "Hide Toolbar" : {
+
+    },
+    "Hide the pointer" : {
+
+    },
+    "Higher is slower and makes smaller files" : {
+
+    },
+    "Horizontally" : {
+
+    },
+    "Icon" : {
+
+    },
+    "Image" : {
+
+    },
+    "Image:" : {
+
+    },
+    "Images" : {
+
+    },
+    "In the Image" : {
+
+    },
+    "Info" : {
+
+    },
+    "Inner colour" : {
+
+    },
+    "Inner:" : {
+
+    },
+    "Interlaced" : {
+
+    },
+    "Into %@" : {
+
+    },
+    "Its settings are lost." : {
+
+    },
+    "JPEG" : {
+
+    },
+    "KB" : {
+
+    },
+    "Keep" : {
+
+    },
+    "Keep Running" : {
+
+    },
+    "Keep all pages" : {
+
+    },
+    "Keep aspect ratio" : {
+
+    },
+    "Keep camera data, location and keywords" : {
+
+    },
+    "Keep file dates" : {
+
+    },
+    "LZW" : {
+
+    },
+    "Left" : {
+
+    },
+    "Left:" : {
+
+    },
+    "Load List…" : {
+
+    },
+    "Longest Side" : {
+
+    },
+    "Lossless" : {
+
+    },
+    "MIT License" : {
+
+    },
+    "MP" : {
+
+    },
+    "Margin:" : {
+
+    },
+    "Megapixels" : {
+
+    },
+    "Megapixels:" : {
+
+    },
+    "Mode" : {
+
+    },
+    "More" : {
+
+    },
+    "Move" : {
+
+    },
+    "Move %@ to %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Move %1$@ to %2$@?"
+          }
+        }
+      }
+    },
+    "Move / Copy" : {
+
+    },
+    "Move Down" : {
+
+    },
+    "Move Up" : {
+
+    },
+    "Move originals to the Trash after converting" : {
+
+    },
+    "Move to Folder" : {
+
+    },
+    "Move to Folder…" : {
+
+    },
+    "Move to Folder…  (F7)" : {
+
+    },
+    "Move to Trash" : {
+
+    },
+    "Move to Trash  (⌘⌫ or ⌦)" : {
+
+    },
+    "Move to Trash (⌘⌫)" : {
+
+    },
+    "Move, copy and trash sidecar files (.xmp, .aae, .thm) with their image" : {
+
+    },
+    "Name" : {
+
+    },
+    "Negative" : {
+
+    },
+    "Negative values cut into the image" : {
+
+    },
+    "Next" : {
+
+    },
+    "Next  (→ or Space)" : {
+
+    },
+    "Next Page" : {
+
+    },
+    "Next Page  (⌥→)" : {
+
+    },
+    "Next image (→)" : {
+
+    },
+    "Next page (⌥→)" : {
+
+    },
+    "No images in %@" : {
+
+    },
+    "No options for %@" : {
+
+    },
+    "Noise reduction:" : {
+
+    },
+    "None" : {
+
+    },
+    "OK" : {
+
+    },
+    "Off" : {
+
+    },
+    "On" : {
+
+    },
+    "On a Strip Above" : {
+
+    },
+    "On a Strip Below" : {
+
+    },
+    "Only page 1 of %@ can be rotated losslessly" : {
+
+    },
+    "Opacity:" : {
+
+    },
+    "Open With" : {
+
+    },
+    "Open an image with ⌘O, or drop one here" : {
+
+    },
+    "Open…  (O)" : {
+
+    },
+    "Operations" : {
+
+    },
+    "Options…" : {
+
+    },
+    "Original %lld × %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Original %1$lld × %2$lld"
+          }
+        }
+      }
+    },
+    "Outer colour" : {
+
+    },
+    "Outer:" : {
+
+    },
+    "Output" : {
+
+    },
+    "Output %lld × %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Output %1$lld × %2$lld"
+          }
+        }
+      }
+    },
+    "PackBits" : {
+
+    },
+    "Past the end of a folder:" : {
+
+    },
+    "Paste" : {
+
+    },
+    "Pattern:" : {
+
+    },
+    "Pause" : {
+
+    },
+    "Paused · %lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Paused · %1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "Percentage" : {
+
+    },
+    "Photo" : {
+
+    },
+    "Picture" : {
+
+    },
+    "Place at:" : {
+
+    },
+    "Place:" : {
+
+    },
+    "Position:" : {
+
+    },
+    "Preferences…" : {
+
+    },
+    "Preset:" : {
+
+    },
+    "Presets" : {
+
+    },
+    "Press a key to pick a folder · Return uses the highlighted one · Esc cancels" : {
+
+    },
+    "Previous" : {
+
+    },
+    "Previous  (← or ⌫)" : {
+
+    },
+    "Previous Page" : {
+
+    },
+    "Previous Page  (⌥←)" : {
+
+    },
+    "Previous image (←)" : {
+
+    },
+    "Previous page (⌥←)" : {
+
+    },
+    "Profile name" : {
+
+    },
+    "Profiles" : {
+
+    },
+    "Progressive" : {
+
+    },
+    "Quality:" : {
+
+    },
+    "Quit" : {
+
+    },
+    "Quit while the batch is running?" : {
+
+    },
+    "Ratio:" : {
+
+    },
+    "Read" : {
+
+    },
+    "Recreate subfolders" : {
+
+    },
+    "Red:" : {
+
+    },
+    "Reduce to:" : {
+
+    },
+    "Remember the window's size and position" : {
+
+    },
+    "Remove" : {
+
+    },
+    "Rename" : {
+
+    },
+    "Replace" : {
+
+    },
+    "Replace existing files (they move to the Trash)" : {
+
+    },
+    "Replace the preset %@?" : {
+
+    },
+    "Report a Problem" : {
+
+    },
+    "Resize" : {
+
+    },
+    "Resize to:" : {
+
+    },
+    "Resume" : {
+
+    },
+    "Right" : {
+
+    },
+    "Right:" : {
+
+    },
+    "Rotate Left" : {
+
+    },
+    "Rotate Left  (L)" : {
+
+    },
+    "Rotate Right" : {
+
+    },
+    "Rotate Right  (R)" : {
+
+    },
+    "Rotate and Flip" : {
+
+    },
+    "Rotate left (L)" : {
+
+    },
+    "Rotate right (R)" : {
+
+    },
+    "Rotate:" : {
+
+    },
+    "Safety and Dates" : {
+
+    },
+    "Same format" : {
+
+    },
+    "Saturation:" : {
+
+    },
+    "Save" : {
+
+    },
+    "Save As…  (S)" : {
+
+    },
+    "Save List…" : {
+
+    },
+    "Save Preset" : {
+
+    },
+    "Save Preset…" : {
+
+    },
+    "Save as Profile…" : {
+
+    },
+    "Select All" : {
+
+    },
+    "Sepia:" : {
+
+    },
+    "Settings…" : {
+
+    },
+    "Shadow" : {
+
+    },
+    "Sharpen:" : {
+
+    },
+    "Shortest Side" : {
+
+    },
+    "Show Info  (I)" : {
+
+    },
+    "Show Status Bar" : {
+
+    },
+    "Show Toolbar" : {
+
+    },
+    "Show hidden files" : {
+
+    },
+    "Show in Finder" : {
+
+    },
+    "Show info (I)" : {
+
+    },
+    "Show text over the image" : {
+
+    },
+    "Show the folder chooser" : {
+
+    },
+    "Show the next image after moving or trashing one" : {
+
+    },
+    "Side:" : {
+
+    },
+    "Size:" : {
+
+    },
+    "Sort" : {
+
+    },
+    "Source Code" : {
+
+    },
+    "Start" : {
+
+    },
+    "Start this folder again" : {
+
+    },
+    "Stop" : {
+
+    },
+    "Supported Formats" : {
+
+    },
+    "Target file size:" : {
+
+    },
+    "Text" : {
+
+    },
+    "Text:" : {
+
+    },
+    "The canvas settings leave no image" : {
+
+    },
+    "The counter counts only the files that are converted." : {
+
+    },
+    "This folder again" : {
+
+    },
+    "Top" : {
+
+    },
+    "Top left" : {
+
+    },
+    "Top right" : {
+
+    },
+    "Top:" : {
+
+    },
+    "Total Size" : {
+
+    },
+    "Unsharp mask:" : {
+
+    },
+    "Use Viewer's Folder" : {
+
+    },
+    "Use the Input's Folder" : {
+
+    },
+    "Vertically" : {
+
+    },
+    "Viewer" : {
+
+    },
+    "Waiting" : {
+
+    },
+    "Watermark" : {
+
+    },
+    "Website" : {
+
+    },
+    "Width" : {
+
+    },
+    "Width and Height" : {
+
+    },
+    "Width per Side" : {
+
+    },
+    "Width:" : {
+
+    },
+    "Working" : {
+
+    },
+    "Write" : {
+
+    },
+    "X:" : {
+
+    },
+    "Y:" : {
+
+    },
+    "ZIP" : {
+
+    },
+    "Zoom In" : {
+
+    },
+    "Zoom In  (+)" : {
+
+    },
+    "Zoom Out" : {
+
+    },
+    "Zoom Out  (−)" : {
+
+    },
+    "Zoom in (+)" : {
+
+    },
+    "Zoom out (−)" : {
+
+    },
+    "Zoom step: %lld %%" : {
+
+    },
+    "Zoom to Fit" : {
+
+    },
+    "Zoom to Fit  (0)" : {
+
+    },
+    "Zoom to fit (0)" : {
+
+    },
+    "^[%lld file](inflect: true) · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "^[%1$lld file](inflect: true) · %2$@"
+          }
+        }
+      }
+    },
+    "colours" : {
+
+    },
+    "macOS %@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "macOS %1$@: %2$@"
+          }
+        }
+      }
+    },
+    "on" : {
+
+    },
+    "page %@ / %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "page %1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "page 1 of %lld" : {
+
+    },
+    "px" : {
+
+    },
+    "{folder} in the path stands for each image's folder name." : {
+
+    },
+    "{name} {folder} {index} {count} {size} {date}" : {
+
+    },
+    "… %lld more · into %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "… %1$lld more · into %2$@"
+          }
+        }
+      }
+    },
+    "→ %@" : {
+
+    },
+    "→ open folder · ← up · Return show images · Esc cancel" : {
+
+    }
+  },
+  "version" : "1.0"
+}
