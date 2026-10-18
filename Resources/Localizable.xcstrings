@@ -197,10 +197,16 @@
     "Add Folder…" : {
 
     },
+    "After a move or Move to Trash" : {
+
+    },
     "An inner width of 0 draws one border." : {
 
     },
     "App %lld not set" : {
+
+    },
+    "Apps for ⌥1, ⌥2 and ⌥3" : {
 
     },
     "Ask before each move or copy" : {
@@ -224,6 +230,9 @@
     "Background:" : {
 
     },
+    "Bars" : {
+
+    },
     "Batch" : {
 
     },
@@ -231,6 +240,9 @@
 
     },
     "Batch List.txt" : {
+
+    },
+    "Black" : {
 
     },
     "Blue:" : {
@@ -428,7 +440,13 @@
     "Crop" : {
 
     },
+    "Custom colour:" : {
+
+    },
     "Customize Toolbar…" : {
+
+    },
+    "Custom…" : {
 
     },
     "Cut" : {
@@ -488,10 +506,16 @@
     "Filters" : {
 
     },
+    "First open: open Featherview once from Applications. When macOS says it can't check it, go to System Settings › Privacy & Security and click Open Anyway. After that it opens normally." : {
+
+    },
     "Flip:" : {
 
     },
     "Folder:" : {
+
+    },
+    "Folders" : {
 
     },
     "Folders for F7 (move) and F8 (copy)" : {
@@ -518,7 +542,13 @@
     "Gamma:" : {
 
     },
+    "Graphite" : {
+
+    },
     "Green:" : {
+
+    },
+    "Grey" : {
 
     },
     "Greyscale" : {
@@ -537,6 +567,9 @@
 
     },
     "Hide the pointer" : {
+
+    },
+    "Hide toolbar and status bar while viewing" : {
 
     },
     "Higher is slower and makes smaller files" : {
@@ -791,6 +824,9 @@
         }
       }
     },
+    "Overlay" : {
+
+    },
     "PackBits" : {
 
     },
@@ -829,6 +865,9 @@
 
     },
     "Place:" : {
+
+    },
+    "Pointer" : {
 
     },
     "Position:" : {
@@ -1110,6 +1149,9 @@
     "Website" : {
 
     },
+    "White" : {
+
+    },
     "Width" : {
 
     },
@@ -1120,6 +1162,9 @@
 
     },
     "Width:" : {
+
+    },
+    "Window" : {
 
     },
     "Working" : {
