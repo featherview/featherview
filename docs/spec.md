@@ -147,6 +147,26 @@ the next image shows. Never overwrites: a clash gets " 2", " 3", … appended.
 Opening a file from Finder while a viewer window is open opens a new viewer window with its own
 folder list.
 
+### Default viewer
+
+Featherview never makes itself the default app on its own: its document types stay rank Alternate.
+It asks instead.
+
+- Once, at the first launch from an Applications folder (`/Applications` or `~/Applications`, not
+  from the disk image, `build/` or a translocated copy), and only while Preview or no app opens
+  JPEG: a dialog "Open your images with Featherview?", "Featherview can open your images instead
+  of Preview. You can change this later in Preferences › Browsing.", buttons "Use Featherview"
+  (default) and "Not Now". Either answer ends the asking; it never comes back by itself.
+- "Use Featherview" makes it the default for every image type it reads whose default is Preview
+  or no app. Types another app opens (Photoshop for PSD, GIMP for XCF, an editor for SVG) stay
+  with that app, and PDF always stays with its app: Featherview shows PDFs as images, it isn't a
+  PDF reader.
+- Preferences › Browsing, group "Default app": a line saying which app opens JPEG now, and the
+  button "Use Featherview for Images" (the same action; off while Featherview opens every type it
+  would take). Undo is Finder's Get Info › Open with › Change All.
+- If macOS refuses some types, one sentence: "Featherview couldn't become the default for HEIC
+  and WebP." (the types' extensions, a list from the system formatter). Nothing else changes.
+
 ## Look
 
 Featherview looks like a Mac app with a few touches of its own; the app icon (a warm feather on a

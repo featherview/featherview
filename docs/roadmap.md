@@ -72,7 +72,8 @@ Spec: "Formats", "Format options", ⇧⌘S Save As.
   shows in Open With and its suggested apps. `Info.plist` declares document types for
   `public.image`, PDF and each own-decoder format, with imported type declarations (UTIs and
   extensions) for the ones macOS doesn't know (QOI, PCX/DCX, XBM, XPM, WBMP, RAS, IFF/LBM). Rank
-  Alternate, never taking over as default. Check with `lsregister -dump` and Finder's Open With.
+  Alternate, never taking over as default by itself; the user is asked once instead (spec
+  "Default viewer", own-look plan Task 9). Check with `lsregister -dump` and Finder's Open With.
 - Option dialogs of GIF, JPEG 2000, TGA, PDF (`docs/parity.md`); PDF options
   decided in spec "Format options".
 - Viewer look: closer to the reference viewer's density while following
@@ -154,7 +155,7 @@ The accepted look is in `docs/spec.md` ("Viewer", "Toolbar", "Look", "Batch wind
 Graphite as the default background, an optional "hide toolbar and status bar while viewing", the
 grouped-card form for Preferences and the batch steps, system accent everywhere (feather colours only
 in About, the empty-window hint and the disk image), instant browsing with short motion elsewhere, and
-a designed disk image with translated first-open help. Minimum macOS stays 14; glass on macOS 26 and
+a designed disk image with translated first-open help. Also: asking once to open images instead of Preview (spec "Default viewer"). Minimum macOS stays 14; glass on macOS 26 and
 later, the normal material before. Plan: `docs/superpowers/plans/2026-10-18-own-look.md`. Launch is
 measured again at its end (after a real ⌘Q) and that number becomes the budget in `AGENTS.md`.
 
