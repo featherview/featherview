@@ -18,6 +18,10 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp LICENSE "$APP/Contents/Resources/LICENSE"
 cp Resources/Acknowledgements.txt "$APP/Contents/Resources/Acknowledgements.txt"
+# The string catalog compiles into one .lproj per language; en.lproj always, so macOS lists English.
+xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory "$APP/Contents/Resources" \
+  --serialization-format binary
+mkdir -p "$APP/Contents/Resources/en.lproj"
 # Ad-hoc signature: runs on this Mac. Public releases need a Developer ID signature + notarization.
 codesign --force --sign - "$APP"
 echo "$APP"
