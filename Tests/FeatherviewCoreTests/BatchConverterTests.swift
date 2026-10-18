@@ -348,6 +348,37 @@ import Testing
         #expect(FileManager.default.fileExists(atPath: sidecar.path))
     }
 
+    @Test func trashOriginalsLeavesSidecarsAnEarlierOutputTookOver() async throws {
+        // a.png converts in place to a.heic and keeps a.xmp; a.jpg's output "a 2.heic" must not take it away.
+        let dir = try Fixtures.makeTempDir()
+        let png = try Fixtures.writeImage(to: dir.appendingPathComponent("a.png"), width: 8, height: 8, type: .png)
+        let jpg = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let sidecar = dir.appendingPathComponent("a.xmp")
+        try Data("<xmp/>".utf8).write(to: sidecar)
+        let trash = try FakeTrash()
+
+        _ = await BatchConverter.run(job([png, jpg], out: dir, format: "heic") { $0.safety.trashOriginals = true },
+                                     trash: trash.trash)
+
+        #expect(Set(trash.names) == ["a.png", "a.jpg"])
+        #expect(FileManager.default.fileExists(atPath: sidecar.path))
+    }
+
+    @Test func trashOriginalsLeavesSidecarsAnotherImageOfTheSameNameStillHas() async throws {
+        // A RAW+JPEG pair: converting only the JPEG leaves a.xmp with the RAW.
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let jpg = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        try Data("raw".utf8).write(to: dir.appendingPathComponent("a.dng"))
+        let sidecar = dir.appendingPathComponent("a.xmp")
+        try Data("<xmp/>".utf8).write(to: sidecar)
+        let trash = try FakeTrash()
+
+        _ = await BatchConverter.run(job([jpg], out: out) { $0.safety.trashOriginals = true }, trash: trash.trash)
+
+        #expect(trash.names == ["a.jpg"])
+        #expect(FileManager.default.fileExists(atPath: sidecar.path))
+    }
+
     @Test func trashOriginalsNotesAnOriginalItCouldNotTrash() async throws {
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)

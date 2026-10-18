@@ -203,10 +203,13 @@ public enum BatchConverter {
         if settings.safety.trashOriginals {
             do {
                 try trash(url)
-                // An output of the same name in the same folder (converting in place) now owns the sidecars.
-                let inPlace = output.deletingLastPathComponent().standardizedFileURL == url.deletingLastPathComponent().standardizedFileURL
-                    && Sidecars.stem(of: output) == Sidecars.stem(of: url)
-                if !inPlace { for sidecar in prepared.sidecars { try? trash(sidecar) } }
+                // Another file of the same name left in the folder (an in-place output, the RAW of a RAW+JPEG
+                // pair) still owns the sidecars. Listed only when there are sidecars to move.
+                let stem = Sidecars.stem(of: url)
+                let owned = !prepared.sidecars.isEmpty && Sidecars.list(url.deletingLastPathComponent()).contains {
+                    Sidecars.stem(of: $0) == stem && !Sidecars.extensions.contains($0.pathExtension.lowercased())
+                }
+                if !owned { for sidecar in prepared.sidecars { try? trash(sidecar) } }
             } catch {
                 let kept = String(localized: "Can't move \(url.lastPathComponent) to the Trash")
                 message = message.map { String(localized: "\($0); \(kept)") } ?? kept
