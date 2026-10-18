@@ -118,6 +118,23 @@ enum Theme {
     static let aboutGlowStart = colour(dark: featherStart.withAlphaComponent(0.26), light: featherStart.withAlphaComponent(0.45))
     static let aboutGlowMid = colour(dark: featherEnd.withAlphaComponent(0.12), light: featherEnd.withAlphaComponent(0.2))
     static let aboutGlowSize = 280.0
+    /// The glow's centre above the icon tile's centre.
+    static let aboutGlowOffset = -10.0
+
+    // MARK: About (320 wide; padding 56 / 28 / 24 under the close button)
+
+    static let aboutWidth = 320.0
+    static let aboutPadding = EdgeInsets(top: 56, leading: 28, bottom: 24, trailing: 28)
+    static let aboutTileSize = 128.0
+    /// The app icon drawn so its tile (824 of 1024 on the macOS icon grid) is `aboutTileSize`.
+    static let aboutIconSize = aboutTileSize * 1024 / 824
+    static let aboutNameGap = 22.0
+    static let aboutTaglineGap = 4.0
+    static let aboutVersionGap = 14.0
+    static let aboutVersionPadding = EdgeInsets(top: 2, leading: 7, bottom: 2, trailing: 7)
+    static let aboutFooterTop = 24.0
+    static let aboutFooterGap = 10.0
+    static let aboutLinkGap = 14.0
 
     // MARK: Elevation
 

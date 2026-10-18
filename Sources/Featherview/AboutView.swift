@@ -20,52 +20,87 @@ struct AboutView: View {
     }()
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 0) {
+            // The app icon's 824 pt tile on its 1024 pt grid, drawn so the tile is 128 pt.
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
-                .frame(width: 96, height: 96)
-            Text("Featherview").font(.title.bold())
-            // Like a value in iOS settings: click it, and a "Copy" bubble offers the details for a bug report.
-            Button { showingCopy = true } label: {
-                Text(verbatim: "\(Self.version) (\(Self.build))").foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-            .help("Click to copy the version, macOS version and Mac model")
-            .popover(isPresented: $showingCopy, arrowEdge: .bottom) {
-                Button("Copy") {
-                    let text = AboutInfo.reportText(version: Self.version, build: Self.build,
-                                                    macOS: ProcessInfo.processInfo.operatingSystemVersionString,
-                                                    model: AboutInfo.modelIdentifier())
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(text, forType: .string)
-                    showingCopy = false
-                }
-                .buttonStyle(.borderless)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-            }
+                .frame(width: Theme.aboutIconSize, height: Theme.aboutIconSize)
+                .elevation(.e4)
+                .frame(width: Theme.aboutTileSize, height: Theme.aboutTileSize)
+                .background { glow }
+            Text("Featherview")
+                .font(Theme.aboutName)
+                .foregroundStyle(Theme.labelTitle)
+                .padding(.top, Theme.aboutNameGap)
             Text("A fast, keyboard-driven image viewer with batch conversion")
+                .font(Theme.aboutTagline)
+                .foregroundStyle(Theme.labelSecondary)
                 .multilineTextAlignment(.center)
-            HStack {
-                Button("Website") { openURL(URL(string: "https://featherview.github.io")!) }
-                Button("Source Code") { openURL(URL(string: "https://github.com/mynetx/featherview")!) }
-                Button("Report a Problem") { openURL(URL(string: "https://github.com/mynetx/featherview/issues/new")!) }
-            }
-            DisclosureGroup("Supported Formats") { formats }
-            HStack {
-                if let url = Self.licenseURL {
-                    Button("MIT License") { sheetText = try? String(contentsOf: url, encoding: .utf8) }
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, Theme.aboutTaglineGap)
+            HStack(spacing: Theme.keyCapGap) {
+                Text("Version").foregroundStyle(Theme.labelTertiary)
+                // Like a value in iOS settings: click it, and a "Copy" bubble offers the details for a bug report.
+                Button { showingCopy = true } label: {
+                    Text(verbatim: "\(Self.version) (\(Self.build))")
+                        .font(Theme.aboutVersion)
+                        .foregroundStyle(Theme.keyCapText)
+                        .padding(Theme.aboutVersionPadding)
+                        .background(Theme.keyCapFill, in: .rect(cornerRadius: Theme.Radius.keyCap))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.keyCap).strokeBorder(Theme.keyCapLine, lineWidth: 1))
                 }
-                if let url = Self.acknowledgementsURL {
-                    Button("Acknowledgements") { sheetText = try? String(contentsOf: url, encoding: .utf8) }
+                .buttonStyle(.plain)
+                .help("Click to copy the version, macOS version and Mac model")
+                .popover(isPresented: $showingCopy, arrowEdge: .bottom) {
+                    Button("Copy") {
+                        let text = AboutInfo.reportText(version: Self.version, build: Self.build,
+                                                        macOS: ProcessInfo.processInfo.operatingSystemVersionString,
+                                                        model: AboutInfo.modelIdentifier())
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(text, forType: .string)
+                        showingCopy = false
+                    }
+                    .buttonStyle(.borderless)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
                 }
             }
-            Text(verbatim: Self.info["NSHumanReadableCopyright"] as? String ?? "© Joachim Rütter").font(.caption).foregroundStyle(.secondary)
+            .font(Theme.aboutSmall)
+            .padding(.top, Theme.aboutVersionGap)
+            VStack(spacing: Theme.aboutFooterGap) {
+                Theme.separator.frame(height: 1)
+                Text(verbatim: Self.info["NSHumanReadableCopyright"] as? String ?? "© Joachim Rütter")
+                    .foregroundStyle(Theme.labelTertiary)
+                HStack(spacing: Theme.aboutLinkGap) {
+                    link("Website") { openURL(URL(string: "https://featherview.github.io")!) }
+                    FooterSeparator()
+                    link("Source Code") { openURL(URL(string: "https://github.com/mynetx/featherview")!) }
+                    FooterSeparator()
+                    link("Report a Problem") { openURL(URL(string: "https://github.com/mynetx/featherview/issues/new")!) }
+                }
+                HStack(spacing: Theme.aboutLinkGap) {
+                    if let url = Self.licenseURL {
+                        link("MIT License") { sheetText = try? String(contentsOf: url, encoding: .utf8) }
+                    }
+                    if Self.licenseURL != nil, Self.acknowledgementsURL != nil { FooterSeparator() }
+                    if let url = Self.acknowledgementsURL {
+                        link("Acknowledgements") { sheetText = try? String(contentsOf: url, encoding: .utf8) }
+                    }
+                }
+                DisclosureGroup("Supported Formats") { formats }
+            }
+            .font(Theme.aboutSmall)
+            .padding(.top, Theme.aboutFooterTop)
         }
-        .padding(24)
-        .frame(width: 420)
+        .padding(Theme.aboutPadding)
+        .frame(width: Theme.aboutWidth)
         // Esc closes the window, wherever the focus is (a hidden button's shortcut doesn't need focus).
         .background { Button("Close") { dismiss() }.keyboardShortcut(.cancelAction).opacity(0) }
+        .background(WindowAccessor { window in
+            // Close button only (docs/DESIGN.md "About").
+            window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+            window.standardWindowButton(.zoomButton)?.isHidden = true
+        })
         .sheet(isPresented: Binding(get: { sheetText != nil }, set: { if !$0 { sheetText = nil } })) {
             VStack(alignment: .trailing) {
                 ScrollView {
@@ -79,6 +114,24 @@ struct AboutView: View {
             .padding()
             .frame(width: 520, height: 420)
         }
+    }
+
+    /// The one place the feather colours fill an area: a soft radial glow behind the icon.
+    private var glow: some View {
+        RadialGradient(stops: [.init(color: Theme.aboutGlowStart, location: 0),
+                               .init(color: Theme.aboutGlowMid, location: 0.42),
+                               .init(color: .clear, location: 0.70)],
+                       center: .center, startRadius: 0, endRadius: Theme.aboutGlowSize / 2)
+            .frame(width: Theme.aboutGlowSize, height: Theme.aboutGlowSize)
+            .offset(y: Theme.aboutGlowOffset)
+            .allowsHitTesting(false)
+    }
+
+    /// An accent link.
+    private func link(_ title: LocalizedStringKey, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(.link)
+            .foregroundStyle(Theme.accent)
     }
 
     private var formats: some View {

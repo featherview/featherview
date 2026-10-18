@@ -35,6 +35,7 @@ struct FeatherviewApp: App {
             AboutView()
                 .modifier(OpensViewerWindows())
         }
+        .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
     }
 }
