@@ -8,6 +8,7 @@ struct BatchView: View {
     @State private var namingPreset = false
     @State private var presetName = ""
     @State private var confirmingReplace = false
+    @State private var confirmingDelete = false
 
     var body: some View {
         NavigationSplitView {
@@ -35,6 +36,11 @@ struct BatchView: View {
         .toolbar { toolbar }
         .frame(minWidth: 960, minHeight: 600)
         .sheet(isPresented: $namingPreset) { presetSheet }
+        .confirmationDialog("Delete the preset \(model.loadedPreset ?? "")?", isPresented: $confirmingDelete) {
+            Button("Delete", role: .destructive) { model.deletePreset() }
+        } message: {
+            Text("Its settings are lost.")
+        }
         .alert(model.notice ?? "", isPresented: Binding { model.notice != nil } set: { if !$0 { model.notice = nil } }) {
             Button("OK") { model.notice = nil }
         }
@@ -61,7 +67,7 @@ struct BatchView: View {
                     presetName = model.loadedPreset ?? ""
                     namingPreset = true
                 }
-                Button("Delete Preset") { model.deletePreset() }
+                Button("Delete Preset…") { confirmingDelete = true }
                     .disabled(model.loadedPreset == nil)
             } label: {
                 if let name = model.loadedPreset {
