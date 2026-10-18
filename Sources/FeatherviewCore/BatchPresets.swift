@@ -33,6 +33,12 @@ public enum BatchPresets {
         return update(defaults) { $0[name] = data }
     }
 
+    /// True when saving under `name` would replace a preset other than the loaded one (ask first).
+    public static func replacesAnother(_ name: String, loaded: String?, in defaults: UserDefaults = .standard) -> Bool {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name != loaded && stored(in: defaults)?[name] != nil
+    }
+
     /// Returns false when the stored presets can't be read, so nothing was deleted.
     @discardableResult
     public static func delete(_ name: String, in defaults: UserDefaults = .standard) -> Bool {

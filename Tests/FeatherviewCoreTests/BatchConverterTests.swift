@@ -510,6 +510,24 @@ import Testing
         #expect(BatchLog.text(results).hasSuffix("2 converted, 0 failed, 8 not converted"))
     }
 
+    /// Time left leaves out time spent paused.
+    @Test func pausedDurationAddsUpPauses() async throws {
+        let control = BatchControl()
+        #expect(control.pausedDuration() == .zero)
+        control.pause()
+        try await Task.sleep(for: .milliseconds(60))
+        #expect(control.pausedDuration() >= .milliseconds(60))  // counts while still paused
+        control.resume()
+        let afterOne = control.pausedDuration()
+        try await Task.sleep(for: .milliseconds(60))
+        #expect(control.pausedDuration() == afterOne)  // not while running
+        control.pause()
+        control.pause()  // a second pause doesn't restart the clock
+        try await Task.sleep(for: .milliseconds(30))
+        control.stop()
+        #expect(control.pausedDuration() >= afterOne + .milliseconds(30))
+    }
+
     @Test func pauseHoldsThenResumes() async throws {
         let out = try Fixtures.makeTempDir()
         let control = BatchControl()

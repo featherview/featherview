@@ -165,11 +165,11 @@ private struct BatchImageRow: View {
         // A row scrolled past quickly is cancelled here and never decodes.
         try? await Task.sleep(for: .milliseconds(50))
         guard !Task.isCancelled else { return }
-        let url = input.url
+        let input = input, url = input.url
         let read = await Task.detached(priority: .utility) { () -> (CGImage?, String) in
             let image = try? ImageDecoder.decode(url, maxPixelSize: 72)
             let size = ImageDecoder.displaySize(of: url)
-            let bytes = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            let bytes = input.fileSize()
             let pages = ImageFormats.mayHavePages(url) ? ImageDecoder.pageCount(of: url) : 1
             let byteText = ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
             let line: String

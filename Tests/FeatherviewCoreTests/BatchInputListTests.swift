@@ -101,8 +101,8 @@ import Testing
         let link = dir.appendingPathComponent("link")
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
         let dropped = BatchInputList.scan(dropped: [file, link])
-        #expect(names(dropped.items) == ["a.jpg", "x.jpg"])
-        #expect(dropped.items.last?.root == link)
+        #expect(names(dropped.list.items) == ["a.jpg", "x.jpg"])
+        #expect(dropped.list.items.last?.root == link)
         #expect(dropped.unreadable.isEmpty)
     }
 
@@ -115,7 +115,7 @@ import Testing
         defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) }
         let file = try image(dir, "a.jpg")
         let dropped = BatchInputList.scan(dropped: [locked, file])
-        #expect(names(dropped.items) == ["a.jpg"])
+        #expect(names(dropped.list.items) == ["a.jpg"])
         #expect(dropped.unreadable == [locked])
     }
 
@@ -193,6 +193,31 @@ import Testing
         l.removeAll()
         l.append([BatchInput(url: URL(fileURLWithPath: "/tmp/batch-perf/5.jpg"))])
         #expect(l.items.count == 1)
+    }
+
+    /// The app builds the incoming list off the main thread; merging it must reuse its keys, not touch the disk again.
+    @Test func appendingAListReusesItsKeys() throws {
+        let dir = try Fixtures.makeTempDir()
+        let a = try image(dir, "a.jpg")
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: a)
+        let incoming = BatchInputList([BatchInput(url: link)])
+        try FileManager.default.removeItem(at: link)  // resolving it now would give a different key
+        var list = BatchInputList([BatchInput(url: a)])
+        list.append(incoming)
+        #expect(names(list.items) == ["a.jpg"])
+        list.append(BatchInputList([BatchInput(url: dir.appendingPathComponent("b.jpg"))]))
+        #expect(names(list.items) == ["a.jpg", "b.jpg"])
+    }
+
+    @Test func fileSizeFollowsSymlinks() throws {
+        let dir = try Fixtures.makeTempDir()
+        let a = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 64, height: 64)
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: a)
+        let size = try #require(a.resourceValues(forKeys: [.fileSizeKey]).fileSize)
+        #expect(BatchInput(url: link).fileSize() == size)
+        #expect(BatchInput(url: dir.appendingPathComponent("missing.jpg")).fileSize() == 0)
     }
 
     @Test func removeAndRemoveAll() {

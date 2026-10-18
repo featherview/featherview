@@ -7,6 +7,7 @@ struct BatchView: View {
     @Bindable var model: BatchModel
     @State private var namingPreset = false
     @State private var presetName = ""
+    @State private var confirmingReplace = false
 
     var body: some View {
         NavigationSplitView {
@@ -97,6 +98,7 @@ struct BatchView: View {
                 Button("Cancel", role: .cancel) { namingPreset = false }
                     .keyboardShortcut(.cancelAction)
                 Button("Save") {
+                    if model.replacesAnotherPreset(presetName) { return confirmingReplace = true }
                     model.savePreset(presetName)
                     namingPreset = false
                 }
@@ -105,6 +107,15 @@ struct BatchView: View {
             }
         }
         .padding(20)
+        .confirmationDialog("Replace the preset \(presetName.trimmingCharacters(in: .whitespacesAndNewlines))?",
+                            isPresented: $confirmingReplace) {
+            Button("Replace", role: .destructive) {
+                model.savePreset(presetName)
+                namingPreset = false
+            }
+        } message: {
+            Text("Its settings are lost.")
+        }
     }
 }
 

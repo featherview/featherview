@@ -38,7 +38,7 @@ public struct BatchInputList: Equatable, Sendable {
     /// Dropped files and folders in the order given; a folder (also through a symlink) adds with
     /// its subfolders. Off the caller's thread, like `scan(folder:subfolders:)`. `unreadable` names
     /// the folders that couldn't be listed.
-    public static func scan(dropped urls: [URL]) -> (items: [BatchInput], unreadable: [URL]) {
+    public static func scan(dropped urls: [URL]) -> (list: BatchInputList, unreadable: [URL]) {
         var list = BatchInputList()
         var files: [URL] = []
         var unreadable: [URL] = []
@@ -53,7 +53,7 @@ public struct BatchInputList: Equatable, Sendable {
             do { list.append(try scan(folder: url, subfolders: true)) } catch { unreadable.append(url) }
         }
         list.add(files: files)
-        return (list.items, unreadable)
+        return (list, unreadable)
     }
 
     private static func scan(_ folder: URL, root: URL, subfolders: Bool, into inputs: inout [BatchInput]) throws {
@@ -91,6 +91,16 @@ public struct BatchInputList: Equatable, Sendable {
         for input in inputs {
             let key = pathKey(input.url)
             guard keys.insert(key).inserted else { continue }
+            keyOf[input.url] = key
+            items.append(input)
+        }
+    }
+
+    /// Appends `other`'s items with the keys it resolved at add, so a list built off the main
+    /// thread merges without touching the disk.
+    public mutating func append(_ other: BatchInputList) {
+        for input in other.items {
+            guard let key = other.keyOf[input.url], keys.insert(key).inserted else { continue }
             keyOf[input.url] = key
             items.append(input)
         }

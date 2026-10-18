@@ -151,7 +151,8 @@ final class BatchModel {
     /// Estimated seconds left, once 3 files are done.
     var secondsLeft: Double? {
         guard isRunning, doneCount >= 3, doneCount < runTotal else { return nil }
-        return Date.now.timeIntervalSince(runStart) / Double(doneCount) * Double(runTotal - doneCount)
+        let active = Date.now.timeIntervalSince(runStart) - control.pausedDuration() / .seconds(1)
+        return active / Double(doneCount) * Double(runTotal - doneCount)
     }
 
     /// "N converted, M failed" of the last run.
@@ -235,6 +236,11 @@ final class BatchModel {
         isEdited = false
     }
 
+    /// True when saving under `name` would replace a different preset: ask first.
+    func replacesAnotherPreset(_ name: String) -> Bool {
+        BatchPresets.replacesAnother(name, loaded: loadedPreset)
+    }
+
     func savePreset(_ name: String) {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard BatchPresets.save(name, settings) else {
@@ -275,13 +281,13 @@ final class BatchModel {
 
     // MARK: - Inputs
 
-    /// Off the main thread (it touches the disk), then appended in the order given; folders that
-    /// couldn't be listed get a notice.
-    private func addInBackground(_ work: @escaping @Sendable () -> (items: [BatchInput], unreadable: [URL])) {
+    /// Scanned and de-duplicated off the main thread (both touch the disk), then appended in the
+    /// order given; folders that couldn't be listed get a notice.
+    private func addInBackground(_ work: @escaping @Sendable () -> (list: BatchInputList, unreadable: [URL])) {
         scans += 1
         Task {
             let found = await Task.detached(priority: .userInitiated) { work() }.value
-            inputs.append(found.items)
+            inputs.append(found.list)
             scans -= 1
             if let first = found.unreadable.first {
                 let name = first.lastPathComponent
@@ -296,14 +302,14 @@ final class BatchModel {
         addInBackground {
             var list = BatchInputList()
             list.add(files: files)
-            return (list.items, [])
+            return (list, [])
         }
     }
 
     func add(folder: URL, subfolders: Bool) {
         addInBackground {
-            do { return (try BatchInputList.scan(folder: folder, subfolders: subfolders), []) }
-            catch { return ([], [folder]) }
+            do { return (BatchInputList(try BatchInputList.scan(folder: folder, subfolders: subfolders)), []) }
+            catch { return (BatchInputList(), [folder]) }
         }
     }
 
@@ -365,18 +371,18 @@ final class BatchModel {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         scans += 1
         Task {
-            let loaded = await Task.detached(priority: .userInitiated) { () -> (items: [BatchInput], missing: Int)? in
+            let loaded = await Task.detached(priority: .userInitiated) { () -> (list: BatchInputList, missing: Int)? in
                 guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
                 var list = BatchInputList()
                 let counts = list.load(listText: text)
-                return (list.items, counts.missing)
+                return (list, counts.missing)
             }.value
             scans -= 1
             guard let loaded else {
                 notice = String(localized: "Can't open \(url.lastPathComponent)")
                 return
             }
-            inputs.append(loaded.items)
+            inputs.append(loaded.list)
             if loaded.missing > 0 {
                 notice = String(localized: "\(loaded.missing) files of \(url.lastPathComponent) no longer exist")
             }
@@ -386,10 +392,10 @@ final class BatchModel {
     private func updateTotalBytes() {
         bytesTask?.cancel()
         totalBytes = nil
-        let urls = inputs.items.map(\.url)
+        let items = inputs.items
         bytesTask = Task {
             let total = await Task.detached(priority: .utility) {
-                urls.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
+                items.reduce(0) { $0 + $1.fileSize() }
             }.value
             guard !Task.isCancelled else { return }
             totalBytes = total
