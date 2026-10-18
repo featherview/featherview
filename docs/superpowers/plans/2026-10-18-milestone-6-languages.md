@@ -219,7 +219,7 @@ that touched any other file is not a translation branch: merge it normally.
   `build/Featherview.app/Contents/Resources/<lang>.lproj/Localizable.strings[dict]`;
   Info.plist `CFBundleLocalizations` = the 30 codes of Decision 5, in that order.
 
-- [ ] **Step 1: Write `scripts/strings.sh`** (executable, `#!/bin/sh`, `set -eu`, `cd "$(dirname "$0")/.."`, the header comment says what it does and that it is run by hand after changing UI text):
+- [x] **Step 1: Write `scripts/strings.sh`** (executable, `#!/bin/sh`, `set -eu`, `cd "$(dirname "$0")/.."`, the header comment says what it does and that it is run by hand after changing UI text):
 
 ```sh
 OUT=.build/strings
@@ -232,15 +232,15 @@ swift build --product Featherview --scratch-path "$OUT/build" \
 xcrun xcstringstool sync Resources/Localizable.xcstrings --stringsdata "$OUT"/data/*.stringsdata
 ```
 
-- [ ] **Step 2: Run it** — `scripts/strings.sh` (takes a minute or two; give it a 600 s timeout).
+- [x] **Step 2: Run it** — `scripts/strings.sh` (takes a minute or two; give it a 600 s timeout).
   Expected: `.build/strings/data/ViewerView.stringsdata` and `BatchConverter.stringsdata` exist;
   `xcrun xcstringstool print Resources/Localizable.xcstrings | grep -c .` prints well over 300;
   `xcrun xcstringstool print Resources/Localizable.xcstrings | grep -F 'Next  (→ or Space)'` and
   `grep -F "Can't open %@"` both match. If the flags don't reach the compiler (no `.stringsdata`
   files), switch to the fallback in "Checked while planning", note it there, and continue.
-- [ ] **Step 3: Run it again** — `git diff --stat Resources/Localizable.xcstrings` shows no change
+- [x] **Step 3: Run it again** — `git diff --stat Resources/Localizable.xcstrings` shows no change
   (the script is idempotent).
-- [ ] **Step 4: bundle.sh** — after the Acknowledgements copy add, with a one-line comment
+- [x] **Step 4: bundle.sh** — after the Acknowledgements copy add, with a one-line comment
   (catalog compiled into one `.lproj` per language; `en.lproj` always, so English is listed):
 
 ```sh
@@ -249,13 +249,13 @@ xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory "
 mkdir -p "$APP/Contents/Resources/en.lproj"
 ```
 
-- [ ] **Step 5: Info.plist** — add `CFBundleDevelopmentRegion` = `en` and `CFBundleLocalizations`
+- [x] **Step 5: Info.plist** — add `CFBundleDevelopmentRegion` = `en` and `CFBundleLocalizations`
   = array of the 30 codes (Decision 5). `plutil -lint Resources/Info.plist` → OK.
-- [ ] **Step 6: Verify the bundle** — `scripts/bundle.sh debug`, then `ls build/Featherview.app/Contents/Resources`
+- [x] **Step 6: Verify the bundle** — `scripts/bundle.sh debug`, then `ls build/Featherview.app/Contents/Resources`
   shows `en.lproj`, and `plutil -p build/Featherview.app/Contents/Info.plist | grep -A31 CFBundleLocalizations`
   lists 30 codes. (Translations come in wave C, so only `en.lproj` exists yet.)
-- [ ] **Step 7: AGENTS.md** — in Commands add `scripts/strings.sh   # after changing UI text: extract strings into Resources/Localizable.xcstrings`.
-- [ ] **Step 8: Commit** — `git add scripts/strings.sh scripts/bundle.sh Resources/Localizable.xcstrings Resources/Info.plist AGENTS.md && git commit -m "feat: string catalog, extraction script, bundled localizations"`
+- [x] **Step 7: AGENTS.md** — in Commands add `scripts/strings.sh   # after changing UI text: extract strings into Resources/Localizable.xcstrings`.
+- [x] **Step 8: Commit** — `git add scripts/strings.sh scripts/bundle.sh Resources/Localizable.xcstrings Resources/Info.plist AGENTS.md && git commit -m "feat: string catalog, extraction script, bundled localizations"`
 
 ### Task 2: ← and → follow the layout direction
 
@@ -269,7 +269,7 @@ mkdir -p "$APP/Contents/Resources/en.lproj"
 - Produces: `ViewerKey.arrowGoesForward(isRightArrow: Bool, rightToLeft: Bool) -> Bool`
   (`public static`): true when the arrow means next/enter.
 
-- [ ] **Step 1: Write the failing test** `arrowStepsFollowLayoutDirection`:
+- [x] **Step 1: Write the failing test** `arrowStepsFollowLayoutDirection`:
 
 ```swift
 @Test func arrowStepsFollowLayoutDirection() {
@@ -280,19 +280,19 @@ mkdir -p "$APP/Contents/Resources/en.lproj"
 }
 ```
 
-- [ ] **Step 2: Run** `swift test --filter ViewerKeyTests` → FAIL (no member `arrowGoesForward`).
-- [ ] **Step 3: Implement** in `ViewerKey.swift` with a doc comment quoting the spec rule (one expression: `isRightArrow != rightToLeft`).
-- [ ] **Step 4: Run** `swift test --filter ViewerKeyTests` → PASS.
-- [ ] **Step 5: Wire it in `ViewerView`** — `@Environment(\.layoutDirection) private var layoutDirection`;
+- [x] **Step 2: Run** `swift test --filter ViewerKeyTests` → FAIL (no member `arrowGoesForward`).
+- [x] **Step 3: Implement** in `ViewerKey.swift` with a doc comment quoting the spec rule (one expression: `isRightArrow != rightToLeft`).
+- [x] **Step 4: Run** `swift test --filter ViewerKeyTests` → PASS.
+- [x] **Step 5: Wire it in `ViewerView`** — `@Environment(\.layoutDirection) private var layoutDirection`;
   `let rtl = layoutDirection == .rightToLeft`. Plain ← →: the `pan(dx:)` call is unchanged
   (physical), and when it returns false the arrow goes `arrowGoesForward(…) ? model.next() : model.previous()`.
   ⌥← ⌥→: same with `nextPage()`/`previousPage()`. Chooser: forward → `chooserEnter()`, else
   `chooserUp()`; Space still enters. ↑ ↓ unchanged.
-- [ ] **Step 6: Pin the canvas** — in `ImageCanvas.makeNSView` set
+- [x] **Step 6: Pin the canvas** — in `ImageCanvas.makeNSView` set
   `scrollView.userInterfaceLayoutDirection = .leftToRight` with the comment
   `// The picture never mirrors (spec "Languages"): scroll origin and dragging stay physical.`
-- [ ] **Step 7: Build** `swift build` → succeeds; `swift test` → all pass.
-- [ ] **Step 8: Commit** — `git commit -m "feat: arrow keys follow the mirrored layout in right-to-left languages"` (the four files).
+- [x] **Step 7: Build** `swift build` → succeeds; `swift test` → all pass.
+- [x] **Step 8: Commit** — `git commit -m "feat: arrow keys follow the mirrored layout in right-to-left languages"` (the four files).
 
 ### Task 3: String audit and English source
 
