@@ -152,7 +152,11 @@ private struct BatchStepsColumn: View {
                     .font(.system(size: 7))
                     .foregroundStyle(model.isOn(step) ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
                     .accessibilityLabel(model.isOn(step) ? "On" : "Off")
+                // One line: a wrapped title outgrows the list's row height and spills over the next row.
+                // The summary truncates first.
                 Text(step.title)
+                    .lineLimit(1)
+                    .layoutPriority(1)
                 Spacer()
                 Text(model.summary(of: step))
                     .foregroundStyle(.secondary)
