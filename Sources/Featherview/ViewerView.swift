@@ -106,7 +106,8 @@ struct ViewerView: View {
         // Hiding the status bar or entering full screen changes the insets without changing the geometry.
         .onChange(of: canvasInsets) { setViewSize(window: windowSize, toolbarHeight: toolbarHeight) }
         .overlay(alignment: .bottom) {
-            if showsStatusBar {
+            // Nothing to report without a picture: an empty strip is just a grey bar.
+            if showsStatusBar, model.image != nil {
                 StatusBar(model: model)
                     .opacity(barsVisible ? 1 : 0)
                     .animation(.easeInOut(duration: reduceMotion ? 0 : 0.2), value: barsVisible)
@@ -138,6 +139,9 @@ struct ViewerView: View {
         .onChange(of: model.image != nil || model.errorMessage != nil || model.emptyFolder != nil || !model.isOpening,
                   initial: true) { if $1, model.image == nil { ViewerModel.afterFrame { toolbarReady = true } } }
         .toolbar(toolbarHidden || hidesToolbarForFullScreen ? .hidden : .visible, for: .windowToolbar)
+        // The background shows behind the glass toolbar in every state, not only under a picture's scroll view.
+        .toolbarBackground(.hidden, for: .windowToolbar)
+        .onChange(of: backgroundHex) { matchAppearance() }
         .modifier(ToolbarHiddenInFullScreen())
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         // Not set on the window directly: SwiftUI puts the scene's title back on its next update.
@@ -156,6 +160,7 @@ struct ViewerView: View {
         }
         .background(WindowAccessor { window in
             model.window = window
+            matchAppearance()
             // A restored or reopened window may already be in full screen; no didEnter notification follows.
             model.isFullScreen = window.styleMask.contains(.fullScreen)
             if !rememberFrame, !model.isFullScreen { Self.place(window) }
@@ -236,6 +241,11 @@ struct ViewerView: View {
         focused = true
         feedAutoHide(.pointerMoved)
         NSCursor.setHiddenUntilMouseMoves(false)
+    }
+
+    /// The title and toolbar sit on the background: a dark one gets the dark appearance, or they'd be black on Graphite.
+    private func matchAppearance() {
+        model.window?.appearance = HexColor.isDark(backgroundHex) ? NSAppearance(named: .darkAqua) : nil
     }
 
     private func feedAutoHide(_ event: BarsAutoHide.Event) {

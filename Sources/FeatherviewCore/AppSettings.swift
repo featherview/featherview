@@ -76,6 +76,12 @@ public enum HexColor {
         return (Double(value >> 16 & 0xFF) / 255, Double(value >> 8 & 0xFF) / 255, Double(value & 0xFF) / 255)
     }
 
+    /// Whether text and controls need the dark appearance on this colour (Rec. 709 luma below ½); false if malformed.
+    public static func isDark(_ hex: String) -> Bool {
+        guard let c = parse(hex) else { return false }
+        return 0.2126 * c.red + 0.7152 * c.green + 0.0722 * c.blue < 0.5
+    }
+
     public static func format(red: Double, green: Double, blue: Double) -> String {
         func byte(_ c: Double) -> Int { Int((min(max(c, 0), 1) * 255).rounded()) }
         return String(format: "#%02X%02X%02X", byte(red), byte(green), byte(blue))

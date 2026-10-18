@@ -51,6 +51,12 @@ import Testing
         #expect(HexColor.format(red: color.red, green: color.green, blue: color.blue) == "#FF8000")
     }
 
+    /// The viewer window's toolbar and title follow the background: dark presets get the dark appearance.
+    @Test(arguments: [("#1c1c20", true), ("#000000", true), ("#808080", false), ("#ffffff", false), ("#0000ff", true), ("bad", false)])
+    func darkBackgrounds(_ hex: String, dark: Bool) {
+        #expect(HexColor.isDark(hex) == dark)
+    }
+
     @Test(arguments: ["", "000000", "#00000", "#GG0000", "#0000000"])
     func malformedHexIsRejected(_ hex: String) {
         #expect(HexColor.parse(hex) == nil)
