@@ -20,6 +20,19 @@ struct ViewerView: View {
     @AppStorage(AppSettings.hidePointer.key) private var hidePointer = AppSettings.hidePointer.defaultValue
     @AppStorage(toolbarHiddenKey) private var toolbarHidden = false
     @AppStorage(statusBarHiddenKey) private var statusBarHidden = false
+    @State private var windowSize = CGSize.zero
+    @State private var toolbarHeight = 0.0
+
+    private var showsStatusBar: Bool { !statusBarHidden && !model.isFullScreen }
+    private var canvasInsets: CanvasInsets {
+        .make(toolbarHeight: toolbarHeight, statusBarShown: showsStatusBar, fullScreen: model.isFullScreen)
+    }
+
+    private func setViewSize(window: CGSize, toolbarHeight: Double) {
+        let size = CanvasInsets.make(toolbarHeight: toolbarHeight, statusBarShown: showsStatusBar,
+                                     fullScreen: model.isFullScreen).fitArea(in: window)
+        if model.viewSize != size { model.viewSize = size }
+    }
 
     private var background: Color { Color(nsColor: backgroundNSColor) }
     private var backgroundNSColor: NSColor {
@@ -32,12 +45,14 @@ struct ViewerView: View {
             background.ignoresSafeArea()
             if let image = model.image {
                 ImageCanvas(image: image, size: drawSize(image), pixelWidth: pixelSize(image).width,
-                            displayScale: displayScale, background: backgroundNSColor,
+                            displayScale: displayScale, background: backgroundNSColor, insets: canvasInsets,
                             checkerboard: checkerboard, panController: panController,
                             onDoubleClick: model.toggleFullScreen, onClick: { focused = true },
                             onFirstDraw: { toolbarReady = true; model.firstImageDrawn() },
                             onCommit: model.imageCommitted)
                     .contextMenu { ImageContextMenu(model: model) }
+                    // Under the glass toolbar and the status strip; `insets` keeps a fit image clear of them.
+                    .ignoresSafeArea()
             } else if let message = model.errorMessage {
                 Text(message).messageBox()
             } else if let folder = model.emptyFolder {
@@ -69,12 +84,21 @@ struct ViewerView: View {
             }
         }
         // Not onGeometryChange: it misses the restored window frame at launch, leaving fit at the 100×48 placeholder.
-        // Inside the status bar's inset, so fit and its zoom % use the area above the bar.
+        // The whole window and the toolbar's height (top safe area), so fit and its zoom % use the clear area.
         .background(GeometryReader { geo in
-            Color.clear.onChange(of: geo.size, initial: true) { model.viewSize = geo.size }
+            let window = CGSize(width: geo.size.width,
+                                height: geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom)
+            Color.clear.onChange(of: [window.width, window.height, geo.safeAreaInsets.top], initial: true) {
+                windowSize = window
+                toolbarHeight = geo.safeAreaInsets.top
+                // Now, not a pass later through the onChange below: the first image waits for it.
+                setViewSize(window: window, toolbarHeight: geo.safeAreaInsets.top)
+            }
         })
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !statusBarHidden, !model.isFullScreen { StatusBar(model: model) }
+        // Hiding the status bar or entering full screen changes the insets without changing the geometry.
+        .onChange(of: canvasInsets) { setViewSize(window: windowSize, toolbarHeight: toolbarHeight) }
+        .overlay(alignment: .bottom) {
+            if showsStatusBar { StatusBar(model: model) }
         }
         // On a new image and on entering full screen (double-click, F or Return leave the image as is).
         .onChange(of: model.image) { hidePointerInFullScreen() }
