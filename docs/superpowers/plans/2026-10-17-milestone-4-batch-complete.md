@@ -911,13 +911,25 @@ Behaviour (spec "Window", "Output", "Per-image operations", "Safety and options"
 
 Needs the screen: ask the maintainer before driving the GUI.
 
-- [ ] **Step 1:** Release build (`scripts/bundle.sh`), batch of the real-world files (session
+- [x] **Step 1:** Release build (`scripts/bundle.sh`), batch of the real-world files (session
   scratchpad / `research/` samples) through every mode: convert to JPEG/HEIC/PNG/WebP/TIFF with
   keep-all-pages/PDF; rename only; convert and rename with `{date}` and `{n:3}` and a corrupt file in
   the middle (no gap); every operation once with the preview compared to the output; presets;
   replace existing (old file in the Trash), trash originals (with an `.xmp` sidecar), keep dates,
   recreate subfolders; stop and pause mid-run; copy log; an HDR iPhone HEIC to HEIC (still HDR in
   the viewer) and to JPEG (SDR).
+  Done 2026-10-18 in the release build: 58 real-world files (QOI, PCX, DCX, XBM, XPM, WBMP, RAS, IFF/HAM,
+  SVG, PDF incl. 297 pages and encrypted) to JPEG, HEIC, PNG, WebP (55 converted, the 2 truncated files
+  and the password PDF fail; every output opens, sizes match), TIFF and PDF with all pages (297 kept,
+  peak footprint 2.1 GB); convert and rename `trip-{date}-{n:3}` with a corrupt file third (no gap);
+  rename only (byte-identical copies); border, text, resize, rotate, greyscale, canvas output against the
+  preview; presets save/edit/load/delete; replace existing and trash originals with `.xmp` (all three in
+  the Trash); keep dates; recreate subfolders; pause, resume, stop and quit mid-run on 10,000 files; copy
+  log; iPhone HDR HEIC → HEIC keeps its gain map, → JPEG has none. Not checked by hand: drag and drop
+  onto the list, crop/filters/colour sliders/watermark image against the preview (unit tests only).
+  QA fixes: 1e87e92 (10,000 rows froze the window, Stop missing from the toolbar, Return started a batch,
+  stale ticks after Clear), "1 file" and hint spacing. Open: Core Image keeps ~2 GB of decoded inputs after
+  a big batch (see Step 2).
 - [x] **Step 2:** Measure: 100 × 12 MP JPEG → JPEG with no operations, before (main before this
   milestone) and after: not slower. Same with resize + text: note the time.
   Measured (M1 Pro 10 cores, `BatchConverter.run` from a release test build, 3 runs, load average 3.3–4.3):
@@ -926,6 +938,6 @@ Needs the screen: ask the maintainer before driving the GUI.
   the run ends: Core Image keeps the decoded inputs it has drawn (≈48 MB each); `clearCaches()`, a
   context per file and `cacheImmediately: false` don't release them, warn pressure frees part.
   Bounded, left open as a finding.
-- [ ] **Step 3:** Update `README.md` if it lists batch features, `docs/roadmap.md` (milestone 4
+- [x] **Step 3:** Update `README.md` if it lists batch features, `docs/roadmap.md` (milestone 4
   done), `docs/parity.md` rows for batch that change status, tick this plan.
-- [ ] **Step 4: Commit.** `docs: milestone 4 done after manual QA`
+- [x] **Step 4: Commit.** `docs: milestone 4 done after manual QA`

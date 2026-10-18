@@ -15,7 +15,8 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
 - Saves and batch converts to JPEG, PNG, HEIC, AVIF, TIFF, WebP, GIF, BMP, JPEG 2000, PDF, PSD, TGA,
   ICO, ICNS, OpenEXR, PBM, PGM, PPM, QOI and PCX
 - Lossless JPEG/HEIC/TIFF rotation
-- Batch convert, resize and rename
+- Batch convert and rename with crop, resize, rotate, colour, filters, canvas, border, text and
+  watermark steps, a live preview and presets
 - EXIF info panel; delete moves to Trash
 
 Status: early development. Requires macOS 14 or later.
