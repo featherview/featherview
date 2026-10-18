@@ -733,7 +733,7 @@ Behaviour to pin:
   in milestone 1), so a plain conversion is not slower than before.
 - `ImageSaver.save` (Save As) is unchanged in behaviour.
 
-- [ ] **Step 1: Write the failing tests** — `ImagePipelineTests`: `noOperationsKeepsPixels`,
+- [x] **Step 1: Write the failing tests** — `ImagePipelineTests`: `noOperationsKeepsPixels`,
   `specOrderCropThenResize` (crop 100 × 100 from a 400 × 400 `quadrants` then resize to 50 → one
   colour), `rotateAfterResize` (resize width 200 on 400 × 100, then rotate → 50 × 200),
   `canvasThenBorderThenText` (sizes add up), `reduceColoursIsLast`, `scaleShrinksPixelSettings`.
@@ -748,13 +748,13 @@ Behaviour to pin:
   `recreateSubfolders`, `stopFinishesInFlightAndStartsNoMore`, `pauseHoldsThenResumes`,
   `commitWindowIsBounded` (a seam that counts finished-but-uncommitted files never above 2 × workers),
   `watermarkMissingFailsEveryFileOnce`, `dpiIsWritten`, `logTextSummary`.
-- [ ] **Step 2: Run them to see them fail.** `swift test --filter "ImagePipelineTests|BatchConverterTests"`
-- [ ] **Step 3: Implement.** Add a `trash: @Sendable (URL) throws -> Void` seam
+- [x] **Step 2: Run them to see them fail.** `swift test --filter "ImagePipelineTests|BatchConverterTests"`
+- [x] **Step 3: Implement.** Add a `trash: @Sendable (URL) throws -> Void` seam
   (`FileManager.default.trashItem`) so tests don't fill the real Trash. Update `BatchModel.run()` to
   build a `BatchJob(inputs:settings:)` from its current fields so the app still compiles and works.
-- [ ] **Step 4: Run the tests, then the full suite.** `swift test`, then `scripts/bundle.sh debug`
+- [x] **Step 4: Run the tests, then the full suite.** `swift test`, then `scripts/bundle.sh debug`
   (the app must still build).
-- [ ] **Step 5: Commit.** `feat: batch pipeline and converter with ordered commits, stop, pause and safety options`
+- [x] **Step 5: Commit.** `feat: batch pipeline and converter with ordered commits, stop, pause and safety options`
 
 ---
 
