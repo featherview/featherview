@@ -7,7 +7,7 @@ import Testing
     @Test func fieldsInOrderLeavingOutWhatIsUnknown() {
         let line = StatusLine.make(pixelSize: CGSize(width: 4000, height: 3000), zoomPercent: 46, fileBytes: nil,
                                    index: 2, count: 120, page: 0, pageCount: 1, modified: nil)
-        #expect(line.fields == ["\(4000.formatted()) × \(3000.formatted())", "46 %", "3 / 120"])
+        #expect(line.fields == ["\(4000.formatted()) × \(3000.formatted())", 0.46.formatted(.percent), "3 / 120"])
     }
 
     @Test func pageOnlyForMultiPageFiles() {

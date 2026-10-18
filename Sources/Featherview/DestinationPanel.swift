@@ -58,7 +58,7 @@ struct DestinationPanel: View {
                         RoundedRectangle(cornerRadius: Theme.Radius.slotKey).strokeBorder(Theme.keyCapLine, lineWidth: 1)
                     }
                 }
-            Text(folder?.lastPathComponent ?? String(localized: "Empty"))
+            Text(folder?.lastPathComponent ?? String(localized: "Empty", comment: "Folder slot with no folder chosen"))
                 .font(selected ? Theme.rowSelected : Theme.row)
                 .foregroundStyle(selected ? Color.white : folder == nil ? Theme.labelTertiary : Theme.labelPrimary)
                 .lineLimit(1)

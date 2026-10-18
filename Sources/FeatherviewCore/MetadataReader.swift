@@ -19,7 +19,7 @@ public enum MetadataReader {
         }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
-        else { return fileSize.map { [MetadataField(label: "File size", value: format(bytes: $0))] } ?? [] }
+        else { return fileSize.map { [MetadataField(label: label(.fileSize), value: format(bytes: $0))] } ?? [] }
         return fields(from: props, fileSize: fileSize)
     }
 
@@ -28,28 +28,47 @@ public enum MetadataReader {
         let exif = props[kCGImagePropertyExifDictionary] as? [CFString: Any] ?? [:]
         let tiff = props[kCGImagePropertyTIFFDictionary] as? [CFString: Any] ?? [:]
         var out: [MetadataField] = []
-        func add(_ label: String, _ value: String?) {
-            if let value, !value.isEmpty { out.append(MetadataField(label: label, value: value)) }
+        func add(_ field: Label, _ value: String?) {
+            if let value, !value.isEmpty { out.append(MetadataField(label: label(field), value: value)) }
         }
 
         if let width = props[kCGImagePropertyPixelWidth] as? Int,
            let height = props[kCGImagePropertyPixelHeight] as? Int {
             let orientation = props[kCGImagePropertyOrientation] as? Int ?? 1
-            add("Dimensions", orientation >= 5 ? "\(height) × \(width)" : "\(width) × \(height)")
+            add(.dimensions, orientation >= 5 ? "\(height) × \(width)" : "\(width) × \(height)")
         }
-        add("File size", fileSize.map(format(bytes:)))
-        add("Camera", camera(make: tiff[kCGImagePropertyTIFFMake] as? String,
+        add(.fileSize, fileSize.map(format(bytes:)))
+        add(.camera, camera(make: tiff[kCGImagePropertyTIFFMake] as? String,
                              model: tiff[kCGImagePropertyTIFFModel] as? String))
-        add("Lens", exif[kCGImagePropertyExifLensModel] as? String)
-        add("Taken", (exif[kCGImagePropertyExifDateTimeOriginal] as? String).flatMap(taken))
+        add(.lens, exif[kCGImagePropertyExifLensModel] as? String)
+        add(.taken, (exif[kCGImagePropertyExifDateTimeOriginal] as? String).flatMap(taken))
         if let seconds = exif[kCGImagePropertyExifExposureTime] as? Double, seconds > 0 {
-            add("Exposure", exposure(seconds))
+            add(.exposure, exposure(seconds))
         }
-        add("Aperture", (exif[kCGImagePropertyExifFNumber] as? Double)
+        add(.aperture, (exif[kCGImagePropertyExifFNumber] as? Double)
             .map { "f/\($0.formatted(.number.precision(.fractionLength(0...1))))" })
-        add("ISO", (exif[kCGImagePropertyExifISOSpeedRatings] as? [Int])?.first.map(String.init))
-        add("Focal length", (exif[kCGImagePropertyExifFocalLength] as? Double).map { "\(Int($0.rounded())) mm" })
+        add(.iso, (exif[kCGImagePropertyExifISOSpeedRatings] as? [Int])?.first.map(String.init))
+        add(.focalLength, (exif[kCGImagePropertyExifFocalLength] as? Double).map {
+            Measurement(value: $0.rounded(), unit: UnitLength.millimeters)
+                .formatted(.measurement(width: .abbreviated, usage: .asProvided))
+        })
         return out
+    }
+
+    enum Label { case dimensions, fileSize, camera, lens, taken, exposure, aperture, iso, focalLength }
+
+    static func label(_ field: Label) -> String {
+        switch field {
+        case .dimensions: String(localized: "Dimensions", comment: "Info panel label")
+        case .fileSize: String(localized: "File size", comment: "Info panel label")
+        case .camera: String(localized: "Camera", comment: "Info panel label")
+        case .lens: String(localized: "Lens", comment: "Info panel label")
+        case .taken: String(localized: "Taken", comment: "Info panel label")
+        case .exposure: String(localized: "Exposure", comment: "Info panel label")
+        case .aperture: String(localized: "Aperture", comment: "Info panel label")
+        case .iso: String(localized: "ISO", comment: "Info panel label")
+        case .focalLength: String(localized: "Focal length", comment: "Info panel label")
+        }
     }
 
     /// Model alone when it already names the maker ("Canon" + "Canon EOS R6" -> "Canon EOS R6").
@@ -90,8 +109,11 @@ public enum MetadataReader {
     static func exposure(_ seconds: Double) -> String {
         let reciprocal = 1 / seconds
         let n = reciprocal.rounded()
-        if n >= 2, seconds <= 0.25 || abs(reciprocal - n) < 0.01 { return "1/\(Int(n)) s" }
-        return "\(seconds.formatted(.number.precision(.fractionLength(0...1)))) s"
+        if n >= 2, seconds <= 0.25 || abs(reciprocal - n) < 0.01 {
+            return String(localized: "1/\(Int(n)) s", comment: "exposure time, a fraction of a second")
+        }
+        return Measurement(value: seconds, unit: UnitDuration.seconds).formatted(.measurement(
+            width: .abbreviated, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0...1))))
     }
 
     static func format(bytes: Int) -> String {

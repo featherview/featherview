@@ -28,7 +28,8 @@ import Testing
             "Exposure": "1/250 s",
             "Aperture": "f/8",
             "ISO": "400",
-            "Focal length": "50 mm",
+            "Focal length": Measurement(value: 50, unit: UnitLength.millimeters)
+                .formatted(.measurement(width: .abbreviated, usage: .asProvided)),
         ])
     }
 
@@ -67,15 +68,17 @@ import Testing
     }
 
     @Test func formatsExposureTimes() {
-        let decimal = { (x: Double) in "\(x.formatted(.number.precision(.fractionLength(0...1)))) s" }
+        let decimal = { (x: Double) in
+            Measurement(value: x, unit: UnitDuration.seconds).formatted(.measurement(width: .abbreviated, usage: .asProvided))
+        }
         #expect(exposure(0.004) == "1/250 s")
         #expect(exposure(1.0 / 3) == "1/3 s")
         #expect(exposure(0.5) == "1/2 s")
         #expect(exposure(0.8) == decimal(0.8))
         #expect(exposure(0.6) == decimal(0.6))
         #expect(exposure(0.4) == decimal(0.4))
-        #expect(exposure(1) == "1 s")
-        #expect(exposure(2) == "2 s")
+        #expect(exposure(1) == decimal(1))
+        #expect(exposure(2) == decimal(2))
         #expect(exposure(2.5) == decimal(2.5))
     }
 

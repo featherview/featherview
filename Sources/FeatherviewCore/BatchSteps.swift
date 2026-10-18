@@ -39,7 +39,7 @@ public enum BatchStep: String, CaseIterable, Identifiable, Sendable {
         guard isUsed(in: s) else { return "" }
         switch self {
         case .output:
-            return s.mode == .rename ? String(localized: "Same format") : s.format.name
+            return s.mode == .rename ? String(localized: "Same format", comment: "Batch step summary: rename keeps each file's format") : s.format.name
         case .rename:
             return s.renamePattern
         case .resize:
@@ -50,10 +50,10 @@ public enum BatchStep: String, CaseIterable, Identifiable, Sendable {
             case .widthHeight:
                 return String(localized: "\(r.width.map(String.init) ?? "–") × \(r.height.map(String.init) ?? "–")")
             case .megapixels: return String(localized: "\(r.megapixels.formatted()) MP")
-            case .percent: return String(localized: "\(r.percentWidth.formatted()) %")
+            case .percent: return (r.percentWidth / 100).formatted(.percent)
             }
         default:
-            return isOn(in: s) ? String(localized: "on") : ""
+            return isOn(in: s) ? String(localized: "on", comment: "Batch step summary: the step is turned on") : ""
         }
     }
 }

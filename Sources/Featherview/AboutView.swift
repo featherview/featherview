@@ -150,11 +150,11 @@ struct AboutView: View {
     private static var formatsText: String {
         let read = FormatRegistry.readableNames
         return [String(localized: "Read"),
-                String(localized: "macOS \(macOSVersion): \(read.macOS.joined(separator: ", "))"),
-                String(localized: "Featherview: \(read.own.joined(separator: ", "))"),
+                String(localized: "macOS \(macOSVersion): \(read.macOS.formatted(.list(type: .and, width: .narrow)))"),
+                String(localized: "Featherview: \(read.own.formatted(.list(type: .and, width: .narrow)))"),
                 "",
                 String(localized: "Write"),
-                FormatRegistry.writable.map(\.name).joined(separator: ", ")].joined(separator: "\n")
+                FormatRegistry.writable.map(\.name).formatted(.list(type: .and, width: .narrow))].joined(separator: "\n")
     }
 
     /// An accent link.

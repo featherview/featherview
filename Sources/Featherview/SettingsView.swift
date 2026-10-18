@@ -135,7 +135,7 @@ private struct ViewerSettings: View {
                 Toggle("Checkerboard behind transparent images", isOn: $checkerboard)
                 Toggle("Remember the window's size and position", isOn: $rememberFrame)
                 Stepper(value: $zoomStep, in: 1...100) {
-                    Text("Zoom step: \(zoomStep) %")
+                    Text("Zoom step: \((Double(zoomStep) / 100).formatted(.percent))")
                 }
             }
             Section("Bars") {
@@ -177,7 +177,7 @@ private struct MoveCopySettings: View {
                 Toggle("Ask before each move or copy", isOn: $ask)
                 ForEach(0..<DestinationSlots.count, id: \.self) { slot in
                     LabeledContent(String(DestinationSlots.keys[slot])) {
-                        Text(slots[slot]?.path ?? String(localized: "Empty"))
+                        Text(slots[slot]?.path ?? String(localized: "Empty", comment: "Folder slot with no folder chosen"))
                             .lineLimit(1)
                             .truncationMode(.middle)
                             .foregroundStyle(slots[slot] == nil ? .secondary : .primary)
@@ -250,7 +250,7 @@ private struct OpenWithSettings: View {
 
     private func row(_ key: String, _ path: Binding<String>) -> some View {
         LabeledContent(key) {
-            Text(path.wrappedValue.isEmpty ? "None" : FileManager.default.displayName(atPath: path.wrappedValue))
+            Text(path.wrappedValue.isEmpty ? String(localized: "None") : FileManager.default.displayName(atPath: path.wrappedValue))
                 .foregroundStyle(path.wrappedValue.isEmpty ? .secondary : .primary)
             Button("Choose…") {
                 let panel = NSOpenPanel()
