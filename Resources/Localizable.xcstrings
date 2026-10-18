@@ -2,10 +2,10 @@
   "sourceLanguage" : "en",
   "strings" : {
     "" : {
-
+      "shouldTranslate" : false
     },
     "%" : {
-
+      "shouldTranslate" : false
     },
     "% of the output's width" : {
 
@@ -13,8 +13,8 @@
     "% of the shorter side" : {
 
     },
-    "%@ %%" : {
-
+    "%@ (edited)" : {
+      "comment" : "Preset menu: a preset with unsaved changes"
     },
     "%@ / %@" : {
       "localizations" : {
@@ -24,7 +24,8 @@
             "value" : "%1$@ / %2$@"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "%@ MP" : {
 
@@ -43,7 +44,8 @@
             "value" : "%1$@ × %2$@"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "%@ → %@" : {
       "localizations" : {
@@ -53,7 +55,8 @@
             "value" : "%1$@ → %2$@"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "%@ → %@ · %@" : {
       "localizations" : {
@@ -63,17 +66,20 @@
             "value" : "%1$@ → %2$@ · %3$@"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
-    "%@, %@ %%" : {
+    "%@, %@" : {
+      "comment" : "Batch text: font name and size as a share of the picture",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@, %2$@ %%"
+            "value" : "%1$@, %2$@"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "%@: the canvas settings leave no image" : {
 
@@ -86,17 +92,60 @@
             "value" : "%1$@; %2$@"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "%lld" : {
-
+      "shouldTranslate" : false
     },
     "%lld converted, %lld failed" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld converted, %2$lld failed"
+            "state" : "translated",
+            "value" : "%#@converted@, %#@failed@"
+          },
+          "substitutions" : {
+            "converted" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg converted"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg converted"
+                    }
+                  }
+                }
+              }
+            },
+            "failed" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg failed"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg failed"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -105,8 +154,70 @@
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld converted, %2$lld failed, %3$lld not converted"
+            "state" : "translated",
+            "value" : "%#@converted@, %#@failed@, %#@notConverted@"
+          },
+          "substitutions" : {
+            "converted" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg converted"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg converted"
+                    }
+                  }
+                }
+              }
+            },
+            "failed" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg failed"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg failed"
+                    }
+                  }
+                }
+              }
+            },
+            "notConverted" : {
+              "argNum" : 3,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg not converted"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg not converted"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -114,9 +225,44 @@
     "%lld files of %@ no longer exist" : {
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld files of %2$@ no longer exist"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld file of %@ no longer exists"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld files of %@ no longer exist"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld files · %@" : {
+      "comment" : "Batch input list: file count and total size",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld file · %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld files · %@"
+                }
+              }
+            }
           }
         }
       }
@@ -139,14 +285,37 @@
             "value" : "%1$lld × %2$lld · %3$@"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "%lld × %lld · %@ · %lld pages" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld × %2$lld · %3$@ · %4$lld pages"
+            "state" : "translated",
+            "value" : "%lld × %lld · %@ · %#@pages@"
+          },
+          "substitutions" : {
+            "pages" : {
+              "argNum" : 4,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg page"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg pages"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -156,6 +325,9 @@
     },
     "0 = to the edge" : {
 
+    },
+    "1/%lld s" : {
+      "comment" : "exposure time, a fraction of a second"
     },
     "About %@ left" : {
 
@@ -189,6 +361,9 @@
     },
     "An inner width of 0 draws one border." : {
 
+    },
+    "Aperture" : {
+      "comment" : "Info panel label"
     },
     "App %lld not set" : {
 
@@ -238,15 +413,6 @@
     "Border" : {
 
     },
-    "Bottom" : {
-
-    },
-    "Bottom left" : {
-
-    },
-    "Bottom right" : {
-
-    },
     "Bottom:" : {
 
     },
@@ -261,6 +427,9 @@
     },
     "By Name" : {
 
+    },
+    "Camera" : {
+      "comment" : "Info panel label"
     },
     "Can't convert %@" : {
 
@@ -277,9 +446,21 @@
     "Can't open %@ and %lld more folders" : {
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Can't open %1$@ and %2$lld more folders"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Can't open %@ and %lld more folder"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Can't open %@ and %lld more folders"
+                }
+              }
+            }
           }
         }
       }
@@ -323,9 +504,6 @@
 
     },
     "Canvas:" : {
-
-    },
-    "Centre" : {
 
     },
     "Checkerboard behind transparent images" : {
@@ -421,6 +599,12 @@
         }
       }
     },
+    "Couldn't move %@ to the Trash" : {
+
+    },
+    "Couldn't rotate %@" : {
+
+    },
     "Couldn't save %@" : {
 
     },
@@ -454,6 +638,9 @@
     "Delete the preset %@?" : {
 
     },
+    "Dimensions" : {
+      "comment" : "Info panel label"
+    },
     "Dither" : {
 
     },
@@ -473,7 +660,10 @@
 
     },
     "Empty" : {
-
+      "comment" : "Folder slot with no folder chosen"
+    },
+    "Exposure" : {
+      "comment" : "Info panel label"
     },
     "Failed" : {
 
@@ -493,6 +683,9 @@
     "Featherview: %@" : {
 
     },
+    "File size" : {
+      "comment" : "Info panel label"
+    },
     "Files" : {
 
     },
@@ -507,6 +700,9 @@
     },
     "Flip:" : {
 
+    },
+    "Focal length" : {
+      "comment" : "Info panel label"
     },
     "Folder:" : {
 
@@ -567,6 +763,9 @@
     },
     "Horizontally" : {
 
+    },
+    "ISO" : {
+      "comment" : "Info panel label"
     },
     "Icon" : {
 
@@ -629,10 +828,13 @@
 
     },
     "Left" : {
-
+      "comment" : "Batch rotation: a quarter turn counter-clockwise"
     },
     "Left:" : {
 
+    },
+    "Lens" : {
+      "comment" : "Info panel label"
     },
     "Light" : {
 
@@ -644,6 +846,9 @@
 
     },
     "Lossless" : {
+
+    },
+    "Lossless rotation works with JPEG, HEIC and TIFF only" : {
 
     },
     "MIT License" : {
@@ -972,7 +1177,7 @@
 
     },
     "Right" : {
-
+      "comment" : "Batch rotation: a quarter turn clockwise"
     },
     "Right:" : {
 
@@ -1005,7 +1210,7 @@
 
     },
     "Same format" : {
-
+      "comment" : "Batch step summary: rename keeps each file's format"
     },
     "Saturation:" : {
 
@@ -1103,6 +1308,9 @@
     "System" : {
 
     },
+    "Taken" : {
+      "comment" : "Info panel label"
+    },
     "Target file size:" : {
 
     },
@@ -1119,15 +1327,6 @@
 
     },
     "This folder again" : {
-
-    },
-    "Top" : {
-
-    },
-    "Top left" : {
-
-    },
-    "Top right" : {
 
     },
     "Top:" : {
@@ -1217,7 +1416,7 @@
     "Zoom out (−)" : {
 
     },
-    "Zoom step: %lld %%" : {
+    "Zoom step: %@" : {
 
     },
     "Zoom to Fit" : {
@@ -1229,12 +1428,110 @@
     "Zoom to fit (0)" : {
 
     },
-    "^[%lld file](inflect: true) · %@" : {
+    "anchor.bottom" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "^[%1$lld file](inflect: true) · %2$@"
+            "value" : "Bottom"
+          }
+        }
+      }
+    },
+    "anchor.bottomLeft" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Bottom left"
+          }
+        }
+      }
+    },
+    "anchor.bottomRight" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Bottom right"
+          }
+        }
+      }
+    },
+    "anchor.center" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Centre"
+          }
+        }
+      }
+    },
+    "anchor.left" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Left"
+          }
+        }
+      }
+    },
+    "anchor.right" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Right"
+          }
+        }
+      }
+    },
+    "anchor.top" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Top"
+          }
+        }
+      }
+    },
+    "anchor.topLeft" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Top left"
+          }
+        }
+      }
+    },
+    "anchor.topRight" : {
+      "comment" : "Picture position",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Top right"
           }
         }
       }
@@ -1262,7 +1559,7 @@
       }
     },
     "on" : {
-
+      "comment" : "Batch step summary: the step is turned on"
     },
     "open folder" : {
 
@@ -1278,7 +1575,7 @@
       }
     },
     "page 1 of %lld" : {
-
+      "comment" : "Batch log note: only the first page of a multi-page file was converted"
     },
     "px" : {
 
@@ -1319,7 +1616,7 @@
       }
     },
     "→ %@" : {
-
+      "shouldTranslate" : false
     }
   },
   "version" : "1.0"

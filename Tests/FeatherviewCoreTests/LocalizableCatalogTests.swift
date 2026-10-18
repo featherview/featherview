@@ -14,6 +14,10 @@ import Testing
             "Hide toolbar and status bar while viewing",
         ]
         for key in expected { #expect(keys.contains(key), "missing \(key)") }
+        // The background colour presets the Appearance setting replaced.
+        for key in ["Background:", "Graphite", "Black", "Grey", "White", "Custom…", "Custom colour:"] {
+            #expect(!keys.contains(key), "leftover \(key)")
+        }
     }
 
     @Test func emptyWindowHintIsInTheCatalog() throws {

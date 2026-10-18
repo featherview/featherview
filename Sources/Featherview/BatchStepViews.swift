@@ -207,8 +207,8 @@ private struct OrientationStepView: View {
     var body: some View {
         Picker("Rotate:", selection: $s.rotate) {
             Text("None").tag(QuarterTurn.none)
-            Text("Left").tag(QuarterTurn.left)
-            Text("Right").tag(QuarterTurn.right)
+            Text("Left", comment: "Batch rotation: a quarter turn counter-clockwise").tag(QuarterTurn.left)
+            Text("Right", comment: "Batch rotation: a quarter turn clockwise").tag(QuarterTurn.right)
         }
         .pickerStyle(.segmented)
         .fixedSize()
@@ -399,7 +399,7 @@ private struct TextStepView: View {
 
     private var fontLabel: String {
         let name = NSFont(name: s.fontName, size: 12)?.displayName ?? s.fontName
-        return String(localized: "\(name), \(s.sizePercent.formatted()) %")
+        return String(localized: "\(name), \((s.sizePercent / 100).formatted(.percent))", comment: "Batch text: font name and size as a share of the picture")
     }
 }
 
@@ -480,7 +480,7 @@ struct AnchorPicker: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(Self.name(cell))
+                        .accessibilityLabel(Text(Self.name(cell)))
                         .accessibilityAddTraits(cell == anchor ? .isSelected : [])
                     }
                 }
@@ -489,17 +489,18 @@ struct AnchorPicker: View {
         .environment(\.layoutDirection, .leftToRight)
     }
 
-    private static func name(_ anchor: ImageAnchor) -> LocalizedStringKey {
+    /// Own keys: a picture position, worded apart from rotation's "Left"/"Right" in some languages.
+    private static func name(_ anchor: ImageAnchor) -> LocalizedStringResource {
         switch anchor {
-        case .topLeft: "Top left"
-        case .top: "Top"
-        case .topRight: "Top right"
-        case .left: "Left"
-        case .center: "Centre"
-        case .right: "Right"
-        case .bottomLeft: "Bottom left"
-        case .bottom: "Bottom"
-        case .bottomRight: "Bottom right"
+        case .topLeft: LocalizedStringResource("anchor.topLeft", defaultValue: "Top left", comment: "Picture position")
+        case .top: LocalizedStringResource("anchor.top", defaultValue: "Top", comment: "Picture position")
+        case .topRight: LocalizedStringResource("anchor.topRight", defaultValue: "Top right", comment: "Picture position")
+        case .left: LocalizedStringResource("anchor.left", defaultValue: "Left", comment: "Picture position")
+        case .center: LocalizedStringResource("anchor.center", defaultValue: "Centre", comment: "Picture position")
+        case .right: LocalizedStringResource("anchor.right", defaultValue: "Right", comment: "Picture position")
+        case .bottomLeft: LocalizedStringResource("anchor.bottomLeft", defaultValue: "Bottom left", comment: "Picture position")
+        case .bottom: LocalizedStringResource("anchor.bottom", defaultValue: "Bottom", comment: "Picture position")
+        case .bottomRight: LocalizedStringResource("anchor.bottomRight", defaultValue: "Bottom right", comment: "Picture position")
         }
     }
 }

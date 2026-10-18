@@ -78,7 +78,7 @@ struct BatchView: View {
                     .disabled(model.loadedPreset == nil)
             } label: {
                 if let name = model.loadedPreset {
-                    Text(model.presetName == nil ? "\(name) (edited)" : name)
+                    Text(model.presetName == nil ? String(localized: "\(name) (edited)", comment: "Preset menu: a preset with unsaved changes") : name)
                 } else {
                     Text("Presets")
                 }

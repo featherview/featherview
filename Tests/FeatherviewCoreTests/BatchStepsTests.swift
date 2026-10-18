@@ -42,7 +42,7 @@ import Testing
         #expect(BatchStep.resize.summary(in: s) == "12 MP")
         s.resize.mode = .percent
         s.resize.percentWidth = 50
-        #expect(BatchStep.resize.summary(in: s) == "50 %")
+        #expect(BatchStep.resize.summary(in: s) == 0.5.formatted(.percent))
         s.mode = .rename
         #expect(BatchStep.resize.summary(in: s) == "")
     }

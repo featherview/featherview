@@ -50,9 +50,8 @@ struct BatchImagesColumn: View {
     private var countLine: String {
         let count = model.inputs.items.count
         let bytes = model.inputs.totalBytes
-        // AttributedString applies the inflection ("1 file", "2 files"); String(localized:) would show the markup.
         let size = ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
-        return String(AttributedString(localized: "^[\(count) file](inflect: true) · \(size)").characters)
+        return String(localized: "\(count) files · \(size)", comment: "Batch input list: file count and total size")
     }
 
     private var bottomBar: some View {

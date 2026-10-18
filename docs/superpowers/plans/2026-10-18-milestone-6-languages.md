@@ -313,24 +313,24 @@ mkdir -p "$APP/Contents/Resources/en.lproj"
   number counts a noun, `shouldTranslate: false` on letter-free keys, no stale keys. Task 4's test
   runs on it; Tasks 5–10 translate it.
 
-- [ ] **Step 1: Failing tests for the Core formatters** — in `MetadataReaderTests`, the expected
+- [x] **Step 1: Failing tests for the Core formatters** — in `MetadataReaderTests`, the expected
   values come from the formatters (the suite runs in the developer's locale):
   `Focal length` == `Measurement(value: 50, unit: UnitLength.millimeters).formatted(.measurement(width: .abbreviated, usage: .asProvided))`,
   exposure `2` == `Measurement(value: 2, unit: UnitDuration.seconds).formatted(.measurement(width: .abbreviated, usage: .asProvided))`;
   `"1/250 s"` stays as is. In `StatusLineTests` the zoom field == `0.46.formatted(.percent)`; in
   `BatchStepsTests` the resize summary == `0.5.formatted(.percent)`.
-- [ ] **Step 2: Run** `swift test --filter "MetadataReaderTests|StatusLineTests|BatchStepsTests"` →
+- [x] **Step 2: Run** `swift test --filter "MetadataReaderTests|StatusLineTests|BatchStepsTests"` →
   the formatter cases FAIL where the formatter's output differs from today's hand-built string
   (en_US: "46%" vs "46 %"); in de_DE some may already pass, which is expected. Run once with
   `LANG=en_US.UTF-8 swift test --filter …` if none fail.
-- [ ] **Step 3: Implement** — `MetadataReader`: labels through `String(localized:)` (with
+- [x] **Step 3: Implement** — `MetadataReader`: labels through `String(localized:)` (with
   `comment: "Info panel label"`), mm and decimal seconds through `Measurement` (Decision 14),
   `"1/\(n) s"` as `String(localized:comment: "exposure time, a fraction of a second")`.
   `StatusLine` zoom and `BatchSteps` percent through `.formatted(.percent…)`; keep "MP" as the
   localized `"\(…) MP"`. Tests that look up labels by English name keep working (the test runner
   has no translations).
-- [ ] **Step 4: Run** the three suites → PASS.
-- [ ] **Step 5: Find the rest** — `scripts/strings.sh`, then
+- [x] **Step 4: Run** the three suites → PASS.
+- [x] **Step 5: Find the rest** — `scripts/strings.sh`, then
 
 ```sh
 xcrun xcstringstool extract --all-potential-swift-keys Sources/Featherview/*.swift Sources/FeatherviewCore/*.swift -o .build/strings/potential
@@ -349,17 +349,17 @@ comm -23 .build/strings/potential.txt .build/strings/extracted.txt
   (Decision 13: `"anchor.topLeft"` … `"anchor.bottomRight"`, `defaultValue` the current English,
   `name(_:)` returns `LocalizedStringResource`). Add `comment:` to keys that are a single word or
   a fragment ("on", "Same format", "page 1 of %lld", "Empty", "Left", "Right") saying where it shows.
-- [ ] **Step 6: Re-extract** — `scripts/strings.sh`; delete every entry the sync marked
+- [x] **Step 6: Re-extract** — `scripts/strings.sh`; delete every entry the sync marked
   `"extractionState" : "stale"` (by hand in the JSON, or `jq 'del(.strings[] | select(.extractionState == "stale"))'`
   then `scripts/strings.sh` to reformat).
-- [ ] **Step 7: English source plurals** — for every key whose integer counts a noun ("%lld files ·
+- [x] **Step 7: English source plurals** — for every key whose integer counts a noun ("%lld files ·
   %@", "%lld converted, %lld failed", "%lld converted, %lld failed, %lld not converted" and any the
   audit added), add an `en` localization with plural variations `one`/`other` (two counts:
   substitutions, Decision 8). Mark letter-free keys `"shouldTranslate" : false` (Decision 15).
   Re-run `scripts/strings.sh` (keeps them; formatting only).
-- [ ] **Step 8: Verify** — `swift build && swift test` pass; `scripts/bundle.sh debug` succeeds and
+- [x] **Step 8: Verify** — `swift build && swift test` pass; `scripts/bundle.sh debug` succeeds and
   `en.lproj/Localizable.stringsdict` now exists in the bundle.
-- [ ] **Step 9: Commit** — `git commit -m "feat: every user-facing string in the catalog, system formatters for units"`.
+- [x] **Step 9: Commit** — `git commit -m "feat: every user-facing string in the catalog, system formatters for units"`.
 
 ### Task 4: Catalog check test
 

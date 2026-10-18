@@ -14,7 +14,7 @@ public struct StatusLine: Equatable, Sendable {
             fields.append(String(localized: "\(width) × \(height)"))
         }
         if let zoomPercent {
-            fields.append(String(localized: "\(zoomPercent.formatted()) %"))
+            fields.append((Double(zoomPercent) / 100).formatted(.percent))
         }
         if let fileBytes {
             fields.append(ByteCountFormatter.string(fromByteCount: Int64(fileBytes), countStyle: .file))

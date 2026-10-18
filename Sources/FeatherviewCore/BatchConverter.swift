@@ -177,7 +177,7 @@ public enum BatchConverter {
         do { data = try ImageEncoder.encode(pages, as: format, options: options, metadataFrom: url, dpi: dpi, hdr: hdr) }
         catch { return Prepared(error: String(localized: "Can't write \(name) as \(format.name)")) }
         let count = pages.count == 1 ? ImageDecoder.pageCount(of: url) : 1
-        let note = count > 1 ? String(localized: "page 1 of \(count)") : nil
+        let note = count > 1 ? String(localized: "page 1 of \(count)", comment: "Batch log note: only the first page of a multi-page file was converted") : nil
         return Prepared(data: data, date: date, note: note)
     }
 

@@ -266,7 +266,7 @@ final class ViewerModel {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
-                errorMessage = "Can't open \(url.lastPathComponent)"
+                errorMessage = String(localized: "Can't open \(url.lastPathComponent)")
             }
         }
         // Only now: shown earlier, the view sees no image and !isOpening and builds the toolbar (~150 ms) first.
@@ -448,7 +448,7 @@ final class ViewerModel {
                 endNavigation("failed")
                 fileInfo = nil
                 image = nil  // pageCount stays: one bad page mustn't hide the file's other pages
-                errorMessage = "Can't open \(url.lastPathComponent)"
+                errorMessage = String(localized: "Can't open \(url.lastPathComponent)")
             }
             if let size, page == 0, prefetchesNeighbors {
                 await cache.prefetch(neighbors, target: .fit(size))
@@ -624,7 +624,7 @@ final class ViewerModel {
                 }.value
                 await removeFromList(url)
             } catch {
-                errorMessage = "Couldn't move \(url.lastPathComponent) to the Trash"
+                errorMessage = String(localized: "Couldn't move \(url.lastPathComponent) to the Trash")
             }
         }
     }
@@ -767,10 +767,10 @@ final class ViewerModel {
                 errorMessage = String(localized: "Only page 1 of \(url.lastPathComponent) can be rotated losslessly")
             } catch RotateError.unsupportedFormat {
                 if list.current == url { pendingTurns -= turn }
-                errorMessage = "Lossless rotation works with JPEG, HEIC and TIFF only"
+                errorMessage = String(localized: "Lossless rotation works with JPEG, HEIC and TIFF only")
             } catch {
                 if list.current == url { pendingTurns -= turn }
-                errorMessage = "Couldn't rotate \(url.lastPathComponent)"
+                errorMessage = String(localized: "Couldn't rotate \(url.lastPathComponent)")
             }
         }
     }
