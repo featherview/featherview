@@ -188,6 +188,13 @@ public struct BatchSettings: Codable, Equatable, Sendable {
     /// The output format, or JPEG when this Mac can't write the stored one.
     public var format: OutputFormat { FormatRegistry.format(id: formatID) ?? .jpeg }
 
+    /// Switches to another format with its saved options; picking the current one keeps the options.
+    public mutating func setFormat(_ new: OutputFormat, in defaults: UserDefaults = .standard) {
+        guard new.id != format.id else { return }
+        formatID = new.id
+        options = FormatSettings.options(for: new, in: defaults)
+    }
+
     /// True when no operation is on: the converter may take the fast path.
     public var hasOperations: Bool {
         crop.isOn || resize.isOn || orientation.isOn || colour.isOn || filters.isOn || canvas.isOn

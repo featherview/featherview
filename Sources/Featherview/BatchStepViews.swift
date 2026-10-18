@@ -64,10 +64,7 @@ private struct OutputStep: View {
 
     var body: some View {
         LabeledContent("Format:") {
-            Picker("Format:", selection: Binding { model.settings.format } set: {
-                model.settings.formatID = $0.id
-                model.settings.options = FormatSettings.options(for: $0)
-            }) {
+            Picker("Format:", selection: Binding { model.settings.format } set: { model.settings.setFormat($0) }) {
                 ForEach(FormatRegistry.writable) { Text($0.name).tag($0) }
             }
             .labelsHidden()
