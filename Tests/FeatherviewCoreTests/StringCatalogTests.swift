@@ -114,6 +114,45 @@ import Testing
         #expect(problems(try catalog("%", "de", nil, entry: ["shouldTranslate": false]), "de") == [])
     }
 
+    @Test func percentSignBeforeAWordIsNotASpecifier() throws {
+        let key = "% of the shorter side"
+        #expect(problems(try catalog(key, "pl", unit("% krótszego boku")), "pl") == [])
+        #expect(problems(try catalog(key, "ru", unit("% от более короткой стороны")), "ru") == [])
+        #expect(problems(try catalog(key, "de", unit("% der kürzeren Seite")), "de") == [])
+    }
+
+    @Test func untranslatableKeyWithOnlySpecifiersIsAccepted() throws {
+        for key in ["%lld × %lld · %@", "%lld / %lld", "%@ → %@", "%lld"] {
+            #expect(problems(try catalog(key, "de", nil, entry: ["shouldTranslate": false]), "de") == [])
+        }
+    }
+
+    @Test func tokenWithoutSubstitutionIsReported() throws {
+        let files: [String: Any] = [
+            "argNum": 1, "formatSpecifier": "lld",
+            "variations": ["plural": ["one": unit("%arg file"), "other": unit("%arg files")]],
+        ]
+        var en = unit("%#@files@ done")
+        en["substitutions"] = ["files": files]
+        let missing = try catalog("%#@files@ done", en: en, "de", unit("%#@files@ fertig"))
+        #expect(problems(missing, "de").count == 1)
+        var de = unit("%#@files@ fertig")
+        de["substitutions"] = ["files": [
+            "argNum": 1, "formatSpecifier": "lld",
+            "variations": ["plural": ["one": unit("%arg Datei"), "other": unit("%arg Dateien")]],
+        ]]
+        #expect(problems(try catalog("%#@files@ done", en: en, "de", de), "de") == [])
+    }
+
+    @Test func oneMayOmitCountOnlyWhereItMeansExactlyOne() throws {
+        let en = plural(["one": "%lld file", "other": "%lld files"])
+        // CLDR `one` also covers 21, 31 … in ru/uk.
+        let ru = try catalog("%lld files", en: en, "ru", plural(["one": "один файл", "other": "%lld файлов"]))
+        #expect(problems(ru, "ru").count == 1)
+        let de = try catalog("%lld files", en: en, "de", plural(["one": "eine Datei", "other": "%lld Dateien"]))
+        #expect(problems(de, "de") == [])
+    }
+
     @Test func shippedCatalogHasNoProblemsInItsLanguages() throws {
         let catalog = try StringCatalog.load(StringCatalog.shippedURL)
         #expect(catalog.problems(languages: catalog.presentLanguages) == [])

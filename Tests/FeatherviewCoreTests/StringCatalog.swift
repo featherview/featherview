@@ -58,7 +58,7 @@ struct StringCatalog: Decodable {
         for key in strings.keys.sorted() {
             let entry = strings[key]!
             if entry.shouldTranslate == false {
-                if key.contains(where: \.isLetter) {
+                if Specifiers.stripped(key).contains(where: \.isLetter) {
                     problems.append("\"\(key)\" is marked not to translate but has words in it")
                 }
                 continue
@@ -99,6 +99,9 @@ private struct Check {
             forms(substitution.variations.plural ?? [:], source: enOther ?? source, what: "substitution \(name)")
         }
         if l.stringUnit == nil && l.variations == nil { report("has no text") }
+        let texts = [l.stringUnit?.value] + (l.variations?.plural ?? [:]).values.map { $0.stringUnit?.value }
+        let used = texts.compactMap { $0 }.reduce(into: Set<String>()) { $0.formUnion(Specifiers($1).tokens) }
+        for name in used.sorted() where l.substitutions?[name] == nil { report("has no substitution for %#@\(name)@") }
     }
 
     private mutating func forms(_ forms: [String: StringCatalog.Localization], source: String, what: String) {
@@ -115,7 +118,9 @@ private struct Check {
         if unit.state != "translated" { report("is \(unit.state ?? "without a state")\(place), not translated") }
 
         let (have, want) = (Specifiers(text), Specifiers(source))
-        let mayOmitCount = ["zero", "one", "two"].contains(form ?? "")
+        // CLDR `one` also covers 0 (fr, pt-BR, hi) or 21, 31 … (ru, uk) there: only `other`'s count is right.
+        let oneIsMore = ["fr", "pt-BR", "hi", "ru", "uk"].contains(language)
+        let mayOmitCount = ["zero", "two"].contains(form ?? "") || form == "one" && !oneIsMore
         if have.tokens != want.tokens || !(have.byIndex == want.byIndex || mayOmitCount && want.omittingOneCount(is: have.byIndex)) {
             report("has \(have) where the source has \(want)\(place)")
         }
@@ -170,9 +175,16 @@ private struct Specifiers: CustomStringConvertible {
     var byIndex: [Int: String] = [:]
     var tokens: Set<String> = []
 
+    // nonisolated(unsafe): Regex isn't Sendable; these are read-only after init and never mutated.
+    // No space flag: "% of the shorter side" is a percent sign, not "% o".
     nonisolated(unsafe) private static let specifier =
-        try! Regex(#"%arg|%(?:(\d+)\$)?[-+ #0']*\d*(?:\.\d+)?(?:hh|h|ll|l|q|z|t|j|L)?([@dDiuUxXoOfFeEgGaAcCsSp])"#)
+        try! Regex(#"%arg|%(?:(\d+)\$)?[-+#0']*\d*(?:\.\d+)?(?:hh|h|ll|l|q|z|t|j|L)?([@dDiuUxXoOfFeEgGaAcCsSp])"#)
     nonisolated(unsafe) private static let token = try! Regex(#"%#@([A-Za-z0-9_]+)@"#)
+
+    /// The text without its specifiers and tokens.
+    static func stripped(_ text: String) -> String {
+        text.replacingOccurrences(of: "%%", with: "").replacing(token, with: "").replacing(specifier, with: "")
+    }
 
     init(_ text: String) {
         var rest = text.replacingOccurrences(of: "%%", with: "")
