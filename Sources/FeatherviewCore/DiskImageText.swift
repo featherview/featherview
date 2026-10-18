@@ -8,4 +8,9 @@ public enum DiskImageText {
     public static func firstOpenHelp(from strings: [String: String]) -> String {
         strings[firstOpenHelp] ?? firstOpenHelp
     }
+
+    /// Right-to-left only when the help is actually translated; the English fallback stays left-to-right.
+    public static func helpIsRightToLeft(language: String, strings: [String: String]) -> Bool {
+        strings[firstOpenHelp] != nil && Locale.Language(identifier: language).characterDirection == .rightToLeft
+    }
 }

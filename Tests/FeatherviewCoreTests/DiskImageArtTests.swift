@@ -44,6 +44,14 @@ import Testing
         #expect(DiskImageText.firstOpenHelp(from: [english: "Erstes Öffnen …"]) == "Erstes Öffnen …")
     }
 
+    @Test func englishFallbackStaysLeftToRight() {
+        let english = DiskImageText.firstOpenHelp
+        #expect(!DiskImageText.helpIsRightToLeft(language: "he", strings: [:]))
+        #expect(!DiskImageText.helpIsRightToLeft(language: "ar", strings: ["other": "x"]))
+        #expect(DiskImageText.helpIsRightToLeft(language: "ar", strings: [english: "افتح"]))
+        #expect(!DiskImageText.helpIsRightToLeft(language: "de", strings: [english: "Erstes Öffnen …"]))
+    }
+
     @Test(arguments: [false, true])
     func helpBoxHoldsFourLines(rightToLeft: Bool) {
         #expect(DiskImageArt.helpFits(DiskImageText.firstOpenHelp, rightToLeft: rightToLeft))

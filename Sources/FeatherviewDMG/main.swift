@@ -27,7 +27,7 @@ let table = URL(fileURLWithPath: app).appending(path: "Contents/Resources/\(lang
 let strings = (try? Data(contentsOf: table))
     .flatMap { try? PropertyListSerialization.propertyList(from: $0, format: nil) as? [String: String] } ?? [:]
 let help = DiskImageText.firstOpenHelp(from: strings)
-let rightToLeft = Locale.Language(identifier: lang).characterDirection == .rightToLeft
+let rightToLeft = DiskImageText.helpIsRightToLeft(language: lang, strings: strings)
 guard DiskImageArt.helpFits(help, rightToLeft: rightToLeft) else {
     fail("The \(lang) first-open help is longer than four lines. Shorten the translation.")
 }
