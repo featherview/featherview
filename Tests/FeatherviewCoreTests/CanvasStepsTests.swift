@@ -310,4 +310,25 @@ import Testing
         #expect(try PipelineFixtures.pixels(CanvasStep.apply(image, canvas, scale: 1)) == original)
         #expect(try PipelineFixtures.pixels(BorderStep.apply(image, border, scale: 1)) == original)
     }
+
+    /// The live preview sizes the output after every keystroke: a huge typed value must not trap on overflow.
+    @Test func hugeValuesDoNotOverflow() throws {
+        let values = TextValues(name: "a", folder: "f", date: "2026-10-18", index: 1)
+        let size = CGSize(width: 100, height: 100)
+        var s = BatchSettings()
+        s.border.isOn = true
+        s.border.outerWidth = 5_000_000_000_000_000_000
+        _ = try ImagePipeline.outputSize(for: size, s, values: values)
+        s = BatchSettings()
+        s.canvas = perSide(.max / 2, .max / 2, .max, 0)
+        _ = try ImagePipeline.outputSize(for: size, s, values: values)
+        s.canvas = totalSize(.max, .max, .center)
+        _ = try ImagePipeline.outputSize(for: size, s, values: values)
+        s.canvas.method = .aspectRatio
+        s.canvas.ratioWidth = 1e17
+        _ = try ImagePipeline.outputSize(for: size, s, values: values)
+        s.canvas.ratioWidth = 1
+        s.canvas.ratioHeight = 1e17
+        _ = try ImagePipeline.outputSize(for: size, s, values: values)
+    }
 }
