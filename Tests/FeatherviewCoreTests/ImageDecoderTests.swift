@@ -65,6 +65,27 @@ import UniformTypeIdentifiers
         #expect(ImageDecoder.fitDecodeSize(image: PixelSize(width: 3024, height: 4032), screens: screens) == 4032)
     }
 
+    @Test(arguments: [
+        (3024, 4032, (3024, 1964), 1964),
+        (4032, 3024, (3024, 1964), 2619),
+        (8688, 5792, (5120, 2880), 4320),
+        (5792, 8688, (5120, 2880), 2880),
+    ])
+    func fitNeededSize(width: Int, height: Int, screen: (Int, Int), expected: Int) {
+        #expect(ImageDecoder.fitNeededSize(image: PixelSize(width: width, height: height),
+                                           screens: [PixelSize(width: screen.0, height: screen.1)]) == expected)
+    }
+
+    /// Own decoders resample at any size for the same cost, so a JPEG halving step only keeps more pixels.
+    @Test func ownFormatsDecodeAtTheExactFitSize() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = dir.appendingPathComponent("big.qoi")
+        try QOICodec.encode(RGBAImage(width: 4000, height: 3000)).write(to: url)
+        let image = try ImageDecoder.decode(url, halvingSteps: true, fitting: [PixelSize(width: 3024, height: 1964)])
+        #expect(image.width == 2619)
+        #expect(image.height == 1964)
+    }
+
     @Test func fitDecodeUsesDisplayedOrientation() throws {
         let dir = try Fixtures.makeTempDir()
         let url = try Fixtures.writeImage(to: dir.appendingPathComponent("r.jpg"), width: 4000, height: 2000, orientation: 6)
