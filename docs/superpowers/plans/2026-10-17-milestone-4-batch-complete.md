@@ -786,14 +786,14 @@ Behaviour to pin:
   the plain HDR write; pin whichever reads back as HDR).
 - `ColourQuantizer` (8-bit) is skipped for HDR output, i.e. reducing colours forces SDR.
 
-- [ ] **Step 1: Write the failing tests** (each `@Test(.enabled(if: ImageDecoder.supportsHDR))`):
+- [x] **Step 1: Write the failing tests** (each `@Test(.enabled(if: ImageDecoder.supportsHDR))`):
   `hdrHEICStaysHDR` (`writeHDRGainMap` → batch to HEIC → decoding the output with `hdr: true` gives
   an HDR colour space and values above 1.0 somewhere), `hdrToAVIFStaysHDR`, `hdrToJPEGIsSDR`,
   `sdrToHEICIsSDR`, `hdrWithOperationsStaysHDR` (resize + border), `reduceColoursForcesSDR`.
-- [ ] **Step 2: Run them to see them fail.** `swift test --filter HDROutputTests`
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run the tests, then the full suite.** `swift test`
-- [ ] **Step 5: Commit.** `feat: keep HDR when batch-converting HDR photos to HEIC or AVIF`
+- [x] **Step 2: Run them to see them fail.** `swift test --filter HDROutputTests`
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run the tests, then the full suite.** `swift test`
+- [x] **Step 5: Commit.** `feat: keep HDR when batch-converting HDR photos to HEIC or AVIF`
 
 ---
 
@@ -852,12 +852,12 @@ Behaviour (spec "Window"):
 - `AppDelegate.isBusy` keeps working (quitting during a run asks first).
 - Window: min 960 × 600, restores its size.
 
-- [ ] **Step 1:** Build the model and views to the description above (no Core logic in the app:
+- [x] **Step 1:** Build the model and views to the description above (no Core logic in the app:
   anything testable goes into Core with a test).
 - [ ] **Step 2:** `swift build`, `scripts/bundle.sh debug`, open it and check by hand: add files,
   folder with subfolders, drop, sort, move, save/load list, presets save/load/delete, start, pause,
   resume, stop, copy log, quit during a run.
-- [ ] **Step 3: Commit.** `feat: three-column batch window with input list, presets and run view`
+- [x] **Step 3: Commit.** `feat: three-column batch window with input list, presets and run view`
 
 ---
 
