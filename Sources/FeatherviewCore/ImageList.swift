@@ -75,4 +75,13 @@ public struct ImageList: Equatable, Sendable {
         }
         return result
     }
+
+    /// The same images, those ahead of a run first (`forward`: the following ones), then those behind, nearest
+    /// first in each: holding → wants the next ones sooner than the ones already seen.
+    public func neighbors(radius: Int, forward: Bool) -> [URL] {
+        guard urls.count > 1, radius > 0 else { return [] }
+        let direction = forward ? 1 : -1
+        return ([direction, -direction].flatMap { sign in (1...radius).map { index + sign * $0 } })
+            .filter(urls.indices.contains).map { urls[$0] }
+    }
 }

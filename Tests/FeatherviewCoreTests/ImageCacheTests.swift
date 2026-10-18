@@ -129,6 +129,19 @@ import Testing
         #expect(try await keeper.value.width == 6000)
     }
 
+    @Test func decodeFinishingOutsideTheWindowIsNotKept() async throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = dir.appendingPathComponent("i.jpg")
+        let other = try Fixtures.writeImage(to: dir.appendingPathComponent("j.jpg"), width: 8, height: 8)
+        let queue = DecodeQueue()
+        let cache = ImageCache(queue: queue)
+        queue.focus([url])
+        try await startLargeDecode(cache, url)
+        queue.focus([other])  // moved on while it runs
+        while await cache.isDecoding(url) { await Task.yield() }
+        #expect(await !cache.contains(url))
+    }
+
     @Test func zoomingWithinAStepDoesNotDecodeAgain() async throws {
         let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("g.jpg"), width: 400, height: 200)
         let cache = ImageCache(capacity: 1)

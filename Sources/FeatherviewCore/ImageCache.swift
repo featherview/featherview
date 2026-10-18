@@ -20,12 +20,15 @@ public actor ImageCache {
     private var images: [URL: (target: DecodeTarget, image: CGImage)] = [:]
     private var order: [URL] = []  // least recently used first
     private var inFlight: [URL: (target: DecodeTarget, task: Task<CGImage, Error>, waiters: Int)] = [:]
+    private let queue: DecodeQueue
 
-    /// `colorSpace`: the screen's, see `ImageDecoder.decode`.
-    public init(capacity: Int = 8, hdr: Bool = false, colorSpace: CGColorSpace? = nil) {
+    /// `colorSpace`: the screen's, see `ImageDecoder.decode`. `queue` runs the decodes; caches that share one
+    /// share its threads and its window.
+    public init(capacity: Int = 8, hdr: Bool = false, colorSpace: CGColorSpace? = nil, queue: DecodeQueue = DecodeQueue()) {
         self.capacity = capacity
         self.hdr = hdr
         self.colorSpace = colorSpace
+        self.queue = queue
     }
 
     /// The cached image, or decodes it — once, even when several callers ask at the same time.
@@ -41,29 +44,31 @@ public actor ImageCache {
             task = running.task
             inFlight[url]?.waiters += 1
         } else {
-            let hdr = hdr, colorSpace = colorSpace
+            let hdr = hdr, colorSpace = colorSpace, queue = queue
             let screens: [PixelSize]? = if case .fit(let screens) = target { screens } else { nil }
             let step: Int? = if case .step(let step) = target { step } else { nil }
             task = Task.detached(priority: .userInitiated) {
-                try Task.checkCancellation()
-                return try Signposts.poster.withIntervalSignpost(
+                try await queue.run(url) {
+                    try Signposts.poster.withIntervalSignpost(
                     "Decode", id: Signposts.poster.makeSignpostID(),
                     "\(url.lastPathComponent, privacy: .public) \(screens != nil ? "fit" : step.map { "step \($0)" } ?? "full", privacy: .public)"
-                ) {
-                    try ImageDecoder.decode(url, halvingSteps: true, fitting: screens, step: step, hdr: hdr, colorSpace: colorSpace)
+                    ) {
+                        try ImageDecoder.decode(url, halvingSteps: true, fitting: screens, step: step, hdr: hdr, colorSpace: colorSpace)
+                    }
                 }
             }
             inFlight[url] = (target, task, 1)
         }
         // Only the current decode may store: a remove or a newer request supersedes this one.
         defer { if inFlight[url]?.task == task { inFlight[url] = nil } }
-        // shortcut: a decode already running is not interrupted (ImageIO can't be), only queued ones are skipped; fine while the pool is small.
+        // A decode already running is not interrupted (ImageIO can't be), only waiting ones are skipped.
         let image = try await withTaskCancellationHandler {
             try await task.value
         } onCancel: {
             Task { await self.leave(url, task) }
         }
-        if inFlight[url]?.task == task { store(image, target, for: url) }
+        // Outside the queue's window (the user moved on while it ran) it would push out an image still wanted.
+        if inFlight[url]?.task == task, queue.wants(url) { store(image, target, for: url) }
         return image
     }
 
