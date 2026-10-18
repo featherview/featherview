@@ -14,6 +14,8 @@ struct BatchImagesColumn: View {
             List(selection: $model.selection) {
                 ForEach(model.inputs.items, id: \.self) { input in
                     BatchImageRow(input: input, state: model.state(of: input))
+                        .listRowBackground(model.selection.contains(input)
+                            ? RoundedRectangle(cornerRadius: 6).fill(Color.accentColor.opacity(0.15)) : nil)
                 }
             }
             .onDeleteCommand { if !model.isRunning { model.removeSelected() } }

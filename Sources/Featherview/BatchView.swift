@@ -51,7 +51,8 @@ struct BatchView: View {
     }
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .principal) {
+        // Groups, so macOS 26 draws each as a capsule; 14 and 15 look as before.
+        ToolbarItemGroup(placement: .principal) {
             Picker("Mode", selection: $model.settings.mode) {
                 Text("Convert").tag(BatchMode.convert)
                 Text("Rename").tag(BatchMode.rename)
@@ -63,7 +64,7 @@ struct BatchView: View {
             .fixedSize()
             .disabled(model.isRunning)
         }
-        ToolbarItem {
+        ToolbarItemGroup {
             Menu {
                 ForEach(model.presetNames, id: \.self) { name in
                     Toggle(name, isOn: Binding { model.loadedPreset == name } set: { _ in model.loadPreset(name) })

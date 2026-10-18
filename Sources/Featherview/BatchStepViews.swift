@@ -15,12 +15,9 @@ struct BatchStepDetail: View {
                 if let isOn { Toggle("On", isOn: isOn).toggleStyle(.switch) }
             }
             .padding([.horizontal, .top])
-            ScrollView {
-                Form { form }
-                    .formStyle(.columns)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            // A grouped form scrolls by itself: labels leading, controls trailing, in one card.
+            Form { Section { form } }
+                .formStyle(.grouped)
         }
     }
 
