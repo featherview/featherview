@@ -28,6 +28,9 @@ let strings = (try? Data(contentsOf: table))
     .flatMap { try? PropertyListSerialization.propertyList(from: $0, format: nil) as? [String: String] } ?? [:]
 let help = DiskImageText.firstOpenHelp(from: strings)
 let rightToLeft = Locale.Language(identifier: lang).characterDirection == .rightToLeft
+guard DiskImageArt.helpFits(help, rightToLeft: rightToLeft) else {
+    fail("The \(lang) first-open help is longer than four lines. Shorten the translation.")
+}
 
 let outDir = URL(fileURLWithPath: out)
 do { try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true) } catch {

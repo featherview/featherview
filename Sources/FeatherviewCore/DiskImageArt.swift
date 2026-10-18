@@ -75,15 +75,27 @@ public enum DiskImageArt {
         ctx.restoreGState()
     }
 
+    static let helpMargin: CGFloat = 24, helpPad: CGFloat = 8
+    /// Four lines of 11 pt system text (about 13.1 pt each); the box then ends below the feather.
+    static let maxHelpHeight: CGFloat = 54
+    static var helpWidth: CGFloat { size.width - 2 * helpMargin - 2 * helpPad }
+
+    /// Whether all of `help` fits in the help box; `featherview-dmg` refuses a translation that doesn't.
+    public static func helpFits(_ help: String, rightToLeft: Bool = false) -> Bool {
+        let text = attributed(help, rightToLeft: rightToLeft)
+        let setter = CTFramesetterCreateWithAttributedString(text)
+        let rect = CGRect(x: 0, y: 0, width: helpWidth, height: maxHelpHeight)
+        let frame = CTFramesetterCreateFrame(setter, CFRange(), CGPath(rect: rect, transform: nil), nil)
+        return CTFrameGetVisibleStringRange(frame).length == CFAttributedStringGetLength(text)
+    }
+
     private static func helpBox(_ ctx: CGContext, _ help: String, rightToLeft: Bool) {
-        let margin: CGFloat = 24, bottom: CGFloat = 10, pad: CGFloat = 8
-        // shortcut: text beyond four lines is cut off, fine for today's translations; shrink the font if one needs more.
-        let maxTextHeight: CGFloat = 52
-        let textWidth = size.width - 2 * margin - 2 * pad
+        let margin = helpMargin, bottom: CGFloat = 10, pad = helpPad
+        let textWidth = helpWidth
         let setter = CTFramesetterCreateWithAttributedString(attributed(help, rightToLeft: rightToLeft))
         let fitted = CTFramesetterSuggestFrameSizeWithConstraints(setter, CFRange(), nil,
-                                                                  CGSize(width: textWidth, height: maxTextHeight), nil)
-        let textHeight = min(maxTextHeight, fitted.height.rounded(.up))
+                                                                  CGSize(width: textWidth, height: maxHelpHeight), nil)
+        let textHeight = min(maxHelpHeight, fitted.height.rounded(.up))
         let box = CGRect(x: margin, y: bottom, width: size.width - 2 * margin, height: textHeight + 2 * pad)
         ctx.saveGState()
         ctx.addPath(CGPath(roundedRect: box, cornerWidth: 10, cornerHeight: 10, transform: nil))

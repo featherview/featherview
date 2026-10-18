@@ -43,4 +43,11 @@ import Testing
         #expect(DiskImageText.firstOpenHelp(from: [:]) == english)
         #expect(DiskImageText.firstOpenHelp(from: [english: "Erstes Öffnen …"]) == "Erstes Öffnen …")
     }
+
+    @Test(arguments: [false, true])
+    func helpBoxHoldsFourLines(rightToLeft: Bool) {
+        #expect(DiskImageArt.helpFits(DiskImageText.firstOpenHelp, rightToLeft: rightToLeft))
+        #expect(DiskImageArt.helpFits("a\nb\nc\nd", rightToLeft: rightToLeft))
+        #expect(!DiskImageArt.helpFits("a\nb\nc\nd\ne", rightToLeft: rightToLeft))
+    }
 }
