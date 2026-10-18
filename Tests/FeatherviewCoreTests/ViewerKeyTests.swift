@@ -29,4 +29,11 @@ import Testing
         #expect(ViewerKey.action(characters: "a", shift: false) == .about)
         #expect(ViewerKey.action(characters: "S", shift: true) == nil)
     }
+
+    @Test func arrowStepsFollowLayoutDirection() {
+        #expect(ViewerKey.arrowGoesForward(isRightArrow: true, rightToLeft: false))
+        #expect(!ViewerKey.arrowGoesForward(isRightArrow: false, rightToLeft: false))
+        #expect(!ViewerKey.arrowGoesForward(isRightArrow: true, rightToLeft: true))   // → is previous in Arabic/Hebrew
+        #expect(ViewerKey.arrowGoesForward(isRightArrow: false, rightToLeft: true))
+    }
 }

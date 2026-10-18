@@ -7,6 +7,7 @@ struct ViewerView: View {
     @Environment(\.openWindow) private var openWindow
     @FocusState private var focused: Bool
     @Environment(\.controlActiveState) private var activeState
+    @Environment(\.layoutDirection) private var layoutDirection
     @AppStorage(AppSettings.rememberWindowFrame.key) private var rememberFrame = AppSettings.rememberWindowFrame.defaultValue
     @State private var panController = PanController()
     /// Toolbar buttons are built only after the first image (or message) is on screen: building them takes
@@ -186,12 +187,18 @@ struct ViewerView: View {
         // Arrow keys carry the numeric-pad/function flags and Caps Lock changes nothing here,
         // so only these modifiers count.
         let modifiers = press.modifiers.intersection([.command, .control, .option, .shift])
+        let rtl = layoutDirection == .rightToLeft
         if model.isChooserOpen { return handleChooser(press, modifiers) }
         if let operation = model.destinationPanel { return handleDestinations(press, modifiers, operation) }
         if modifiers == .option {
             switch press.key {
-            case .rightArrow: model.nextPage(); return .handled
-            case .leftArrow: model.previousPage(); return .handled
+            case .rightArrow, .leftArrow:
+                if ViewerKey.arrowGoesForward(isRightArrow: press.key == .rightArrow, rightToLeft: rtl) {
+                    model.nextPage()
+                } else {
+                    model.previousPage()
+                }
+                return .handled
             default: return .ignored
             }
         }
@@ -201,8 +208,13 @@ struct ViewerView: View {
         }
         if modifiers.isEmpty {
             switch press.key {
-            case .rightArrow: if !panController.pan(dx: 1, dy: 0) { model.next() }; return .handled
-            case .leftArrow: if !panController.pan(dx: -1, dy: 0) { model.previous() }; return .handled
+            case .rightArrow, .leftArrow:
+                let isRight = press.key == .rightArrow
+                // Panning stays physical; only the step past the edge follows the layout direction.
+                if !panController.pan(dx: isRight ? 1 : -1, dy: 0) {
+                    if ViewerKey.arrowGoesForward(isRightArrow: isRight, rightToLeft: rtl) { model.next() } else { model.previous() }
+                }
+                return .handled
             case .downArrow: if !panController.pan(dx: 0, dy: 1) { model.next() }; return .handled
             case .upArrow: if !panController.pan(dx: 0, dy: -1) { model.previous() }; return .handled
             case .space, .pageDown: model.next(); return .handled
@@ -249,8 +261,14 @@ struct ViewerView: View {
         switch press.key {
         case .upArrow: model.chooserMove(-1)
         case .downArrow: model.chooserMove(1)
-        case .rightArrow, .space: model.chooserEnter()
-        case .leftArrow: model.chooserUp()
+        case .space: model.chooserEnter()
+        case .rightArrow, .leftArrow:
+            let rtl = layoutDirection == .rightToLeft
+            if ViewerKey.arrowGoesForward(isRightArrow: press.key == .rightArrow, rightToLeft: rtl) {
+                model.chooserEnter()
+            } else {
+                model.chooserUp()
+            }
         case .return: model.chooserOpen()
         case .escape: model.closeChooser()
         default: break

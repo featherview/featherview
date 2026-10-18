@@ -27,4 +27,10 @@ public enum ViewerKey: Equatable, Sendable {
         default: return nil
         }
     }
+
+    /// True when the arrow means next (or enter). Spec "Languages": in right-to-left languages
+    /// ← and → follow the mirrored screen, so ← is next image and → is previous.
+    public static func arrowGoesForward(isRightArrow: Bool, rightToLeft: Bool) -> Bool {
+        isRightArrow != rightToLeft
+    }
 }

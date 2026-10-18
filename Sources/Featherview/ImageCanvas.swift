@@ -50,6 +50,8 @@ struct ImageCanvas: NSViewRepresentable {
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
         scrollView.contentView = CenteringClipView()
+        // The picture never mirrors (spec "Languages"): scroll origin and dragging stay physical.
+        scrollView.userInterfaceLayoutDirection = .leftToRight
         scrollView.hasHorizontalScroller = true
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
