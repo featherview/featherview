@@ -95,6 +95,8 @@ struct ImageCanvas: NSViewRepresentable {
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.scrollerStyle = .overlay
+        // A picture pans diagonally, not locked to the axis the fingers started on.
+        scrollView.usesPredominantAxisScrolling = false
         scrollView.documentView = ImageLayerView()
         return scrollView
     }
