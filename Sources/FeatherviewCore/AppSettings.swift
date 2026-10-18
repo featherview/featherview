@@ -25,7 +25,8 @@ public enum AppSettings {
     public static let showNextAfterRemoval = Setting(key: "showNextAfterRemoval", defaultValue: true)
     public static let moveSidecars = Setting(key: "moveSidecars", defaultValue: true)
     // Viewer
-    public static let backgroundColor = Setting(key: "backgroundColor", defaultValue: "#000000")
+    public static let backgroundColor = Setting(key: "backgroundColor", defaultValue: BackgroundPreset.graphite.hex)
+    public static let hideBarsWhileViewing = Setting(key: "hideBarsWhileViewing", defaultValue: false)
     public static let checkerboard = Setting(key: "checkerboard", defaultValue: true)
     public static let rememberWindowFrame = Setting(key: "rememberWindowFrame", defaultValue: true)
     public static let zoomStepPercent = Setting(key: "zoomStepPercent", defaultValue: 10)
@@ -50,6 +51,7 @@ public enum AppSettings {
             showNextAfterRemoval.key: showNextAfterRemoval.defaultValue,
             moveSidecars.key: moveSidecars.defaultValue,
             backgroundColor.key: backgroundColor.defaultValue,
+            hideBarsWhileViewing.key: hideBarsWhileViewing.defaultValue,
             checkerboard.key: checkerboard.defaultValue,
             rememberWindowFrame.key: rememberWindowFrame.defaultValue,
             zoomStepPercent.key: zoomStepPercent.defaultValue,
