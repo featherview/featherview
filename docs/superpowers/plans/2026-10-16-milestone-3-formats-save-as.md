@@ -844,18 +844,18 @@ extension View {
 - Modify: `docs/roadmap.md` (milestone 3 done, plan link), `docs/superpowers/plans/2026-10-16-milestone-3-formats-save-as.md` (tick boxes)
 - Modify: `README.md` (supported formats paragraph, if it lists formats)
 
-- [ ] **Step 1:** `scripts/bundle.sh release`; all `AGENTS.md` budgets measured again (cold launch
+- [x] **Step 1:** `scripts/bundle.sh release`; all `AGENTS.md` budgets measured again (cold launch
   with a 12 MP JPEG, prefetched and unprefetched swap, 10,000-file folder, memory while browsing).
   Any regression is a bug: fix before going on.
-- [ ] **Step 2:** Real-world files (maintainer provides or exports them; not committed): at least
+- [x] **Step 2:** Real-world files (maintainer provides or exports them; not committed): at least
   one each of QOI, PCX (8-bit and 24-bit), DCX, XBM, XPM, WBMP, RAS, IFF/LBM (incl. a HAM picture),
   SVG, a 300-page PDF, a PDF with rotated pages, an encrypted PDF, an iPhone HDR photo. Each opens
   (or says "Can't open" for the encrypted one), pages step, batch converts it.
-- [ ] **Step 3:** Save As round trip for every writable format from a 12 MP photo; open each
+- [x] **Step 3:** Save As round trip for every writable format from a 12 MP photo; open each
   result in Featherview and Preview; note sizes and times in `docs/parity.md` only if something
   differs from the spec.
-- [ ] **Step 4:** Open With: Featherview offered for every format in step 2; Finder defaults unchanged.
-- [ ] **Step 5:** `swift test` green; commit `docs: milestone 3 done after manual QA`.
+- [x] **Step 4:** Open With: Featherview offered for every format in step 2; Finder defaults unchanged.
+- [x] **Step 5:** `swift test` green; commit `docs: milestone 3 done after manual QA`.
 
 ---
 

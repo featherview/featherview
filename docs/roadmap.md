@@ -13,7 +13,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 |---|---|---|---|
 | 1 | Core viewer and batch | `docs/superpowers/plans/2026-10-15-featherview-v1.md` | done |
 | 2 | Viewer complete | `docs/superpowers/plans/2026-10-16-milestone-2-viewer-complete.md` | done |
-| 3 | Formats and Save As | `docs/superpowers/plans/2026-10-16-milestone-3-formats-save-as.md` | planned |
+| 3 | Formats and Save As | `docs/superpowers/plans/2026-10-16-milestone-3-formats-save-as.md` | done |
 | 4 | Batch complete | `docs/superpowers/plans/2026-10-17-milestone-4-batch-complete.md` | planned |
 | 5 | WebP output | `docs/superpowers/plans/2026-10-16-milestone-5-webp.md` | done |
 | 6 | Languages | to write after 4 and 5 | — |
