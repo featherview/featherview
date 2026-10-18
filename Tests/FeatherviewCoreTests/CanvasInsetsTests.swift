@@ -32,4 +32,12 @@ struct CanvasInsetsTests {
         let faded = CanvasInsets.make(toolbarHeight: 52, statusBarShown: true, fullScreen: false)
         #expect(shown == faded)
     }
+
+    /// The on-image error box sits above the glass strip, not on it, and keeps its usual margin without one.
+    @Test func messageBoxClearsTheStrip() {
+        let shown = CanvasInsets.make(toolbarHeight: 52, statusBarShown: true, fullScreen: false)
+        #expect(shown.messageBottom >= CanvasInsets.stripHeight + 2 * CanvasInsets.stripMargin + CanvasInsets.messageMargin)
+        let hidden = CanvasInsets.make(toolbarHeight: 52, statusBarShown: false, fullScreen: false)
+        #expect(hidden.messageBottom == CanvasInsets.messageMargin)
+    }
 }

@@ -70,7 +70,8 @@ struct ViewerView: View {
             if let message = model.errorMessage, model.image != nil {
                 Text(message)
                     .messageBox()
-                    .padding()
+                    .padding(.horizontal)
+                    .padding(.bottom, canvasInsets.messageBottom)
             }
         }
         .overlay(alignment: .bottomLeading) {

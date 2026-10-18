@@ -9,6 +9,8 @@ public struct CanvasInsets: Equatable, Sendable {
 
     public static let stripHeight = 22.0
     public static let stripMargin = 8.0
+    /// SwiftUI's default `.padding()`, the error box's gap to whatever is below it.
+    public static let messageMargin = 16.0
 
     public init(top: Double, bottom: Double) {
         self.top = top
@@ -20,6 +22,9 @@ public struct CanvasInsets: Equatable, Sendable {
         if fullScreen { return CanvasInsets(top: 0, bottom: 0) }
         return CanvasInsets(top: toolbarHeight, bottom: statusBarShown ? stripHeight + 2 * stripMargin : 0)
     }
+
+    /// How far the on-image error box sits from the window's bottom edge: above the glass strip, never on it.
+    public var messageBottom: Double { bottom + Self.messageMargin }
 
     /// The window area a fit image fills.
     public func fitArea(in window: CGSize) -> CGSize {
