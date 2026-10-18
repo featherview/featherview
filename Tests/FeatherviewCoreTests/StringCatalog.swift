@@ -207,7 +207,9 @@ private struct Specifiers: CustomStringConvertible {
             guard let type = match.output[2].substring else { byIndex[0] = "arg"; continue }
             let index = match.output[1].substring.flatMap { Int($0) } ?? next
             if match.output[1].substring == nil { next += 1 }
-            byIndex[index] = Self.type(String(type))
+            let new = Self.type(String(type))
+            // One argument used twice with two types never matches the source's one type.
+            if let old = byIndex[index], old != new { byIndex[index] = "\(old) and \(new)" } else { byIndex[index] = new }
         }
     }
 

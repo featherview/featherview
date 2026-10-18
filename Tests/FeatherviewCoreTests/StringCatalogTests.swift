@@ -62,6 +62,18 @@ import Testing
         #expect(problems(swapped, "de").count == 1)
     }
 
+    @Test func positionalArgumentUsedTwiceWithAnotherTypeIsReported() throws {
+        let c = try catalog("%@ in %lld", "de", unit("%1$@ %2$@ in %2$lld"))
+        #expect(problems(c, "de").count == 1)
+    }
+
+    @Test func percentSignInArgumentFreeSourceIsText() throws {
+        let hu = try catalog("% of the shorter side", "hu", unit("a rövidebb oldal %-a"))
+        #expect(problems(hu, "hu") == [])
+        let tr = try catalog("% of the shorter side", "tr", unit("kısa kenarın %'si"))
+        #expect(problems(tr, "tr") == [])
+    }
+
     @Test func pluralOneMayOmitCount() throws {
         let en = plural(["one": "%lld file", "other": "%lld files"])
         let good = try catalog("%lld files", en: en, "ar", plural(["one": "ملف واحد", "other": "%lld ملفات"]))
