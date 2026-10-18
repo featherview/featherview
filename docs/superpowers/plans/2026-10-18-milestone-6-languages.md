@@ -98,7 +98,9 @@ commands: `AGENTS.md`. Read the spec section and AGENTS.md first.
    `String(localized:)`; every string whose number counts a noun gets plural variations in English
    and in each language whose plural rules have more than `other`.
 8. **Plural form rule** (checked by the test): every plural has `other`; in `zero`, `one` and `two`
-   forms the count may be left out ("ملف واحد", "un fichier"); everything else matches the source.
+   forms the count may be left out ("ملف واحد", "eine Datei"), except in `one` for fr, pt-BR, hi, ru
+   and uk, where CLDR `one` also covers 0 or 21, 31 …: those keep the count ("%lld fichier");
+   everything else matches the source.
    A whole-string plural is allowed only for a source with exactly one integer; strings with two
    counts use substitutions (`%#@name@`).
 9. **Menu key hints:** translations keep the `"  (…)"` suffix byte for byte (`" or "`, `Space`, `F7`,
