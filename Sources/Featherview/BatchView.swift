@@ -27,8 +27,12 @@ struct BatchView: View {
                         BatchStepsColumn(model: model)
                             .frame(width: 230)
                         Divider()
-                        BatchStepDetail(step: model.step, model: model)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        VStack(spacing: 0) {
+                            BatchStepDetail(step: model.step, model: model)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            Divider()
+                            BatchPreview(model: model)
+                        }
                     }
                 }
             }
@@ -154,19 +158,5 @@ private struct BatchStepsColumn: View {
             .opacity(model.isUsed(step) ? 1 : 0.4)
             .tag(step)
         }
-    }
-}
-
-/// Task 11 fills this in; Task 10 ships it showing the step's title only.
-struct BatchStepDetail: View {
-    let step: BatchStep
-    @Bindable var model: BatchModel
-
-    var body: some View {
-        VStack {
-            Text(step.title).font(.title2)
-            Spacer()
-        }
-        .padding()
     }
 }
