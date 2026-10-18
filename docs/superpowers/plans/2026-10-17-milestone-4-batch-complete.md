@@ -854,7 +854,7 @@ Behaviour (spec "Window"):
 
 - [x] **Step 1:** Build the model and views to the description above (no Core logic in the app:
   anything testable goes into Core with a test).
-- [ ] **Step 2:** `swift build`, `scripts/bundle.sh debug`, open it and check by hand: add files,
+- [x] **Step 2:** `swift build`, `scripts/bundle.sh debug`, open it and check by hand: add files,
   folder with subfolders, drop, sort, move, save/load list, presets save/load/delete, start, pause,
   resume, stop, copy log, quit during a run.
 - [x] **Step 3: Commit.** `feat: three-column batch window with input list, presets and run view`
@@ -899,11 +899,11 @@ Behaviour (spec "Window", "Output", "Per-image operations", "Safety and options"
   every file succeeds), computed off the main thread, then "… N more · into <folder>".
 - All text through SwiftUI literals; colour wells via `ColorPicker` bound to `RGBAColor`.
 
-- [ ] **Step 1:** Build the views and preview.
-- [ ] **Step 2:** `swift build`, `scripts/bundle.sh debug`, check by hand that every control
+- [x] **Step 1:** Build the views and preview.
+- [x] **Step 2:** `swift build`, `scripts/bundle.sh debug`, check by hand that every control
   changes the preview or names as expected and that typing quickly in the resize field stays smooth
   with a 24 MP input selected.
-- [ ] **Step 3: Commit.** `feat: batch step settings and live preview`
+- [x] **Step 3: Commit.** `feat: batch step settings and live preview`
 
 ---
 
@@ -918,8 +918,14 @@ Needs the screen: ask the maintainer before driving the GUI.
   replace existing (old file in the Trash), trash originals (with an `.xmp` sidecar), keep dates,
   recreate subfolders; stop and pause mid-run; copy log; an HDR iPhone HEIC to HEIC (still HDR in
   the viewer) and to JPEG (SDR).
-- [ ] **Step 2:** Measure: 100 × 12 MP JPEG → JPEG with no operations, before (main before this
+- [x] **Step 2:** Measure: 100 × 12 MP JPEG → JPEG with no operations, before (main before this
   milestone) and after: not slower. Same with resize + text: note the time.
+  Measured (M1 Pro 10 cores, `BatchConverter.run` from a release test build, 3 runs, load average 3.3–4.3):
+  4b80b58 (before) 1.63–1.77 s, after 1.62–1.65 s; resize to 1920 + `{name}` text 0.81–0.87 s.
+  Memory: a 10,000-file run (12 MP, border) holds 2.3–2.6 GB footprint, and about 2 GB stays after
+  the run ends: Core Image keeps the decoded inputs it has drawn (≈48 MB each); `clearCaches()`, a
+  context per file and `cacheImmediately: false` don't release them, warn pressure frees part.
+  Bounded, left open as a finding.
 - [ ] **Step 3:** Update `README.md` if it lists batch features, `docs/roadmap.md` (milestone 4
   done), `docs/parity.md` rows for batch that change status, tick this plan.
 - [ ] **Step 4: Commit.** `docs: milestone 4 done after manual QA`
