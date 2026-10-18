@@ -27,6 +27,7 @@ import Testing
         #expect(defaults.bool(forKey: AppSettings.hidePointer.key) == true)
         #expect(defaults.bool(forKey: AppSettings.askBeforeMoveCopy.key) == false)
         #expect(AppSettings.openWith.map { $0.value(in: defaults) } == ["", "", ""])
+        #expect(defaults.object(forKey: AppSettings.offeredDefaultViewer.key) as? Bool == false)
     }
 
     @Test func storedValueWinsAndWrongTypeFallsBack() {

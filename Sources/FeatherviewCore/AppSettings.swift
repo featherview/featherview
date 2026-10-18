@@ -24,6 +24,8 @@ public enum AppSettings {
     public static let showHiddenFiles = Setting(key: "showHiddenFiles", defaultValue: false)
     public static let showNextAfterRemoval = Setting(key: "showNextAfterRemoval", defaultValue: true)
     public static let moveSidecars = Setting(key: "moveSidecars", defaultValue: true)
+    /// True once the launch offer to open images instead of Preview was shown (spec "Default viewer").
+    public static let offeredDefaultViewer = Setting(key: "offeredDefaultViewer", defaultValue: false)
     // Viewer
     public static let backgroundColor = Setting(key: "backgroundColor", defaultValue: BackgroundPreset.graphite.hex)
     public static let hideBarsWhileViewing = Setting(key: "hideBarsWhileViewing", defaultValue: false)
@@ -50,6 +52,7 @@ public enum AppSettings {
             showHiddenFiles.key: showHiddenFiles.defaultValue,
             showNextAfterRemoval.key: showNextAfterRemoval.defaultValue,
             moveSidecars.key: moveSidecars.defaultValue,
+            offeredDefaultViewer.key: offeredDefaultViewer.defaultValue,
             backgroundColor.key: backgroundColor.defaultValue,
             hideBarsWhileViewing.key: hideBarsWhileViewing.defaultValue,
             checkerboard.key: checkerboard.defaultValue,

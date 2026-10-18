@@ -1,5 +1,6 @@
 import FeatherviewCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 @main
 struct FeatherviewApp: App {
@@ -45,7 +46,10 @@ struct OpensViewerWindows: ViewModifier {
     @Environment(\.openWindow) private var openWindow
 
     func body(content: Content) -> some View {
-        content.onAppear { Self.install(openWindow) }
+        content.onAppear {
+            Self.install(openWindow)
+            DefaultViewerOffer.showOnce()
+        }
     }
 
     static func install(_ openWindow: OpenWindowAction) {
@@ -56,6 +60,57 @@ struct OpensViewerWindows: ViewModifier {
                                             .deminiaturize(nil)
                                     },
                                     openExtra: { openWindow(id: "viewer-extra", value: $0) })
+    }
+}
+
+/// Making Featherview the default app for images (spec "Viewer › Default viewer"): the launch offer,
+/// and the action Preferences › Browsing shares with it.
+@MainActor
+enum DefaultViewerOffer {
+    private static var scheduled = false
+
+    /// Bundle identifier of the app that opens `type` now, nil for none.
+    static func handler(for type: UTType) -> String? {
+        NSWorkspace.shared.urlForApplication(toOpen: type).flatMap { Bundle(url: $0)?.bundleIdentifier }
+    }
+
+    static var typesToClaim: [UTType] {
+        DefaultViewer.typesToClaim(DefaultViewer.readableTypes, ownID: Bundle.main.bundleIdentifier ?? "", handler: handler)
+    }
+
+    /// Sets Featherview as the default for every type it may take; names the types macOS refused.
+    static func claim() async {
+        var failed: [UTType] = []
+        for type in typesToClaim {
+            do { try await NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpen: type) } catch { failed.append(type) }
+        }
+        guard !failed.isEmpty else { return }
+        let names = failed.map { $0.preferredFilenameExtension?.uppercased() ?? $0.identifier }.formatted(.list(type: .and))
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Featherview couldn't become the default for \(names).")
+        alert.runModal()
+    }
+
+    /// Asks once, after the first window is up and its first image (if any) is on screen, never on the launch path.
+    static func showOnce() {
+        guard !scheduled else { return }
+        scheduled = true
+        Task {
+            while ViewerModel.main.isOpening { try? await Task.sleep(for: .milliseconds(50)) }
+            try? await Task.sleep(for: .milliseconds(100))  // the frame with the image commits first
+            guard DefaultViewer.shouldOffer(bundleURL: Bundle.main.bundleURL, home: FileManager.default.homeDirectoryForCurrentUser,
+                                            offeredBefore: AppSettings.offeredDefaultViewer.value(),
+                                            jpegHandler: handler(for: .jpeg)) else { return }
+            // Set before asking, so a crash or quit never asks twice.
+            UserDefaults.standard.set(true, forKey: AppSettings.offeredDefaultViewer.key)
+            let alert = NSAlert()
+            alert.alertStyle = .informational
+            alert.messageText = String(localized: "Open your images with Featherview?")
+            alert.informativeText = String(localized: "Featherview can open your images instead of Preview. You can change this later in Preferences › Browsing.")
+            alert.addButton(withTitle: String(localized: "Use Featherview"))
+            alert.addButton(withTitle: String(localized: "Not Now")).keyEquivalent = "\u{1b}"
+            if alert.runModal() == .alertFirstButtonReturn { await claim() }
+        }
     }
 }
 

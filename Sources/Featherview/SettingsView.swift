@@ -1,5 +1,6 @@
 import FeatherviewCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Settings (⌘, or P): every setting from spec "Settings". AppKit's toolbar tabs, not SwiftUI's Settings scene,
 /// whose window can't animate its height per tab with the content pinned to the top, like other Mac settings windows.
@@ -74,9 +75,18 @@ private struct BrowsingSettings: View {
     @AppStorage(AppSettings.showHiddenFiles.key) private var showHidden = AppSettings.showHiddenFiles.defaultValue
     @AppStorage(AppSettings.showNextAfterRemoval.key) private var showNext = AppSettings.showNextAfterRemoval.defaultValue
     @AppStorage(AppSettings.moveSidecars.key) private var sidecars = AppSettings.moveSidecars.defaultValue
+    @State private var jpegApp: String?
+    @State private var canClaim = false
 
     var body: some View {
         Form {
+            Section("Default app") {
+                LabeledContent("Opens JPEG:") { Text(jpegApp ?? String(localized: "No app")) }
+                Button("Use Featherview for Images") {
+                    Task { await DefaultViewerOffer.claim(); refresh() }
+                }
+                .disabled(!canClaim)
+            }
             Section("Folders") {
                 Picker("Past the end of a folder:", selection: $pastEnd) {
                     Text("Show the folder chooser").tag(PastEndBehavior.folderChooser.rawValue)
@@ -90,6 +100,13 @@ private struct BrowsingSettings: View {
                 Toggle("Move, copy and trash sidecar files (.xmp, .aae, .thm) with their image", isOn: $sidecars)
             }
         }
+        .onAppear(perform: refresh)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in refresh() }
+    }
+
+    private func refresh() {
+        jpegApp = NSWorkspace.shared.urlForApplication(toOpen: .jpeg).map { FileManager.default.displayName(atPath: $0.path) }
+        canClaim = !DefaultViewerOffer.typesToClaim.isEmpty
     }
 }
 
