@@ -9,7 +9,7 @@ import Testing
     }
 
     @Test func presetsHaveTheSpecColours() {
-        #expect(BackgroundPreset.allCases.map(\.hex) == ["#1c1c20", "#000000", "#808080", "#ffffff"])
+        #expect(BackgroundPreset.allCases.map(\.hex) == ["#1c1c20", "#000000", "#e7e7ec", "#ffffff"])
     }
 
     @Test func matchingIgnoresCase() {

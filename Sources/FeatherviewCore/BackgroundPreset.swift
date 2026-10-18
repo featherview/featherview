@@ -6,7 +6,7 @@ public enum BackgroundPreset: String, CaseIterable, Sendable {
         switch self {
         case .graphite: "#1c1c20"
         case .black: "#000000"
-        case .grey: "#808080"
+        case .grey: "#e7e7ec"
         case .white: "#ffffff"
         }
     }
