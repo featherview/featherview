@@ -6,7 +6,10 @@ set -eu
 cd "$(dirname "$0")/.."
 
 OUT=.build/strings
-rm -rf "$OUT"                                   # full build: incremental builds only emit recompiled files
+# Full build: incremental builds only emit recompiled files. `clean` drops the build products but
+# keeps the downloaded packages (libwebp and its submodules), so they aren't fetched again each run.
+[ -d "$OUT/build" ] && swift package --scratch-path "$OUT/build" clean
+rm -rf "$OUT/data"
 mkdir -p "$OUT/data"                            # the compiler doesn't create it
 swift build --product Featherview --scratch-path "$OUT/build" \
   -Xswiftc -emit-localized-strings -Xswiftc -emit-localized-strings-path -Xswiftc "$PWD/$OUT/data"
