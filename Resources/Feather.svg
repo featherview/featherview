@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="8 8 46 46">
+  <!-- The feather from AppIcon.svg, without the tile, square: the empty-window hint. -->
+  <defs>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffc766"/><stop offset="1" stop-color="#ff7a59"/></linearGradient>
+  </defs>
+  <path d="M46 10C28 14 18 28 16 50l4 2c2-6 5-11 9-15 8-1 14-6 17-14-4 2-8 3-12 3 5-3 10-8 12-16z" fill="url(#mark)"/>
+</svg>

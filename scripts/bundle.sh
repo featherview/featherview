@@ -16,6 +16,7 @@ cp "$BIN" "$APP/Contents/MacOS/Featherview"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 # AppIcon.icns is rendered from AppIcon.svg (rsvg-convert per size, then iconutil).
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+cp Resources/Feather.svg "$APP/Contents/Resources/Feather.svg"
 cp LICENSE "$APP/Contents/Resources/LICENSE"
 cp Resources/Acknowledgements.txt "$APP/Contents/Resources/Acknowledgements.txt"
 # The string catalog compiles into one .lproj per language; en.lproj always, so macOS lists English.

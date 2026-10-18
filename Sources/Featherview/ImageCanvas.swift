@@ -53,6 +53,8 @@ struct ImageCanvas: NSViewRepresentable {
     /// How far the toolbar and the status strip reach over the canvas: fit stays clear of them,
     /// a zoomed image scrolls under them.
     let insets: CanvasInsets
+    /// A change of it on the same image animates the resize (spec "Look"); a new image never animates.
+    let zoom: ViewerModel.Zoom
     let checkerboard: Bool
     let panController: PanController
     let onDoubleClick: () -> Void
@@ -97,13 +99,30 @@ struct ImageCanvas: NSViewRepresentable {
             scrollView.contentInsets = contentInsets
             scrollView.scrollerInsets = contentInsets
         }
+        let animate = view.zoom != nil && view.zoom != zoom && view.shows(image) && !insetsChanged
+            && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        view.zoom = zoom
         view.show(image, checkerboard: checkerboard && image.hasAlpha, 
                   smooth: !ZoomSteps.showsPixels(drawnWidth: size.width, imageWidth: Int(pixelWidth), displayScale: displayScale))
         if oldSize != size || insetsChanged {
             view.frame.size = size
             let visible = scrollView.clearRect
-            moveVisibleOrigin(scrollView, to: CGPoint(x: centre.x * size.width - visible.width / 2,
-                                           y: centre.y * size.height - visible.height / 2))
+            let point = CGPoint(x: centre.x * size.width - visible.width / 2, y: centre.y * size.height - visible.height / 2)
+            guard animate else { return moveVisibleOrigin(scrollView, to: point) }
+            // The target scroll position is worked out at the final size, then both animate from the old one.
+            let clip = scrollView.contentView
+            let target = clip.constrainBoundsRect(NSRect(
+                origin: CGPoint(x: point.x - clip.contentInsets.left, y: point.y - clip.contentInsets.top),
+                size: clip.bounds.size)).origin
+            view.frame.size = oldSize
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.12
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                view.animator().setFrameSize(size)
+                clip.animator().setBoundsOrigin(target)
+            } completionHandler: {
+                MainActor.assumeIsolated { scrollView.reflectScrolledClipView(clip) }
+            }
         }
     }
 }
@@ -140,6 +159,8 @@ private final class ImageLayerView: NSView {
     var onClick: () -> Void = {}
     var onFirstDraw: @MainActor () -> Void = {}
     var onCommit: @MainActor (CGImage) -> Void = { _ in }
+    /// The zoom the frame was last sized for; nil before the first update.
+    var zoom: ViewerModel.Zoom?
     private let imageLayer = CALayer()
     private var dragStart: (mouse: NSPoint, origin: NSPoint)?
 
@@ -154,6 +175,8 @@ private final class ImageLayerView: NSView {
     required init?(coder: NSCoder) { fatalError("not used") }
 
     override var isFlipped: Bool { true }
+
+    func shows(_ image: CGImage) -> Bool { (imageLayer.contents as AnyObject?) === image }
 
     func show(_ image: CGImage, checkerboard: Bool, smooth: Bool) {
         CATransaction.begin()

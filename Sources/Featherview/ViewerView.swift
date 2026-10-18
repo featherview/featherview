@@ -52,7 +52,7 @@ struct ViewerView: View {
             background.ignoresSafeArea()
             if let image = model.image {
                 ImageCanvas(image: image, size: drawSize(image), pixelWidth: pixelSize(image).width,
-                            displayScale: displayScale, background: backgroundNSColor, insets: canvasInsets,
+                            displayScale: displayScale, background: backgroundNSColor, insets: canvasInsets, zoom: model.zoom,
                             checkerboard: checkerboard, panController: panController,
                             onDoubleClick: model.toggleFullScreen, onClick: clickedImage,
                             onFirstDraw: { toolbarReady = true; model.firstImageDrawn() },
@@ -66,7 +66,7 @@ struct ViewerView: View {
                 Text("No images in \(folder.lastPathComponent)").messageBox()
             } else if !model.isOpening && model.list.current == nil {
                 // Only when nothing is on its way: a loading image shows black, not the hint.
-                Text("Open an image with ⌘O, or drop one here").messageBox()
+                EmptyHint()
             }
         }
         .overlay {
@@ -145,6 +145,8 @@ struct ViewerView: View {
         .inspector(isPresented: $model.showInfo) {
             InfoPanel(url: model.list.current, revision: model.fileRevision)
         }
+        // Here, not a withAnimation at each toggle: I, the toolbar button, the menus and the panel's own close all count.
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: model.showInfo)
         .focusedSceneValue(\.viewer, model)
         .onChange(of: activeState, initial: true) {
             feedAutoHide(.windowKey(activeState == .key))
@@ -621,6 +623,35 @@ struct ViewerCommands: Commands {
             }
             .disabled(model?.availability.hasCurrent != true)
         }
+    }
+}
+
+/// The empty window: the feather, what to do, and the keys for it (spec "Look").
+private struct EmptyHint: View {
+    private static let feather = Bundle.main.url(forResource: "Feather", withExtension: "svg").flatMap(NSImage.init(contentsOf:))
+
+    var body: some View {
+        VStack(spacing: 10) {
+            if let feather = Self.feather {
+                Image(nsImage: feather).resizable().frame(width: 44, height: 44)
+            }
+            Text("Open an image or drop a folder here")
+            HStack(spacing: 6) {
+                keyCap("⌘O")
+                keyCap("O")
+            }
+        }
+        .foregroundStyle(.secondary)
+        .padding(6)
+        .messageBox()
+    }
+
+    private func keyCap(_ key: String) -> some View {
+        Text(verbatim: key)
+            .font(.caption)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(.secondary, lineWidth: 1))
     }
 }
 
