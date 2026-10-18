@@ -66,7 +66,10 @@ struct ViewerView: View {
                 Text("No images in \(folder.lastPathComponent)").messageBox()
             } else if !model.isOpening && model.list.current == nil {
                 // Only when nothing is on its way: a loading image shows black, not the hint.
+                // Centred in the fit area, not the whole window below the toolbar.
                 EmptyHint()
+                    .padding(EdgeInsets(top: canvasInsets.top - toolbarHeight, leading: canvasInsets.leading,
+                                        bottom: canvasInsets.bottom, trailing: canvasInsets.trailing))
             }
         }
         .overlay {
@@ -644,32 +647,28 @@ struct ViewerCommands: Commands {
     }
 }
 
-/// The empty window: the feather, what to do, and the keys for it (spec "Look").
+/// The empty window: the feather, what to do, and the keys for it, on an 18 pt glass card (docs/DESIGN.md "Elements").
 private struct EmptyHint: View {
     private static let feather = Bundle.main.url(forResource: "Feather", withExtension: "svg").flatMap(NSImage.init(contentsOf:))
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Theme.emptyCardGap) {
             if let feather = Self.feather {
-                Image(nsImage: feather).resizable().frame(width: 44, height: 44)
+                Image(nsImage: feather).resizable().frame(width: Theme.featherSize, height: Theme.featherSize)
+                    .accessibilityHidden(true)
             }
             Text("Open an image or drop a folder here")
-            HStack(spacing: 6) {
-                keyCap("⌘O")
-                keyCap("O")
+                .font(Theme.hintText)
+                .foregroundStyle(Theme.labelHint)
+                .multilineTextAlignment(.center)
+            HStack(spacing: Theme.keyCapGap) {
+                KeyCap(key: "⌘O")
+                KeyCap(key: "O")
             }
         }
-        .foregroundStyle(.secondary)
-        .padding(6)
-        .messageBox()
-    }
-
-    private func keyCap(_ key: String) -> some View {
-        Text(verbatim: key)
-            .font(.caption)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(.secondary, lineWidth: 1))
+        .padding(Theme.emptyCardPadding)
+        .frame(width: Theme.emptyCard.width, height: Theme.emptyCard.height)
+        .glass(.card, cornerRadius: Theme.Radius.card)
     }
 }
 
