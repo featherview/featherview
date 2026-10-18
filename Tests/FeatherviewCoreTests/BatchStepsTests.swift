@@ -71,6 +71,14 @@ import Testing
         #expect(BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
     }
 
+    @Test func canStartNeedsAnAbsoluteFolder() {
+        var s = BatchSettings()
+        s.outputFolder = "out"
+        #expect(!BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
+        s.outputFolder = "~/Desktop/Out"
+        #expect(BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
+    }
+
     @Test func secondsLeftTakesPausesOut() {
         #expect(BatchProgress.secondsLeft(elapsed: 10, paused: 4, done: 3, total: 6) == 6)
         #expect(BatchProgress.secondsLeft(elapsed: 10, paused: 0, done: 2, total: 6) == nil)

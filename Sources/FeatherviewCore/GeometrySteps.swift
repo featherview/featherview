@@ -102,13 +102,17 @@ public enum ResizeStep {
         return result
     }
 
-    /// `originalSize`: the upright size before a smaller decode (`decodeLimit`). The target comes
-    /// from it, so the decode's own rounding can't change the output size.
+    /// `originalSize`: the upright size before a smaller decode (`decodeLimit`, the preview). The target comes
+    /// from it at full size, times `scale`, so the decode's own rounding can't change the output size.
     public static func apply(_ image: CIImage, _ s: ResizeSettings, scale: Double, originalSize: CGSize? = nil) -> CIImage {
         guard s.isOn else { return image }
         let picture = atOrigin(image)
         let size = picture.extent.size
-        let target = targetSize(for: originalSize ?? size, s, scale: scale)
+        var target = targetSize(for: originalSize ?? size, s, scale: originalSize == nil ? scale : 1)
+        if originalSize != nil, scale != 1 {
+            // The preview: the full-size target (its caps and rounding) scaled down, as the output gets it.
+            target = CGSize(width: max(1, (target.width * scale).rounded()), height: max(1, (target.height * scale).rounded()))
+        }
         guard target != size else { return picture }
         let sx = target.width / size.width, sy = target.height / size.height
         // Clamped first, so the resample doesn't pull transparency in at the edges.

@@ -31,7 +31,9 @@ public struct BatchNamer: Sendable {
         // shortcut: an empty output folder means the input's own folder; the window always sets one.
         guard !settings.outputFolder.isEmpty else { return parent }
         let name = parent.path == "/" ? "-" : parent.lastPathComponent
-        var folder = URL(fileURLWithPath: settings.outputFolder.replacingOccurrences(of: "{folder}", with: name),
+        // Expand ~ here: macOS 14's URL(fileURLWithPath:) doesn't, and it must match hasAbsoluteOutputFolder.
+        let typed = (settings.outputFolder as NSString).expandingTildeInPath
+        var folder = URL(fileURLWithPath: typed.replacingOccurrences(of: "{folder}", with: name),
                          isDirectory: true).standardizedFileURL
         if settings.safety.recreateSubfolders, let root = input.root?.standardizedFileURL {
             let rootParts = root.pathComponents, parts = parent.pathComponents

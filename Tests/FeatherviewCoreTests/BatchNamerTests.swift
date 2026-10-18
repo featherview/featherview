@@ -113,6 +113,20 @@ import Testing
         #expect(renamer.next(for: inputs[0], date: nil).lastPathComponent == "{folder}.jpg")
     }
 
+    @Test func folderExpandsTilde() {
+        let namer = BatchNamer(settings: settings(out: "~/Desktop/Out"), inputs: []) { _ in false }
+        #expect(namer.folder(for: input("/photos/x.jpg")).path == NSHomeDirectory() + "/Desktop/Out")
+    }
+
+    // macOS 14's URL(fileURLWithPath:) expands no tilde, and no macOS expands ~user there; the
+    // folder used must match what hasAbsoluteOutputFolder accepts.
+    @Test func folderExpandsTildeLikeTheStartCheck() {
+        let s = settings(out: "~root/Out")
+        #expect(s.hasAbsoluteOutputFolder)
+        let namer = BatchNamer(settings: s, inputs: []) { _ in false }
+        #expect(namer.folder(for: input("/photos/x.jpg")).path == ("~root/Out" as NSString).expandingTildeInPath)
+    }
+
     @Test func recreateSubfoldersAddsRelativePath() {
         let namer = BatchNamer(settings: settings(safety: SafetySettings(recreateSubfolders: true)), inputs: []) { _ in false }
         #expect(namer.folder(for: input("/photos/2024/May/x.jpg", root: "/photos")).path == "/out/2024/May")

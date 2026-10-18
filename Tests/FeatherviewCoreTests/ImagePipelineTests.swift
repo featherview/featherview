@@ -83,4 +83,50 @@ import Testing
             try ImagePipeline.apply(try cg(PipelineFixtures.solid(.black, width: 50, height: 50)), s, context: context)
         }
     }
+
+    // MARK: Preview
+
+    func preview(decoded: (Int, Int), original: (Int, Int), _ s: BatchSettings) throws -> (image: CGImage, size: CGSize) {
+        let image = try cg(PipelineFixtures.solid(.white, width: decoded.0, height: decoded.1))
+        return try ImagePipeline.preview(image, originalSize: CGSize(width: original.0, height: original.1), s, context: context)
+    }
+
+    @Test func previewSizeIsTheConvertersSize() throws {
+        var s = BatchSettings()
+        s.resize.isOn = true
+        s.resize.mode = .longestSide; s.resize.side = 2048
+        #expect(try preview(decoded: (400, 267), original: (6000, 4000), s).size == CGSize(width: 2048, height: 1365))
+        s.resize.isOn = false
+        s.crop.isOn = true
+        s.crop.width = 3
+        #expect(try preview(decoded: (400, 267), original: (6000, 4000), s).size == CGSize(width: 3, height: 4000))
+    }
+
+    @Test func previewSizeKeepsTheFullSizeCaps() throws {
+        var s = BatchSettings()
+        s.resize.isOn = true
+        s.resize.mode = .longestSide; s.resize.side = 100_000
+        let full = CGSize(width: 6000, height: 4000)
+        #expect(try preview(decoded: (400, 267), original: (6000, 4000), s).size
+            == ResizeStep.targetSize(for: full, s.resize, scale: 1))
+    }
+
+    @Test func previewStaysSmallWhateverTheOutput() throws {
+        var s = BatchSettings()
+        s.resize.isOn = true
+        s.resize.mode = .percent; s.resize.percentWidth = 20000
+        var p = try preview(decoded: (400, 300), original: (400, 300), s)
+        #expect(max(p.image.width, p.image.height) <= 402)
+        #expect(p.size == ResizeStep.targetSize(for: CGSize(width: 400, height: 300), s.resize, scale: 1))
+        s.resize.mode = .longestSide; s.resize.side = 20000
+        p = try preview(decoded: (200, 200), original: (200, 200), s)
+        #expect(max(p.image.width, p.image.height) <= 402)
+        #expect(p.size == ResizeStep.targetSize(for: CGSize(width: 200, height: 200), s.resize, scale: 1))  // the area cap
+        s.resize.isOn = false
+        s.canvas.isOn = true
+        s.canvas.method = .totalSize; s.canvas.width = 60000; s.canvas.height = 60000
+        p = try preview(decoded: (200, 200), original: (200, 200), s)
+        #expect(max(p.image.width, p.image.height) <= 402)
+        #expect(p.size == CGSize(width: 60000, height: 60000))
+    }
 }

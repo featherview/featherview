@@ -69,7 +69,7 @@ public enum BatchRowState: Equatable, Sendable {
 public enum BatchProgress {
     public static func canStart(isRunning: Bool, scans: Int, inputCount: Int, settings: BatchSettings) -> Bool {
         // A scan still in flight would append files the run never sees.
-        !isRunning && scans == 0 && inputCount > 0 && (settings.mode == .rename || !settings.outputFolder.isEmpty)
+        !isRunning && scans == 0 && inputCount > 0 && (settings.mode == .rename || settings.hasAbsoluteOutputFolder)
     }
 
     /// Estimated seconds left once 3 files are done, from the time spent not paused.

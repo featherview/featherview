@@ -200,4 +200,16 @@ import Testing
         #expect(BatchPresets.save("B", BatchSettings(), in: defaults))
         #expect(BatchPresets.names(in: defaults) == ["B"])
     }
+
+    @Test func pickingTheCurrentFormatAgainKeepsItsOptions() {
+        let (defaults, name) = freshDefaults()
+        defer { defaults.removePersistentDomain(forName: name) }
+        var s = BatchSettings()
+        s.options.quality = 60
+        s.setFormat(.jpeg, in: defaults)
+        #expect(s.options.quality == 60)
+        s.setFormat(.png, in: defaults)
+        #expect(s.formatID == "png")
+        #expect(s.options == OutputFormat.png.defaultOptions)
+    }
 }

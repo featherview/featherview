@@ -177,6 +177,8 @@ public struct BatchSettings: Codable, Equatable, Sendable {
     public var options = FormatOptions()
     /// A path; may contain {folder}.
     public var outputFolder = ""
+    /// A typed relative path would resolve against the app's working directory, "/"; `~` is fine (BatchNamer expands it).
+    public var hasAbsoluteOutputFolder: Bool { (outputFolder as NSString).expandingTildeInPath.hasPrefix("/") }
     public var renamePattern = "{name}"
     public var crop = CropSettings(), resize = ResizeSettings(), orientation = OrientationSettings()
     public var colour = ColourSettings(), filters = FilterSettings(), canvas = CanvasSettings()
@@ -187,6 +189,13 @@ public struct BatchSettings: Codable, Equatable, Sendable {
 
     /// The output format, or JPEG when this Mac can't write the stored one.
     public var format: OutputFormat { FormatRegistry.format(id: formatID) ?? .jpeg }
+
+    /// Switches to another format with its saved options; picking the current one keeps the options.
+    public mutating func setFormat(_ new: OutputFormat, in defaults: UserDefaults = .standard) {
+        guard new.id != format.id else { return }
+        formatID = new.id
+        options = FormatSettings.options(for: new, in: defaults)
+    }
 
     /// True when no operation is on: the converter may take the fast path.
     public var hasOperations: Bool {
