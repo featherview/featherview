@@ -174,7 +174,7 @@ public enum ImageDecoder {
     /// PQ/HLG (HDR photos, gain maps), or extended range from a format made for HDR. ImageIO gives
     /// float TIFFs extended range even when every pixel is SDR, so those count as SDR.
     /// shortcut: a float TIFF with real highlights shows clipped, scan its pixels if anyone has such files.
-    private static func isHDR(_ space: CGColorSpace?, type: CFString?) -> Bool {
+    static func isHDR(_ space: CGColorSpace?, type: CFString?) -> Bool {
         guard let space else { return false }
         if CGColorSpaceUsesITUR_2100TF(space) { return true }
         let hdrFormats = ["com.ilm.openexr-image", "public.radiance"].compactMap { UTType($0) }

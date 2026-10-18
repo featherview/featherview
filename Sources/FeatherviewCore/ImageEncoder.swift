@@ -11,8 +11,9 @@ public enum ImageEncoder {
     /// `pages` are upright (orientation applied); only TIFF with "keep all pages" and PDF write more
     /// than the first. Metadata of `source` (camera, EXIF, GPS, IPTC) is kept where the format and
     /// "keep metadata" allow; the orientation tag is always 1. `dpi` is written for ImageIO formats.
+    /// `hdr` writes HEIC and AVIF with a gain map, for pixels decoded as HDR (`ImageDecoder.isHDR`).
     public static func encode(_ pages: [CGImage], as format: OutputFormat, options: FormatOptions,
-                              metadataFrom source: URL? = nil, dpi: Int? = nil) throws -> Data {
+                              metadataFrom source: URL? = nil, dpi: Int? = nil, hdr: Bool = false) throws -> Data {
         guard let first = pages.first else { throw EncodeError.failed }
         switch format.writer {
         case .pdf: return try pdf(pages, options)
@@ -39,7 +40,12 @@ public enum ImageEncoder {
             var images = [first]
             if format.optionFields.contains(.keepAllPages), options.keepAllPages { images = pages }
             if let sizes = iconSizes[format.id] { images = [try iconSquare(first, allowed: sizes)] }
-            return try imageIO(images, type: type, properties: properties(format, options, metadata))
+            var props = properties(format, options, metadata)
+            // A gain map on grey pixels decodes as transparent black (macOS 27).
+            if #available(macOS 15, *), hdr, ["heic", "avif"].contains(format.id), first.colorSpace?.model == .rgb {
+                props[kCGImageDestinationEncodeRequest] = kCGImageDestinationEncodeToISOGainmap  // else ImageIO writes SDR
+            }
+            return try imageIO(images, type: type, properties: props)
         }
     }
 

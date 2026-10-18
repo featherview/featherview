@@ -13,14 +13,32 @@ public enum PipelineRender {
         .cacheIntermediates: false,
     ])
 
+    /// HDR keeps values above 1.0: an extended linear working space.
+    // shortcut: colour steps on HDR act on linear light, not the encoded values the SDR path uses; match them if anyone compares.
+    static let hdrContext = CIContext(options: [
+        .workingColorSpace: CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!,
+        .workingFormat: CIFormat.RGBAh,
+        .cacheIntermediates: false,
+    ])
+
     /// 8-bit sRGB, straight alpha, extent origin (0, 0). Throws `EncodeError.failed` for an
     /// empty or infinite extent.
-    public static func cgImage(_ image: CIImage) throws -> CGImage {
+    public static func cgImage(_ image: CIImage) throws -> CGImage { try cgImage(image, hdr: false) }
+
+    /// With `hdr`, a 16-bit float image in extended linear Display P3 (what ImageIO writes as an HDR
+    /// gain map), else as `cgImage(_:)`.
+    public static func cgImage(_ image: CIImage, hdr: Bool) throws -> CGImage {
         let extent = image.extent
         guard !extent.isEmpty, !extent.isInfinite, extent.width.isFinite, extent.height.isFinite else {
             throw EncodeError.failed
         }
         let rect = extent.integral
+        if hdr {
+            guard let cg = hdrContext.createCGImage(image, from: rect, format: .RGBAh,
+                                                    colorSpace: CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3)!)
+            else { throw EncodeError.failed }
+            return cg
+        }
         let width = Int(rect.width), height = Int(rect.height), bytesPerRow = width * 4
         let space = CGColorSpace(name: CGColorSpace.sRGB)!
         // Core Image always writes premultiplied (an `unpremultiplyingAlpha()` before the render is undone

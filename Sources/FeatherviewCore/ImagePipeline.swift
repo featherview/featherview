@@ -21,7 +21,9 @@ public struct PipelineContext: Sendable {
 public enum ImagePipeline {
     /// Spec order: crop, resize, rotate/flip, colour, filters, canvas (auto-crop first), border,
     /// text, watermark; renders once; reduces colours last when set.
-    public static func apply(_ image: CGImage, _ settings: BatchSettings, context: PipelineContext) throws -> CGImage {
+    /// `hdr` renders with the extended range kept (`PipelineRender.cgImage(_:hdr:)`); reducing colours forces SDR.
+    public static func apply(_ image: CGImage, _ settings: BatchSettings, context: PipelineContext,
+                             hdr: Bool = false) throws -> CGImage {
         let s = settings, scale = context.scale
         var picture = CIImage(cgImage: image)
         picture = CropStep.apply(picture, s.crop, scale: scale)
@@ -33,8 +35,9 @@ public enum ImagePipeline {
         picture = BorderStep.apply(picture, s.border, scale: scale)
         picture = TextStep.apply(picture, s.text, values: context.values, scale: scale)
         if let watermark = context.watermark { picture = WatermarkStep.apply(picture, watermark: watermark, s.watermark) }
-        let rendered = try PipelineRender.cgImage(picture)
-        guard s.colour.isOn, let colours = s.colour.reduceColours else { return rendered }
+        let reduces = s.colour.isOn && s.colour.reduceColours != nil
+        let rendered = try PipelineRender.cgImage(picture, hdr: hdr && !reduces)
+        guard reduces, let colours = s.colour.reduceColours else { return rendered }
         guard let pixels = RGBAImage(rendered),
               let reduced = ColourQuantizer.reduce(pixels, colours: colours, dither: s.colour.dither).makeCGImage()
         else { throw EncodeError.failed }
