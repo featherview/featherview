@@ -419,7 +419,10 @@ private struct TextStepView: View {
 
     @objc func changeFont(_ sender: NSFontManager?) {
         guard let sender else { return }
-        onChange(sender.convert(sender.selectedFont ?? .systemFont(ofSize: 24)).fontName)
+        let font = sender.convert(sender.selectedFont ?? .systemFont(ofSize: 24))
+        // convert() changes only what was just touched, so the next change must start from this font.
+        sender.setSelectedFont(font, isMultiple: false)
+        onChange(font.fontName)
     }
 }
 
