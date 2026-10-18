@@ -351,10 +351,10 @@ estimated.
   waiting prefetch jobs; `.critical` → current only. These are the same jobs the budget drops, which is
   why the two parts are one task.
 
-- [ ] Interfaces + failing tests: rank order, dropping waiting jobs on a move, budget eviction by distance, pressure levels (inject the pressure event)
-- [ ] Replace the detached decodes in `ImageCache` and `ViewerModel` (page decodes too)
-- [ ] Bench `browse` at 300 ms and 30 ms, and `decode` (must not regress); record all
-- [ ] Commit: `perf: decode on our own queue, nearest first, within a byte budget`
+- [x] Interfaces + failing tests: rank order, dropping waiting jobs on a move, budget eviction by distance, pressure levels (inject the pressure event)
+- [x] Replace the detached decodes in `ImageCache` and `ViewerModel` (page decodes too)
+- [x] Bench `browse` at 300 ms and 30 ms, and `decode` (must not regress); record all
+- [x] Commit: `perf: decode on our own queue, nearest first, within a byte budget`
 
 ---
 
@@ -529,5 +529,6 @@ Same Mac, same command, release build. Fill in per task; never edit an earlier r
 | 10 (pressure) | 0cd1155 | Apple M1 Pro, 10 cores, 32 GB / macOS 27.0.1 | App, release, 39 × → at 300 ms through `browse/`, `xctrace` Time Profiler + `Navigate` from `log show`; once normally, once with `memory_pressure -l warn` running (pressure level 2 before and after the run), load average 1.9–2.7 | Normal: p50 19.1, p95 26.1, max 26.6 ms. Under warn: p50 19.4, p95 24.4, max 25.9 ms (n = 39 each). macOS reclaimed the purgeable pixels: reclaimable 838 → 6 MB, phys_footprint 149 → 52 MB. Time Profiler: 871 main-thread samples each, no ImageIO/AppleJPEG decode frames in either (the few `decode` hits are Swift metadata and CoreSVG). **Verdict: no main-thread re-decode, p95 within 1.5×: the byte budget stays skipped** |
 | 6 (width) | task-6 | Apple M1 Pro, 10 cores, 32 GB / macOS 27.0.1 | `featherview-bench browse <dir>/browse-heic` and `browse-50mp --interval-ms 30`, `DecodeQueue` 2 vs 3 wide, 1 warm-up + 6 runs each, load average 1.4–1.7 | Last image (portrait): HEIC 2 wide 178–198 ms, median ≈ 189 ms; 3 wide 100–199 ms, median ≈ 130 ms. 50 MP 2 wide 63–95 ms, median ≈ 85 ms; 3 wide 84–104 ms, median 87 ms. 3 wins on HEIC and ties on 50 MP: the queue runs 3 at once |
 | 6 (after) | task-6 | Apple M1 Pro, 10 cores, 32 GB / macOS 27.0.1 | Same as "8 (gate, alone)" plus `browse/` at 300 and 30 ms, `DecodeQueue` 3 wide, nothing else building, load average 1.4–2.1 | Solo fit decode median: HEIC portrait 139.9 ms, 50 MP portrait 67.4 ms. 30 ms, last image after 1 warm-up: HEIC 117/125/119 ms, median 119 ms = **0.85× solo** (was 242 ms, 1.9×); 50 MP 87/89/88 ms, median 88 ms = 1.3× (was 83 ms, 1.2×: 6 % slower, within 10 %). 300 ms: no superseded steps; HEIC not cached 249–269 ms (step 1, cold) and 42–69 ms (step 2); 50 MP 132–139 ms (step 1). `browse/` 300 ms: 39 cached, median 0.3–0.4 ms, not cached 96–101 ms (was 114); 30 ms: 2–6 of 40 superseded (was 20–21), 15–19 not cached at 18–34 ms median, the rest from cache. Peak cache unchanged (243 / 251 MB decoded). `decode --baseline build/bench/after-task3.json`: no median more than 10 % slower |
+| 6 (app) | 56db03e → 868d916 | Apple M1 Pro, 10 cores, 32 GB / macOS 27.0.1 | App, release, `Navigate` from `log show`, System Events key events, before and after builds alternated, load average 1.9–4.5 | 39 × → at 300 ms, `browse/`: p50 19.0 → 18.7, p95 25.3 → 25.1 ms (n = 117). Burst of 39 × → (gap ≈ 0 ms), last image: HEIC 245/265/190 → 146/140/123 ms (median 245 → 140), 50 MP 119/168/183 → 156/121/119 (168 → 121). At a 37 ms key gap: HEIC 126 → 142 ms median (old 119–144, new 119–163, within noise). 50 MP zoomed 6 steps, Space × 7 at 1.5 s: 164 48 174 50 164 54 182 → 164 29 177 53 184 36 177 ms (unchanged; ~170 ms are images of the other orientation, which need a new step decode) |
 
 Memory baseline for Task 6 is "peak cache … MB decoded" (`bytesPerRow × height`, what the byte budget counts); the footprint misses purgeable decoded images and is only a side number.
