@@ -127,7 +127,9 @@ private struct Check {
         guard let text = unit.value, !text.isEmpty else { report("has no text\(place)"); return }
         if unit.state != "translated" { report("is \(unit.state ?? "without a state")\(place), not translated") }
 
-        let (have, want) = (Specifiers(text), Specifiers(source))
+        let want = Specifiers(source)
+        // A source without arguments is never formatted: its % is text, even with a suffix ("%-a", "%'si").
+        let have = want.byIndex.isEmpty && want.tokens.isEmpty ? want : Specifiers(text)
         // CLDR `one` also covers 0 (fr, pt-BR, hi) or 21, 31 … (ru, uk) there: only `other`'s count is right.
         let oneIsMore = ["fr", "pt-BR", "hi", "ru", "uk"].contains(language)
         let mayOmitCount = ["zero", "two"].contains(form ?? "") || form == "one" && !oneIsMore
