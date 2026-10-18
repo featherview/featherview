@@ -169,6 +169,8 @@ final class ViewerModel {
     /// folder takes longer to list and sort than the image takes to decode.
     func open(_ url: URL) {
         openTask?.cancel()
+        // Its decode may be dropped by the refocus below; cancelled, it ends quietly instead of showing an error.
+        loadTask?.cancel()
         isOpening = true
         closeChooser()
         emptyFolder = nil
@@ -195,15 +197,17 @@ final class ViewerModel {
                     try FolderScanner.images(around: url, includeHidden: includeHidden, sorted: false)
                 }
             }
-            if let prefetch, let first = FolderScanner.firstInFinderOrder((try? scan.get()) ?? []) {
-                decodes.focus([first])
+            if let prefetch, let first = FolderScanner.firstInFinderOrder((try? scan.get()) ?? []),
+               // On the main actor, where open() cancels: a superseded open must not refocus the newer one's decodes.
+               await MainActor.run(body: { guard !Task.isCancelled else { return false }; decodes.focus([first]); return true }) {
                 await cache.prefetch([first], target: prefetch)
             }
             return scan.map(FolderScanner.inFinderOrder)
         }
         openTask = Task {
             defer { if !Task.isCancelled { isOpening = false } }
-            let folderScan = await prepare.value
+            // prepare is detached: cancelling this task must reach it.
+            let folderScan = await withTaskCancellationHandler { await prepare.value } onCancel: { prepare.cancel() }
             guard !Task.isCancelled else { return }
             if !isFolder {
                 list = ImageList(urls: [url], current: url)
@@ -409,6 +413,8 @@ final class ViewerModel {
                         if list.current == url, pageCount != count { pageCount = count }
                     }
                 }
+            } catch is CancellationError {
+                return  // the queue dropped the decode: another image or folder took its place, not a bad file
             } catch {
                 guard !Task.isCancelled else { return }
                 endNavigation("failed")
