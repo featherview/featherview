@@ -109,6 +109,8 @@ final class ViewerModel {
     private static let screenSpace = NSScreen.main?.colorSpace?.cgColorSpace
     /// Every display decode of this viewer runs here: nearest the image shown first, stale ones dropped (`focusDecodes`).
     private let decodes = DecodeQueue()
+    /// Counts opens, so a superseded open's scan can't refocus the newer one's decodes (checked under the lock).
+    private let openCount = OSAllocatedUnfairLock(initialState: 0)
     private let cache: ImageCache
     /// Zoom decodes larger than the fit decode: one kept, and ones nobody waits for any more are skipped.
     /// Zoom steps at or below fit size go in `cache`, as large as fit decodes.
@@ -182,10 +184,14 @@ final class ViewerModel {
         ready = [:]
         knownInfo = [:]
         // The old folder's waiting decodes go; a folder's first image is known only after its scan, which refocuses.
-        decodes.focus(isFolder ? [] : [url])
+        let opening = openCount.withLock { count in
+            count += 1
+            decodes.focus(isFolder ? [] : [url])
+            return count
+        }
         // A folder's first image is known only after its scan, so the scan runs here too, alongside the
         // window build, and its first image starts decoding at once (it used to wait for both).
-        let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache, decodes] () -> Result<[URL], Error>? in
+        let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache, decodes, openCount] () -> Result<[URL], Error>? in
             await cache.removeAll()
             await fullSizeCache.removeAll()
             guard isFolder else {
@@ -198,8 +204,12 @@ final class ViewerModel {
                 }
             }
             if let prefetch, let first = FolderScanner.firstInFinderOrder((try? scan.get()) ?? []),
-               // On the main actor, where open() cancels: a superseded open must not refocus the newer one's decodes.
-               await MainActor.run(body: { guard !Task.isCancelled else { return false }; decodes.focus([first]); return true }) {
+               // Not on the main actor: at launch it is busy building the window, and the decode would wait for it.
+               openCount.withLock({ count in
+                   guard count == opening else { return false }
+                   decodes.focus([first])
+                   return true
+               }) {
                 await cache.prefetch([first], target: prefetch)
             }
             return scan.map(FolderScanner.inFinderOrder)
