@@ -174,8 +174,18 @@ struct ViewerView: View {
         .onAppear {
             focused = true
             ViewerModel.windows.viewerOpened()
+            // Menu key equivalents (⌘C, ⌥1…) never reach onKeyPress; none of them is a browsing key.
+            autoHide.keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                if event.window === model.window, !event.modifierFlags.isDisjoint(with: [.command, .control, .option]) {
+                    feedAutoHide(.key(browsing: false))
+                }
+                return event
+            }
         }
-        .onDisappear { ViewerModel.windows.viewerClosed() }
+        .onDisappear {
+            ViewerModel.windows.viewerClosed()
+            if let monitor = autoHide.keyMonitor { NSEvent.removeMonitor(monitor) }
+        }
         .onKeyPress(action: handle)
         .frame(minWidth: 480, minHeight: 320)
     }
@@ -444,6 +454,7 @@ struct OpenWithMenu: View {
 /// Holds the auto-hide machine outside SwiftUI's state (see `ViewerView.autoHide`).
 @MainActor private final class AutoHideBox {
     var machine = BarsAutoHide()
+    var keyMonitor: Any?
 }
 
 /// Reports the hosting window once it exists.
