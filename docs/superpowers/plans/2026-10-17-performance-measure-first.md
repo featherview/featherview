@@ -449,16 +449,16 @@ above the 150 ms budget for a *non*-prefetched image. Both were already true bef
 **Files:** Modify `AGENTS.md` ("Performance budgets"); Measurements. Code only if the outlier has a fix
 inside this plan's scope (otherwise report it).
 
-- [ ] Ask the maintainer which metric the "next/previous" budgets mean (recommended: `Navigate`, it is
+- [x] Ask the maintainer which metric the "next/previous" budgets mean (recommended: `Navigate`, it is
       what the user sees). Write it into both rows, with today's `Navigate` numbers instead of "measured
       11 ms median"
-- [ ] Find the outlier: in the app, 39 × → through `browse/` at 300 ms, recorded in Instruments with
+- [x] Find the outlier: in the app, 39 × → through `browse/` at 300 ms, recorded in Instruments with
       Points of Interest + Time Profiler. Take the `Navigate` intervals over 100 ms, check whether they
       were prefetched, and see what the main thread did during them (decode, colour conversion, SwiftUI
       update, toolbar, first draw)
-- [ ] Record the cause in Measurements. A fix goes in its own commit with before/after numbers, or under
+- [x] Record the cause in Measurements. A fix goes in its own commit with before/after numbers, or under
       "Not in this plan" if it's outside scope
-- [ ] Commit: `docs: next/previous budgets measured as Navigate`
+- [x] Commit: `docs: next/previous budgets measured as Navigate`
 
 ### Task 10: Are decoded images purgeable, and what happens under memory pressure
 
@@ -521,5 +521,7 @@ Same Mac, same command, release build. Fill in per task; never edit an earlier r
 | 8 (solo) | task-8 | Apple M1 Pro, 10 cores, 32 GB / macOS 27.0.1 | `featherview-bench decode <dir>/solo --screen 3024x1964 --runs 10` (`browse-heic/0001`, `0002`, `browse-50mp/0001`, `0002`), load average ~4–5 | Fit decode median: HEIC landscape 174.8 ms (full 4032×3024), portrait 131.7 ms (½, 1512×2016); 50 MP landscape 111.9 ms (½, 4344×2896), portrait 63.8 ms (¼, 1448×2172) |
 | 8 (gate) | task-8 | Apple M1 Pro, 10 cores, 32 GB / macOS 27.0.1 | `featherview-bench browse <dir>/browse-heic` and `browse-50mp`, `--interval-ms 300` and `30`, 1 warm-up + 3 runs each, load average 2–4 | 300 ms: no superseded steps; HEIC 38 of 40 from cache, not cached 252–260 ms (step 1, cold start with 4 prefetches beside it) and 59–73 ms (step 2); 50 MP 19 of 20 from cache, not cached 133–148 ms (step 1). 30 ms: nothing shown until the key is let go (HEIC 39 of 40, 50 MP 19 of 20 superseded, unlike `browse/` where every other image came from cache); the last image (portrait) took HEIC 238/258/264 ms, median 258 ms = **2.0× solo** (131.7); 50 MP 90/86/90 ms, median 89.6 ms = 1.4× solo (63.8). Peak cache 280 MB (HEIC) / 251 MB (50 MP) decoded, footprint up to 570 MB. **Verdict: over 1.5× on HEIC, so stale work delays the current image and Task 6's scheduling part is due.** No Mac with fewer cores was at hand |
 | 8 (gate, alone) | e2c97e6 | Apple M1 Pro, 10 cores, 32 GB / macOS 27.0.1 | Same as "8 (solo)" and "8 (gate)", nothing else building, load average 1.9–3.0 | Solo fit decode median: HEIC portrait 130.5 ms, 50 MP portrait 67.9 ms. 30 ms, last image after 1 warm-up: HEIC 242/258/223 ms, median 242 ms = **1.9× solo**; 50 MP 88/83/83 ms, median 83 ms = 1.2×. 300 ms: no superseded steps; HEIC not cached 247–255 ms (step 1, cold) and 48–58 ms (step 2); 50 MP 140–145 ms (step 1). Confirms the verdict: HEIC over 1.5×, Task 6's scheduling part is due |
+| 9 | 6205597 | Apple M1 Pro, 10 cores, 32 GB / macOS 27.0.1 | App, release, `browse/`, 39 × → at 300 ms (System Events key events), `Navigate` from `sudo log show --signpost`, 3 runs, step 0 (the open) left out, load average 4–6 | Prefetched next: p50 19.0 ms, p95 25.3 ms, max 28.3 ms (n = 117). Not prefetched (fresh launch, one jump, 5 runs each): Home to a 12 MP landscape 107 ms median (max 113), End to a portrait 61 ms (max 64). Both within budget |
+| 9 (outlier) | b3bc7d6, cff4e9a, f98ea83, 6205597 | Apple M1 Pro, 10 cores, 32 GB / macOS 27.0.1 | Same run per build | The 165–178 ms max of row "2" is step 0, the open itself, not a next/previous step: b3bc7d6 152–178 ms (3 of 3 runs), cff4e9a 152 ms, f98ea83 27–28 ms, main 24 ms. Cause: the early toolbar build before the first image, fixed by f98ea83 (issue #2). Time Profiler under `xctrace` records no signposts without admin ("log archive is corrupt"), so timings come from `log show`; no fix needed in this plan |
 
 Memory baseline for Task 6 is "peak cache … MB decoded" (`bytesPerRow × height`, what the byte budget counts); the footprint misses purgeable decoded images and is only a side number.
