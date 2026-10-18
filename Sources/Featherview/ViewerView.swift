@@ -56,7 +56,8 @@ struct ViewerView: View {
             if let image = model.image {
                 ImageCanvas(image: image, size: drawSize(image), pixelWidth: pixelSize(image).width,
                             displayScale: displayScale, background: backgroundNSColor, insets: canvasInsets, zoom: model.zoom,
-                            checkerboard: checkerboard, panController: panController,
+                            checkerboard: checkerboard, turns: model.pendingTurns, leaving: model.isLeaving,
+                            panController: panController,
                             onDoubleClick: model.toggleFullScreen, onClick: clickedImage,
                             onFirstDraw: { toolbarReady = true; model.firstImageDrawn() },
                             onCommit: model.imageCommitted)
@@ -116,7 +117,8 @@ struct ViewerView: View {
                 StatusBar(model: model)
                     .padding(.trailing, stripTrailing)
                     .opacity(barsVisible ? 1 : 0)
-                    .animation(.easeInOut(duration: reduceMotion ? 0 : 0.2), value: barsVisible)
+                    // Opacity only, so Reduce Motion keeps it.
+                    .animation(Theme.Motion.fade(barsVisible ? Theme.Motion.barsIn : Theme.Motion.barsOut), value: barsVisible)
             }
         }
         .onContinuousHover(coordinateSpace: .global) { phase in
@@ -334,7 +336,7 @@ struct ViewerView: View {
     private func fadeBars(visible: Bool) {
         if let titlebar = model.window?.standardWindowButton(.closeButton)?.superview?.superview {
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = reduceMotion ? 0 : 0.2
+                context.duration = visible ? Theme.Motion.barsIn : Theme.Motion.barsOut
                 titlebar.animator().alphaValue = visible ? 1 : 0
             }
         }

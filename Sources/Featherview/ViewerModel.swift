@@ -12,7 +12,14 @@ final class ViewerModel {
     }
 
     private(set) var list = ImageList(urls: []) { didSet { updateAvailability() } }
-    private(set) var image: CGImage?
+    private(set) var image: CGImage? { didSet { isLeaving = false } }
+    /// Quarter turns asked for with R / L (R +1) that the picture on screen doesn't show yet: the canvas turns
+    /// it by these while the file is rotated and decoded again.
+    private(set) var pendingTurns = 0
+    /// The file being rotated and the turns already written to it, which the next decode of it shows.
+    @ObservationIgnored private var writtenTurns: (url: URL, turns: Int)?
+    /// True while a trashed or moved picture fades out before the next one shows.
+    private(set) var isLeaving = false
     var errorMessage: String?
     /// True while a folder is being scanned, so the view shows nothing instead of the open hint.
     private(set) var isOpening = false { didSet { updateAvailability() } }
@@ -535,6 +542,15 @@ final class ViewerModel {
             // Already on screen: the canvas commits nothing new, so the wait ends here.
             if image === decoded { endCommittedNavigation() } else { self.navigation?.image = decoded }
         }
+        if image !== decoded {
+            // The rotated file shows the turns written to it; another file shows none.
+            if let written = writtenTurns, written.url == url {
+                pendingTurns -= written.turns
+            } else {
+                pendingTurns = 0
+            }
+            writtenTurns = nil
+        }
         image = decoded
         errorMessage = nil
         // Measures until the model has the image, not until it is on screen: the `Navigate` signpost covers that.
@@ -627,6 +643,11 @@ final class ViewerModel {
         guard wasCurrent, !hold else { return }
         // Keeps the folder known, so the view says it's empty and ← / → still reach the chooser.
         if list.isEmpty { emptyFolder = openedFolder ?? url.deletingLastPathComponent() }
+        // The leaving picture fades out ("gone", not "replaced"); the next one appears hard.
+        if image != nil {
+            isLeaving = true
+            try? await Task.sleep(for: .seconds(Theme.Motion.leave))
+        }
         show()
     }
 
@@ -721,11 +742,17 @@ final class ViewerModel {
     func rotate(_ rotation: Rotation) {
         guard let url = list.current, !list.isHolding else { return }  // a held image is already gone
         let page = page
+        let turn = rotation == .clockwise ? 1 : -1
+        pendingTurns += turn
         let previous = rotateTask
         rotateTask = Task {
             await previous?.value
             do {
                 try await Task.detached(priority: .userInitiated) { try OrientationRotator.rotate(url, rotation, page: page) }.value
+                // Only for the file on screen: another one shown meanwhile reset the turns.
+                if list.current == url {
+                    writtenTurns = (url, (writtenTurns?.url == url ? writtenTurns?.turns ?? 0 : 0) + turn)
+                }
                 await cache.remove(url)
                 await fullSizeCache.remove(url)
                 knownInfo[url] = nil
@@ -733,10 +760,13 @@ final class ViewerModel {
                 fileRevision += 1
                 if list.current == url { show(page: self.page) }
             } catch RotateError.notFirstPage {
+                if list.current == url { pendingTurns -= turn }
                 errorMessage = String(localized: "Only page 1 of \(url.lastPathComponent) can be rotated losslessly")
             } catch RotateError.unsupportedFormat {
+                if list.current == url { pendingTurns -= turn }
                 errorMessage = "Lossless rotation works with JPEG, HEIC and TIFF only"
             } catch {
+                if list.current == url { pendingTurns -= turn }
                 errorMessage = "Couldn't rotate \(url.lastPathComponent)"
             }
         }

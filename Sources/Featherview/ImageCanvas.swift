@@ -66,6 +66,10 @@ struct ImageCanvas: NSViewRepresentable {
     /// A change of it on the same image animates the resize (spec "Look"); a new image never animates.
     let zoom: ViewerModel.Zoom
     let checkerboard: Bool
+    /// Quarter turns to show the picture turned by, animated about its centre (R / L before the file is rewritten).
+    var turns = 0
+    /// Fades the picture out (Trash or a move); a new image shows at full opacity.
+    var leaving = false
     let panController: PanController
     let onDoubleClick: () -> Void
     /// Any click on the image, and each step of a drag: the viewer takes the keyboard back (e.g. from the
@@ -120,8 +124,12 @@ struct ImageCanvas: NSViewRepresentable {
         let animate = view.shows(image) && (zoomChanged || panelRefit)
             && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         view.zoom = zoom
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        let sameImage = view.shows(image)
         view.show(image, checkerboard: checkerboard && image.hasAlpha, 
                   smooth: !ZoomSteps.showsPixels(drawnWidth: size.width, imageWidth: Int(pixelWidth), displayScale: displayScale))
+        view.turn(to: turns, animated: sameImage && !reduceMotion)
+        if leaving, sameImage { view.fadeOut() }
         // The size last asked for, not the frame: mid-animation the frame is part-way, and a new image
         // at the same zoom must leave the running animation alone.
         let resized = view.targetSize != size
@@ -215,6 +223,7 @@ private final class ImageLayerView: NSView {
     private let shadowLayers = Theme.Elevation.e3.layers.map { _ in CALayer() }
     private let hairline = CALayer()
     private var framed = false
+    private var shownTurns = 0
     private var dragStart: (mouse: NSPoint, origin: NSPoint)?
 
     override init(frame: NSRect) {
@@ -253,15 +262,44 @@ private final class ImageLayerView: NSView {
 
     private func layoutFrameLayers() {
         for layer in shadowLayers {
-            layer.frame = bounds
+            place(layer)
             layer.shadowPath = CGPath(rect: CGRect(origin: .zero, size: bounds.size), transform: nil)
         }
-        hairline.frame = bounds.insetBy(dx: -1, dy: -1)
+        place(hairline, outset: 1)
+    }
+
+    /// Bounds and position, not frame: the layers may carry a rotation (`turn`).
+    private func place(_ layer: CALayer, outset: CGFloat = 0) {
+        layer.bounds = CGRect(x: 0, y: 0, width: bounds.width + 2 * outset, height: bounds.height + 2 * outset)
+        layer.position = CGPoint(x: bounds.midX, y: bounds.midY)
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
     override var isFlipped: Bool { true }
+
+    /// Turns the picture, its shadow and hairline about the centre; a new image takes `turns` without animation.
+    func turn(to turns: Int, animated: Bool) {
+        guard turns != shownTurns else { return }
+        shownTurns = turns
+        // The view is flipped, so a positive angle turns clockwise on screen.
+        let transform = CATransform3DMakeRotation(CGFloat(turns) * .pi / 2, 0, 0, 1)
+        CATransaction.begin()
+        CATransaction.setDisableActions(!animated)
+        CATransaction.setAnimationDuration(Theme.Motion.rotation)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
+        for layer in [imageLayer, hairline] + shadowLayers { layer.transform = transform }
+        CATransaction.commit()
+    }
+
+    /// The picture fades out (opacity only, kept under Reduce Motion).
+    func fadeOut() {
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(Theme.Motion.leave)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .linear))
+        imageLayer.opacity = 0
+        CATransaction.commit()
+    }
 
     func shows(_ image: CGImage) -> Bool { (imageLayer.contents as AnyObject?) === image }
 
@@ -271,6 +309,7 @@ private final class ImageLayerView: NSView {
         if imageLayer.contents == nil { ViewerModel.afterFrame(onFirstDraw) }
         if (imageLayer.contents as AnyObject?) !== image {
             imageLayer.contents = image
+            imageLayer.opacity = 1
             let onCommit = onCommit
             CATransaction.setCompletionBlock { MainActor.assumeIsolated { onCommit(image) } }
         }
@@ -281,7 +320,7 @@ private final class ImageLayerView: NSView {
         } else {
             imageLayer.wantsExtendedDynamicRangeContent = isHDR
         }
-        imageLayer.frame = bounds
+        place(imageLayer)
         // Below 2× smooth; from 2× on, show the pixels.
         imageLayer.magnificationFilter = smooth ? .linear : .nearest
         imageLayer.minificationFilter = .trilinear
@@ -293,7 +332,7 @@ private final class ImageLayerView: NSView {
         super.layout()
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        imageLayer.frame = bounds
+        place(imageLayer)
         if framed { layoutFrameLayers() }
         CATransaction.commit()
     }

@@ -15,6 +15,8 @@ struct StatusBar: View {
                 Text(field)
             }
         }
+        // Fades only when a different file arrives, never on zoom.
+        .animation(Theme.Motion.fade(Theme.Motion.stripFade), value: model.list.current)
         .font(Theme.strip)
         .foregroundStyle(Theme.labelStrip)
         .lineLimit(1)
