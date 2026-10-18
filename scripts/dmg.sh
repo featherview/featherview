@@ -4,11 +4,27 @@
 # A disk image has one background, so each language gets its own; the website links the visitor's.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+VOLUME="Featherview"
+
+# Attaches a read-write image and sets DEVICE. Finder addresses the disk by name, so it stops when
+# another volume called $VOLUME is mounted (the new one would land at "/Volumes/$VOLUME 1").
+attach_rw() {
+    local out mount
+    out="$(hdiutil attach -readwrite -noverify -noautoopen "$1")"
+    DEVICE="$(awk -F'\t' '/Apple_HFS/ {sub(/ +$/, "", $1); print $1; exit}' <<<"$out")"
+    mount="$(awk -F'\t' '/Apple_HFS/ {print $3; exit}' <<<"$out")"
+    if [ "$mount" != "/Volumes/$VOLUME" ]; then
+        echo "Another volume called $VOLUME is mounted. Eject it and run again." >&2
+        hdiutil detach "$DEVICE" -quiet || true
+        DEVICE=""
+        return 1
+    fi
+}
+[ "${BASH_SOURCE[0]}" != "$0" ] && return 0  # sourced by scripts/test-dmg.sh
 
 LANGS=("$@")
 [ ${#LANGS[@]} -eq 0 ] && LANGS=(en)
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
-VOLUME="Featherview"
 
 scripts/bundle.sh release
 APP="build/Featherview.app"
@@ -38,7 +54,7 @@ for LANG_CODE in "${LANGS[@]}"; do
     # Room for Finder's .DS_Store on top of the app.
     SIZE_MB=$(( $(du -sm "$STAGE" | cut -f1) + 20 ))
     hdiutil create -quiet -srcfolder "$STAGE" -volname "$VOLUME" -fs HFS+ -format UDRW -size "${SIZE_MB}m" "$RW"
-    DEVICE="$(hdiutil attach -readwrite -noverify -noautoopen "$RW" | awk '/Apple_HFS/ {print $1; exit}')"
+    attach_rw "$RW"
 
     # Window: 640 x 400 content, icon view, the icons where DiskImageArt draws the arrow.
     osascript <<EOF
