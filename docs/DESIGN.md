@@ -22,8 +22,8 @@ fallback.
 
 1. **The picture is the only solid thing.** Every control floats on glass and is translucent; the
    picture is opaque and the only element with a real shadow. Chrome never competes with it.
-2. **One glass recipe, three shapes.** Capsule (toolbar groups, status strip), 16 pt card (panels,
-   sheets), 18 pt card (empty hint). Same fill, highlight and hairline everywhere.
+2. **One glass recipe, two shapes.** Capsule (toolbar groups, status strip), 16 pt card (panels,
+   sheets). Same fill, highlight and hairline everywhere.
 3. **Numbers are quiet and aligned.** Everything numeric is secondary colour with tabular figures
    (SF Pro monospaced digits) so the strip and panels never jitter while browsing.
 
@@ -35,7 +35,7 @@ toolbar, title bar and glass with it. Use system dynamic colours where one exist
 | Token | Dark (Graphite) | Light (Grey) | Use |
 |---|---|---|---|
 | Background | #1C1C20 (Graphite) | #E7E7EC (Grey) | Window and area behind the picture. |
-| Glass fill | rgba(52,52,58,0.55) | rgba(255,255,255,0.60) | Toolbar groups, status strip, empty hint card. Behind it: blur 40, saturation 180 %. |
+| Glass fill | rgba(52,52,58,0.55) | rgba(255,255,255,0.60) | Toolbar groups, status strip, message boxes. Behind it: blur 40, saturation 180 %. |
 | Glass fill · panel | rgba(44,44,50,0.62) | rgba(255,255,255,0.66) | Info panel (reads over the picture edge). |
 | Glass fill · sheet | rgba(36,36,42,0.66) | rgba(255,255,255,0.72) | Folder chooser, Move to Folder. Slightly denser: text sits over a photo. |
 | Glass highlight | rgba(255,255,255,0.12) inset 0 1 0 | rgba(255,255,255,0.70) inset 0 1 0 | 1 pt top edge light. On macOS 26 the glass provides this itself: skip it there. |
@@ -60,7 +60,6 @@ toolbar, title bar and glass with it. Use system dynamic colours where one exist
 | Toolbar groups, strip | `.glassEffect(.regular, in: .capsule)`, groups in one `GlassEffectContainer` | `NSVisualEffectView` `.hudWindow` (dark) / `.popover` (light), `.withinWindow`, masked to the capsule | Hairline on 14/15 only (glass draws its own edge on 26); E2 shadow on both. |
 | Info panel | `.glassEffect(.regular, in: .rect(cornerRadius: 16))` | same material, 16 pt mask | Panel fill token on top of the material at 25 % to steady text over the picture edge. |
 | Folder chooser, F7 sheet | `.glassEffect(.regular, in: .rect(cornerRadius: 16))` | `.hudWindow` / `.sheet` | Sheet fill token on top at 35 %. No dimming scrim behind: the picture stays readable. |
-| Empty hint card | `.glassEffect(.regular, in: .rect(cornerRadius: 18))` | same, 18 pt | Over a flat background the blur is invisible; the tokens carry the look. |
 | Selected rows, key caps | Plain fills from the tokens (no glass inside glass). | same | Selection: accent at 100 %, white text, 8–9 pt radius, as in system lists. |
 
 ## Elevation
@@ -75,7 +74,7 @@ wide ambient shadow that lifts the shape. Offset and blur grow by about 1.6× pe
 | E0 | Flat | none | none | Key caps, selected rows, toggled pills, tab pills, dark push buttons, pop-ups, badges, separators. |
 | E1 | Raised control | 0 1 3 rgba(0,0,0,0.30) | 0 1 3 rgba(0,0,0,0.12) | Switch knobs; light-appearance push buttons and pop-ups. |
 | E2 | Floating chrome | 0 1 2 rgba(0,0,0,0.20) + 0 6 16 rgba(0,0,0,0.30) | 0 1 2 rgba(0,0,0,0.06) + 0 6 16 rgba(0,0,0,0.10) | Toolbar groups, status strip. |
-| E3 | Surface in the window | 0 2 4 rgba(0,0,0,0.22) + 0 12 32 rgba(0,0,0,0.34) | 0 2 4 rgba(0,0,0,0.07) + 0 12 32 rgba(0,0,0,0.14) | Fitted picture (plus hairline), info panel, empty hint card. |
+| E3 | Surface in the window | 0 2 4 rgba(0,0,0,0.22) + 0 12 32 rgba(0,0,0,0.34) | 0 2 4 rgba(0,0,0,0.07) + 0 12 32 rgba(0,0,0,0.14) | Fitted picture (plus hairline), info panel, message boxes. |
 | E4 | Sheet / object above the surface | 0 4 8 rgba(0,0,0,0.26) + 0 20 48 rgba(0,0,0,0.40) | 0 4 8 rgba(0,0,0,0.08) + 0 20 48 rgba(0,0,0,0.18) | Folder chooser, Move to Folder, the app-icon tile in About. |
 | E5 | Window | 0 8 16 rgba(0,0,0,0.28) + 0 32 72 rgba(0,0,0,0.45) | 0 8 16 rgba(0,0,0,0.10) + 0 32 72 rgba(0,0,0,0.22) | Mockups only; in the app the system draws window shadows. |
 
@@ -130,7 +129,7 @@ are not available there and become the system's group gaps.
 | Element | Frame | Inside |
 |---|---|---|
 | Status strip | 1196 × 28 · x 12 · y 664 · capsule · glass fill · E2 | Padding 0 × 14; items: pixel size · zoom % · file size · position · date; gap 12; separators 1 × 12 (0.16 dark). Strip token, 11 Regular, tabular. |
-| Empty hint card | 300 × 168 · centred in the fit area · radius 18 · glass fill · E3 | Padding 24 × 28, column, gap 12: feather 44 × 44 (no tile) · hint 13 Regular secondary · key caps ⌘O and O, gap 6. Toolbar disabled; no strip. |
+| Empty hint card | 300 × 168 · centred in the fit area · radius 18 · flat, not glass: card fill and card line (the info panel's), E0 | Padding 24 × 28, column, gap 12: feather 44 × 44 (no tile) · hint 13 Regular secondary · key caps ⌘O and O, gap 6. Toolbar disabled; no strip. |
 | Info panel (I) | 280 × 596 · trailing inset 12 · y 60 · radius 16 · panel fill · E3 | Padding 16, column, gap 12. Header 24 tall, 4 pt side padding: file name 13 Semibold, ellipsis; format badge 11 Medium (fill 0.08, line 0.12, radius 4). Rows in a 10 pt card (fill 0.04, line 0.06): rows 40 tall, padding 0 × 12, label primary · value secondary tabular, 1 pt inset separators. Slides in from trailing 180 ms; picture and strip refit in the same animation. |
 | Folder chooser | 400 wide · centred in the fit area · radius 16 · sheet fill · E4 | Padding 16, column, gap 12. Header 20 tall: folder glyph 16 secondary · folder name 15 Semibold · trailing caption "end of folder" tertiary. Rows 40 tall, radius 9, padding 0 × 12, gap 10: glyph 16 · label 13 · count secondary tabular. Highlighted row: accent fill, white label Medium, count 0.75 white. Footer: key caps → ← ↩ esc with their verbs, 11 tertiary, separated by 1 × 10 lines. |
 | Move to Folder (F7 / F8) | 480 wide · centred in the fit area · radius 16 · sheet fill · E4 | Padding 16, column, gap 12. Header 20 tall: "Move to Folder" 15 Semibold · trailing "F7" tertiary (F8: "Copy to Folder" / "F8"). 14 rows × 32, radius 8, padding 0 6 0 5, gap 10: key cap 22 × 22 · label 13 (folder primary, "Empty" tertiary) · "Choose…" 22 tall. Highlighted row: accent fill; key cap and button white 0.22 / 0.20 with white text. Footer hint 11 tertiary with ↩ and esc key caps. |

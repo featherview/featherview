@@ -7,7 +7,7 @@ import SwiftUI
 enum GlassSurface {
     /// Toolbar groups and the status strip: E2, no extra fill.
     case chrome
-    /// The empty hint card and message boxes: E3, no extra fill.
+    /// Message boxes: E3, no extra fill.
     case card
     /// The info panel: E3, panel fill at 25 %.
     case panel

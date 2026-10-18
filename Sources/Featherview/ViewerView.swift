@@ -753,7 +753,9 @@ private struct EmptyHint: View {
         }
         .padding(Theme.emptyCardPadding)
         .frame(width: Theme.emptyCard.width, height: Theme.emptyCard.height)
-        .glass(.card, cornerRadius: Theme.Radius.card)
+        // Flat on the canvas, not floating: there's nothing under it for glass to lift off.
+        .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.cardLine))
     }
 }
 

@@ -40,7 +40,7 @@ enum Theme {
     /// Background: Graphite #1C1C20 (the app icon's tile) in dark, Grey #E7E7EC in light; window and area behind the picture.
     static let background = dynamic(dark: rgb(28, 28, 32, 1), light: rgb(231, 231, 236, 1))
 
-    /// Glass fill: toolbar groups, status strip, empty hint card (macOS 14/15 tint over the material).
+    /// Glass fill: toolbar groups, status strip, message boxes (macOS 14/15 tint over the material).
     static let glassFill = colour(dark: rgb(52, 52, 58, 0.55), light: white(0.60))
     /// Glass fill · panel: the info panel, laid over the material at `panelFillOpacity`.
     static let panelFill = colour(dark: rgb(44, 44, 50, 0.62), light: white(0.66))
@@ -92,7 +92,7 @@ enum Theme {
     static let itemHover = colour(dark: white(0.08), light: black(0.05))
     static let itemPressed = colour(dark: white(0.14), light: black(0.09))
 
-    /// Info panel: format badge fill and line; grouped-rows card fill and line.
+    /// Info panel: format badge fill and line; grouped-rows card (and the empty hint card) fill and line.
     static let badgeFill = colour(dark: white(0.08), light: black(0.08))
     static let badgeLine = colour(dark: white(0.12), light: black(0.12))
     static let cardFill = colour(dark: white(0.04), light: black(0.04))
@@ -172,7 +172,7 @@ enum Theme {
         /// Floating chrome: toolbar groups, status strip.
         static let e2 = Elevation(layers: [ShadowLayer(y: 1, blur: 2, dark: 0.20, light: 0.06),
                                            ShadowLayer(y: 6, blur: 16, dark: 0.30, light: 0.10)])
-        /// Surface in the window: fitted picture, info panel, empty hint card.
+        /// Surface in the window: fitted picture, info panel, message boxes.
         static let e3 = Elevation(layers: [ShadowLayer(y: 2, blur: 4, dark: 0.22, light: 0.07),
                                            ShadowLayer(y: 12, blur: 32, dark: 0.34, light: 0.14)])
         /// Sheet: folder chooser, Move to Folder, the About icon tile.
