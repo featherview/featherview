@@ -82,17 +82,21 @@ public enum ImageDecoder {
     }
 
     /// The longest side to decode an image of `image` (displayed size, orientation applied) at, so it
-    /// fits any of `screens` without enlarging: the smallest halving step at or above that size.
-    /// Integer arithmetic: a 3024×4032 portrait on a 2016 px high screen needs exactly 2016, and
-    /// Double can give 2016.0000001, which picks full size.
+    /// fits any of `screens` without enlarging: the smallest halving step at or above `fitNeededSize`.
     public static func fitDecodeSize(image: PixelSize, screens: [PixelSize]) -> Int {
+        decodeSize(full: max(image.width, image.height), target: fitNeededSize(image: image, screens: screens))
+    }
+
+    /// The longest side an image of `image` (displayed size) needs to fit any of `screens` without
+    /// enlarging. Integer arithmetic: a 3024×4032 portrait on a 2016 px high screen needs exactly 2016,
+    /// and Double can give 2016.0000001, which picks full size.
+    public static func fitNeededSize(image: PixelSize, screens: [PixelSize]) -> Int {
         let longest = max(image.width, image.height)
         guard image.width > 0, image.height > 0 else { return longest }
         func ceilDiv(_ a: Int, _ b: Int) -> Int { (a + b - 1) / b }
-        let needed = screens.map {
+        return min(screens.map {
             min(ceilDiv(longest * $0.width, image.width), ceilDiv(longest * $0.height, image.height))
-        }.max() ?? longest
-        return decodeSize(full: longest, target: needed)
+        }.max() ?? longest, longest)
     }
 
     /// Decodes upright, downsampled so the longest side is at most `maxPixelSize` (nil = full size),
@@ -118,14 +122,16 @@ public enum ImageDecoder {
 
     private static func decodeFile(_ url: URL, maxPixelSize: Int?, halvingSteps: Bool, screens: [PixelSize]?,
                                    step: Int?, page: Int, hdr: Bool) throws -> CGImage {
-        func fit(_ size: CGSize) -> Int? {
+        func fit(_ size: CGSize, exact: Bool = false) -> Int? {
             if let step { return stepSize(full: Int(max(size.width, size.height)), step: step) }
-            return screens.map { fitDecodeSize(image: PixelSize(width: Int(size.width), height: Int(size.height)), screens: $0) }
+            let image = PixelSize(width: Int(size.width), height: Int(size.height))
+            return screens.map { exact ? fitNeededSize(image: image, screens: $0) : fitDecodeSize(image: image, screens: $0) }
         }
         if let own = OwnDecoders.format(for: url) {
             do {
                 let data = try Data(contentsOf: url, options: .mappedIfSafe)
-                let limit = own.size(data, page).flatMap(fit) ?? maxPixelSize
+                // Own decoders resample at any size for the same cost: a halving step would only keep more pixels.
+                let limit = own.size(data, page).flatMap { fit($0, exact: true) } ?? maxPixelSize
                 let image = try own.decode(data, page, limit)
                 return limit.flatMap { scaled(image, longestSide: $0) } ?? image
             } catch {
