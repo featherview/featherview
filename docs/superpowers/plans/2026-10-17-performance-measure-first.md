@@ -4,6 +4,7 @@
 > in the order the maintainer set. Don't add features here.
 >
 > **Done:** Tasks 1–5. Task 6 skipped for now (see its note). Open findings: "Not in this plan".
+> **Addendum (review of Tasks 1–5):** Tasks 7–10 below. Task 8 decides whether Task 6's skip stands.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. In this repo, run it wave by wave with the `plan-wave` workflow.
 
@@ -76,6 +77,8 @@ The order of the review's findings was a guess, which is why measuring comes fir
 | B | 3, 4 | fit decode (Core + cache + viewer) and zoom placeholder (ZoomSteps + view): different files. Needs 1 for numbers |
 | C | 5 | zoom decode size and prefetch: builds on the cache key from 3 and the draw size from 4 |
 | D | 6 | scheduling + byte budget: only after a browsing baseline from Task 1's `browse` mode is in "Measurements" |
+| E | 7, 8 | addendum: own formats at the exact fit size (Core), and a slow-decode gate for Task 6 (bench corpus): different files |
+| F | 9, 10 | addendum: measurements in the app (navigate metric and outlier, memory pressure); one Mac, one at a time |
 
 | Task | Needs |
 |---|---|
@@ -85,6 +88,10 @@ The order of the review's findings was a guess, which is why measuring comes fir
 | 4 | 2 (same file, `ViewerView.swift`) |
 | 5 | 3, 4 |
 | 6 | 3, and a recorded `browse` baseline |
+| 7 | 3 |
+| 8 | 3 |
+| 9 | 2 |
+| 10 | 8 |
 
 ---
 
@@ -344,6 +351,137 @@ estimated.
 - [ ] Replace the detached decodes in `ImageCache` and `ViewerModel` (page decodes too)
 - [ ] Bench `browse` at 300 ms and 30 ms, and `decode` (must not regress); record all
 - [ ] Commit: `perf: decode on our own queue, nearest first, within a byte budget`
+
+---
+
+## Addendum: review of Tasks 1–5
+
+A review of the merged Tasks 1–5 (`1121cfe..759684e`, code and Measurements read, nothing built: the
+review ran on Linux again) found four open points. They are Tasks 7–10. Task 8 comes first in
+importance: it decides whether the Task 6 skip holds beyond the easy case it was measured on.
+
+### Task 7: Own formats decode at the exact fit size
+
+**Finding:** Task 3 gave own formats the halving step too (`ImageDecoder.swift`, `decodeFile`, own-format
+branch: `limit = own.size(data, page).flatMap(fit)`). Halving steps only pay off in JPEG, which decodes
+them directly. Own raster decoders always decode at full size and then resample in `scaled`, and that
+resample costs the same for any target. Rounding up to the step only keeps more pixels:
+- A 4000×3000 QOI on a 3024×1964 screen needs 2619 px. The step gives full size (4000), and before
+  Task 3 it was 3024 (the screen's longest side).
+- An SVG renders at the step, up to 2× the needed size per side, so up to 4× the pixels.
+
+**Files:**
+- Modify: `Sources/FeatherviewCore/ImageDecoder.swift`
+- Test: `Tests/FeatherviewCoreTests/ImageDecoderTests.swift`
+- Modify: `Sources/FeatherviewBench/main.swift` (only for the PNG/HEIC experiment below)
+
+**Interfaces:**
+```swift
+extension ImageDecoder {
+    /// The longest side an image of `image` (displayed size) needs to fit any of `screens` without
+    /// enlarging: `fitDecodeSize` before it rounds up to a halving step. Integer arithmetic, as there.
+    static func fitNeededSize(image: PixelSize, screens: [PixelSize]) -> Int
+}
+```
+- `fitDecodeSize` becomes `decodeSize(full: longest, target: fitNeededSize(...))`, with unchanged results
+  (its existing tests stay as they are).
+- Own formats in fit mode: `limit = fitNeededSize(...)`. Zoom steps (`step`) for own formats stay as
+  they are: the cache keys them by step.
+
+**Tests first:**
+- `ownFormatsDecodeAtTheExactFitSize`: a 4000×3000 QOI (`QOICodec.encode` of an `RGBAImage`, as in
+  `QOICodecTests`) decoded `fitting: [3024×1964]` → 2619×1964.
+- `fitNeededSize` table: the four rows of Task 3's table give 1964, 2619, 4320, 2880.
+
+**Experiment, then decide (PNG and HEIC through ImageIO):** the same question applies there.
+`kCGImageSourceThumbnailMaxPixelSize` at the needed size instead of the step could be smaller and no
+slower. Add a temporary `--exact` flag to `decode` that passes `fitNeededSize` as `maxPixelSize` instead
+of the step, and run both on `12mp.png`, `12mp-landscape.heic` and `12mp-portrait.heic` (3024×1964
+screen, 10 runs). If exact is at most 10 % slower than the step and smaller, use exact for every type
+except JPEG, record the rule in `AGENTS.md` "Performance budgets" → "How", and keep the flag out of the
+commit. Otherwise record the numbers and leave ImageIO types alone.
+
+- [ ] Failing tests, `fitNeededSize`, own formats use it
+- [ ] PNG/HEIC experiment; record numbers; act on the rule above
+- [ ] `decode` with `--baseline` against the latest JSON: no row slower
+- [ ] Commit: `fix: own formats decode at the size the screen needs, not a JPEG step`
+
+### Task 8: Slow-decode gate for Task 6
+
+**Finding:** the "6 (gate)" row measured only the easy case: `browse/` holds 12 MP JPEGs (33–82 ms each),
+on a 10-core M1 Pro with a local SSD. The finding behind Task 6 is that blocking ImageIO calls fill
+Swift's cooperative pool, and it shows only when decodes are slow. HEIC is the iPhone's default
+format and decodes in 123–232 ms (Measurements, Tasks 1 and 3). 50 MP JPEGs and Macs with fewer cores
+are slower still. The skip holds only for what was measured.
+
+**Files:** Modify `Sources/FeatherviewBench/Corpus.swift` (two folders), and this file's Measurements.
+
+**Corpus:** add `browse-heic/0001.heic … 0040.heic` (12 MP, alternating landscape and portrait like
+`browse/`, HEIC q0.8) and `browse-50mp/0001.jpg … 0020.jpg` (8688×5792 and 5792×8688 alternating, JPEG q0.9).
+
+**Runs:** on each folder, `browse --interval-ms 300` and `--interval-ms 30`, 3 runs each, after one
+warm-up run (Measurements showed the first run is cold). Also take the solo fit-decode median of the
+same files from `decode` (one file of each orientation is enough).
+
+**Gate:** at 30 ms, compare the median of the returned not-cached steps with the solo fit-decode
+median.
+- Up to 1.5× the solo decode: no queueing problem, Task 6 stays skipped. Record this in Task 6's note,
+  with the formats and the Mac it was measured on.
+- Over 1.5×, or a 300 ms run with superseded steps (prefetch not keeping up at reading pace): stale
+  work delays the current image. Then Task 6's scheduling part is due. The byte-budget part follows
+  Task 10.
+- If a Mac with fewer cores is at hand (base M1/M2, MacBook Air), run the HEIC folder there too. That
+  one counts more than the M1 Pro.
+
+- [ ] Corpus folders; runs; gate verdict recorded in Measurements and in Task 6's note
+- [ ] Commit: `test: bench corpus for slow decodes, and the Task 6 gate on them`
+
+### Task 9: One navigation metric in the budget, and the 170 ms outlier
+
+**Finding:** `AGENTS.md` "Performance budgets" says "≈ 20 ms to swap is fine; measured 11 ms median".
+That is the old log line, which measures until the model has the image. The `Navigate` signpost from
+Task 1 measures until Core Animation has committed it, which is what the user sees: p50 23.5–25 ms,
+p95 36–41 ms, max 170–173 ms (Measurements, row "2"). Its median is above "≈ 20 ms", and its max is
+above the 150 ms budget for a *non*-prefetched image. Both were already true before Task 2.
+
+**Files:** Modify `AGENTS.md` ("Performance budgets"); Measurements. Code only if the outlier has a fix
+inside this plan's scope (otherwise report it).
+
+- [ ] Ask the maintainer which metric the "next/previous" budgets mean (recommended: `Navigate`, it is
+      what the user sees). Write it into both rows, with today's `Navigate` numbers instead of "measured
+      11 ms median"
+- [ ] Find the outlier: in the app, 39 × → through `browse/` at 300 ms, recorded in Instruments with
+      Points of Interest + Time Profiler. Take the `Navigate` intervals over 100 ms, check whether they
+      were prefetched, and see what the main thread did during them (decode, colour conversion, SwiftUI
+      update, toolbar, first draw)
+- [ ] Record the cause in Measurements. A fix goes in its own commit with before/after numbers, or under
+      "Not in this plan" if it's outside scope
+- [ ] Commit: `docs: next/previous budgets measured as Navigate`
+
+### Task 10: Are decoded images purgeable, and what happens under memory pressure
+
+**Finding:** the bench shows a peak of 243–390 MB decoded in the cache but an 8 MB process footprint.
+The bench's explanation is that ImageIO keeps decoded pixels in purgeable volatile memory, which
+`phys_footprint` leaves out. That is a hypothesis, and both of its outcomes matter:
+- If true, macOS reclaims the cache by itself under pressure. That is the real argument for skipping
+  Task 6's byte budget.
+- The price would be that an image whose pixels were purged is decoded again lazily, possibly on the
+  main thread, when Core Animation draws it. That would be a stall the user sees.
+
+**Files:** none in code unless the result asks for it; Measurements; Task 6's note.
+
+- [ ] Confirm the hypothesis: while `browse` runs at 300 ms, `vmmap --summary <pid>` (or `footprint -v
+      <pid>`) shows the purgeable-volatile size. Record it beside the bench's decoded bytes. Note that
+      images redrawn into the screen's colour space (`ImageDecoder.redrawn`) come from a `CGContext`, not
+      from ImageIO, so check which of the two the purgeable memory is
+- [ ] Browse under pressure: in the app, 39 × → through `browse/` at 300 ms, once normally and once while
+      `memory_pressure -l warn` runs (never `critical` on the working Mac). Record `Navigate` p50/p95/max
+      for both, and look in Time Profiler for ImageIO decode frames on the main thread
+- [ ] Verdict in Task 6's note:
+      - No main-thread re-decode and p95 within 1.5×: the byte budget stays skipped, with this row as
+        the reason.
+      - Otherwise: Task 6's budget and pressure part is due, independent of Task 8's verdict on scheduling.
+- [ ] Commit: `docs: decoded images under memory pressure, Task 6 budget verdict`
 
 ---
 
