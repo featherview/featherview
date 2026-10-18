@@ -25,8 +25,18 @@ final class PanController {
 private func moveVisibleOrigin(_ scrollView: NSScrollView, to point: CGPoint) {
     let clip = scrollView.contentView
     let origin = CGPoint(x: point.x - clip.contentInsets.left, y: point.y - clip.contentInsets.top)
-    clip.scroll(to: clip.constrainBoundsRect(NSRect(origin: origin, size: clip.bounds.size)).origin)
+    let target = clip.constrainBoundsRect(NSRect(origin: origin, size: clip.bounds.size)).origin
+    cut { clip.animator().setBoundsOrigin(target) }
     scrollView.reflectScrolledClipView(clip)
+}
+
+/// Applies the changes at once and replaces a zoom animation still running on them:
+/// a plain setter doesn't stop an animator animation, which would step on to its old target.
+@MainActor private func cut(_ changes: () -> Void) {
+    NSAnimationContext.runAnimationGroup { context in
+        context.duration = 0
+        changes()
+    }
 }
 
 private extension NSScrollView {
@@ -53,6 +63,8 @@ struct ImageCanvas: NSViewRepresentable {
     /// How far the toolbar and the status strip reach over the canvas: fit stays clear of them,
     /// a zoomed image scrolls under them.
     let insets: CanvasInsets
+    /// A change of it on the same image animates the resize (spec "Look"); a new image never animates.
+    let zoom: ViewerModel.Zoom
     let checkerboard: Bool
     let panController: PanController
     let onDoubleClick: () -> Void
@@ -65,7 +77,7 @@ struct ImageCanvas: NSViewRepresentable {
     var onCommit: @MainActor (CGImage) -> Void = { _ in }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
+        let scrollView = WheelCancelsZoomScrollView()
         scrollView.contentView = CenteringClipView()
         scrollView.automaticallyAdjustsContentInsets = false
         // The picture never mirrors (spec "Languages"): scroll origin and dragging stay physical.
@@ -97,13 +109,39 @@ struct ImageCanvas: NSViewRepresentable {
             scrollView.contentInsets = contentInsets
             scrollView.scrollerInsets = contentInsets
         }
+        let animate = view.zoom != nil && view.zoom != zoom && view.shows(image) && !insetsChanged
+            && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        view.zoom = zoom
         view.show(image, checkerboard: checkerboard && image.hasAlpha, 
                   smooth: !ZoomSteps.showsPixels(drawnWidth: size.width, imageWidth: Int(pixelWidth), displayScale: displayScale))
-        if oldSize != size || insetsChanged {
-            view.frame.size = size
+        // The size last asked for, not the frame: mid-animation the frame is part-way, and a new image
+        // at the same zoom must leave the running animation alone.
+        let resized = view.targetSize != size
+        view.targetSize = size
+        if resized || insetsChanged {
+            let clip = scrollView.contentView
+            let oldOrigin = clip.bounds.origin
+            cut { view.animator().setFrameSize(size) }
             let visible = scrollView.clearRect
-            moveVisibleOrigin(scrollView, to: CGPoint(x: centre.x * size.width - visible.width / 2,
-                                           y: centre.y * size.height - visible.height / 2))
+            let point = CGPoint(x: centre.x * size.width - visible.width / 2, y: centre.y * size.height - visible.height / 2)
+            guard animate else { return moveVisibleOrigin(scrollView, to: point) }
+            // The target scroll position is worked out at the final size, then both animate from the old one.
+            let target = clip.constrainBoundsRect(NSRect(
+                origin: CGPoint(x: point.x - clip.contentInsets.left, y: point.y - clip.contentInsets.top),
+                size: clip.bounds.size)).origin
+            // Shrinking the document clamped (or centred) the clip's origin: put back where the user was looking.
+            cut {
+                view.animator().setFrameSize(oldSize)
+                clip.animator().setBoundsOrigin(oldOrigin)
+            }
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.12
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                view.animator().setFrameSize(size)
+                clip.animator().setBoundsOrigin(target)
+            } completionHandler: {
+                MainActor.assumeIsolated { scrollView.reflectScrolledClipView(clip) }
+            }
         }
     }
 }
@@ -111,6 +149,16 @@ struct ImageCanvas: NSViewRepresentable {
 private extension CGImage {
     var hasAlpha: Bool {
         ![.none, .noneSkipFirst, .noneSkipLast].contains(alphaInfo)
+    }
+}
+
+/// A trackpad or wheel scroll stops a running zoom animation, which would otherwise snap the
+/// clip back to its target once it ends and undo the scroll.
+private final class WheelCancelsZoomScrollView: NSScrollView {
+    override func scrollWheel(with event: NSEvent) {
+        let clip = contentView
+        cut { clip.animator().setBoundsOrigin(clip.bounds.origin) }
+        super.scrollWheel(with: event)
     }
 }
 
@@ -140,6 +188,10 @@ private final class ImageLayerView: NSView {
     var onClick: () -> Void = {}
     var onFirstDraw: @MainActor () -> Void = {}
     var onCommit: @MainActor (CGImage) -> Void = { _ in }
+    /// The zoom the frame was last sized for; nil before the first update.
+    var zoom: ViewerModel.Zoom?
+    /// The frame size the canvas last asked for (the animation's end while one runs); nil before the first update.
+    var targetSize: CGSize?
     private let imageLayer = CALayer()
     private var dragStart: (mouse: NSPoint, origin: NSPoint)?
 
@@ -154,6 +206,8 @@ private final class ImageLayerView: NSView {
     required init?(coder: NSCoder) { fatalError("not used") }
 
     override var isFlipped: Bool { true }
+
+    func shows(_ image: CGImage) -> Bool { (imageLayer.contents as AnyObject?) === image }
 
     func show(_ image: CGImage, checkerboard: Bool, smooth: Bool) {
         CATransaction.begin()
