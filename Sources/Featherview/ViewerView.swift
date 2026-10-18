@@ -14,7 +14,6 @@ struct ViewerView: View {
     /// Toolbar buttons are built only after the first image (or message) is on screen: building them takes
     /// ~130 ms of the main thread, and in the same update they'd hold back that frame at launch (budget 350 ms).
     @State private var toolbarReady = false
-    @AppStorage(AppSettings.backgroundColor.key) private var backgroundHex = AppSettings.backgroundColor.defaultValue
     @AppStorage(AppSettings.checkerboard.key) private var checkerboard = AppSettings.checkerboard.defaultValue
     @AppStorage(AppSettings.showOverlay.key) private var showOverlay = AppSettings.showOverlay.defaultValue
     @AppStorage(AppSettings.overlayTemplate.key) private var overlayTemplate = AppSettings.overlayTemplate.defaultValue
@@ -43,11 +42,7 @@ struct ViewerView: View {
         if model.viewSize != size { model.viewSize = size }
     }
 
-    private var background: Color { Color(nsColor: backgroundNSColor) }
-    private var backgroundNSColor: NSColor {
-        guard let c = HexColor.parse(backgroundHex) else { return .black }
-        return NSColor(srgbRed: c.red, green: c.green, blue: c.blue, alpha: 1)
-    }
+    private var background: Color { Color(nsColor: Theme.background) }
 
     /// The picture or what stands for it, with the sheets and messages over it.
     private var canvas: some View {
@@ -55,7 +50,7 @@ struct ViewerView: View {
             background.ignoresSafeArea()
             if let image = model.image {
                 ImageCanvas(image: image, size: drawSize(image), pixelWidth: pixelSize(image).width,
-                            displayScale: displayScale, background: backgroundNSColor, insets: canvasInsets, zoom: model.zoom,
+                            displayScale: displayScale, background: Theme.background, insets: canvasInsets, zoom: model.zoom,
                             checkerboard: checkerboard, turns: model.pendingTurns, leaving: model.isLeaving,
                             panController: panController,
                             onDoubleClick: model.toggleFullScreen, onClick: clickedImage,
@@ -147,9 +142,7 @@ struct ViewerView: View {
         .onChange(of: model.image != nil || model.errorMessage != nil || model.emptyFolder != nil || !model.isOpening,
                   initial: true) { if $1, model.image == nil { ViewerModel.afterFrame { toolbarReady = true } } }
         .toolbar(toolbarHidden || hidesToolbarForFullScreen ? .hidden : .visible, for: .windowToolbar)
-        // The background shows behind the glass toolbar in every state, not only under a picture's scroll view.
-        .toolbarBackground(.hidden, for: .windowToolbar)
-        .onChange(of: backgroundHex) { matchAppearance() }
+        // No hidden toolbar background: the system's scroll edge effect dims a zoomed picture under the toolbar, as in Safari.
         .onChange(of: toolbarReady && !toolbarHidden) { matchTitle() }
         .modifier(RemovesWindowTitle(removed: toolbarReady && !toolbarHidden))
         .modifier(ToolbarHiddenInFullScreen())
@@ -169,7 +162,6 @@ struct ViewerView: View {
         }
         .background(WindowAccessor { window in
             model.window = window
-            matchAppearance()
             matchTitle()
             // A restored or reopened window may already be in full screen; no didEnter notification follows.
             model.isFullScreen = window.styleMask.contains(.fullScreen)
@@ -207,9 +199,6 @@ struct ViewerView: View {
         }
         .onKeyPress(action: handle)
         .frame(minWidth: 480, minHeight: 320)
-        // The tokens follow the background, not the system (docs/DESIGN.md "Custom background"); outermost, so the
-        // toolbar's title item gets it too. The window's appearance (matchAppearance) covers AppKit's parts.
-        .environment(\.colorScheme, Theme.isDark(background: backgroundHex) ? .dark : .light)
     }
 
     /// Fit shrinks large images to the view; a zoom factor scales the file's full pixel size, so a smaller
@@ -296,12 +285,6 @@ struct ViewerView: View {
         focused = true
         feedAutoHide(.pointerMoved)
         NSCursor.setHiddenUntilMouseMoves(false)
-    }
-
-    /// The title, toolbar and glass sit on the background: a dark one gets the dark tokens, a light one the light ones,
-    /// whatever the system appearance.
-    private func matchAppearance() {
-        model.window?.appearance = Theme.appearance(background: backgroundHex)
     }
 
     /// The toolbar's title item shows the name and counter; the window's own title stays for the Window menu
@@ -763,7 +746,7 @@ private struct EmptyHint: View {
 }
 
 private extension View {
-    /// Readable on any background colour the user picks (grey text vanishes on black).
+    /// Readable over the background and over the picture.
     func messageBox() -> some View {
         padding(Theme.messagePadding).glass(.card, cornerRadius: Theme.Radius.message)
     }

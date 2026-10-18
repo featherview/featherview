@@ -33,11 +33,13 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
   TIFF, GIF first frame, BMP, camera RAW, …), plus PDF (see "Formats").
 - Window title: `filename — 3 / 120`; for a multi-page file `filename — page 2 / 3 — 3 / 120`.
   A multi-page file always opens on page 1.
-- Graphite background (#1c1c20, the app icon's tile) by default; black and other colours in
-  Preferences. Fit mode shrinks large images to the window and never enlarges small ones.
+- The whole app is light or dark: Appearance in Preferences is System (the default), Light or Dark.
+  The background is Graphite (#1c1c20, the app icon's tile) in dark and Grey (#e7e7ec) in light; no
+  other colours. Fit mode shrinks large images to the window and never enlarges small ones.
 - The canvas fills the whole window, under the toolbar and the status strip. Fit mode keeps the
   image clear of both (it fits the area between them); a zoomed or panned image slides under them,
-  so the glass takes its colour from the picture.
+  so the glass takes its colour from the picture. The system's scroll edge effect dims the picture
+  under the toolbar, so its title and buttons stay readable over any picture.
 - The window keeps its size and position when the image changes; it never resizes itself to the
   image. Zoom changes the image inside the window, not the window.
 - EXIF orientation is always applied.
@@ -287,7 +289,7 @@ controls trailing, switches for on/off settings. Every setting below has the def
 - Browsing: past the end of a folder: folder chooser (default) / loop this folder / stop; show
   hidden files (off); after Move to Trash or move to folder, show the next image (on); move,
   copy and trash sidecar files with the same name (`.xmp`, `.aae`, `.thm`) together (on).
-- Viewer: background (Graphite; also Black, Grey, White, or a custom colour); checkerboard behind
+- Viewer: appearance (System; also Light, Dark), for every window of the app; checkerboard behind
   transparent images (on); remember the window's size and position (on); zoom step (10 %); hide
   toolbar and status bar while viewing (off, see "Toolbar").
 - Full screen: overlay text (off; template with `{name}`, `{folder}`, `{index}`, `{count}`,

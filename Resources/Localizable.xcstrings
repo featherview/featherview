@@ -193,6 +193,9 @@
     "App %lld not set" : {
 
     },
+    "Appearance:" : {
+
+    },
     "Apps for ⌥1, ⌥2 and ⌥3" : {
 
     },
@@ -214,9 +217,6 @@
     "Background box" : {
 
     },
-    "Background:" : {
-
-    },
     "Bars" : {
 
     },
@@ -227,9 +227,6 @@
 
     },
     "Batch List.txt" : {
-
-    },
-    "Black" : {
 
     },
     "Blue:" : {
@@ -430,19 +427,16 @@
     "Crop" : {
 
     },
-    "Custom colour:" : {
-
-    },
     "Customize Toolbar…" : {
-
-    },
-    "Custom…" : {
 
     },
     "Cut" : {
 
     },
     "DPI:" : {
+
+    },
+    "Dark" : {
 
     },
     "Default app" : {
@@ -544,13 +538,7 @@
     "Gamma:" : {
 
     },
-    "Graphite" : {
-
-    },
     "Green:" : {
-
-    },
-    "Grey" : {
 
     },
     "Greyscale" : {
@@ -644,6 +632,9 @@
 
     },
     "Left:" : {
+
+    },
+    "Light" : {
 
     },
     "Load List…" : {
@@ -1109,6 +1100,9 @@
     "Supported Formats" : {
 
     },
+    "System" : {
+
+    },
     "Target file size:" : {
 
     },
@@ -1173,9 +1167,6 @@
 
     },
     "Website" : {
-
-    },
-    "White" : {
 
     },
     "Width" : {

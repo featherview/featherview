@@ -18,7 +18,7 @@ import Testing
         #expect(defaults.bool(forKey: AppSettings.showHiddenFiles.key) == false)
         #expect(defaults.bool(forKey: AppSettings.showNextAfterRemoval.key) == true)
         #expect(defaults.bool(forKey: AppSettings.moveSidecars.key) == true)
-        #expect(defaults.string(forKey: AppSettings.backgroundColor.key) == "#1c1c20")
+        #expect(defaults.string(forKey: AppSettings.appearance.key) == "system")
         #expect(defaults.bool(forKey: AppSettings.hideBarsWhileViewing.key) == false)
         #expect(defaults.bool(forKey: AppSettings.checkerboard.key) == true)
         #expect(defaults.bool(forKey: AppSettings.rememberWindowFrame.key) == true)
@@ -41,25 +41,6 @@ import Testing
     @Test func unknownPastEndFallsBackToChooser() {
         #expect(PastEndBehavior(rawValue: "sideways") == nil)
         #expect(PastEndBehavior.allCases == [.folderChooser, .loop, .stop])
-    }
-
-    @Test func hexColorsRoundTrip() throws {
-        let color = try #require(HexColor.parse("#FF8000"))
-        #expect(color.red == 1)
-        #expect(abs(color.green - 128.0 / 255) < 0.0001)
-        #expect(color.blue == 0)
-        #expect(HexColor.format(red: color.red, green: color.green, blue: color.blue) == "#FF8000")
-    }
-
-    /// The viewer window's toolbar and title follow the background: dark presets get the dark appearance.
-    @Test(arguments: [("#1c1c20", true), ("#000000", true), ("#808080", false), ("#ffffff", false), ("#0000ff", true), ("bad", false)])
-    func darkBackgrounds(_ hex: String, dark: Bool) {
-        #expect(HexColor.isDark(hex) == dark)
-    }
-
-    @Test(arguments: ["", "000000", "#00000", "#GG0000", "#0000000"])
-    func malformedHexIsRejected(_ hex: String) {
-        #expect(HexColor.parse(hex) == nil)
     }
 }
 

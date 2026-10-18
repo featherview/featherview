@@ -34,7 +34,7 @@ public enum AppSettings {
     /// True once the launch offer to open images instead of Preview was shown (spec "Default viewer").
     public static let offeredDefaultViewer = Setting(key: "offeredDefaultViewer", defaultValue: false)
     // Viewer
-    public static let backgroundColor = Setting(key: "backgroundColor", defaultValue: BackgroundPreset.graphite.hex)
+    public static let appearance = Setting(key: "appearance", defaultValue: AppearanceMode.system.rawValue)
     public static let hideBarsWhileViewing = Setting(key: "hideBarsWhileViewing", defaultValue: false)
     public static let checkerboard = Setting(key: "checkerboard", defaultValue: true)
     public static let rememberWindowFrame = Setting(key: "rememberWindowFrame", defaultValue: true)
@@ -48,6 +48,8 @@ public enum AppSettings {
     // Open with: app paths for ⌥1, ⌥2, ⌥3 ("" = none)
     public static let openWith = (1...3).map { Setting(key: "openWith\($0)", defaultValue: "") }
 
+    public static var appearanceMode: AppearanceMode { AppearanceMode(stored: appearance.value()) }
+
     public static var pastEndBehavior: PastEndBehavior {
         PastEndBehavior(rawValue: pastEnd.value()) ?? .folderChooser
     }
@@ -60,7 +62,7 @@ public enum AppSettings {
             showNextAfterRemoval.key: showNextAfterRemoval.defaultValue,
             moveSidecars.key: moveSidecars.defaultValue,
             offeredDefaultViewer.key: offeredDefaultViewer.defaultValue,
-            backgroundColor.key: backgroundColor.defaultValue,
+            appearance.key: appearance.defaultValue,
             hideBarsWhileViewing.key: hideBarsWhileViewing.defaultValue,
             checkerboard.key: checkerboard.defaultValue,
             rememberWindowFrame.key: rememberWindowFrame.defaultValue,
@@ -72,25 +74,5 @@ public enum AppSettings {
         ]
         for setting in openWith { values[setting.key] = setting.defaultValue }
         defaults.register(defaults: values)
-    }
-}
-
-/// `#RRGGBB` colours, the form the background colour setting is stored in.
-public enum HexColor {
-    /// Components 0...1, or nil if `hex` isn't `#RRGGBB`.
-    public static func parse(_ hex: String) -> (red: Double, green: Double, blue: Double)? {
-        guard hex.count == 7, hex.first == "#", let value = UInt32(hex.dropFirst(), radix: 16) else { return nil }
-        return (Double(value >> 16 & 0xFF) / 255, Double(value >> 8 & 0xFF) / 255, Double(value & 0xFF) / 255)
-    }
-
-    /// Whether text and controls need the dark appearance on this colour (Rec. 709 luma below ½); false if malformed.
-    public static func isDark(_ hex: String) -> Bool {
-        guard let c = parse(hex) else { return false }
-        return 0.2126 * c.red + 0.7152 * c.green + 0.0722 * c.blue < 0.5
-    }
-
-    public static func format(red: Double, green: Double, blue: Double) -> String {
-        func byte(_ c: Double) -> Int { Int((min(max(c, 0), 1) * 255).rounded()) }
-        return String(format: "#%02X%02X%02X", byte(red), byte(green), byte(blue))
     }
 }

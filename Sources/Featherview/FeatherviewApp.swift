@@ -139,6 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         AppSettings.registerDefaults()
+        Theme.apply(AppSettings.appearanceMode)
         MenuKeys.install()
         OwnDecoders.register(SVGFormat.format)
         // AppKit hands Finder's files to application(_:open:) only after SwiftUI built the window

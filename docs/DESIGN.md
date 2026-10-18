@@ -29,12 +29,12 @@ fallback.
 
 ## Colour tokens
 
-The viewer window follows the background colour: Graphite and Black → dark appearance; Grey, White
-and light custom colours → light appearance. Use system dynamic colours where one exists.
+Every window follows the app's appearance (Preferences › Viewer › Appearance: System, Light, Dark);
+toolbar, title bar and glass with it. Use system dynamic colours where one exists.
 
 | Token | Dark (Graphite) | Light (Grey) | Use |
 |---|---|---|---|
-| Background · Graphite | #1C1C20 (default) | #E7E7EC ("Grey") | Window and area behind the picture. Black #000000, White #FFFFFF, custom. |
+| Background | #1C1C20 (Graphite) | #E7E7EC (Grey) | Window and area behind the picture. |
 | Glass fill | rgba(52,52,58,0.55) | rgba(255,255,255,0.60) | Toolbar groups, status strip, empty hint card. Behind it: blur 40, saturation 180 %. |
 | Glass fill · panel | rgba(44,44,50,0.62) | rgba(255,255,255,0.66) | Info panel (reads over the picture edge). |
 | Glass fill · sheet | rgba(36,36,42,0.66) | rgba(255,255,255,0.72) | Folder chooser, Move to Folder. Slightly denser: text sits over a photo. |
@@ -103,7 +103,7 @@ elevation. Reduce Transparency keeps the shadows and swaps glass for a solid fil
 |---|---|
 | Title bar | 52 pt tall, transparent, full-size content view: the picture scrolls beneath it. Traffic lights at 20 / 20, 12 pt circles, 8 pt gap (system). |
 | Fit area | Insets leading 16 · top 60 · trailing 16 · bottom 44 (strip 28 + 8 inset + 8 clearance). A fitted picture is centred in it; with the info panel open the trailing inset becomes 12 + 280 + 16 = 308. |
-| Picture | No corner radius, no border. Shadow + hairline only while it fits. At any zoom beyond fit it runs edge to edge under the glass and loses both. |
+| Picture | No corner radius, no border. Shadow + hairline only while it fits. At any zoom beyond fit it runs edge to edge under the glass and loses both; the system's scroll edge effect dims it under the toolbar. |
 | Status strip | x 12, y 664, w 1196, h 28, capsule. With the info panel open it ends 16 pt before the panel (w 900). Leading-aligned text, 14 pt inner padding. |
 | Window | 12 pt corner radius (system). Dark: 1 pt inset hairline rgba(255,255,255,0.07); light: rgba(0,0,0,0.08). |
 | Resizing | Only the fit area and the strip width change. Toolbar groups keep their size; the title truncates with an ellipsis before the counter does. |
@@ -161,7 +161,6 @@ are not available there and become the system's group gaps.
 | RTL | Back/forward group, title and trailing group swap sides; glyph order reverses; chevrons flip. Info panel opens from the leading edge. Strip text trailing-aligned. The picture is never mirrored. |
 | Window inactive | Glyphs drop to secondary; glass keeps its fill. |
 | Full screen | Same chrome, same insets; bars fade as above. Background fills the screen. |
-| Custom background | Luminance < 0.5 → dark tokens, else light. |
 | Preferences | 560 wide, system appearance. Header 96: pane title 13 Semibold in the top 40; tab row of 72 × 46 pills (gap 4), glyph 22 + label 11 Medium, selected pill 0.10 / 0.07 with accent glyph and label. Content padding 22 × 24, sections 22 apart: header 13 Semibold, 8 gap, card radius 10, rows 44 (52 two-line), padding 0 × 14, inset separators. Push buttons 28 radius 7; pop-ups 26 with accent chevron square 16 × 16 radius 4; switches 38 × 22, system. "Use Featherview for Images" carries the 14 pt feather mark. |
 | About | 320 × 440, close button only, system appearance. Icon tile 128, radius 28.8, gradient #23232C → #101015, E4. Behind it a 280 pt radial glow in the feather colours (0.26 → 0 dark, 0.45 → 0 light). Name 22 / 28 Semibold, tagline 13 secondary, "Version" tertiary with the build in a key cap (tabular), hairline, copyright 11 tertiary, two accent links 11. Featherview keeps About's other content (Report a Problem, formats, licence) below the hairline. |
 | Batch window | Three columns stay. Sidebar rows 32 tall, 8 pt radius, selected row accent with white text; "on" badges secondary tabular; cards as in Preferences. |

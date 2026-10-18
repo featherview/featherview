@@ -5,18 +5,18 @@ import SwiftUI
 /// The design tokens of the viewer chrome (docs/DESIGN.md, from the design canvas). Every colour, shadow,
 /// radius, size and duration the views use comes from here; values that fit's arithmetic needs live in
 /// `CanvasInsets` (FeatherviewCore, tested) and are named here too.
-/// Colours carry a dark (Graphite) and a light (Grey) value and resolve by the window's appearance,
-/// which follows the background colour (`Theme.isDark(background:)`).
+/// Colours carry a dark (Graphite) and a light (Grey) value and resolve by the app's appearance
+/// (`AppSettings.appearance`: System, Light or Dark).
 enum Theme {
     // MARK: Appearance
 
-    /// Luminance below ½ → dark tokens, else light (spec "Custom background").
-    static func isDark(background hex: String) -> Bool { HexColor.isDark(hex) }
-
-    /// The appearance a viewer window takes on this background: always set, so a light background in
-    /// system dark mode still gets the light tokens.
-    static func appearance(background hex: String) -> NSAppearance? {
-        NSAppearance(named: isDark(background: hex) ? .darkAqua : .aqua)
+    /// Sets the whole app light, dark or back to the system's: every window, its toolbar, title and glass follow.
+    static func apply(_ mode: AppearanceMode) {
+        NSApp.appearance = switch mode {
+        case .system: nil
+        case .light: NSAppearance(named: .aqua)
+        case .dark: NSAppearance(named: .darkAqua)
+        }
     }
 
     // MARK: Colours
@@ -37,10 +37,8 @@ enum Theme {
         NSColor(srgbRed: r / 255, green: g / 255, blue: b / 255, alpha: a)
     }
 
-    /// Background · Graphite, the default (dark).
-    static let graphite = BackgroundPreset.graphite.hex
-    /// Background · Grey (light).
-    static let grey = BackgroundPreset.grey.hex
+    /// Background: Graphite #1C1C20 (the app icon's tile) in dark, Grey #E7E7EC in light; window and area behind the picture.
+    static let background = dynamic(dark: rgb(28, 28, 32, 1), light: rgb(231, 231, 236, 1))
 
     /// Glass fill: toolbar groups, status strip, empty hint card (macOS 14/15 tint over the material).
     static let glassFill = colour(dark: rgb(52, 52, 58, 0.55), light: white(0.60))

@@ -37,9 +37,8 @@ private final class SettingsTabs: NSTabViewController {
             .formStyle(.grouped)  // wraps long labels instead of clipping them at this width
             .toggleStyle(.switch)
             .scrollDisabled(true)
-            .frame(width: 520)
+            .frame(width: 560)
             .fixedSize(horizontal: false, vertical: true)
-            .scenePadding()
             .onGeometryChange(for: CGFloat.self, of: \.size.height) { [weak self] in self?.tab(index, height: $0) }
             .frame(minHeight: 0, maxHeight: .infinity, alignment: .top))  // top stays put while the window's height animates
         host.sizingOptions = []
@@ -66,6 +65,8 @@ private final class SettingsTabs: NSTabViewController {
         frame.origin = NSPoint(x: window.frame.minX, y: window.frame.maxY - frame.height)
         guard frame != window.frame else { return }
         window.setFrame(frame, display: true, animate: window.isVisible)
+        // The tab view controller's view keeps its first fitting width (wider than 560), which pushed the cards off centre.
+        window.contentView?.frame = NSRect(origin: .zero, size: window.contentLayoutRect.size)
         if !window.isVisible { window.center() }
     }
 }
@@ -116,45 +117,21 @@ private struct BrowsingSettings: View {
 }
 
 private struct ViewerSettings: View {
-    @AppStorage(AppSettings.backgroundColor.key) private var backgroundHex = AppSettings.backgroundColor.defaultValue
+    @AppStorage(AppSettings.appearance.key) private var appearance = AppSettings.appearance.defaultValue
     @AppStorage(AppSettings.checkerboard.key) private var checkerboard = AppSettings.checkerboard.defaultValue
     @AppStorage(AppSettings.rememberWindowFrame.key) private var rememberFrame = AppSettings.rememberWindowFrame.defaultValue
     @AppStorage(AppSettings.zoomStepPercent.key) private var zoomStep = AppSettings.zoomStepPercent.defaultValue
     @AppStorage(AppSettings.hideBarsWhileViewing.key) private var hideBars = AppSettings.hideBarsWhileViewing.defaultValue
-    @State private var menu = BackgroundMenu()
-
-    /// The preset menu; nil is Custom, also whenever the stored colour matches no preset.
-    private var preset: Binding<BackgroundPreset?> {
-        Binding {
-            menu.selection(for: backgroundHex)
-        } set: { preset in
-            menu.choose(preset)
-            if let preset { backgroundHex = preset.hex }
-        }
-    }
-
-    /// The stored `#RRGGBB` as a colour for the picker; picks are stored back in sRGB.
-    private var background: Binding<Color> {
-        Binding {
-            let c = HexColor.parse(backgroundHex) ?? (0, 0, 0)
-            return Color(.sRGB, red: c.red, green: c.green, blue: c.blue)
-        } set: { color in
-            guard let srgb = NSColor(color).usingColorSpace(.sRGB) else { return }
-            menu.pickedCustomColour()
-            backgroundHex = HexColor.format(red: srgb.redComponent, green: srgb.greenComponent, blue: srgb.blueComponent)
-        }
-    }
 
     var body: some View {
         Form {
             Section("Window") {
-                Picker("Background:", selection: preset) {
-                    ForEach(BackgroundPreset.allCases, id: \.self) { Text(name(of: $0)).tag(Optional($0)) }
-                    Text("Custom…").tag(BackgroundPreset?.none)
+                Picker("Appearance:", selection: $appearance) {
+                    Text("System").tag(AppearanceMode.system.rawValue)
+                    Text("Light").tag(AppearanceMode.light.rawValue)
+                    Text("Dark").tag(AppearanceMode.dark.rawValue)
                 }
-                if preset.wrappedValue == nil {
-                    ColorPicker("Custom colour:", selection: background, supportsOpacity: false)
-                }
+                .onChange(of: appearance) { Theme.apply(AppearanceMode(stored: $1)) }
                 Toggle("Checkerboard behind transparent images", isOn: $checkerboard)
                 Toggle("Remember the window's size and position", isOn: $rememberFrame)
                 Stepper(value: $zoomStep, in: 1...100) {
@@ -164,15 +141,6 @@ private struct ViewerSettings: View {
             Section("Bars") {
                 Toggle("Hide toolbar and status bar while viewing", isOn: $hideBars)
             }
-        }
-    }
-
-    private func name(of preset: BackgroundPreset) -> LocalizedStringKey {
-        switch preset {
-        case .graphite: "Graphite"
-        case .black: "Black"
-        case .grey: "Grey"
-        case .white: "White"
         }
     }
 }
