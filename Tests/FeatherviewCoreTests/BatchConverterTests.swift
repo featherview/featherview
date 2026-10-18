@@ -293,6 +293,28 @@ import Testing
         #expect(trash.names.first == "a.jpg")
     }
 
+    @Test func commitTrashesTheSidecarsFoundBeforeIt() throws {
+        // The serial commit never lists the input's folder; the parallel prepare stage did.
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let found = dir.appendingPathComponent("a.aae"), unlisted = dir.appendingPathComponent("a.xmp")
+        try Data().write(to: found)
+        try Data().write(to: unlisted)
+        var settings = BatchSettings()
+        settings.formatID = "png"
+        settings.outputFolder = out.path
+        settings.safety.trashOriginals = true
+        let batchInput = BatchInput(url: input, root: nil)
+        var namer = BatchNamer(settings: settings, inputs: [batchInput])
+        let trash = try FakeTrash()
+
+        let result = BatchConverter.commit(BatchConverter.Prepared(data: Data("x".utf8), sidecars: [found]),
+                                           input: batchInput, settings: settings, namer: &namer, trash: trash.trash)
+
+        #expect(result.status == .converted)
+        #expect(trash.names == ["a.jpg", "a.aae"])
+    }
+
     @Test func keepDatesCopiesModificationDate() async throws {
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)

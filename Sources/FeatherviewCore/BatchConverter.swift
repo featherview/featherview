@@ -12,9 +12,11 @@ public enum BatchConverter {
         /// "page 1 of 3".
         var note: String?
         var error: String?
+        /// Trashed with the input; found here, in parallel, so the serial commit never lists a folder.
+        var sidecars: [URL]
 
-        init(data: Data? = nil, date: Date? = nil, note: String? = nil, error: String? = nil) {
-            self.data = data; self.date = date; self.note = note; self.error = error
+        init(data: Data? = nil, date: Date? = nil, note: String? = nil, error: String? = nil, sidecars: [URL] = []) {
+            self.data = data; self.date = date; self.note = note; self.error = error; self.sidecars = sidecars
         }
     }
 
@@ -49,6 +51,7 @@ public enum BatchConverter {
             }
             return { index, input in Self.prepare(input, index: index, settings: settings, watermark: watermark) }
         }()
+        let findSidecars = settings.safety.trashOriginals && moveSidecars
         var namer = BatchNamer(settings: settings, inputs: inputs)
         var results = [BatchResult?](repeating: nil, count: total)
         var waiting: [Int: Prepared] = [:]
@@ -59,7 +62,13 @@ public enum BatchConverter {
                 while started < total, inFlight < workers, started - nextCommit < 2 * workers,
                       !control.isPaused, !control.isStopped {
                     let index = started
-                    group.addTask { (index, await offPool { prepare(index, inputs[index]) }) }
+                    group.addTask {
+                        (index, await offPool {
+                            var prepared = prepare(index, inputs[index])
+                            if findSidecars, prepared.error == nil { prepared.sidecars = Sidecars.files(for: inputs[index].url) }
+                            return prepared
+                        })
+                    }
                     started += 1
                     inFlight += 1
                 }
@@ -76,8 +85,7 @@ public enum BatchConverter {
                     // Off the pool too: commits write and copy whole files. Awaited one at a time, so order holds.
                     let (result, named) = await offPool { [namer] in
                         var namer = namer
-                        let result = commit(next, input: input, settings: settings, moveSidecars: moveSidecars,
-                                            namer: &namer, trash: trash)
+                        let result = commit(next, input: input, settings: settings, namer: &namer, trash: trash)
                         return (result, namer)
                     }
                     namer = named
@@ -157,7 +165,7 @@ public enum BatchConverter {
     }
 
     /// Names, writes and finishes one file, in list order: the counter only advances for files that succeeded.
-    static func commit(_ prepared: Prepared, input: BatchInput, settings: BatchSettings, moveSidecars: Bool,
+    static func commit(_ prepared: Prepared, input: BatchInput, settings: BatchSettings,
                        namer: inout BatchNamer, trash: (URL) throws -> Void) -> BatchResult {
         let url = input.url
         func failed(_ message: String) -> BatchResult { BatchResult(input: url, output: nil, status: .failed, message: message) }
@@ -184,8 +192,7 @@ public enum BatchConverter {
             try? FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: output.path)
         }
         if settings.safety.trashOriginals {
-            let sidecars = moveSidecars ? Sidecars.files(for: url) : []
-            if (try? trash(url)) != nil { for sidecar in sidecars { try? trash(sidecar) } }
+            if (try? trash(url)) != nil { for sidecar in prepared.sidecars { try? trash(sidecar) } }
         }
         return BatchResult(input: url, output: output, status: .converted, message: prepared.note)
     }
