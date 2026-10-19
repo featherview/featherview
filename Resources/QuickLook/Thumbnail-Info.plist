@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key>
+	<string>FeatherviewThumbnail</string>
+	<key>CFBundleIdentifier</key>
+	<string>net.mynetx.featherview.thumbnail</string>
+	<key>CFBundleName</key>
+	<string>FeatherviewThumbnail</string>
+	<key>CFBundlePackageType</key>
+	<string>XPC!</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.quicklook.thumbnail</string>
+		<key>NSExtensionPrincipalClass</key>
+		<string>FeatherviewThumbnail.ThumbnailProvider</string>
+		<key>NSExtensionAttributes</key>
+		<dict>
+			<key>QLSupportedContentTypes</key>
+			<array>
+				<string>net.mynetx.featherview.qoi</string>
+				<string>net.mynetx.featherview.pcx</string>
+				<string>net.mynetx.featherview.dcx</string>
+				<string>public.xbitmap-image</string>
+				<string>net.mynetx.featherview.xpm</string>
+				<string>net.mynetx.featherview.wbmp</string>
+				<string>net.mynetx.featherview.sun-raster</string>
+				<string>net.mynetx.featherview.ilbm</string>
+				<string>net.mynetx.featherview.xcf</string>
+				<string>net.mynetx.featherview.psp</string>
+				<string>net.mynetx.featherview.pdn</string>
+			</array>
+			<key>QLThumbnailMinimumDimension</key>
+			<integer>0</integer>
+		</dict>
+	</dict>
+</dict>
+</plist>

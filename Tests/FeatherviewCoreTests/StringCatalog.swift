@@ -35,9 +35,7 @@ struct StringCatalog: Decodable {
         "it", "th", "pl", "uk", "ms", "nl", "ro", "el", "hu", "sv", "cs", "ca", "he", "da", "fi",
     ]
 
-    static let shippedURL = URL(filePath: #filePath)
-        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-        .appending(path: "Resources/Localizable.xcstrings")
+    static let shippedURL = Fixtures.repo.appending(path: "Resources/Localizable.xcstrings")
 
     static func load(_ url: URL) throws -> StringCatalog {
         try JSONDecoder().decode(StringCatalog.self, from: Data(contentsOf: url))

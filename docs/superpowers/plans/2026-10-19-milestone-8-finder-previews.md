@@ -98,8 +98,8 @@ budgets and commands: `AGENTS.md`. Read all three first.
 ### Task 1: QuickLookSupport in FeatherviewCore
 
 **Files:**
-- Create: `Sources/FeatherviewCore/QuickLookSupport.swift`
-- Test: `Tests/FeatherviewCoreTests/QuickLookSupportTests.swift`
+- Create: `Sources/FeatherviewCore/Imaging/QuickLookSupport.swift`
+- Test: `Tests/FeatherviewCoreTests/Imaging/QuickLookSupportTests.swift`
 
 **Interfaces:**
 - Consumes: `ImageDecoder.decode(_:maxPixelSize:fitting:page:)`, `PixelSize`, `OwnDecoders.all`,
@@ -121,10 +121,9 @@ budgets and commands: `AGENTS.md`. Read all three first.
     decoded to fit the screens, as the viewer does (`ImageDecoder.decode(url, fitting: screens)`).
 
 - [ ] **Step 1: Write the failing tests** in `QuickLookSupportTests`:
-  - `contentTypesAreTheOwnFormats`: read `Resources/Info.plist` from the repo (path from `#filePath`,
-    like `StringCatalog.shippedURL`), map each `UTImportedTypeDeclarations` entry's
+  - `contentTypesAreTheOwnFormats`: read `Resources/Info.plist` from the repo (`Fixtures.repo`), map each `UTImportedTypeDeclarations` entry's
     `public.filename-extension` values to its `UTTypeIdentifier`, add `xbm` → `public.xbitmap-image`.
-    For every format in `OwnDecoders.all` except the ones named `PDF` and `SVG`, every extension maps
+    For every format in `OwnDecoders.builtIn` except `PDF` (SVG is the app's, registered at launch; `all` also holds formats other tests register), every extension maps
     to an identifier in `contentTypes`; and every identifier in `contentTypes` is reached by some own
     format. (Catches a new own format added without a Finder preview, and a stale type.)
   - `thumbnailSizeFits`: 400 × 267 in 256 × 256 → 256 × 170.88 (±0.01); 267 × 400 → 170.88 × 256.
@@ -135,14 +134,14 @@ budgets and commands: `AGENTS.md`. Read all three first.
   - `upperCaseExtensionDecodes`: the same bytes saved as `IMAGE.QOI` decode.
   - `multiPageShowsFirstPage`: a two-page DCX built in the test (the DCX header: magic `0x3ADE68B1`
     little-endian, then little-endian UInt32 page offsets, a zero, then the PCX pages from
-    `PCXCodec.encode`; pages 40 × 30 and 10 × 10) → `size` is page 1's aspect (256 × 192).
+    `PCXCodec.encode`; pages 40 × 30 and 10 × 10) → `size` is page 1's, 40 × 30 (never enlarged).
   - `corruptFileThrows`: the QOI's first 20 bytes saved as `cut.qoi` → `thumbnail` and `preview` throw.
   - `previewFitsTheScreen`: a 4000 × 3000 QOI with `screens: [PixelSize(width: 1000, height: 1000)]`
     → longest side ≤ 2000 (the viewer's at-most-2×-per-side rule), and ≥ 1000.
 - [ ] **Step 2: Run them to see them fail.** `swift test --filter QuickLookSupportTests` → fails to
   compile (`QuickLookSupport` not defined).
 - [ ] **Step 3: Implement** `QuickLookSupport` to the interfaces above in
-  `Sources/FeatherviewCore/QuickLookSupport.swift` (CoreGraphics, Foundation only).
+  `Sources/FeatherviewCore/Imaging/QuickLookSupport.swift` (CoreGraphics, Foundation only).
 - [ ] **Step 4: Run the tests, then the full suite.** `swift test` → all pass.
 - [ ] **Step 5: Commit.** `feat: Quick Look types, thumbnail size and preview decode in the core`
 
@@ -156,7 +155,7 @@ budgets and commands: `AGENTS.md`. Read all three first.
 - Create: `Resources/QuickLook/Thumbnail-Info.plist`, `Resources/QuickLook/QuickLook.entitlements`
 - Modify: `scripts/bundle.sh`
 - Modify: `Sources/FeatherviewBench/main.swift` (a `thumbnail` command)
-- Test: `Tests/FeatherviewCoreTests/QuickLookSupportTests.swift` (one more test)
+- Test: `Tests/FeatherviewCoreTests/Imaging/QuickLookSupportTests.swift` (one more test)
 - Modify: `AGENTS.md` (Layout block and Commands)
 
 **Interfaces:**

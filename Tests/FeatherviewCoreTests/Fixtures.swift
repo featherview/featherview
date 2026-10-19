@@ -5,6 +5,9 @@ import UniformTypeIdentifiers
 
 /// Test images are generated, never committed: tiny, exact, and no licensing questions.
 enum Fixtures {
+    /// The repository's root folder, for tests that read files shipped with the app.
+    static let repo = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+
     static func makeTempDir() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("featherview-tests-\(UUID().uuidString)", isDirectory: true)
