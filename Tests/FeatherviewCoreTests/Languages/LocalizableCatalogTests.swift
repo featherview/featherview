@@ -4,9 +4,7 @@ import Testing
 /// UI text only reaches translators once scripts/strings.sh has put it into the catalog.
 @Suite struct LocalizableCatalogTests {
     @Test func preferencesTextIsInTheCatalog() throws {
-        let url = URL(filePath: #filePath).deletingLastPathComponent()
-            .appending(path: "../../Resources/Localizable.xcstrings")
-        let catalog = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
+        let catalog = try JSONSerialization.jsonObject(with: Data(contentsOf: StringCatalog.shippedURL)) as? [String: Any]
         let keys = Set((catalog?["strings"] as? [String: Any] ?? [:]).keys)
         let expected = [
             "Folders", "After a move or Move to Trash", "Window", "Bars", "Overlay", "Pointer",

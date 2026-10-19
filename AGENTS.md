@@ -66,8 +66,16 @@ swift run -c release featherview-bench corpus /tmp/fv   # generated test images,
 
 ```
 Sources/FeatherviewCore/   pure logic, no SwiftUI/AppKit — everything here is unit-tested
+  Formats/                 own decoders and encoders (QOI, PCX, XCF, …, WebP) and their shared pieces
+  Imaging/                 decode, encode, Save As, cache, metadata, Quick Look support
+  Viewer/                  image list, folders, move/copy, keys, zoom, status bar
+  Batch/                   batch settings, steps, render pipeline, converter
+  App/                     settings, appearance, About, default viewer, disk image art
 Sources/Featherview/       the app: views, menus, keyboard, windows (thin, manually tested)
-Tests/FeatherviewCoreTests/ Swift Testing suites; Fixtures.swift generates test images
+  Viewer/ Batch/ Windows/ Design/
+Sources/FeatherviewBench/  featherview-bench (timings without a window); FeatherviewDMG: disk image art
+Tests/FeatherviewCoreTests/ Swift Testing suites, same folders as FeatherviewCore; Fixtures.swift
+                           generates test images
 Resources/Info.plist       bundle metadata, copied by scripts/bundle.sh
 docs/spec.md               product spec
 docs/parity.md             behaviour observed in the reference viewer (not requirements)
