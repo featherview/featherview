@@ -217,7 +217,7 @@ import Testing
         #expect(catalog.problems(languages: catalog.presentLanguages) == [])
     }
 
-    @Test(.disabled("translations land in wave C; Task 11 enables this"))
+    @Test
     func shippedCatalogIsComplete() throws {
         let catalog = try StringCatalog.load(StringCatalog.shippedURL)
         #expect(catalog.problems(languages: StringCatalog.languages) == [])

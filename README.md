@@ -18,6 +18,7 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
 - Batch convert and rename with crop, resize, rotate, colour, filters, canvas, border, text and
   watermark steps, a live preview and presets
 - EXIF info panel; delete moves to Trash
+- In 30 languages, with right-to-left layout in Arabic and Hebrew
 
 Status: early development. Requires macOS 14 or later.
 

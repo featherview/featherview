@@ -507,13 +507,13 @@ Languages: `hi th vi id ms`.
 - Modify: `Tests/FeatherviewCoreTests/StringCatalogTests.swift` (remove the `.disabled` trait)
 - Modify: `README.md` (feature list)
 
-- [ ] **Step 1:** Remove the `.disabled(…)` trait from `shippedCatalogIsComplete`.
-- [ ] **Step 2:** `swift test` → all pass, none skipped in `StringCatalogTests`. A failure names the
+- [x] **Step 1:** Remove the `.disabled(…)` trait from `shippedCatalogIsComplete`.
+- [x] **Step 2:** `swift test` → all pass, none skipped in `StringCatalogTests`. A failure names the
   key and language: fix the translation in the catalog (that language's rules above).
-- [ ] **Step 3:** README feature list, after the EXIF line: `- In 30 languages, with right-to-left
+- [x] **Step 3:** README feature list, after the EXIF line: `- In 30 languages, with right-to-left
   layout in Arabic and Hebrew` — wording may be adjusted, no language list (the spec has it).
-- [ ] **Step 4:** `scripts/bundle.sh release` succeeds; `ls build/Featherview.app/Contents/Resources | grep -c lproj` → 30.
-- [ ] **Step 5: Commit** — `git commit -m "test: every catalog key in all 30 languages"` (test + README).
+- [x] **Step 4:** `scripts/bundle.sh release` succeeds; `ls build/Featherview.app/Contents/Resources | grep -c lproj` → 30.
+- [x] **Step 5: Commit** — `git commit -m "test: every catalog key in all 30 languages"` (test + README).
 
 ### Task 12: Check in the app (main session; needs the screen, ask the maintainer first)
 
