@@ -59,6 +59,11 @@ for LANG_CODE in "${LANGS[@]}"; do
     SIZE_MB=$(( $(du -sm "$STAGE" | cut -f1) + 20 ))
     hdiutil create -quiet -srcfolder "$STAGE" -volname "$VOLUME" -fs HFS+ -format UDRW -size "${SIZE_MB}m" "$RW"
     attach_rw "$RW"
+    # Finder sees a freshly attached disk only after about a second.
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        [ "$(osascript -e "tell application \"Finder\" to exists disk \"$VOLUME\"")" = true ] && break
+        sleep 1
+    done
 
     # Window: 640 x 400 content, icon view, the icons where DiskImageArt draws the arrow.
     osascript <<EOF
