@@ -20,9 +20,9 @@ let usage = """
     browse  steps through the folder like a held arrow key: one step every --interval-ms, whether
             or not the last one finished, through an 8-image cache with 2 neighbours prefetched each way.
     thumbnail  asks Finder's thumbnail service (256 × 256 points at 2×) for each file, as Finder does, and
-            exits 1 if one gets no thumbnail; --out also writes them as PNG. It checks the installed app's
-            extension: macOS uses the copy registered with the highest version
-            (`pluginkit -m -v -p com.apple.quicklook.thumbnail`).
+            exits 1 if one gets no thumbnail; --out also writes them as PNG. It doesn't say which extension
+            drew a thumbnail: for formats only Featherview reads, any thumbnail at all is ours. macOS uses the
+            copy of the app registered with the highest version (`pluginkit -m -v -p com.apple.quicklook.thumbnail`).
     Screens are in pixels; default 3024x1964 3456x2234 5120x2880 (decode), 3024x1964 (browse).
     """
 

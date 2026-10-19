@@ -64,6 +64,8 @@ for LANG_CODE in "${LANGS[@]}"; do
         [ "$(osascript -e "tell application \"Finder\" to exists disk \"$VOLUME\"")" = true ] && break
         sleep 1
     done
+    [ "$(osascript -e "tell application \"Finder\" to exists disk \"$VOLUME\"")" = true ] ||
+        { echo "Finder doesn't see the disk $VOLUME." >&2; exit 1; }
 
     # Window: 640 x 400 content, icon view, the icons where DiskImageArt draws the arrow.
     osascript <<EOF

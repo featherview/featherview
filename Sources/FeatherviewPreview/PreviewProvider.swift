@@ -9,7 +9,7 @@ final class PreviewProvider: QLPreviewProvider, QLPreviewingController {
             (NSScreen.screens.map { screen in
                 PixelSize(width: Int((screen.frame.width * screen.backingScaleFactor).rounded()),
                           height: Int((screen.frame.height * screen.backingScaleFactor).rounded()))
-            }, NSScreen.screens.map(\.backingScaleFactor).max() ?? 1)
+            }, NSScreen.screens.map(\.backingScaleFactor).max() ?? 2)
         }
         let image = try QuickLookSupport.preview(request.fileURL, screens: screens)
         let size = CGSize(width: CGFloat(image.width) / scale, height: CGFloat(image.height) / scale)

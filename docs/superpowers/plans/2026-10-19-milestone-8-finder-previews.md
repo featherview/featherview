@@ -120,7 +120,7 @@ budgets and commands: `AGENTS.md`. Read all three first.
   - `public static func preview(_ url: URL, screens: [PixelSize]) throws -> CGImage` — page 0
     decoded to fit the screens, as the viewer does (`ImageDecoder.decode(url, fitting: screens)`).
 
-- [ ] **Step 1: Write the failing tests** in `QuickLookSupportTests`:
+- [x] **Step 1: Write the failing tests** in `QuickLookSupportTests`:
   - `contentTypesAreTheOwnFormats`: read `Resources/Info.plist` from the repo (`Fixtures.repo`), map each `UTImportedTypeDeclarations` entry's
     `public.filename-extension` values to its `UTTypeIdentifier`, add `xbm` → `public.xbitmap-image`.
     For every format in `OwnDecoders.builtIn` except `PDF` (SVG is the app's, registered at launch; `all` also holds formats other tests register), every extension maps
@@ -138,12 +138,12 @@ budgets and commands: `AGENTS.md`. Read all three first.
   - `corruptFileThrows`: the QOI's first 20 bytes saved as `cut.qoi` → `thumbnail` and `preview` throw.
   - `previewFitsTheScreen`: a 4000 × 3000 QOI with `screens: [PixelSize(width: 1000, height: 1000)]`
     → longest side ≤ 2000 (the viewer's at-most-2×-per-side rule), and ≥ 1000.
-- [ ] **Step 2: Run them to see them fail.** `swift test --filter QuickLookSupportTests` → fails to
+- [x] **Step 2: Run them to see them fail.** `swift test --filter QuickLookSupportTests` → fails to
   compile (`QuickLookSupport` not defined).
-- [ ] **Step 3: Implement** `QuickLookSupport` to the interfaces above in
+- [x] **Step 3: Implement** `QuickLookSupport` to the interfaces above in
   `Sources/FeatherviewCore/Imaging/QuickLookSupport.swift` (CoreGraphics, Foundation only).
-- [ ] **Step 4: Run the tests, then the full suite.** `swift test` → all pass.
-- [ ] **Step 5: Commit.** `feat: Quick Look types, thumbnail size and preview decode in the core`
+- [x] **Step 4: Run the tests, then the full suite.** `swift test` → all pass.
+- [x] **Step 5: Commit.** `feat: Quick Look types, thumbnail size and preview decode in the core`
 
 ---
 
@@ -197,23 +197,23 @@ Facts to pin:
   `<name>: no thumbnail (<type or error>)`; with `--out` it also writes `<name>.png`. Exit 1 if any
   file got no thumbnail. Add it to `usage`.
 
-- [ ] **Step 1: Write the failing test** `extensionPlistsListTheContentTypes` in
+- [x] **Step 1: Write the failing test** `extensionPlistsListTheContentTypes` in
   `QuickLookSupportTests`: for each of `Resources/QuickLook/Thumbnail-Info.plist` and
   `Resources/QuickLook/Preview-Info.plist` that exists on disk, its
   `NSExtension.NSExtensionAttributes.QLSupportedContentTypes` equals `QuickLookSupport.contentTypes`;
   at least one of them must exist.
-- [ ] **Step 2: Run it to see it fail.** `swift test --filter extensionPlistsListTheContentTypes` → fails (no plist).
-- [ ] **Step 3: Add** the target, `ThumbnailProvider`, the plist, the entitlements and the `bundle.sh`
+- [x] **Step 2: Run it to see it fail.** `swift test --filter extensionPlistsListTheContentTypes` → fails (no plist).
+- [x] **Step 3: Add** the target, `ThumbnailProvider`, the plist, the entitlements and the `bundle.sh`
   changes to the facts above.
-- [ ] **Step 4: Run the tests.** `swift test` → all pass.
-- [ ] **Step 5: Build and inspect the bundle.** `scripts/bundle.sh release`, then
+- [x] **Step 4: Run the tests.** `swift test` → all pass.
+- [x] **Step 5: Build and inspect the bundle.** `scripts/bundle.sh release`, then
   `codesign -dv --entitlements - build/Featherview.app/Contents/PlugIns/FeatherviewThumbnail.appex`
   shows `Identifier=net.mynetx.featherview.thumbnail` and the sandbox key;
   `codesign --verify --strict build/Featherview.app` passes;
   `plutil -extract CFBundleShortVersionString raw build/Featherview.app/Contents/PlugIns/FeatherviewThumbnail.appex/Contents/Info.plist`
   prints the app's version.
-- [ ] **Step 6: Add the bench `thumbnail` command** to the facts above.
-- [ ] **Step 7: Check it headless.** Copy the app to a scratch `~/Applications/Featherview Check.app`
+- [x] **Step 6: Add the bench `thumbnail` command** to the facts above.
+- [x] **Step 7: Check it headless.** Copy the app to a scratch `~/Applications/Featherview Check.app`
   (macOS found the spike's extension there, not in a temp folder), then
   `lsregister -f -R` it and `pluginkit -a` its appex
   (`/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister`);
@@ -224,11 +224,11 @@ Facts to pin:
   `thumbnail` lines; the QOI's PNG has alpha 0 in its transparent corner
   (`magick <png> -format "%[fx:p{0,0}.a]" info:` → `0`). Then remove the copy:
   `pluginkit -r`, `lsregister -u`, delete it, `qlmanage -r cache`.
-- [ ] **Step 8: AGENTS.md.** Layout block: `Sources/FeatherviewThumbnail/`, `Sources/FeatherviewPreview/`
+- [x] **Step 8: AGENTS.md.** Layout block: `Sources/FeatherviewThumbnail/`, `Sources/FeatherviewPreview/`
   (Finder thumbnail and Quick Look preview extensions, wrapped into `.appex` by `scripts/bundle.sh`)
   and `Resources/QuickLook/`. Commands: the bench `thumbnail` line, and that `pluginkit -m -v -p
   com.apple.quicklook.thumbnail` shows which copy of the app macOS uses.
-- [ ] **Step 9: Commit.** `feat: Finder thumbnails for the formats only Featherview reads`
+- [x] **Step 9: Commit.** `feat: Finder thumbnails for the formats only Featherview reads`
 
 ---
 
@@ -259,15 +259,15 @@ Facts to pin:
   attributes `QLIsDataBasedPreview` true, `QLSupportsSearchableItems` false,
   `QLSupportedContentTypes` = the eleven identifiers.
 
-- [ ] **Step 1: Run** `swift test --filter extensionPlistsListTheContentTypes` after adding only the
+- [x] **Step 1: Run** `swift test --filter extensionPlistsListTheContentTypes` after adding only the
   plist with a deliberately wrong list (drop `public.xbitmap-image`) → fails; restore the list → passes.
-- [ ] **Step 2: Add** the target, `PreviewProvider` and the `bundle.sh` call to the facts above.
-- [ ] **Step 3: Build and inspect.** `swift test` → all pass. `scripts/bundle.sh release`;
+- [x] **Step 2: Add** the target, `PreviewProvider` and the `bundle.sh` call to the facts above.
+- [x] **Step 3: Build and inspect.** `swift test` → all pass. `scripts/bundle.sh release`;
   `codesign -dv --entitlements - build/Featherview.app/Contents/PlugIns/FeatherviewPreview.appex`
   shows the identifier and the sandbox key; `codesign --verify --strict build/Featherview.app` passes.
   Registration check as in Task 2 Step 7: `pluginkit -m -v -i net.mynetx.featherview.preview` lists
   it (the preview itself needs the screen: Task 4).
-- [ ] **Step 4: Commit.** `feat: Quick Look previews for the formats only Featherview reads`
+- [x] **Step 4: Commit.** `feat: Quick Look previews for the formats only Featherview reads`
 
 ---
 
@@ -294,7 +294,9 @@ XCF, a two-page DCX, `BIG.QOI` in capitals, a truncated QOI, a 16 × 16 XBM.
 - [ ] **Budgets:** launch with a 12 MP JPEG after a real ⌘Q (6 runs, median of 2–6) is unchanged
   against the number in `AGENTS.md`; note the app bundle's size before and after (`du -sh`).
 - [ ] **A big file:** the largest sample XCF and PSP: thumbnail time from the bench `thumbnail`
-  command, and Finder stays responsive while it draws.
+  command, and Finder stays responsive while it draws. Watch the extension's memory too (Activity
+  Monitor, `FeatherviewThumbnail`) with a folder of several large PSP/XCF files: the own decoders
+  decode at full size before scaling, and Finder asks for several thumbnails at once.
 - [ ] **Docs:** README feature list (Finder thumbnails and Quick Look for the formats macOS can't
   read), `docs/roadmap.md` row 8 → `done`, tick this plan. Remove the `~/Applications` copy only if
   it wasn't there before. Commit `docs: milestone 8 done after manual QA`.
