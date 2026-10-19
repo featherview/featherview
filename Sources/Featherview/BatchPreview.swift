@@ -77,7 +77,6 @@ struct BatchPreview: View {
                 .padding(.top, 4)
             }
         }
-        .textSelection(.enabled)
     }
 }
 
