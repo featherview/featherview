@@ -522,24 +522,24 @@ the go (memory: screen bursts). Build: `scripts/bundle.sh debug`. Launch each la
 `open -n -a build/Featherview.app --args -AppleLanguages '(ar)'` (then `'(he)'`, `'(de)'`) on a
 folder of sample images (`run-featherview` skill), quitting with ⌘Q between runs.
 
-- [ ] **Arabic and Hebrew, viewer:** toolbar order mirrored, the next chevron points left; ← shows
+- [x] **Arabic and Hebrew, viewer:** toolbar order mirrored, the next chevron points left; ← shows
   the next image, → the previous, ⌥← next page in a PDF; zoomed in, → pans right and at the edge goes
   to the previous image; the image itself, rotate symbols and rotate direction are not mirrored
   (if `rotate.left`/`rotate.right` flip, pin those images `.leftToRight`); the info panel and status
   bar read right to left; the folder chooser enters with ← and goes up with →; the View/Image menu
   shows ← beside Next.
-- [ ] **Arabic and Hebrew, batch window:** columns, lists, progress bar and step list mirrored; the
+- [x] **Arabic and Hebrew, batch window:** columns, lists, progress bar and step list mirrored; the
   crop anchor grid and border sides not; a run's log lines and summary read correctly (file names
   left to right).
-- [ ] **Arabic and Hebrew, Preferences, About, Save As panel, F7/F8 panel, alerts:** mirrored, no
+- [x] **Arabic and Hebrew, Preferences, About, Save As panel, F7/F8 panel, alerts:** mirrored, no
   clipped text.
-- [ ] **German, long strings:** viewer toolbar labels (Customize Toolbar sheet too), menus, batch
+- [x] **German, long strings:** viewer toolbar labels (Customize Toolbar sheet too), menus, batch
   step names and settings rows, the Save As accessory, alerts: nothing clipped or overlapping.
   **Preferences:** all 6 toolbar tab labels fit without truncation. If any is truncated (in German,
   or seen in another language), or the panes now exceed 7, Preferences moves to a sidebar settings
   window: stop here, record it in `docs/roadmap.md` as a follow-up for the maintainer's session to
   decide and plan.
-- [ ] **Launch budget:** with `-AppleLanguages '(de)'`, cold launch with a 12 MP JPEG stays within
+- [x] **Launch budget:** with `-AppleLanguages '(de)'`, cold launch with a 12 MP JPEG stays within
   AGENTS.md's budget (log stream line, after a ⌘Q quit).
-- [ ] **Fix what this finds** (each fix its own commit, `fix:`), then set `docs/roadmap.md` row 6
+- [x] **Fix what this finds** (each fix its own commit, `fix:`), then set `docs/roadmap.md` row 6
   to `done` and commit `docs: milestone 6 done after manual QA`.

@@ -16,7 +16,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 3 | Formats and Save As | `docs/superpowers/plans/2026-10-16-milestone-3-formats-save-as.md` | done |
 | 4 | Batch complete | `docs/superpowers/plans/2026-10-17-milestone-4-batch-complete.md` | done |
 | 5 | WebP output | `docs/superpowers/plans/2026-10-16-milestone-5-webp.md` | done |
-| 6 | Languages | `docs/superpowers/plans/2026-10-18-milestone-6-languages.md` | planned |
+| 6 | Languages | `docs/superpowers/plans/2026-10-18-milestone-6-languages.md` | done |
 | 7 | App formats | `docs/superpowers/plans/2026-10-17-milestone-7-app-formats.md` | done |
 | 8 | Finder previews | to write after 3 and 7 | — |
 
