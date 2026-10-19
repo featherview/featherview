@@ -7,6 +7,17 @@ struct FeatherviewApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var batch = BatchModel()
 
+    init() {
+        // AppKit mirrors only for a right-to-left system language, not for one picked for this app alone.
+        if let language = Bundle.main.preferredLocalizations.first,
+           Locale.Language(identifier: language).characterDirection == .rightToLeft {
+            let defaults = UserDefaults.standard
+            let arguments = defaults.volatileDomain(forName: UserDefaults.argumentDomain)
+            defaults.setVolatileDomain(arguments.merging(["AppleTextDirection": true]) { given, _ in given },
+                                       forName: UserDefaults.argumentDomain)
+        }
+    }
+
     var body: some Scene {
         Window("Featherview", id: "viewer") {
             ViewerView(model: appDelegate.viewer)
