@@ -43,6 +43,7 @@ appex() {
   codesign --force --sign - --entitlements Resources/QuickLook/QuickLook.entitlements "$APP/Contents/PlugIns/$1.appex"
 }
 appex FeatherviewThumbnail Resources/QuickLook/Thumbnail-Info.plist
+appex FeatherviewPreview Resources/QuickLook/Preview-Info.plist
 # Ad-hoc signature: runs on this Mac. Public releases need a Developer ID signature + notarization.
 codesign --force --sign - "$APP"
 echo "$APP"

@@ -22,6 +22,9 @@ let package = Package(
         // Finder thumbnails. SwiftPM can't make app extensions: scripts/bundle.sh wraps this binary in an .appex.
         .executableTarget(name: "FeatherviewThumbnail", dependencies: ["FeatherviewCore"],
                           linkerSettings: [.unsafeFlags(["-Xlinker", "-e", "-Xlinker", "_NSExtensionMain"])]),
+        // Quick Look previews (Space); wrapped in an .appex by scripts/bundle.sh like the thumbnails.
+        .executableTarget(name: "FeatherviewPreview", dependencies: ["FeatherviewCore"],
+                          linkerSettings: [.unsafeFlags(["-Xlinker", "-e", "-Xlinker", "_NSExtensionMain"])]),
         .executableTarget(name: "FeatherviewBench", dependencies: ["FeatherviewCore"]),
         .executableTarget(name: "FeatherviewDMG", dependencies: ["FeatherviewCore"]),
         .testTarget(name: "FeatherviewCoreTests", dependencies: ["FeatherviewCore"]),
