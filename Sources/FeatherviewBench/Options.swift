@@ -8,6 +8,7 @@ let knownOptions: [String: Set<String>] = [
     "corpus": [],
     "decode": ["--raw", "--screen", "--runs", "--json", "--baseline"],
     "browse": ["--screen", "--interval-ms"],
+    "thumbnail": ["--out"],
 ]
 
 /// `--name value` pairs, each name's values in order.

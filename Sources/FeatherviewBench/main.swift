@@ -10,6 +10,7 @@ let usage = """
       swift run -c release featherview-bench decode <dir> [--raw <dir>] [--screen WxH ...] [--runs 10]
                                                     [--json out.json] [--baseline in.json]
       swift run -c release featherview-bench browse <dir>/browse [--interval-ms 300] [--screen WxH]
+      swift run -c release featherview-bench thumbnail <file or dir> [--out <dir>]
 
     corpus  writes generated test images into <dir> (never commit them).
     decode  times the viewer's fit decode per file and screen, plus one full-size decode per file,
@@ -18,6 +19,10 @@ let usage = """
             before (the bench never does). --baseline exits 1 if a median is > 10 % slower or a row is gone.
     browse  steps through the folder like a held arrow key: one step every --interval-ms, whether
             or not the last one finished, through an 8-image cache with 2 neighbours prefetched each way.
+    thumbnail  asks Finder's thumbnail service (256 × 256 points at 2×) for each file, as Finder does, and
+            exits 1 if one gets no thumbnail; --out also writes them as PNG. It checks the installed app's
+            extension: macOS uses the copy registered with the highest version
+            (`pluginkit -m -v -p com.apple.quicklook.thumbnail`).
     Screens are in pixels; default 3024x1964 3456x2234 5120x2880 (decode), 3024x1964 (browse).
     """
 
@@ -246,5 +251,6 @@ case "corpus":
     }
 case "decode": runDecode()
 case "browse": await runBrowse()
+case "thumbnail": await runThumbnail(folder, out: option("--out").map { URL(fileURLWithPath: $0) })
 default: fail("Unknown mode \(mode).")
 }

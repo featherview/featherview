@@ -60,6 +60,8 @@ scripts/strings.sh               # after changing UI text: extract strings into 
 open build/Featherview.app
 open -a build/Featherview.app ~/Pictures/some.jpg   # open a file with it
 swift run -c release featherview-bench corpus /tmp/fv   # generated test images, then: decode /tmp/fv, browse /tmp/fv/browse
+swift run -c release featherview-bench thumbnail <dir>   # Finder's thumbnails through the installed app's extension
+pluginkit -m -v -p com.apple.quicklook.thumbnail         # which copy of the app macOS takes them from
 ```
 
 ## Layout
@@ -73,6 +75,9 @@ Sources/FeatherviewCore/   pure logic, no SwiftUI/AppKit — everything here is 
   App/                     settings, appearance, About, default viewer, disk image art
 Sources/Featherview/       the app: views, menus, keyboard, windows (thin, manually tested)
   Viewer/ Batch/ Windows/ Design/
+Sources/FeatherviewThumbnail/, Sources/FeatherviewPreview/
+                           Finder thumbnail and Quick Look preview extensions (scripts/bundle.sh
+                           wraps each into an .appex; Info.plists and entitlements in Resources/QuickLook/)
 Sources/FeatherviewBench/  featherview-bench (timings without a window); FeatherviewDMG: disk image art
 Tests/FeatherviewCoreTests/ Swift Testing suites, same folders as FeatherviewCore; Fixtures.swift
                            generates test images

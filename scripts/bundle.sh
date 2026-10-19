@@ -29,6 +29,20 @@ cp Resources/Acknowledgements.txt "$APP/Contents/Resources/Acknowledgements.txt"
 xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory "$APP/Contents/Resources" \
   --serialization-format binary
 mkdir -p "$APP/Contents/Resources/en.lproj"
+# Quick Look extensions (Finder thumbnails and previews): each SwiftPM binary wrapped in an .appex
+# with the app's version, sandboxed (Quick Look requires it), signed before the app.
+appex() {
+  swift build -c "$CONFIG" --product "$1" $LINK
+  dir="$APP/Contents/PlugIns/$1.appex/Contents"
+  mkdir -p "$dir/MacOS"
+  cp "$(swift build -c "$CONFIG" --show-bin-path $LINK)/$1" "$dir/MacOS/$1"
+  cp "$2" "$dir/Info.plist"
+  for key in CFBundleShortVersionString CFBundleVersion; do
+    plutil -replace "$key" -string "$(plutil -extract "$key" raw Resources/Info.plist)" "$dir/Info.plist"
+  done
+  codesign --force --sign - --entitlements Resources/QuickLook/QuickLook.entitlements "$APP/Contents/PlugIns/$1.appex"
+}
+appex FeatherviewThumbnail Resources/QuickLook/Thumbnail-Info.plist
 # Ad-hoc signature: runs on this Mac. Public releases need a Developer ID signature + notarization.
 codesign --force --sign - "$APP"
 echo "$APP"
