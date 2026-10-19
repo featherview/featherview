@@ -161,4 +161,6 @@ measured again at its end (after a real ⌘Q) and that number becomes the budget
 
 ## v2 (not in v1)
 
-JPEG XL writing (libjxl), thumbnail browser, anything in "Out of scope for v1" in `AGENTS.md`.
+JPEG XL writing (libjxl), thumbnail browser, a document icon for the formats only Featherview reads
+(drawn from the feather mark, shown in Finder where Featherview is the default app and no thumbnail
+is available), anything in "Out of scope for v1" in `AGENTS.md`.
