@@ -16,24 +16,26 @@ struct BatchPreview: View {
         let namesKey = BatchPreviewModel.NamesKey(settings: model.settings, inputs: items)
         VStack(alignment: .leading, spacing: 6) {
             // Captions on one shared top line, each column's content under its caption.
-            Grid(alignment: .topLeading, horizontalSpacing: 16, verticalSpacing: 6) {
-                GridRow {
-                    caption(preview.error == nil ? preview.originalSize.map { Text("Original \(Int($0.width)) × \(Int($0.height))") } : nil)
-                    caption(preview.error == nil ? preview.outputSize.map { Text("Output \(Int($0.width)) × \(Int($0.height))") } : nil)
-                    caption(nil)
-                }
-                GridRow {
-                    if let error = preview.error {
-                        // Nothing to compare: the reason takes both pictures' place.
-                        Text(error)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .gridCellColumns(2)
-                    } else {
-                        picture(preview.original)
-                        picture(preview.output)
+            if !items.isEmpty {
+                Grid(alignment: .topLeading, horizontalSpacing: 16, verticalSpacing: 6) {
+                    GridRow {
+                        caption(preview.error == nil ? preview.originalSize.map { Text("Original \(Int($0.width)) × \(Int($0.height))") } : nil)
+                        caption(preview.error == nil ? preview.outputSize.map { Text("Output \(Int($0.width)) × \(Int($0.height))") } : nil)
+                        caption(nil)
                     }
-                    namesList
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    GridRow {
+                        if let error = preview.error {
+                            // Nothing to compare: the reason takes both pictures' place.
+                            Text(error)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .gridCellColumns(2)
+                        } else {
+                            picture(preview.original)
+                            picture(preview.output)
+                        }
+                        namesList
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    }
                 }
             }
             if let applied = BatchCard.appliedLine(model.settings) {
@@ -44,6 +46,7 @@ struct BatchPreview: View {
             }
         }
         .font(.caption)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .onChange(of: imageKey, initial: true) { preview.updateImage(imageKey) }
         .onChange(of: namesKey, initial: true) { preview.updateNames(namesKey) }

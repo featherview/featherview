@@ -30,8 +30,11 @@ struct BatchView: View {
                         .frame(minHeight: 0, maxHeight: .infinity)
                         .layoutPriority(-1)
                     Divider()
+                    // No images, nothing to compare: only the applied line, so the cards get the room.
+                    let empty = model.inputs.items.isEmpty
                     BatchPreview(model: model)
-                        .frame(minHeight: Theme.batchPreviewMinHeight, maxHeight: Theme.batchPreviewHeight)
+                        .frame(minHeight: empty ? nil : Theme.batchPreviewMinHeight,
+                               maxHeight: empty ? nil : Theme.batchPreviewHeight)
                 }
                 Divider()
                 bottomBar
