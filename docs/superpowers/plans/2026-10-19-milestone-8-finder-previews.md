@@ -279,8 +279,11 @@ open a scratch folder of samples: one file of each of the eleven types (generate
 encoders or taken from `research/appformats/` and the earlier real-world samples), a transparent
 XCF, a two-page DCX, `BIG.QOI` in capitals, a truncated QOI, a 16 × 16 XBM.
 
-- [ ] **Finder:** icon view shows a thumbnail for every type, transparency kept, the small XBM small,
+- [x] **Finder:** icon view shows a thumbnail for every type, transparency kept, the small XBM small,
   the truncated file with a generic icon; Column view's preview column too.
+  Checked on `main` (3689ff3) with 25 samples, the 11 formats added after M8 included: every file
+  has a thumbnail, the truncated QOI a generic icon. Finder draws the 32-pixel thumbnail of the
+  16 × 16 XBM enlarged in a white frame at icon size 128; the extension never enlarges.
 - [ ] **Quick Look:** Space on each shows the image sharp on a Retina screen (if it's soft or a quarter
   of the window, fix the context-size arithmetic in `PreviewProvider`); the DCX shows page 1; the
   truncated file shows Quick Look's generic view; arrow keys move between files in the panel.
