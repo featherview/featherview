@@ -30,7 +30,7 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
   even if hidden or of an unknown extension; symlinked folders are followed; folders and broken
   links with image names are skipped.
 - Supported formats: everything ImageIO decodes on the user's Mac (JPEG, PNG, HEIC, WebP,
-  TIFF, GIF first frame, BMP, camera RAW, …), plus PDF (see "Formats").
+  TIFF, GIF (animated), BMP, camera RAW, …), plus PDF (see "Formats").
 - Window title: `filename — 3 / 120`; for a multi-page file `filename — page 2 / 3 — 3 / 120`.
   A multi-page file always opens on page 1.
 - The whole app is light or dark: Appearance in Preferences is System (the default), Light or Dark.
@@ -378,7 +378,7 @@ Format support is a headline feature. The lists are built at runtime from what m
 the About window.
 
 - Read: everything ImageIO decodes, including JPEG, PNG, HEIC/HEIF, AVIF, JPEG XL, WebP, TIFF,
-  GIF (first frame), BMP, ICO, ICNS, JPEG 2000, PSD, TGA, OpenEXR, Radiance HDR, SGI, PBM, DDS,
+  GIF, BMP, ICO, ICNS, JPEG 2000, PSD, TGA, OpenEXR, Radiance HDR, SGI, PBM, DDS,
   DNG and camera RAW from all major makers.
 - PDF (milestone 3, like the reference viewer): a PDF is browsed like a
   multi-page image. Core Graphics renders each page on white at 144 dpi (an A4 page is
@@ -390,8 +390,8 @@ the About window.
     without a MacBinary header), farbfeld, X Window Dump (version 7, Z pixmaps), FITS and Windows
     animated cursors (ANI). FITS shows the first image in the file (its first plane, or three planes
     as RGB); 8-bit data as stored, everything else stretched linearly between the 0.25th and 99.75th
-    percentile; the first row is the bottom one; tile-compressed FITS can't be opened. ANI shows the
-    first frame of its sequence at the frame's largest size. PAM goes through ImageIO, which reads it
+    percentile; the first row is the bottom one; tile-compressed FITS can't be opened. ANI shows its
+    frames at their largest size and plays like any animation ("Animation"). PAM goes through ImageIO, which reads it
     with the rest of the Netpbm family (PFM too).
   - Layered app formats, shown flattened (own milestone after 3): PSB (its stored composite
     image), XCF (GIMP), PDN (Paint.NET), PSP (Paint Shop Pro). Where the file stores a composite
@@ -445,6 +445,13 @@ sequences are not offered for writing; any other type a newer macOS adds appears
 
 Orientation is always applied to the pixels and the tag reset to 1 (not an option). Options are
 remembered per format and can be saved as named profiles.
+
+### Animation (milestone 9)
+
+Animated GIF, PNG (APNG), WebP and HEIC sequences, and Windows animated cursors (ANI), play in the
+viewer in a loop, with the delays the file gives. The first frame shows as fast as a still image;
+the rest follow. Converting (batch, Save As, copy) uses the first frame. Details (pause, stepping
+frames, frame count in the status bar) are decided in the milestone's plan.
 
 ## Not in v1
 

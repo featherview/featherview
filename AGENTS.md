@@ -136,4 +136,4 @@ restored, which hides ~140 ms that every user who quit normally pays.
 ## Out of scope for v1
 
 Plugins, interactive painting/editing (batch operations are in, see spec), scanning, OCR, printing, slideshows with effects,
-animated GIF playback (first frame only), lossless JPEG crop, video, Windows/Linux, auto-update.
+lossless JPEG crop, video, Windows/Linux, auto-update.

@@ -19,6 +19,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 6 | Languages | `docs/superpowers/plans/2026-10-18-milestone-6-languages.md` | done |
 | 7 | App formats | `docs/superpowers/plans/2026-10-17-milestone-7-app-formats.md` | done |
 | 8 | Finder previews | `docs/superpowers/plans/2026-10-19-milestone-8-finder-previews.md` | planned |
+| 9 | Animation | not written yet | planned |
 
 ## 1. Core viewer and batch
 
@@ -158,6 +159,14 @@ in About, the empty-window hint and the disk image), instant browsing with short
 a designed disk image with translated first-open help. Also: asking once to open images instead of Preview (spec "Default viewer"). Minimum macOS stays 14; glass on macOS 26 and
 later, the normal material before. Plan: `docs/superpowers/plans/2026-10-18-own-look.md`. Launch is
 measured again at its end (after a real ⌘Q) and that number becomes the budget in `AGENTS.md`.
+
+## 9. Animation
+
+Spec: "Animation". Animated GIF, PNG (APNG), WebP and HEIC sequences play in the viewer through
+ImageIO's frames and delays; Windows animated cursors (ANI) play from their own frame order and
+rates. Batch and Save As keep writing the first frame. Memory stays bounded (frames decoded at fit
+size, a window of frames instead of all of them for long animations) and browsing budgets hold:
+the first frame shows as fast as a still image.
 
 ## v2 (not in v1)
 
