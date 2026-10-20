@@ -184,7 +184,7 @@ Done summary text (one string, plural-aware through the catalog): "\(converted) 
 converted in \(duration). \(bytesIn) in, \(bytesOut) out. Saved to \(folder)." — duration and sizes
 through `Duration`/`ByteCountFormatStyle`; folder "next to the originals" when empty.
 
-- [ ] **Step 1: Write the failing tests:** `coreCardsAlwaysAdded`; `extrasFollowTheirSwitch`
+- [x] **Step 1: Write the failing tests:** `coreCardsAlwaysAdded`; `extrasFollowTheirSwitch`
   (`setAdded(true)` on `.orientation` sets `orientation.isOn`); `formatSummaryJPEGQuality`;
   `keepFormatSummarySaysCopied` / `…SaysSavedAgain`; `sizeSummaryOffIsOriginal`;
   `nameSummaryNextToOriginals`; `appliedLineInProcessingOrder` (crop + resize + watermark on →
@@ -193,11 +193,11 @@ through `Duration`/`ByteCountFormatStyle`; folder "next to the originals" when e
   `failuresByName`; `newBatchKeepsFailedAndUnstarted` (`keep` with the failed and not-started URLs).
   Run tests with `-AppleLanguages` unset; compare numbers, not whole English sentences, where the
   wording is the builder's.
-- [ ] **Step 2: Run to see them fail.** `swift test --filter "BatchStepsTests|BatchReportTests|BatchInputListTests"`
-- [ ] **Step 3: Implement**, then make the app compile against `BatchCard` (views still the old ones,
+- [x] **Step 2: Run to see them fail.** `swift test --filter "BatchStepsTests|BatchReportTests|BatchInputListTests"`
+- [x] **Step 3: Implement**, then make the app compile against `BatchCard` (views still the old ones,
   mapping `BatchStep` uses to `BatchCard`; `.rename` and `.safety` fold into `.name`).
-- [ ] **Step 4:** `swift test` → all pass.
-- [ ] **Step 5: Commit** `feat: batch cards, word summaries, the applied-order line and the run report in the core`
+- [x] **Step 4:** `swift test` → all pass.
+- [x] **Step 5: Commit** `feat: batch cards, word summaries, the applied-order line and the run report in the core`
 
 ---
 
