@@ -63,32 +63,26 @@ reused inside the cards.
 
 ---
 
-### Task 1: The 10,000-image stall (main session, screen)
+### Task 1: The 10,000-image stall (main session, screen) — measured, fix moved to Task 4
 
-**Files:** whatever the measurement points at; most likely `Sources/Featherview/Batch/BatchImagesColumn.swift`,
-`Sources/Featherview/Batch/BatchView.swift`, `Sources/Featherview/Batch/BatchModel.swift`.
+Measured on the current window (release build, 10,000 JPEGs via "Use Viewer's Folder", 20 step
+clicks timed from a `CGEvent` click until an Accessibility query answers; harness in the gitignored
+`research/batch-timing/`, build and run with its `run.sh`):
 
-Facts: with 10,000 images in the list, clicking a step stalled the app for seconds; a `sample`
-showed the main thread in `NSView` layout and Core Animation commit while rows loaded thumbnails
-(`BatchImageRow.load()`, `BatchImagesColumn.swift:191`). System Events' `click at` blocks until its
-own 60 s timeout and can't time it.
+- The stall of several seconds came from the accessibility client, not from the window: every AX
+  call that walks the image list (System Events' `click at`, or a harness listing all rows) makes
+  the table build a row view for each of the 10,000 rows. A harness must never enumerate that list.
+- Clicking a step: median 7–10 ms, ~90 ms when the settings view changes, the same with an
+  empty list, so not caused by the image count.
+- Right after adding 10,000 images: one hitch of ~750 ms. Cause: the images `List` in the
+  sidebar style is a source list; each row insert makes `NSOutlineView` check for flat indentation
+  (`_shouldHaveFlatIndentation`), which loads every item. With `.listStyle(.plain)` (or `.inset`)
+  the hitch is gone (p95 95–104 ms over 3 runs).
+- At 960 pt wide with Canvas open, the window's content is wider than the window (the note
+  next to "Bottom" pushes it out on both sides); Format and Folder fits.
 
-- [ ] **Step 1: Timing harness** (scratchpad, not committed): post the click with `CGEvent`
-  (`.leftMouseDown`/`.leftMouseUp` at a point, `.cghidEventTap`), then poll an Accessibility query
-  with a 0.5 s Apple event timeout every 20 ms until it answers; print the time from click to
-  answer. Use the 10,000-file folder from `swift run -c release featherview-bench corpus` (or any
-  10,000 copies of one JPEG) and "Use Viewer's Folder".
-- [ ] **Step 2: Measure** a release build: click 4 different steps, 5 rounds; record each time.
-- [ ] **Step 3: Profile** one click with Instruments (Time Profiler + SwiftUI) or `sample`; name the
-  cause in the commit body (expected: the step change invalidates the whole window body, so the
-  10,000-row `List` re-diffs its `ForEach` and relays out).
-- [ ] **Step 4: Fix the cause** (expected shape: the images column observes only the inputs,
-  selection and row states, not `model.step` or `model.settings`; rows load thumbnails lazily
-  without invalidating the list). Keep `ForEach(model.inputs.items, id: \.self)` identity.
-- [ ] **Step 5: Measure again:** every click answers within 100 ms (p95 over the 20 clicks).
-  `swift test` passes.
-- [ ] **Step 6: Commit** `fix: batch window with 10,000 images answers at once when a step is picked`
-  with the before/after numbers in the body.
+- [x] **Steps 1–3:** harness, measurement, profile (above).
+- [x] **Steps 4–6:** fix and re-measure go into Tasks 4 and 6, which rebuild these views.
 
 ---
 
@@ -235,6 +229,10 @@ Layout (design "Layout" and "Cards"; values from `Theme`, add tokens there if mi
 - Preview under the scroll view: min height 160 pt, the `appliedLine` under the pictures.
 - Bottom bar: Presets ▾ leading; "Convert \(count) Images" trailing (`.keyboardShortcut(.return, modifiers: .command)`, disabled unless `canStart`).
 - ⌘2, ⌘3, ⌘4 set `openCard` to format, size, name (hidden buttons, as the window does for other keys).
+- The images `List` gets `.listStyle(.plain)` (Task 1: the sidebar style's flat-indentation check
+  walks all rows on every insert, ~750 ms with 10,000 images), with a comment saying why.
+- No card body may be wider than its column at the 960 pt minimum: long notes (Canvas "Negative
+  values cut into the image") wrap under the field instead of beside it.
 
 - [ ] **Step 1: Build** the views to this list; remove the steps column.
 - [ ] **Step 2:** `swift build` clean (no new warnings); `swift test` passes.
@@ -284,7 +282,9 @@ Layout (design "Layout" and "Cards"; values from `Theme`, add tokens there if mi
   open the preview keeps ≥ 160 pt; Change format off + nothing on → "copied unchanged" and the files
   are byte-identical; Change format off + Size → "saved again"; a run: progress, written images
   updating, rows ticking; done: summary sentence, failures by name, New Batch keeps the failed;
-  an old preset (saved before this change) loads and produces the same names; 10,000 images: opening
-  cards and adding a step answer within 100 ms (Task 1's harness).
+  an old preset (saved before this change) loads and produces the same names; every card open at
+  960 pt keeps the window's content inside the window; 10,000 images: adding them, opening cards
+  and adding a step answer within 100 ms p95 (Task 1's harness in `research/batch-timing/`, pointed
+  at card headers instead of step rows).
 - [ ] **Step 4:** Fix what this finds (each fix its own commit); tick the plan; commit
   `docs: batch window redesign done after manual QA`.
