@@ -191,31 +191,52 @@ dark tile) carries the identity.
 
 ### Window
 
-One window in three columns, with the mode (Convert / Rename / Convert and rename), the preset
-menu and Start in its toolbar:
+Two columns and a bottom bar, titled "Batch Convert":
 
-- Images: the input list with a small thumbnail, name, pixel size, file size and page count per
-  file; files and folders can be dropped on it; add (menu: Add Files…, Add Folder…, Use
-  Viewer's Folder), remove, Sort and a menu with Move up/down, Save List… and Load List….
-- Steps: Format and folder, Rename, then each operation in the order below, then Safety and
-  dates. Each step shows whether it is on and a short summary (e.g. "HEIC", "2048"); a mode
-  that doesn't use a step dims it.
-- The selected step's settings, with an on/off switch for operations. Below them a live preview
-  of the selected input with all operations applied (small, rendered off the main thread, never
-  blocking typing) and the first output names, updated as settings change.
-- While running, the settings columns give way to progress (n of N, time left), the log, Pause,
-  Stop and Copy Log; each input row shows its state (waiting, working, done with its output name,
-  failed). When the run ends, the settings come back unchanged.
-- Look: the same grouped-card form as Preferences for each step's settings (labels leading,
-  controls trailing); a tinted selection in the images list; the toolbar's controls as capsules
-  (glass on macOS 26 and later).
+- Images (leading, step 1): the input list with a small thumbnail, name, pixel size, file size
+  and page count per file; files and folders can be dropped on it; add (menu: Add Files…, Add
+  Folder…, Add Folder with Subfolders…, Use Viewer's Folder), remove, Sort and a menu with Move
+  up/down, Save List… and Load List…. When empty it shows one prominent **Choose Folder…** button,
+  with Add Files… and "or drop images here" beneath it.
+- Settings (trailing) as numbered cards that are always there: **2 Format**, **3 Size**,
+  **4 Name**. Below them **Add Step**, a menu of the eight extra steps (Crop, Rotate & Flip,
+  Colour, Filters, Canvas, Border, Text, Watermark; steps already added are disabled in it).
+  Picking one adds its card below the core cards, in the menu's order, opened; its ✕ removes it
+  and turns the step off. An added step is on.
+- One card is open at a time; opening one folds the others. A folded card is one line: its name
+  and a summary in words ("JPEG · 85", "Longest side 2048", "trip-{n:3} · Out", "Brightness
+  +10"). ⌘2, ⌘3 and ⌘4 open Format, Size and Name. Cards use the same grouped form as
+  Preferences (labels leading, controls trailing).
+- Under the cards a live preview of the selected input (original and output side by side with
+  their pixel sizes, small, rendered off the main thread, never blocking typing), the first
+  output names, and one line naming the steps that are on in their processing order ("Applied:
+  crop → size → watermark"). The preview keeps at least 160 pt; the cards scroll instead.
+- Bottom bar: Presets at the leading edge; **Convert N Images** (⌘↩) at the trailing edge.
+- Running: the cards give way to one line with every card's summary, "n of N", a progress bar,
+  the time left, and the image just written (name, pixel size, file size). Each input row shows
+  its state (waiting, working, done with its output name, failed). Pause/Resume and Stop replace
+  the main button.
+- Done: one sentence ("47 of 48 images converted in 1 minute, 12 seconds. 210 MB in, 96 MB out.
+  Saved to ~/Desktop/Out."), then every failed file with its reason, Show in Finder and Copy
+  Log. The main button becomes **New Batch** (⌘↩): it removes the converted images from the list,
+  keeps the failed and unstarted ones, keeps all settings and returns to setup. Adding images or
+  changing a setting also returns to setup.
 
-### Mode and inputs
+### Format, size and inputs
 
-- Mode: Convert, Rename (copies with new names, no re-encode), or Convert and rename.
-- Inputs: "Add Files…" (multi-select), "Use Viewer's Folder", "Add Folder…" with an optional
-  "Include subfolders", Remove, Clear, Sort (by name, Finder order), Move up/down, and
-  "Save List…"/"Load List…" (plain text, one path per line). Hidden and non-image files are
+- Format card: **Change format** (default on) shows the output format and its Options… button.
+  Off: each file keeps its own format. Then a file whose pixels don't change (Change size off, no
+  step added) is copied byte for byte under its new name; a file whose pixels change is saved
+  again in its own format with that format's remembered options. A file whose own format can't
+  be written (camera RAW, DCX, read-only formats such as XCF or PSP) fails with "Can't save
+  IMG_0412.CR3 in its own format"; there is no fallback format.
+- Size card: **Change size** (default off) shows the resize settings below.
+- Presets and the remembered settings saved before these cards existed load as the same batch:
+  the old Convert mode as Change format on with the pattern `{name}`; Rename as Change format off
+  with no step on; Convert and rename as Change format on with its pattern.
+- Inputs: "Add Files…" (multi-select), "Use Viewer's Folder", "Add Folder…", "Add Folder with
+  Subfolders…" (also the empty list's "Choose Folder…"), Remove, Clear, Sort (by name, Finder order), Move up/down,
+  and "Save List…"/"Load List…" (plain text, one path per line). Hidden and non-image files are
   skipped when adding folders.
 - Order (like the reference viewer): each add appends to the end of the list,
   the added files in Finder order; earlier entries keep their place. Output numbers follow the
@@ -230,9 +251,10 @@ menu and Start in its toolbar:
 - Multi-page input (TIFF, PDF, DCX): TIFF with "keep all pages" and PDF output get every page;
   any other format gets the first page, and the log line says so ("page 1 of 297"), so no page
   is dropped silently. No file per page.
-- Output folder chosen by the user (may be the input folder). `{folder}` in the output path
-  stands for the input file's folder name.
-- Rename pattern: `{name}` original name, `{n}` counter, `{n:3}` zero-padded counter, `{date}`
+- Name card: the rename pattern, then "Save to": **Next to the originals** (empty, the default)
+  or a chosen folder. `{folder}` in the output path stands for the input file's folder name.
+  The safety and date options below sit in the same card.
+- Rename pattern (always applied; `{name}` by default): `{name}` original name, `{n}` counter, `{n:3}` zero-padded counter, `{date}`
   date taken (YYYY-MM-DD, file date if missing). `/` and `:` become `-`. Empty pattern keeps the
   original name. The counter starts at 1 and advances only for files that succeed.
 - The window shows the first output names live, without writing anything (the reference
@@ -278,9 +300,9 @@ Settings can be saved as named presets and loaded later.
 
 ### Running
 
-- Runs in parallel on all cores but one. The window shows progress and a log: one line per file
-  (output name or error), then "N converted, M failed". Stop (finishes files in flight, starts no
-  more), Pause/Resume, and "Copy Log".
+- Runs in parallel on all cores but one. The window shows progress (see "Window"); the log has
+  one line per file (output name or error) and is copied with "Copy Log". Stop (finishes files in
+  flight, starts no more) and Pause/Resume.
 - A failing file never stops the batch and never leaves a partial output file.
 
 ## Preferences (⌘,)

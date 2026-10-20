@@ -272,7 +272,7 @@ Layout (design "Layout" and "Cards"; values from `Theme`, add tokens there if mi
 - [ ] **Step 1:** `scripts/strings.sh`; translate every new key into the 29 other languages with the
   rules in `docs/superpowers/plans/2026-10-18-milestone-6-languages.md` ("Translation tasks (5–10):
   the shared steps"); `swift test` (the catalog test needs all 30) passes.
-- [ ] **Step 2:** Rewrite `docs/spec.md` "Batch window › Window" and "Mode and inputs" to the design
+- [x] **Step 2:** Rewrite `docs/spec.md` "Batch window › Window" and "Mode and inputs" to the design
   (no mode; Change format / Change size; Next to the originals; keep-format failures; cards; running;
   done; New Batch).
 - [ ] **Step 3 (screen, after the maintainer's go):** release build, window at 960 × 600 and at its
