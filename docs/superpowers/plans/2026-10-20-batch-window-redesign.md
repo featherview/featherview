@@ -261,9 +261,9 @@ Layout (design "Layout" and "Cards"; values from `Theme`, add tokens there if mi
   (`inputs.keep(...)`), clears results, back to setup with all settings. Adding images or changing a
   setting after a run also returns to setup (today's `clearFinished`).
 
-- [ ] **Step 1: Build** it; remove `BatchSummaryBar`.
-- [ ] **Step 2:** `swift test` passes; `swift build` clean.
-- [ ] **Step 3: Commit** `feat: batch run shows each written image and ends with a summary and New Batch`
+- [x] **Step 1: Build** it; remove `BatchSummaryBar`.
+- [x] **Step 2:** `swift test` passes; `swift build` clean.
+- [x] **Step 3: Commit** `feat: batch run shows each written image and ends with a summary and New Batch`
 
 ---
 
