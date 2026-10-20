@@ -109,11 +109,32 @@
 				<string>net.mynetx.featherview.pdn</string>
 				<string>net.mynetx.featherview.psp</string>
 				<string>net.mynetx.featherview.photo-cd</string>
+				<string>net.mynetx.featherview.jpeg-xr</string>
 			</array>
 		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.jpeg-xr</string>
+			<key>UTTypeDescription</key>
+			<string>JPEG XR image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>jxr</string>
+					<string>wdp</string>
+					<string>hdp</string>
+				</array>
+			</dict>
+		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
 			<string>net.mynetx.featherview.photo-cd</string>

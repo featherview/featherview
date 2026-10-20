@@ -6,8 +6,8 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
 - Opens everything macOS can read (JPEG, PNG, HEIC, AVIF, JPEG XL, WebP, TIFF, GIF, BMP, PSD,
   JPEG 2000, TGA, OpenEXR, DNG and camera RAW), upright and colour-managed
 - Shows SVG, and PDF pages like a multi-page image
-- Also reads formats macOS can't: QOI, PCX/DCX, XBM, XPM, WBMP, Sun Raster, IFF/LBM (including HAM)
-  and Kodak Photo CD (at 768 × 512)
+- Also reads formats macOS can't: QOI, PCX/DCX, XBM, XPM, WBMP, Sun Raster, IFF/LBM (including HAM),
+  Kodak Photo CD (at 768 × 512) and JPEG XR (HD Photo)
 - Shows layered files from image editors flattened: Photoshop PSB, GIMP XCF, Paint.NET PDN and
   PaintShop Pro PSP. Blend modes other than normal are drawn as normal; PSB files without a stored
   composite, multichannel PSB and GIMP layer effects aren't shown; `.xcf.gz` isn't read
@@ -27,6 +27,9 @@ Status: early development. Requires macOS 14 or later.
 
 - [libwebp](https://chromium.googlesource.com/webm/libwebp) 1.6.0 (BSD-3-Clause), for writing WebP,
   built from source through [libwebp-Xcode](https://github.com/SDWebImage/libwebp-Xcode).
+- [jxrlib](https://github.com/4creators/jxrlib) (BSD-2-Clause, Microsoft), for reading JPEG XR,
+  vendored in `Sources/CJPEGXR` from [Tom94/jxrlib](https://github.com/Tom94/jxrlib) (Debian's
+  patches applied) and built from source by SwiftPM.
 
 ## Install
 

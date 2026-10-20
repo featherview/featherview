@@ -336,7 +336,7 @@ window, nothing to configure.
 - Links: website, source code on GitHub, report a problem (GitHub issue), all opening the browser.
 - "Supported formats": two lists, read and write, built at runtime from ImageIO plus our own
   encoders (see "Formats"), with the macOS version they come from.
-- "MIT License" and "Acknowledgements": the licence text of every bundled library (libwebp), each
+- "MIT License" and "Acknowledgements": the licence text of every bundled library (libwebp, jxrlib), each
   in a scrollable sheet. Copyright line.
 - Clicking the version shows a small "Copy" bubble (as a value in iOS settings does); it copies
   version, macOS version and Mac model as text, for bug reports.
@@ -389,6 +389,10 @@ the About window.
     XPM, WBMP, Sun Raster (RAS), IFF/LBM (ILBM, incl. HAM and EHB), Kodak Photo CD (PCD: the
     768 × 512 Base image, turned upright, PhotoYCC converted with reference white at 255; the
     larger 4Base and 16Base images are a known limit).
+  - JPEG XR (.jxr, also HD Photo .wdp/.hdp) through jxrlib (BSD-2-Clause, built from source, per
+    `AGENTS.md`). Every pixel format is brought to 8-bit sRGB: HDR and wide-gamut files are clipped,
+    an embedded colour profile is ignored, premultiplied alpha (Office's HD Photo files) is undone.
+    Known limits: CMYK with alpha and n-channel files can't be opened; only the first frame shows.
   - Layered app formats, shown flattened (own milestone after 3): PSB (its stored composite
     image), XCF (GIMP), PDN (Paint.NET), PSP (Paint Shop Pro). Where the file stores a composite
     or thumbnail at full size it is used; otherwise visible layers are composited with normal

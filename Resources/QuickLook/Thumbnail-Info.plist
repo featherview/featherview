@@ -36,6 +36,7 @@
 				<string>net.mynetx.featherview.psp</string>
 				<string>net.mynetx.featherview.pdn</string>
 				<string>net.mynetx.featherview.photo-cd</string>
+				<string>net.mynetx.featherview.jpeg-xr</string>
 			</array>
 			<key>QLThumbnailMinimumDimension</key>
 			<integer>0</integer>
