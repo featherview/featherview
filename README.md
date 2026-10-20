@@ -7,8 +7,8 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
   JPEG 2000, TGA, OpenEXR, DNG and camera RAW), upright and colour-managed
 - Shows SVG, and PDF pages like a multi-page image
 - Also reads formats macOS can't: QOI, PCX/DCX, XBM, XPM, WBMP, Sun Raster and IFF/LBM (including HAM)
-- Shows layered files from image editors flattened: Photoshop PSB, GIMP XCF, Paint.NET PDN and
-  PaintShop Pro PSP. Blend modes other than normal are drawn as normal; PSB files without a stored
+- Shows layered files from image editors flattened: Photoshop PSB, GIMP XCF, Paint.NET PDN,
+  PaintShop Pro PSP and Procreate (at full size, turned the way the canvas was). Blend modes other than normal are drawn as normal; PSB files without a stored
   composite, multichannel PSB and GIMP layer effects aren't shown; `.xcf.gz` isn't read
 - HDR photos (iPhone HEIC and JPEG, HDR AVIF, OpenEXR) show their extra brightness on HDR screens
   (macOS 15 and later)

@@ -68,8 +68,6 @@ struct ZipArchive {
 enum ZippedImage {
     static let openRaster = format(name: "OpenRaster", extensions: ["ora"], entry: "mergedimage.png")
     static let krita = format(name: "Krita", extensions: ["kra"], entry: "mergedimage.png")
-    // shortcut: Procreate keeps the full picture in LZO-compressed tiles; we show its stored preview, decode the tiles if people ask.
-    static let procreate = format(name: "Procreate", extensions: ["procreate"], entry: "QuickLook/Thumbnail.png")
 
     static func format(name: String, extensions: [String], entry: String) -> OwnFormat {
         OwnFormat(name: name, extensions: extensions,

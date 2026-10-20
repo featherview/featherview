@@ -395,6 +395,11 @@ the About window.
     can't be opened, and a composite GIMP stored with premultiplied alpha shows dark antialiased
     edges (ImageIO reads it as straight alpha). CMYK and grey PSB colours go through ImageIO's
     colour management, so they differ slightly from a plain conversion.
+    Procreate (`.procreate`) shows the flattened picture Procreate keeps in the file, at full size,
+    in the document's colour profile, and turned and flipped the way the canvas was (as its own
+    preview shows it). Its tiles are LZO1X or LZ4 compressed; LZO1X is our own decoder, LZ4 is
+    macOS's. If that picture is missing or can't be read, the stored preview (at most 1024 pixels
+    wide) is shown instead. Known limit: a flipped canvas is untested against a real file.
   - Every own decoder goes through the same paths as ImageIO's: folder listing by extension,
     downsampled decode at screen size, batch input, info panel (dimensions only). A file it
     can't read shows "Can't open <name>" like any other.
