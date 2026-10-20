@@ -13,6 +13,8 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
   PaintShop Pro PSP, Krita KRA and OpenRaster ORA (their stored flattened image), and Procreate (at
   full size, turned the way the canvas was). Blend modes other than normal are drawn as normal; PSB
   files without a stored composite, multichannel PSB and GIMP layer effects aren't shown; `.xcf.gz` isn't read
+- Finder thumbnails and Quick Look (Space) previews for the formats macOS can't read, with a
+  proper Kind name for each
 - HDR photos (iPhone HEIC and JPEG, HDR AVIF, OpenEXR) show their extra brightness on HDR screens
   (macOS 15 and later)
 - Saves and batch converts to JPEG, PNG, HEIC, AVIF, TIFF, WebP, GIF, BMP, JPEG 2000, PDF, PSD, TGA,
@@ -44,7 +46,9 @@ blocks the first launch. To open it anyway:
 1. Double-click Featherview. macOS says it can't verify the app; click **Done**.
 2. Open **System Settings → Privacy & Security**, scroll down to the message about Featherview and
    click **Open Anyway**. Confirm with your password or Touch ID.
-3. From now on it opens normally.
+3. From now on it opens normally. After this first open, Finder shows thumbnails and Quick Look
+   previews for the formats only Featherview reads (switches in System Settings → General → Login
+   Items & Extensions → Quick Look).
 
 Or in Terminal: `xattr -dr com.apple.quarantine /Applications/Featherview.app`
 

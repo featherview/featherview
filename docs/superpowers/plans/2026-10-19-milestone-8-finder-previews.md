@@ -294,11 +294,16 @@ XCF, a two-page DCX, `BIG.QOI` in capitals, a truncated QOI, a 16 × 16 XBM.
   scale); fixed to one point per pixel, fitted to the screen, like Quick Look's own PNG preview.
   The truncated file shows the generic view, ↓ steps through the files in the panel, text in
   BIG.QOI is sharp enough for Live Text.
-- [ ] **Download path:** build the English disk image (`scripts/dmg.sh en`), mark it as downloaded
+- [x] **Download path:** build the English disk image (`scripts/dmg.sh en`), mark it as downloaded
   (`xattr -w com.apple.quarantine "0081;$(printf %x $(date +%s));Safari;" <dmg>`), install the app
   from it, open it once (Open Anyway as the README says), then check one thumbnail and one preview
   again. If macOS won't run the extensions of an ad-hoc signed downloaded app, write that into
   `docs/spec.md` "Distribution" and the README instead of working around it.
+  Checked on 2026-10-19 with the English disk image, quarantined: Gatekeeper blocks the first open,
+  Open Anyway asks for an administrator's password, and after that one open the extensions register
+  (both switches on in System Settings › Login Items & Extensions › Quick Look) and Space previews
+  work. Thumbnails then failed for a reason unrelated to the download (a Quick Look agent running
+  since days with stale type data, see the Finder step); they work from a fresh agent.
 - [x] **Budgets:** launch with a 12 MP JPEG after a real ⌘Q (6 runs, median of 2–6) is unchanged
   against the number in `AGENTS.md`; note the app bundle's size before and after (`du -sh`).
 - [x] **A big file:** the largest sample XCF and PSP: thumbnail time from the bench `thumbnail`
@@ -313,6 +318,7 @@ XCF, a two-page DCX, `BIG.QOI` in capitals, a truncated QOI, a 16 × 16 XBM.
   a folder, 6 launches after an AppleScript quit, `first image … ms after launch`: 389 (warm-up), 370,
   407, 382, 374, 381; median of runs 2–6 381 ms, unchanged against the ~380 ms in `AGENTS.md`. App
   bundle 13 MB (the two extensions 2.4 MB each, JPEG XR's jxrlib about 0.4 MB) against 7.2 MB before.
-- [ ] **Docs:** README feature list (Finder thumbnails and Quick Look for the formats macOS can't
+- [x] **Docs:** README feature list (Finder thumbnails and Quick Look for the formats macOS can't
   read), `docs/roadmap.md` row 8 → `done`, tick this plan. Remove the `~/Applications` copy only if
   it wasn't there before. Commit `docs: milestone 8 done after manual QA`.
+  Done: README features and install note, roadmap row 8 done, this plan ticked.

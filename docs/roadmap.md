@@ -18,7 +18,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 5 | WebP output | `docs/superpowers/plans/2026-10-16-milestone-5-webp.md` | done |
 | 6 | Languages | `docs/superpowers/plans/2026-10-18-milestone-6-languages.md` | done |
 | 7 | App formats | `docs/superpowers/plans/2026-10-17-milestone-7-app-formats.md` | done |
-| 8 | Finder previews | `docs/superpowers/plans/2026-10-19-milestone-8-finder-previews.md` | planned |
+| 8 | Finder previews | `docs/superpowers/plans/2026-10-19-milestone-8-finder-previews.md` | done |
 | 9 | Animation | not written yet | planned |
 
 ## 1. Core viewer and batch
