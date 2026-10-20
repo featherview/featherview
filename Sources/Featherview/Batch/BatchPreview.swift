@@ -15,62 +15,71 @@ struct BatchPreview: View {
         let imageKey = BatchPreviewModel.ImageKey(settings: model.settings, input: index.map { items[$0] }, index: index ?? 0)
         let namesKey = BatchPreviewModel.NamesKey(settings: model.settings, inputs: items)
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top, spacing: 16) {
-                pane(preview.original, caption: preview.originalSize.map { Text("Original \(Int($0.width)) × \(Int($0.height))") })
-                if let error = preview.error {
-                    Text(error)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    pane(preview.output, caption: preview.outputSize.map { Text("Output \(Int($0.width)) × \(Int($0.height))") })
+            // Captions on one shared top line, each column's content under its caption.
+            Grid(alignment: .topLeading, horizontalSpacing: 16, verticalSpacing: 6) {
+                GridRow {
+                    caption(preview.error == nil ? preview.originalSize.map { Text("Original \(Int($0.width)) × \(Int($0.height))") } : nil)
+                    caption(preview.error == nil ? preview.outputSize.map { Text("Output \(Int($0.width)) × \(Int($0.height))") } : nil)
+                    caption(nil)
                 }
-                names
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                GridRow {
+                    if let error = preview.error {
+                        // Nothing to compare: the reason takes both pictures' place.
+                        Text(error)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .gridCellColumns(2)
+                    } else {
+                        picture(preview.original)
+                        picture(preview.output)
+                    }
+                    namesList
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
             }
             if let applied = BatchCard.appliedLine(model.settings) {
                 Text(applied)
-                    .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
         }
+        .font(.caption)
         .padding()
         .onChange(of: imageKey, initial: true) { preview.updateImage(imageKey) }
         .onChange(of: namesKey, initial: true) { preview.updateNames(namesKey) }
     }
 
-    private func pane(_ image: CGImage?, caption: Text?) -> some View {
-        VStack(spacing: 6) {
-            Group {
-                if let image {
-                    Image(decorative: image, scale: 1)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                } else {
-                    Color.clear
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            if let caption {
-                caption
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-        }
-        .frame(maxWidth: .infinity)
+    private var names: [String] { preview.names }
+
+    private func caption(_ text: Text?) -> some View {
+        (text ?? Text(verbatim: " "))
+            .foregroundStyle(.secondary)
+            .monospacedDigit()
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var names: some View {
+    private func picture(_ image: CGImage?) -> some View {
+        Group {
+            if let image {
+                Image(decorative: image, scale: 1)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                Color.clear
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var namesList: some View {
         VStack(alignment: .leading, spacing: 2) {
-            ForEach(Array(preview.names.enumerated()), id: \.offset) { _, name in
+            ForEach(Array(names.enumerated()), id: \.offset) { _, name in
                 Text(name)
-                    .font(.caption.monospaced())
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
-            if !preview.names.isEmpty {
+            if !names.isEmpty {
                 Group {
                     if preview.more > 0 {
                         Text("… \(preview.more) more · into \(preview.folder)")
@@ -78,7 +87,6 @@ struct BatchPreview: View {
                         Text("Into \(preview.folder)")
                     }
                 }
-                .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
                 .truncationMode(.middle)
