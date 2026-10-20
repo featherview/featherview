@@ -107,7 +107,7 @@ import Testing
         #expect(BatchCard.colour.summary(in: s) == "Greyscale")
         s.watermark.position = .bottomRight
         s.watermark.opacity = 0.6
-        #expect(BatchCard.watermark.summary(in: s) == "Bottom right, \(0.6.formatted(.percent))")
+        #expect(BatchCard.watermark.summary(in: s) == "Bottom right · \(0.6.formatted(.percent))")
         #expect(BatchCard.extras.allSatisfy { !$0.summary(in: BatchSettings()).isEmpty })
     }
 

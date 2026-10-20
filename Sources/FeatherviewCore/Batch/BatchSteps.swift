@@ -150,7 +150,7 @@ public enum BatchCard: String, CaseIterable, Identifiable, Sendable {
             return line.isEmpty ? on : line
         case .watermark:
             let w = s.watermark
-            return String(localized: "\(Self.anchorName(w.position)), \(w.opacity.formatted(.percent))",
+            return String(localized: "\(Self.anchorName(w.position)) · \(w.opacity.formatted(.percent))",
                           comment: "Batch Watermark card summary: position and opacity")
         }
     }

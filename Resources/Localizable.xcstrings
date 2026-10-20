@@ -1121,7 +1121,7 @@
       "shouldTranslate": false
     },
     "%@, %@": {
-      "comment": "Batch Watermark card summary: position and opacity\nBatch text: font name and size as a share of the picture",
+      "comment": "Batch text: font name and size as a share of the picture",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -70280,7 +70280,7 @@
       "shouldTranslate": false
     },
     "%@ · %@": {
-      "comment": "Batch Name card: rename pattern and the folder saved to",
+      "comment": "Batch Name card: rename pattern and the folder saved to\nBatch Watermark card summary: position and opacity",
       "localizations": {
         "en": {
           "stringUnit": {
