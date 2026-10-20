@@ -386,7 +386,9 @@ the About window.
 - Read, formats ImageIO can't read, which Featherview decodes itself:
   - SVG through AppKit (`NSImage` renders it; ImageIO doesn't), rasterised at the size shown.
   - Own decoders, pure Swift, no dependency (milestone 3): QOI, PCX (and multi-page DCX), XBM,
-    XPM, WBMP, Sun Raster (RAS), IFF/LBM (ILBM, incl. HAM and EHB).
+    XPM, WBMP, Sun Raster (RAS), IFF/LBM (ILBM, incl. HAM and EHB), Kodak Photo CD (PCD: the
+    768 × 512 Base image, turned upright, PhotoYCC converted with reference white at 255; the
+    larger 4Base and 16Base images are a known limit).
   - Layered app formats, shown flattened (own milestone after 3): PSB (its stored composite
     image), XCF (GIMP), PDN (Paint.NET), PSP (Paint Shop Pro). Where the file stores a composite
     or thumbnail at full size it is used; otherwise visible layers are composited with normal

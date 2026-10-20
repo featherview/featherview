@@ -10,6 +10,7 @@ public enum QuickLookSupport {
         "public.xbitmap-image", "net.mynetx.featherview.xpm", "net.mynetx.featherview.wbmp",
         "net.mynetx.featherview.sun-raster", "net.mynetx.featherview.ilbm", "net.mynetx.featherview.xcf",
         "net.mynetx.featherview.psp", "net.mynetx.featherview.pdn",
+        "net.mynetx.featherview.photo-cd",
     ]
 
     /// `image` scaled to fit `maximum`, never enlarged.

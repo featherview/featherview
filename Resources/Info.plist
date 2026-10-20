@@ -108,11 +108,30 @@
 				<string>net.mynetx.featherview.xcf</string>
 				<string>net.mynetx.featherview.pdn</string>
 				<string>net.mynetx.featherview.psp</string>
+				<string>net.mynetx.featherview.photo-cd</string>
 			</array>
 		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.photo-cd</string>
+			<key>UTTypeDescription</key>
+			<string>Kodak Photo CD image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>pcd</string>
+				</array>
+			</dict>
+		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
 			<string>net.mynetx.featherview.xcf</string>

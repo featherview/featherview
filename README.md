@@ -6,7 +6,8 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
 - Opens everything macOS can read (JPEG, PNG, HEIC, AVIF, JPEG XL, WebP, TIFF, GIF, BMP, PSD,
   JPEG 2000, TGA, OpenEXR, DNG and camera RAW), upright and colour-managed
 - Shows SVG, and PDF pages like a multi-page image
-- Also reads formats macOS can't: QOI, PCX/DCX, XBM, XPM, WBMP, Sun Raster and IFF/LBM (including HAM)
+- Also reads formats macOS can't: QOI, PCX/DCX, XBM, XPM, WBMP, Sun Raster, IFF/LBM (including HAM)
+  and Kodak Photo CD (at 768 × 512)
 - Shows layered files from image editors flattened: Photoshop PSB, GIMP XCF, Paint.NET PDN and
   PaintShop Pro PSP. Blend modes other than normal are drawn as normal; PSB files without a stored
   composite, multichannel PSB and GIMP layer effects aren't shown; `.xcf.gz` isn't read
