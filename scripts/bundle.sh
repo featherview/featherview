@@ -28,6 +28,9 @@ cp Resources/Acknowledgements.txt "$APP/Contents/Resources/Acknowledgements.txt"
 # The string catalog compiles into one .lproj per language; en.lproj always, so macOS lists English.
 xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory "$APP/Contents/Resources" \
   --serialization-format binary
+# Finder's Kind names (document types, type descriptions) come from InfoPlist.strings in the same .lproj folders.
+xcrun xcstringstool compile Resources/InfoPlist.xcstrings --output-directory "$APP/Contents/Resources" \
+  --serialization-format binary
 mkdir -p "$APP/Contents/Resources/en.lproj"
 # Quick Look extensions (Finder thumbnails and previews): each SwiftPM binary wrapped in an .appex
 # with the app's version, sandboxed (Quick Look requires it), signed before the app.
