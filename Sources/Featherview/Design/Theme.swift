@@ -294,6 +294,9 @@ enum Theme {
     /// Batch preview: never shorter than this, so tall cards scroll instead of squeezing it; at most its ideal.
     static let batchPreviewMinHeight = 160.0
     static let batchPreviewHeight = 220.0
+    /// Batch window footers: the images column's and the settings' bars share one height, so their
+    /// dividers and controls line up.
+    static let batchBarHeight = 40.0
 
     /// Corner radii, from the outside in.
     enum Radius {

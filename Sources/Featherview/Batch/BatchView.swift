@@ -90,7 +90,7 @@ struct BatchView: View {
             }
         }
         .padding(.horizontal, Theme.rowPadding)
-        .padding(.vertical, Theme.messagePadding)
+        .frame(height: Theme.batchBarHeight)
     }
 
     private var presetsMenu: some View {

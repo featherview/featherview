@@ -126,7 +126,7 @@ struct BatchImagesColumn: View {
         .menuStyle(.borderlessButton)
         .buttonStyle(.borderless)
         .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .frame(height: Theme.batchBarHeight)
     }
 }
 
