@@ -37,7 +37,7 @@ Status: early development. Requires macOS 14 or later.
 
 ## Install
 
-Download `Featherview.zip` from the releases page, unzip it and move `Featherview.app` to
+Download `Featherview-<version>.dmg` from the releases page, open it and drag `Featherview.app` to
 `Applications`.
 
 Featherview is free and not notarized by Apple (that needs a paid developer account), so macOS
