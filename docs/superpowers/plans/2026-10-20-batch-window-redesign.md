@@ -269,7 +269,7 @@ Layout (design "Layout" and "Cards"; values from `Theme`, add tokens there if mi
 
 ### Task 6: Strings, translations, spec, screen check (main session)
 
-- [ ] **Step 1:** `scripts/strings.sh`; translate every new key into the 29 other languages with the
+- [x] **Step 1:** `scripts/strings.sh`; translate every new key into the 29 other languages with the
   rules in `docs/superpowers/plans/2026-10-18-milestone-6-languages.md` ("Translation tasks (5–10):
   the shared steps"); `swift test` (the catalog test needs all 30) passes.
 - [x] **Step 2:** Rewrite `docs/spec.md` "Batch window › Window" and "Mode and inputs" to the design
