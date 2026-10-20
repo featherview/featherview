@@ -8,8 +8,10 @@ public enum BatchReport {
         let converted = results.filter { $0.status == .converted }.count
         let total = results.count
         let duration = duration(seconds)
-        let sizeIn = Int64(bytesIn).formatted(.byteCount(style: .file))
-        let sizeOut = Int64(bytesOut).formatted(.byteCount(style: .file))
+        // "0 bytes", not "Zero KB": every file can fail.
+        let bytes = ByteCountFormatStyle(style: .file, spellsOutZero: false)
+        let sizeIn = Int64(bytesIn).formatted(bytes)
+        let sizeOut = Int64(bytesOut).formatted(bytes)
         guard !folder.isEmpty else {
             return String(localized: "\(converted) of \(total) images converted in \(duration). \(sizeIn) in, \(sizeOut) out. Saved next to the originals.",
                           comment: "Batch done summary: converted count, list count, run time, bytes read, bytes written")

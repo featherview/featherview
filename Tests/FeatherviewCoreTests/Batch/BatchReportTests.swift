@@ -16,6 +16,7 @@ import Testing
         #expect(summary.contains("Out"))
         let beside = BatchReport.summary(results: results, seconds: 72, bytesIn: 0, bytesOut: 0, folder: "")
         #expect(beside.hasSuffix("Saved next to the originals."))
+        #expect(!beside.localizedCaseInsensitiveContains("zero"))
     }
 
     @Test func folderToShow() throws {
