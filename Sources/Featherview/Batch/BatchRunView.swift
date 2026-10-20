@@ -1,12 +1,19 @@
 import FeatherviewCore
 import SwiftUI
 
-/// Replaces the steps and detail columns while a batch runs: progress, time left, the log.
+/// In place of the cards and the preview while a batch runs (design "Running"): the settings in one line,
+/// progress, time left and the image written last. No log list: Copy Log has it.
 struct BatchRunView: View {
     let model: BatchModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.panelGap) {
+            Text((BatchCard.core + BatchCard.extras.filter { $0.isAdded(in: model.settings) })
+                .map { $0.summary(in: model.settings) }
+                .joined(separator: " · "))
+                .foregroundStyle(Theme.labelSecondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
             ProgressView(value: Double(model.doneCount), total: Double(max(model.totalCount, 1))) {
                 Text(model.isPaused ? "Paused · \(model.doneCount) of \(model.totalCount)"
                                     : "\(model.doneCount) of \(model.totalCount)")
@@ -16,49 +23,56 @@ struct BatchRunView: View {
                     Text("About \(Duration.seconds(left.rounded()).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .abbreviated))) left")
                 }
             }
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(model.results.enumerated()), id: \.offset) { index, result in
-                            Text(result.logLine)
-                                .foregroundStyle(result.status == .failed ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
-                                .id(index)
-                        }
-                    }
-                    .font(.system(.callout, design: .monospaced))
+            BatchWrittenPreview(url: model.lastWritten)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .padding(Theme.panelPadding)
+    }
+}
+
+/// Above the cards after a run (design "Done"): the run in one sentence, each failure by file name,
+/// Show in Finder and Copy Log.
+struct BatchDoneView: View {
+    let model: BatchModel
+
+    var body: some View {
+        let failures = model.failures
+        VStack(alignment: .leading, spacing: Theme.messagePadding) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.rowGap) {
+                Image(systemName: failures.isEmpty ? "checkmark.circle" : "exclamationmark.triangle")
+                    .accessibilityHidden(true)
+                Text(model.report ?? "")
+                    .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(8)
-                }
-                .background(.background)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .onChange(of: model.results.count) { _, count in
-                    if count > 0 { proxy.scrollTo(count - 1, anchor: .bottom) }
+                Spacer(minLength: 0)
+            }
+            if !failures.isEmpty {
+                // Few failures show as they are; many scroll (lazily: a run can fail 10,000 files), so the
+                // cards and the preview keep their room.
+                if failures.count <= 5 {
+                    lines(failures)
+                } else {
+                    ScrollView { lines(failures) }
+                        .frame(height: Theme.batchPreviewMinHeight)
                 }
             }
             HStack {
                 Spacer()
+                Button("Show in Finder") { model.showInFinder() }
+                    .disabled(model.outputFolder == nil)
                 Button("Copy Log") { model.copyLog() }
-                    .disabled(model.results.isEmpty)
             }
         }
-        .padding()
+        .padding(Theme.rowPadding)
     }
-}
 
-/// After a run: the summary line at the top, until the settings change or Start is pressed again.
-struct BatchSummaryBar: View {
-    let model: BatchModel
-
-    var body: some View {
-        HStack {
-            Image(systemName: model.results.contains { $0.status != .converted } ? "exclamationmark.triangle" : "checkmark.circle")
-            Text(model.summaryLine)
-            Spacer()
-            Button("Copy Log") { model.copyLog() }
+    private func lines(_ failures: [String]) -> some View {
+        LazyVStack(alignment: .leading, spacing: 2) {
+            ForEach(Array(failures.enumerated()), id: \.offset) { _, line in
+                Text(line).foregroundStyle(.red)
+            }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(.bar)
+        .textSelection(.enabled)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

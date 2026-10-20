@@ -88,6 +88,74 @@ struct BatchPreview: View {
     }
 }
 
+/// The running view's picture (design "Running"): the image written last, decoded off the main thread to fit
+/// the area, with its name, pixel size and file size. Results arrive about four times a second; a newer
+/// file cancels the decode still waiting.
+struct BatchWrittenPreview: View {
+    let url: URL?
+    @State private var shown: Shown?
+    @State private var jobs = LatestWins()
+    @Environment(\.displayScale) private var displayScale
+
+    struct Shown: Sendable {
+        var url: URL
+        var image: CGImage?
+        var size: CGSize?
+        var bytes: Int?
+    }
+
+    var body: some View {
+        VStack(spacing: Theme.messagePadding) {
+            // Measures the image area only, not the caption row.
+            GeometryReader { geometry in
+                Group {
+                    if let image = shown?.image {
+                        Image(decorative: image, scale: 1)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                    } else {
+                        Color.clear
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onChange(of: url, initial: true) {
+                    load(area: PixelSize(width: max(Int((geometry.size.width * displayScale).rounded(.up)), 1),
+                                         height: max(Int((geometry.size.height * displayScale).rounded(.up)), 1)))
+                }
+            }
+            if let shown {
+                caption(shown)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+    }
+
+    private func caption(_ shown: Shown) -> Text {
+        let name = shown.url.lastPathComponent
+        guard let size = shown.size else { return Text(verbatim: name) }
+        let bytes = Int64(shown.bytes ?? 0).formatted(.byteCount(style: .file))
+        return Text("\(name) · \(Int(size.width)) × \(Int(size.height)) · \(bytes)",
+                    comment: "Batch running preview: file name, pixel size, file size")
+    }
+
+    private func load(area: PixelSize) {
+        guard let url else { return shown = nil }
+        jobs.submit {
+            let loaded = await Task.detached(priority: .userInitiated) {
+                Shown(url: url, image: try? ImageDecoder.decode(url, halvingSteps: true, fitting: [area]),
+                      size: ImageDecoder.displaySize(of: url),
+                      bytes: try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize)
+            }.value
+            guard !Task.isCancelled else { return }
+            shown = loaded
+        }
+    }
+}
+
 @MainActor @Observable
 final class BatchPreviewModel {
     struct ImageKey: Equatable, Sendable {

@@ -33,6 +33,20 @@ import Testing
         #expect(names(list.items) == ["a.jpg", "b.jpg"])
     }
 
+    @Test func sizeOfKeepsTheSizeFromAddAndFollowsSymlinks() throws {
+        let dir = try Fixtures.makeTempDir()
+        let a = try image(dir, "a.jpg")
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: a)
+        let bytes = try #require(try a.resourceValues(forKeys: [.fileSizeKey]).fileSize)
+        var list = BatchInputList()
+        list.add(files: [link])
+        // Moved to the Trash by the run: the size from add still counts.
+        try FileManager.default.removeItem(at: a)
+        #expect(list.size(of: link) == bytes)
+        #expect(list.size(of: dir.appendingPathComponent("other.jpg")) == 0)
+    }
+
     @Test func addSkipsNonImages() throws {
         let dir = try Fixtures.makeTempDir()
         let text = dir.appendingPathComponent("notes.txt")
