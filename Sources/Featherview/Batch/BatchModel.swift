@@ -111,7 +111,8 @@ final class BatchModel {
         // A clicked button doesn't take focus: a field still being edited hasn't written its value yet.
         NSApp.keyWindow?.makeFirstResponder(nil)
         clearFinished()
-        let job = BatchJob(inputs: inputs.items, settings: settings)
+        let list = inputs
+        let job = BatchJob(inputs: list.items, settings: settings)
         let control = BatchControl()
         self.control = control
         runTotal = job.inputs.count
@@ -141,14 +142,16 @@ final class BatchModel {
             isPaused = false
             isFinished = true
             let results = results, folder = settings.outputFolder
-            // Reads every input's and output's size: off the main thread (10,000 files).
+            // Reads every output's size: off the main thread (10,000 files).
             let line = await Task.detached(priority: .userInitiated) {
                 let converted = results.filter { $0.status == .converted }
-                func bytes(_ urls: [URL]) -> Int {
-                    urls.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
+                // Input sizes from add: the originals may be in the Trash by now.
+                let bytesIn = converted.reduce(0) { $0 + list.size(of: $1.input) }
+                let bytesOut = converted.reduce(0) {
+                    $0 + (($1.output.flatMap { try? $0.resourceValues(forKeys: [.fileSizeKey]).fileSize }) ?? 0)
                 }
-                return BatchReport.summary(results: results, seconds: seconds, bytesIn: bytes(converted.map(\.input)),
-                                           bytesOut: bytes(converted.compactMap(\.output)), folder: folder)
+                return BatchReport.summary(results: results, seconds: seconds, bytesIn: bytesIn,
+                                           bytesOut: bytesOut, folder: folder)
             }.value
             // A settings change or add while sizes were read already left the done view.
             if isFinished && self.results == results { report = line }

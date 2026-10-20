@@ -140,6 +140,9 @@ public struct BatchInputList: Equatable, Sendable {
         }
     }
 
+    /// `url`'s size when it was added (a symlink's target's), 0 if it isn't in the list.
+    public func size(of url: URL) -> Int { sizeOf[url] ?? 0 }
+
     private mutating func add(size: Int, of input: BatchInput) {
         sizeOf[input.url] = size
         totalBytes += size
