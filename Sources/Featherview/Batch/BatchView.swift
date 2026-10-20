@@ -121,19 +121,18 @@ struct BatchView: View {
     }
 }
 
-/// Output, Operations, Files; each row the step's title and summary, dimmed when the mode doesn't use it.
+/// Output, Operations (in processing order); each row the step's title and summary.
 private struct BatchStepsColumn: View {
     @Bindable var model: BatchModel
 
     var body: some View {
-        List(selection: Binding<BatchStep?> { model.step } set: { if let step = $0 { model.step = step } }) {
-            Section("Output") { rows([.output, .rename]) }
-            Section("Operations") { rows(BatchStep.operations) }
-            Section("Files") { rows([.safety]) }
+        List(selection: Binding<BatchCard?> { model.step } set: { if let step = $0 { model.step = step } }) {
+            Section("Output") { rows([.format, .name]) }
+            Section("Operations") { rows([.crop, .size, .orientation, .colour, .filters, .canvas, .border, .text, .watermark]) }
         }
     }
 
-    private func rows(_ steps: [BatchStep]) -> some View {
+    private func rows(_ steps: [BatchCard]) -> some View {
         ForEach(steps) { step in
             HStack {
                 Image(systemName: model.isOn(step) ? "circle.fill" : "circle")
@@ -151,7 +150,6 @@ private struct BatchStepsColumn: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
-            .opacity(model.isUsed(step) ? 1 : 0.4)
             .tag(step)
         }
     }

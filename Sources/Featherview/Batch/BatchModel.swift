@@ -3,13 +3,13 @@ import FeatherviewCore
 import SwiftUI
 import UniformTypeIdentifiers
 
-extension BatchStep {
+extension BatchCard {
     var title: LocalizedStringKey {
         switch self {
-        case .output: "Format and Folder"
-        case .rename: "Rename"
+        case .format: "Format and Folder"
+        case .name: "Rename"
         case .crop: "Crop"
-        case .resize: "Resize"
+        case .size: "Resize"
         case .orientation: "Rotate and Flip"
         case .colour: "Colour"
         case .filters: "Filters"
@@ -17,7 +17,6 @@ extension BatchStep {
         case .border: "Border"
         case .text: "Text"
         case .watermark: "Watermark"
-        case .safety: "Safety and Dates"
         }
     }
 }
@@ -43,7 +42,7 @@ final class BatchModel {
     /// Each input's place in the list: every row asks for its state on each result, so no linear search.
     private var position: [BatchInput: Int] = [:]
     var selection: Set<BatchInput> = []
-    var step = BatchStep.output
+    var step = BatchCard.format
     private(set) var isRunning = false
     private(set) var isPaused = false
     /// In list order, grows while running.
@@ -77,9 +76,9 @@ final class BatchModel {
 
     // MARK: - Steps column
 
-    func isUsed(_ step: BatchStep) -> Bool { step.isUsed(in: settings) }
-    func isOn(_ step: BatchStep) -> Bool { step.isOn(in: settings) }
-    func summary(of step: BatchStep) -> String { step.summary(in: settings) }
+    func isOn(_ step: BatchCard) -> Bool { step == .size ? settings.resize.isOn : step.isAdded(in: settings) }
+    /// Empty for a step that is off.
+    func summary(of step: BatchCard) -> String { step.isAdded(in: settings) ? step.summary(in: settings) : "" }
 
     // MARK: - Running
 

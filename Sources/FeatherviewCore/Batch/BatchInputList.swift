@@ -126,6 +126,16 @@ public struct BatchInputList: Equatable, Sendable {
         }
     }
 
+    /// New Batch: removes every input whose URL isn't in `urls`; the rest keep their order.
+    public mutating func keep(_ urls: Set<URL>) {
+        // One pass: removing row by row shifts the array each time (10,000 converted rows).
+        for item in items where !urls.contains(item.url) {
+            if let key = keyOf.removeValue(forKey: item.url) { keys.remove(key) }
+            totalBytes -= sizeOf.removeValue(forKey: item.url) ?? 0
+        }
+        items.removeAll { !urls.contains($0.url) }
+    }
+
     public mutating func removeAll() {
         items.removeAll()
         keys.removeAll()
