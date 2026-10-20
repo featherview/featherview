@@ -5,10 +5,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VOLUME="Featherview"
-# Finder's window bounds include the title bar; the content below it must be the 640 x 400 background.
+# Finder's window bounds include the title bar; the content below it must be the 920 x 408 background,
+# the size macOS 27's Finder opens a disk image's window at whatever the image stores.
 # shortcut: 28 pt is the title bar without a toolbar on macOS 14 and later, measure again if a macOS changes it.
 TITLE_BAR=28
-WINDOW_BOUNDS="200, 120, 840, $((120 + 400 + TITLE_BAR))"
+WINDOW_BOUNDS="200, 120, 1120, $((120 + 408 + TITLE_BAR))"
 
 # Attaches a read-write image and sets DEVICE. Finder addresses the disk by name, so it stops when
 # another volume called $VOLUME is mounted (the new one would land at "/Volumes/$VOLUME 1").
@@ -66,7 +67,7 @@ for LANG_CODE in "${LANGS[@]}"; do
     [ "$(osascript -e "tell application \"Finder\" to exists disk \"$VOLUME\"")" = true ] ||
         { echo "Finder doesn't see the disk $VOLUME." >&2; exit 1; }
 
-    # Window: 640 x 400 content, icon view, the icons where DiskImageArt draws the arrow.
+    # Window: 920 x 408 content, icon view, the icons where DiskImageArt draws the arrow.
     osascript <<EOF
 tell application "Finder"
     tell disk "$VOLUME"
@@ -79,8 +80,8 @@ tell application "Finder"
         set arrangement of viewOptions to not arranged
         set icon size of viewOptions to 96
         set background picture of viewOptions to file ".background:background.tiff"
-        set position of item "Featherview.app" of container window to {160, 170}
-        set position of item "Applications" of container window to {480, 170}
+        set position of item "Featherview.app" of container window to {300, 170}
+        set position of item "Applications" of container window to {620, 170}
         update without registering applications
         delay 1
         close

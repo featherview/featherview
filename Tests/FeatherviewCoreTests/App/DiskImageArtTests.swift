@@ -7,8 +7,8 @@ import Testing
 
     @Test func renderHasTheSize() {
         let image = DiskImageArt.render(help: "x", scale: 2)
-        #expect(image.width == 1280)
-        #expect(image.height == 800)
+        #expect(image.width == 1840)
+        #expect(image.height == 816)
     }
 
     @Test func renderIsDark() throws {
@@ -27,7 +27,7 @@ import Testing
     /// so each name sits on a light plate.
     @Test func iconNamesSitOnLightPlates() throws {
         let image = try pixels(DiskImageArt.render(help: "", scale: 1))
-        for x in [160, 480] {
+        for x in [300, 620] {
             let p = image[x, DiskImageArt.labelCentreFromTop]
             #expect((0.2126 * Double(p.r) + 0.7152 * Double(p.g) + 0.0722 * Double(p.b)) / 255 > 0.8)
         }

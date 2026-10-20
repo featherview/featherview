@@ -13,8 +13,8 @@ for n in decoy new; do
 done
 fail=0
 
-# Finder's bounds are the whole window frame: the 640 x 400 background needs the title bar on top.
-[ "$WINDOW_BOUNDS" = "200, 120, 840, $((120 + 400 + TITLE_BAR))" ] || { echo "FAIL: window bounds $WINDOW_BOUNDS leave no room for the title bar"; fail=1; }
+# Finder's bounds are the whole window frame: the 920 x 408 background needs the title bar on top.
+[ "$WINDOW_BOUNDS" = "200, 120, 1120, $((120 + 408 + TITLE_BAR))" ] || { echo "FAIL: window bounds $WINDOW_BOUNDS leave no room for the title bar"; fail=1; }
 
 if mount | grep -q " on /Volumes/$VOLUME "; then echo "skip: eject /Volumes/$VOLUME first"; exit 1; fi
 attach_rw "$WORK/new.dmg" || { echo "FAIL: attach with no other $VOLUME volume"; fail=1; }

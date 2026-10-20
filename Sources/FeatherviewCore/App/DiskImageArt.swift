@@ -5,9 +5,9 @@ import Foundation
 /// The disk image window's background: dark, a faint feather, an arrow from the app to Applications,
 /// and the first-open help along the bottom. Drawn in points from the bottom-leading corner (Core Graphics).
 public enum DiskImageArt {
-    public static let size = CGSize(width: 640, height: 400)
+    public static let size = CGSize(width: 920, height: 408)
     /// Icon centres in Finder's coordinates (points from the top-leading corner); `scripts/dmg.sh` uses the same.
-    static let appSlot = CGPoint(x: 160, y: 170), applicationsSlot = CGPoint(x: 480, y: 170)
+    static let appSlot = CGPoint(x: 300, y: 170), applicationsSlot = CGPoint(x: 620, y: 170)
     /// Where Finder centres an icon's name at icon size 96, from the window's top (measured).
     static let labelCentreFromTop = 234
 
@@ -34,7 +34,7 @@ public enum DiskImageArt {
         let gradient = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB),
                                   colors: [rgb(0x2b2b36), rgb(0x0f0f13)] as CFArray, locations: [0, 1])!
         let centre = CGPoint(x: size.width / 2, y: size.height - 150)
-        ctx.drawRadialGradient(gradient, startCenter: centre, startRadius: 0, endCenter: centre, endRadius: 470,
+        ctx.drawRadialGradient(gradient, startCenter: centre, startRadius: 0, endCenter: centre, endRadius: 620,
                                options: [.drawsAfterEndLocation])
     }
 
@@ -44,7 +44,7 @@ public enum DiskImageArt {
         ctx.setStrokeColor(rgb(0xffc766, 0.14))
         ctx.setLineWidth(1.25)
         ctx.setLineCap(.round)
-        let start = CGPoint(x: 612, y: 100), control = CGPoint(x: 590, y: 190), end = CGPoint(x: 520, y: 262)
+        let start = CGPoint(x: 892, y: 100), control = CGPoint(x: 870, y: 190), end = CGPoint(x: 800, y: 262)
         ctx.move(to: start)
         ctx.addQuadCurve(to: end, control: control)
         // Barbs: from points along the shaft, swept back towards the quill's base, longest in the middle.
