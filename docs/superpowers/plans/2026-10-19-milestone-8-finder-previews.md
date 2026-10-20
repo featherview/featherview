@@ -284,12 +284,16 @@ XCF, a two-page DCX, `BIG.QOI` in capitals, a truncated QOI, a 16 × 16 XBM.
   Checked on `main` (3689ff3) with 25 samples, the 11 formats added after M8 included: every file
   has a thumbnail, the truncated QOI a generic icon. Finder draws the 32-pixel thumbnail of the
   16 × 16 XBM enlarged in a white frame at icon size 128; the extension never enlarges.
-- [ ] **Quick Look:** Space on each shows the image sharp on a Retina screen (if it's soft or a quarter
+- [x] **Quick Look:** Space on each shows the image sharp on a Retina screen (if it's soft or a quarter
   of the window, fix the context-size arithmetic in `PreviewProvider`); the DCX shows page 1; the
   truncated file shows Quick Look's generic view; arrow keys move between files in the panel.
 - [x] **Open panel:** Featherview's ⌘O panel and another app's open panel (TextEdit) show the thumbnail
   and the preview in the panel's preview pane.
   Checked: both panels show the thumbnails in icon view and the full preview in column view.
+  Checked: the DCX showed page 1 at half the size a PNG of it gets (pixels divided by the Retina
+  scale); fixed to one point per pixel, fitted to the screen, like Quick Look's own PNG preview.
+  The truncated file shows the generic view, ↓ steps through the files in the panel, text in
+  BIG.QOI is sharp enough for Live Text.
 - [ ] **Download path:** build the English disk image (`scripts/dmg.sh en`), mark it as downloaded
   (`xattr -w com.apple.quarantine "0081;$(printf %x $(date +%s));Safari;" <dmg>`), install the app
   from it, open it once (Open Anyway as the README says), then check one thumbnail and one preview
