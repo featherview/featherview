@@ -98,13 +98,8 @@ final class BatchModel {
 
     var failures: [String] { BatchReport.failures(results) }
 
-    /// The run's output folder; next to the originals (or a relative folder): the first output's folder.
-    var outputFolder: URL? {
-        if settings.hasAbsoluteOutputFolder {
-            return URL(fileURLWithPath: (settings.outputFolder as NSString).expandingTildeInPath, isDirectory: true)
-        }
-        return results.first { $0.status == .converted }?.output?.deletingLastPathComponent()
-    }
+    /// The run's output folder for Show in Finder (`BatchReport.folderToShow`).
+    var outputFolder: URL? { BatchReport.folderToShow(setting: settings.outputFolder, results: results) }
 
     func state(of input: BatchInput) -> BatchRowState? {
         BatchProgress.rowState(result: resultFor[input.url], index: position[input],

@@ -18,6 +18,19 @@ import Testing
         #expect(beside.contains("next to the originals"))
     }
 
+    @Test func folderToShow() throws {
+        let dir = try Fixtures.makeTempDir()
+        let converted = [result("a.jpg", .failed), result("b.jpg", .converted)]
+        // {folder} became each input's folder name: the first output's folder.
+        #expect(BatchReport.folderToShow(setting: dir.path + "/{folder}", results: converted)?.path == "/out")
+        #expect(BatchReport.folderToShow(setting: "", results: converted)?.path == "/out")
+        #expect(BatchReport.folderToShow(setting: dir.path, results: converted)?.standardizedFileURL == dir.standardizedFileURL)
+        // Never created (every file failed): nothing to show.
+        let missing = dir.appendingPathComponent("never").path
+        #expect(BatchReport.folderToShow(setting: missing, results: [result("a.jpg", .failed)]) == nil)
+        #expect(BatchReport.folderToShow(setting: dir.path + "/{folder}", results: [result("a.jpg", .failed)]) == nil)
+    }
+
     @Test func durationEndsWithoutPeriod() {
         // The sentence adds its own period; German abbreviations ("Sek.") would double it.
         #expect(!BatchReport.duration(3725.6, locale: Locale(identifier: "de_DE")).hasSuffix("."))

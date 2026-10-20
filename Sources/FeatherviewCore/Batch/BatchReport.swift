@@ -17,6 +17,18 @@ public enum BatchReport {
                       comment: "Batch done summary: converted count, list count, run time, bytes read, bytes written, output folder")
     }
 
+    /// The folder Show in Finder opens: the typed output folder when it exists and has no `{folder}`
+    /// (which becomes each input's folder name), else the first converted output's folder; nil when neither exists.
+    public static func folderToShow(setting: String, results: [BatchResult]) -> URL? {
+        let typed = (setting as NSString).expandingTildeInPath
+        var isFolder: ObjCBool = false
+        if typed.hasPrefix("/"), !typed.contains("{folder}"),
+           FileManager.default.fileExists(atPath: typed, isDirectory: &isFolder), isFolder.boolValue {
+            return URL(fileURLWithPath: typed, isDirectory: true)
+        }
+        return results.first { $0.status == .converted }?.output?.deletingLastPathComponent()
+    }
+
     /// The run time in words ("1 hour, 2 minutes, 6 seconds"). Wide, since abbreviations can end in a
     /// period ("6 Sek.") and the sentence adds its own.
     static func duration(_ seconds: Double, locale: Locale = .current) -> String {
