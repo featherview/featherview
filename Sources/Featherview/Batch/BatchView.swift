@@ -2,7 +2,8 @@ import FeatherviewCore
 import SwiftUI
 
 /// The batch window (design "Layout"): images leading; the cards over the preview trailing, with Presets
-/// and the main button under them; while running, the run view in place of cards and preview.
+/// and the main button under them; while running, the run view in place of cards and preview; after a run,
+/// the done view over the cards and New Batch as the main button.
 struct BatchView: View {
     @Bindable var model: BatchModel
     @State private var namingPreset = false
@@ -17,7 +18,7 @@ struct BatchView: View {
         } detail: {
             VStack(spacing: 0) {
                 if model.isFinished && !model.isRunning {
-                    BatchSummaryBar(model: model)
+                    BatchDoneView(model: model)
                     Divider()
                 }
                 if model.isRunning {
@@ -75,6 +76,10 @@ struct BatchView: View {
                     Button("Pause") { model.pause() }
                 }
                 Button("Stop") { model.stop() }
+            } else if model.isFinished {
+                Button("New Batch") { model.newBatch() }
+                    .keyboardShortcut(.return, modifiers: .command)
+                    .buttonStyle(.borderedProminent)
             } else {
                 // ⌘↩, not Return: Return in a field only confirms the value, it must not start a long batch.
                 Button(BatchInputList.convertTitle(count: model.inputs.items.count)) { model.start() }

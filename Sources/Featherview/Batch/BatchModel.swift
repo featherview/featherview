@@ -48,8 +48,12 @@ final class BatchModel {
     private(set) var isPaused = false
     /// In list order, grows while running.
     private(set) var results: [BatchResult] = []
-    /// True between the end of a run and the next settings change or Start: the summary line shows.
+    /// True between the end of a run and the next settings change, add or New Batch: the done view shows.
     private(set) var isFinished = false
+    /// The latest converted output of the run, for the running preview.
+    private(set) var lastWritten: URL?
+    /// The done view's sentence (`BatchReport.summary`), set once the run's file sizes are read.
+    private(set) var report: String?
     /// Background folder scans and list loads in flight (the header's spinner).
     private(set) var scans = 0
     /// A short sentence for the user (e.g. missing files of a loaded list); the view shows and clears it.
@@ -92,9 +96,14 @@ final class BatchModel {
                                          paused: control.pausedDuration() / .seconds(1), done: doneCount, total: runTotal)
     }
 
-    /// "N converted, M failed" of the last run.
-    var summaryLine: String {
-        BatchLog.text(results).split(separator: "\n").last.map(String.init) ?? ""
+    var failures: [String] { BatchReport.failures(results) }
+
+    /// The run's output folder; next to the originals (or a relative folder): the first output's folder.
+    var outputFolder: URL? {
+        if settings.hasAbsoluteOutputFolder {
+            return URL(fileURLWithPath: (settings.outputFolder as NSString).expandingTildeInPath, isDirectory: true)
+        }
+        return results.first { $0.status == .converted }?.output?.deletingLastPathComponent()
     }
 
     func state(of input: BatchInput) -> BatchRowState? {
@@ -132,15 +141,29 @@ final class BatchModel {
             for await result in stream { pending.append(result) }
             flusher.cancel()
             flushPending()
+            let seconds = Date.now.timeIntervalSince(runStart) - control.pausedDuration() / .seconds(1)
             isRunning = false
             isPaused = false
             isFinished = true
+            let results = results, folder = settings.outputFolder
+            // Reads every input's and output's size: off the main thread (10,000 files).
+            let line = await Task.detached(priority: .userInitiated) {
+                let converted = results.filter { $0.status == .converted }
+                func bytes(_ urls: [URL]) -> Int {
+                    urls.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
+                }
+                return BatchReport.summary(results: results, seconds: seconds, bytesIn: bytes(converted.map(\.input)),
+                                           bytesOut: bytes(converted.compactMap(\.output)), folder: folder)
+            }.value
+            // A settings change or add while sizes were read already left the done view.
+            if isFinished && self.results == results { report = line }
         }
     }
 
     private func flushPending() {
         guard !pending.isEmpty else { return }
         results.append(contentsOf: pending)
+        if let written = pending.last(where: { $0.status == .converted })?.output { lastWritten = written }
         // One change per flush: each change of an observed property notifies every row.
         var map = resultFor
         for result in pending { map[result.input] = result }
@@ -158,6 +181,18 @@ final class BatchModel {
         await runTask?.value
     }
 
+    /// Back to setup with every setting: converted rows go, failed and not-started rows stay.
+    func newBatch() {
+        inputs.keep(Set(results.filter { $0.status != .converted }.map(\.input)))
+        selection = []
+        clearFinished()
+    }
+
+    func showInFinder() {
+        guard let folder = outputFolder else { return }
+        NSWorkspace.shared.open(folder)
+    }
+
     func copyLog() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(BatchLog.text(results), forType: .string)
@@ -168,6 +203,8 @@ final class BatchModel {
         results = []
         resultFor = [:]
         isFinished = false
+        lastWritten = nil
+        report = nil
     }
 
     // MARK: - Presets
