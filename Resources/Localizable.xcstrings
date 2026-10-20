@@ -71417,7 +71417,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "تم تحويل %1$lld من %#@total@ في %3$@. المقروء %4$@، والمكتوب %5$@. حُفظت بجوار الأصول."
+            "value": "الصور المحوّلة: %1$lld من %#@total@ خلال %3$@. المقروء %4$@، والمكتوب %5$@. حُفظت بجوار الأصول."
           },
           "substitutions": {
             "total": {
@@ -71428,37 +71428,37 @@
                   "zero": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "%arg صورة"
+                      "value": "%arg"
                     }
                   },
                   "one": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "صورة واحدة"
+                      "value": "%arg"
                     }
                   },
                   "two": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "صورتين"
+                      "value": "%arg"
                     }
                   },
                   "few": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "%arg صور"
+                      "value": "%arg"
                     }
                   },
                   "many": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "%arg صورة"
+                      "value": "%arg"
                     }
                   },
                   "other": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "%arg صورة"
+                      "value": "%arg"
                     }
                   }
                 }
@@ -71705,7 +71705,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "הומרו %1$lld מתוך %#@total@ ב־%3$@. נקראו %4$@, נכתבו %5$@. נשמרו ליד המקורות."
+            "value": "תמונות שהומרו: %1$lld מתוך %#@total@ ב־%3$@. נקראו %4$@, נכתבו %5$@. נשמרו ליד המקורות."
           },
           "substitutions": {
             "total": {
@@ -71716,19 +71716,19 @@
                   "one": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "תמונה אחת"
+                      "value": "%arg"
                     }
                   },
                   "two": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "שתי תמונות"
+                      "value": "%arg"
                     }
                   },
                   "other": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "%arg תמונות"
+                      "value": "%arg"
                     }
                   }
                 }
@@ -72298,7 +72298,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "تم تحويل %1$lld من %#@total@ في %3$@. المقروء %4$@، والمكتوب %5$@. حُفظت في %6$@."
+            "value": "الصور المحوّلة: %1$lld من %#@total@ خلال %3$@. المقروء %4$@، والمكتوب %5$@. حُفظت في %6$@."
           },
           "substitutions": {
             "total": {
@@ -72309,37 +72309,37 @@
                   "zero": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "%arg صورة"
+                      "value": "%arg"
                     }
                   },
                   "one": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "صورة واحدة"
+                      "value": "%arg"
                     }
                   },
                   "two": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "صورتين"
+                      "value": "%arg"
                     }
                   },
                   "few": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "%arg صور"
+                      "value": "%arg"
                     }
                   },
                   "many": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "%arg صورة"
+                      "value": "%arg"
                     }
                   },
                   "other": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "%arg صورة"
+                      "value": "%arg"
                     }
                   }
                 }
@@ -72586,7 +72586,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "הומרו %1$lld מתוך %#@total@ ב־%3$@. נקראו %4$@, נכתבו %5$@. נשמרו ב־%6$@."
+            "value": "תמונות שהומרו: %1$lld מתוך %#@total@ ב־%3$@. נקראו %4$@, נכתבו %5$@. נשמרו ב־%6$@."
           },
           "substitutions": {
             "total": {
@@ -72597,19 +72597,19 @@
                   "one": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "תמונה אחת"
+                      "value": "%arg"
                     }
                   },
                   "two": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "שתי תמונות"
+                      "value": "%arg"
                     }
                   },
                   "other": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "%arg תמונות"
+                      "value": "%arg"
                     }
                   }
                 }
@@ -76371,9 +76371,45 @@
       "comment": "Batch window's start button: the number of images in the list",
       "localizations": {
         "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تحويل الصور: %lld"
+          "variations": {
+            "plural": {
+              "zero": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "تحويل %lld صورة"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "تحويل صورة واحدة"
+                }
+              },
+              "two": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "تحويل صورتين"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "تحويل %lld صور"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "تحويل %lld صورة"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "تحويل %lld صورة"
+                }
+              }
+            }
           }
         },
         "ca": {
@@ -76395,9 +76431,33 @@
           }
         },
         "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Převést obrázky: %lld"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Převést %lld obrázek"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Převést %lld obrázky"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Převést %lld obrázku"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Převést %lld obrázků"
+                }
+              }
+            }
           }
         },
         "da": {
@@ -76425,9 +76485,21 @@
           }
         },
         "el": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Μετατροπή εικόνων: %lld"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Μετατροπή %lld εικόνας"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Μετατροπή %lld εικόνων"
+                }
+              }
+            }
           }
         },
         "es": {
@@ -76461,21 +76533,51 @@
           }
         },
         "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "המר תמונות: %lld"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "המר תמונה אחת"
+                }
+              },
+              "two": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "המר שתי תמונות"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "המר %lld תמונות"
+                }
+              }
+            }
           }
         },
         "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "छवियाँ रूपांतरित करें (%lld)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld छवि रूपांतरित करें"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld छवियाँ रूपांतरित करें"
+                }
+              }
+            }
           }
         },
         "hu": {
           "stringUnit": {
             "state": "translated",
-            "value": "Képek konvertálása: %lld"
+            "value": "%lld kép konvertálása"
           }
         },
         "id": {
@@ -76527,9 +76629,33 @@
           }
         },
         "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Konwertuj obrazki: %lld"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Konwertuj %lld obrazek"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Konwertuj %lld obrazki"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Konwertuj %lld obrazków"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Konwertuj %lld obrazka"
+                }
+              }
+            }
           }
         },
         "pt-BR": {
@@ -76539,15 +76665,57 @@
           }
         },
         "ro": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Convertește imaginile: %lld"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Convertește %lld imagine"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Convertește %lld imagini"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Convertește %lld de imagini"
+                }
+              }
+            }
           }
         },
         "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Преобразовать изображения: %lld"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Преобразовать %lld изображение"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Преобразовать %lld изображения"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Преобразовать %lld изображений"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Преобразовать %lld изображения"
+                }
+              }
+            }
           }
         },
         "sv": {
@@ -76577,13 +76745,37 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Görüntüleri Dönüştür: %lld"
+            "value": "%lld Görüntüyü Dönüştür"
           }
         },
         "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Перетворити зображення: %lld"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Перетворити %lld зображення"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Перетворити %lld зображення"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Перетворити %lld зображень"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Перетворити %lld зображення"
+                }
+              }
+            }
           }
         },
         "vi": {
@@ -78150,7 +78342,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nowa partia"
+            "value": "Nowa konwersja"
           }
         },
         "pt-BR": {
