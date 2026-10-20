@@ -234,10 +234,10 @@ Layout (design "Layout" and "Cards"; values from `Theme`, add tokens there if mi
 - No card body may be wider than its column at the 960 pt minimum: long notes (Canvas "Negative
   values cut into the image") wrap under the field instead of beside it.
 
-- [ ] **Step 1: Build** the views to this list; remove the steps column.
-- [ ] **Step 2:** `swift build` clean (no new warnings); `swift test` passes.
-- [ ] **Step 3:** `scripts/bundle.sh debug` succeeds. The look is checked on screen in Task 6.
-- [ ] **Step 4: Commit** `feat: batch window starts with Choose Folder and numbered fold-open cards`
+- [x] **Step 1: Build** the views to this list; remove the steps column.
+- [x] **Step 2:** `swift build` clean (no new warnings); `swift test` passes.
+- [x] **Step 3:** `scripts/bundle.sh debug` succeeds. The look is checked on screen in Task 6.
+- [x] **Step 4: Commit** `feat: batch window starts with Choose Folder and numbered fold-open cards`
 
 ---
 
