@@ -8,6 +8,8 @@ public enum DiskImageArt {
     public static let size = CGSize(width: 640, height: 400)
     /// Icon centres in Finder's coordinates (points from the top-leading corner); `scripts/dmg.sh` uses the same.
     static let appSlot = CGPoint(x: 160, y: 170), applicationsSlot = CGPoint(x: 480, y: 170)
+    /// Where Finder centres an icon's name at icon size 96, from the window's top (measured).
+    static let labelCentreFromTop = 234
 
     public static func render(help: String, scale: Int, rightToLeft: Bool = false) -> CGImage {
         let scale = max(1, scale)
@@ -18,6 +20,7 @@ public enum DiskImageArt {
         background(ctx)
         feather(ctx)
         arrow(ctx)
+        labelPlates(ctx)
         if !help.isEmpty { helpBox(ctx, help, rightToLeft: rightToLeft) }
         return ctx.makeImage()!
     }
@@ -57,6 +60,18 @@ public enum DiskImageArt {
         }
         ctx.strokePath()
         ctx.restoreGState()
+    }
+
+    /// Finder writes icon names in dark grey over a background picture, in light and dark mode alike, so
+    /// each name sits on a light plate.
+    private static func labelPlates(_ ctx: CGContext) {
+        let y = size.height - CGFloat(labelCentreFromTop)
+        ctx.setFillColor(rgb(0xe7e7ec, 0.92))
+        for slot in [appSlot, applicationsSlot] {
+            let plate = CGRect(x: slot.x - 56, y: y - 10, width: 112, height: 20)
+            ctx.addPath(CGPath(roundedRect: plate, cornerWidth: 10, cornerHeight: 10, transform: nil))
+            ctx.fillPath()
+        }
     }
 
     private static func arrow(_ ctx: CGContext) {

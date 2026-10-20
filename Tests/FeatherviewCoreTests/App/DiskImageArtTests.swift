@@ -23,6 +23,16 @@ import Testing
         #expect(sum / Double(image.width * image.height / 2) < 0.2)
     }
 
+    /// Finder writes the icon names in dark grey over a background picture, in light and dark mode alike,
+    /// so each name sits on a light plate.
+    @Test func iconNamesSitOnLightPlates() throws {
+        let image = try pixels(DiskImageArt.render(help: "", scale: 1))
+        for x in [160, 480] {
+            let p = image[x, DiskImageArt.labelCentreFromTop]
+            #expect((0.2126 * Double(p.r) + 0.7152 * Double(p.g) + 0.0722 * Double(p.b)) / 255 > 0.8)
+        }
+    }
+
     @Test(arguments: [false, true])
     func helpTextAppears(rightToLeft: Bool) throws {
         let empty = try pixels(DiskImageArt.render(help: "", scale: 1, rightToLeft: rightToLeft))
