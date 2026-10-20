@@ -87,7 +87,10 @@ public enum BatchCard: String, CaseIterable, Identifiable, Sendable {
             case .widthHeight:
                 return String(localized: "\(r.width.map(String.init) ?? "–") × \(r.height.map(String.init) ?? "–")")
             case .megapixels: return String(localized: "\(r.megapixels.formatted()) MP")
-            case .percent: return (r.percentWidth / 100).formatted(.percent)
+            case .percent:
+                let w = (r.percentWidth / 100).formatted(.percent)
+                guard !r.keepAspect, r.percentHeight != r.percentWidth else { return w }
+                return String(localized: "\(w) × \((r.percentHeight / 100).formatted(.percent))")
             }
         case .name:
             let place = s.outputFolder.isEmpty

@@ -84,6 +84,9 @@ import Testing
         s.resize.mode = .percent
         s.resize.percentWidth = 50
         #expect(BatchCard.size.summary(in: s) == 0.5.formatted(.percent))
+        s.resize.keepAspect = false
+        s.resize.percentHeight = 25
+        #expect(BatchCard.size.summary(in: s) == "\(0.5.formatted(.percent)) × \(0.25.formatted(.percent))")
     }
 
     @Test func nameSummaryNextToOriginals() {
