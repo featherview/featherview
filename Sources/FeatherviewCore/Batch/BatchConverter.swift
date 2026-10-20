@@ -140,9 +140,12 @@ public enum BatchConverter {
             format = settings.format
             options = settings.options
         } else {
-            // Its own format, by the file's type (its extension): a CR3 that ImageIO reads still fails.
-            let type = UTType(filenameExtension: url.pathExtension.lowercased())
-            guard let own = FormatRegistry.writable.first(where: { type != nil && $0.type == type }),
+            // Its own format, by extension first (.pbm, .pgm and .ppm share one UTType), then by type
+            // (.jpeg, .tif): a CR3 that ImageIO reads still fails.
+            var ext = url.pathExtension.lowercased()
+            ext = ["jfif": "jpg", "jif": "jpg", "jfi": "jpg", "heif": "heic", "hif": "heic"][ext] ?? ext
+            let type = UTType(filenameExtension: ext)
+            guard let own = FormatRegistry.format(id: ext) ?? FormatRegistry.writable.first(where: { type != nil && $0.type == type }),
                   own.writer == .pdf || own.optionFields.contains(.keepAllPages) || ImageDecoder.pageCount(of: url) <= 1
             else { return Prepared(error: String(localized: "Can't save \(name) in its own format")) }
             format = own

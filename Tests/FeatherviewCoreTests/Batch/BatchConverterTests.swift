@@ -281,6 +281,31 @@ import Testing
         #expect(CGImageSourceCreateWithURL(png2 as CFURL, nil).flatMap(CGImageSourceGetType) as String? == "public.png")
     }
 
+    @Test func keepFormatPicksTheWriterByExtension() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        // .pbm, .pgm and .ppm share one UTType; .heif and .jfif have none of the writers' types.
+        let pgm = dir.appendingPathComponent("a.pgm"), ppm = dir.appendingPathComponent("b.ppm")
+        try Data("P2\n2 1\n255\n0 128\n".utf8).write(to: pgm)
+        try Data("P3\n2 1\n255\n255 0 0 0 0 255\n".utf8).write(to: ppm)
+        let heif = try Fixtures.writeImage(to: dir.appendingPathComponent("c.heif"), width: 40, height: 20, type: .heic)
+        let jfif = dir.appendingPathComponent("d.jfif")
+        try FileManager.default.copyItem(at: try Fixtures.writeImage(to: dir.appendingPathComponent("d.jpg"), width: 40, height: 20), to: jfif)
+
+        let results = await BatchConverter.run(job([pgm, ppm, heif, jfif], out: out) {
+            $0.changeFormat = false
+            $0.resize.isOn = true
+            $0.resize.side = 10
+        })
+
+        #expect(results.map(\.status) == [.converted, .converted, .converted, .converted])
+        #expect(results.map { $0.output?.lastPathComponent } == ["a.pgm", "b.ppm", "c.heif", "d.jfif"])
+        let magic = try results.prefix(2).map { String(decoding: try Data(contentsOf: try #require($0.output)).prefix(2), as: UTF8.self) }
+        #expect(magic == ["P5", "P6"] || magic == ["P2", "P3"])
+        let types = try results.suffix(2).map { CGImageSourceCreateWithURL(try #require($0.output) as CFURL, nil).flatMap(CGImageSourceGetType) as String? }
+        // ImageIO names a HEIC file's type by its extension too: public.heif for .heif.
+        #expect(types == ["public.heif", "public.jpeg"])
+    }
+
     @Test func canStartWithEmptyFolder() {
         var s = BatchSettings()
         s.outputFolder = ""
