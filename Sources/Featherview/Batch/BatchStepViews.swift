@@ -80,6 +80,10 @@ private struct SaveToRow: View {
                     TextField("Save to:", text: $folder, prompt: Text("Next to the originals"))
                         .labelsHidden()
                     Button("Choose…", action: chooseFolder)
+                    // Back to the empty default without having to know that empty means this.
+                    if !folder.isEmpty {
+                        Button("Next to the originals") { folder = "" }
+                    }
                 }
                 Text("{folder} in the path stands for each image's folder name.")
                     .font(.caption)

@@ -252,7 +252,9 @@ Two columns and a bottom bar, titled "Batch Convert":
   any other format gets the first page, and the log line says so ("page 1 of 297"), so no page
   is dropped silently. No file per page.
 - Name card: the rename pattern, then "Save to": **Next to the originals** (empty, the default)
-  or a chosen folder. `{folder}` in the output path stands for the input file's folder name.
+  or a chosen folder, with a "Next to the originals" button to go back while a folder is set
+  (the reference viewer's button for the browsed folder). `{folder}` in the output path stands
+  for the input file's folder name.
   The safety and date options below sit in the same card.
 - Rename pattern (always applied; `{name}` by default): `{name}` original name, `{n}` counter, `{n:3}` zero-padded counter, `{date}`
   date taken (YYYY-MM-DD, file date if missing). `/` and `:` become `-`. Empty pattern keeps the
