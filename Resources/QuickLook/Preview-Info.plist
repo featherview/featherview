@@ -37,6 +37,7 @@
 				<string>net.mynetx.featherview.pdn</string>
 				<string>net.mynetx.featherview.photo-cd</string>
 				<string>net.mynetx.featherview.jpeg-xr</string>
+				<string>net.mynetx.featherview.bpg</string>
 			</array>
 			<key>QLIsDataBasedPreview</key>
 			<true/>

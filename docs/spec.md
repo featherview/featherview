@@ -393,6 +393,13 @@ the About window.
     `AGENTS.md`). Every pixel format is brought to 8-bit sRGB: HDR and wide-gamut files are clipped,
     an embedded colour profile is ignored, premultiplied alpha (Office's HD Photo files) is undone.
     Known limits: CMYK with alpha and n-channel files can't be opened; only the first frame shows.
+  - BPG without a third-party HEVC decoder (every free one is LGPL): the header's VPS/SPS fields are
+    rebuilt and the stream rewrapped as HEIF, which ImageIO decodes with the system's HEVC decoder.
+    Grey, 4:2:0, 4:2:2 and 4:4:4, 8 to 10 bits, YCbCr (BT 601/709/2020), RGB and YCgCo (4:4:4),
+    full or limited range, alpha (straight or premultiplied). Known limits: the first frame of an
+    animation only, the ICC profile is ignored; 12 and 14 bits, CMYK, and RGB or YCgCo with
+    subsampled chroma can't be opened (macOS decodes nothing); damaged picture data shows as HEVC
+    conceals it, and a fully transparent black picture is taken for a failed decode.
   - Layered app formats, shown flattened (own milestone after 3): PSB (its stored composite
     image), XCF (GIMP), PDN (Paint.NET), PSP (Paint Shop Pro). Where the file stores a composite
     or thumbnail at full size it is used; otherwise visible layers are composited with normal

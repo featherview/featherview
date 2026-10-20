@@ -45,13 +45,13 @@ public struct OwnFormat: Sendable {
 }
 
 public enum OwnDecoders {
-    /// Decoders in FeatherviewCore (pure Swift, except JPEG XR through jxrlib). The app adds the ones that
-    /// need AppKit (SVG) with `register`.
+    /// Decoders in FeatherviewCore (pure Swift, except JPEG XR through jxrlib and BPG through ImageIO's
+    /// HEVC). The app adds the ones that need AppKit (SVG) with `register`.
     static let builtIn: [OwnFormat] = [
         QOICodec.format, PCXCodec.pcx, PCXCodec.dcx,
         XBMDecoder.format, XPMDecoder.format, WBMPDecoder.format,
         SunRasterDecoder.format, ILBMDecoder.format, PhotoCDDecoder.format, JPEGXRDecoder.format,
-        XCFDecoder.format, PSPDecoder.format, PDNDecoder.format,
+        BPGDecoder.format, XCFDecoder.format, PSPDecoder.format, PDNDecoder.format,
         PDFPages.format,
     ]
 
