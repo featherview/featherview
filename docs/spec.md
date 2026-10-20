@@ -30,7 +30,7 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
   even if hidden or of an unknown extension; symlinked folders are followed; folders and broken
   links with image names are skipped.
 - Supported formats: everything ImageIO decodes on the user's Mac (JPEG, PNG, HEIC, WebP,
-  TIFF, GIF (animated), BMP, camera RAW, …), plus PDF (see "Formats").
+  TIFF, GIF (first frame; animation in v2), BMP, camera RAW, …), plus PDF (see "Formats").
 - Window title: `filename — 3 / 120`; for a multi-page file `filename — page 2 / 3 — 3 / 120`.
   A multi-page file always opens on page 1.
 - The whole app is light or dark: Appearance in Preferences is System (the default), Light or Dark.
@@ -393,7 +393,7 @@ the About window.
     animated cursors (ANI). FITS shows the first image in the file (its first plane, or three planes
     as RGB); 8-bit data as stored, everything else stretched linearly between the 0.25th and 99.75th
     percentile; the first row is the bottom one; tile-compressed FITS can't be opened. ANI shows its
-    frames at their largest size and plays like any animation ("Animation"). PAM goes through ImageIO, which reads it
+    first frame at its largest size (playing it: "Animation", v2). PAM goes through ImageIO, which reads it
     with the rest of the Netpbm family (PFM too).
   - JPEG XR (.jxr, also HD Photo .wdp/.hdp) through jxrlib (BSD-2-Clause, built from source, per
     `AGENTS.md`). Every pixel format is brought to 8-bit sRGB: HDR and wide-gamut files are clipped,
@@ -463,7 +463,7 @@ sequences are not offered for writing; any other type a newer macOS adds appears
 Orientation is always applied to the pixels and the tag reset to 1 (not an option). Options are
 remembered per format and can be saved as named profiles.
 
-### Animation (milestone 9)
+### Animation (v2)
 
 Animated GIF, PNG (APNG), WebP and HEIC sequences, and Windows animated cursors (ANI), play in the
 viewer in a loop, with the delays the file gives. The first frame shows as fast as a still image;
