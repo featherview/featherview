@@ -6,10 +6,10 @@ import UniformTypeIdentifiers
 extension BatchCard {
     var title: LocalizedStringKey {
         switch self {
-        case .format: "Format and Folder"
-        case .name: "Rename"
+        case .format: "Format"
+        case .name: "Name"
         case .crop: "Crop"
-        case .size: "Resize"
+        case .size: "Size"
         case .orientation: "Rotate and Flip"
         case .colour: "Colour"
         case .filters: "Filters"
@@ -42,7 +42,8 @@ final class BatchModel {
     /// Each input's place in the list: every row asks for its state on each result, so no linear search.
     private var position: [BatchInput: Int] = [:]
     var selection: Set<BatchInput> = []
-    var step = BatchCard.format
+    /// The one unfolded card; nil = all folded.
+    var openCard: BatchCard? = .format
     private(set) var isRunning = false
     private(set) var isPaused = false
     /// In list order, grows while running.
@@ -73,12 +74,6 @@ final class BatchModel {
     init() {
         settings = BatchPresets.current()
     }
-
-    // MARK: - Steps column
-
-    func isOn(_ step: BatchCard) -> Bool { step == .size ? settings.resize.isOn : step.isAdded(in: settings) }
-    /// Empty for a step that is off.
-    func summary(of step: BatchCard) -> String { step.isAdded(in: settings) ? step.summary(in: settings) : "" }
 
     // MARK: - Running
 
@@ -247,16 +242,11 @@ final class BatchModel {
     }
 
     /// Scanned and de-duplicated off the main thread, then appended in the order given; folders that
-    /// couldn't be listed get a notice.
-    private func addInBackground(_ work: @escaping @Sendable () -> (list: BatchInputList, unreadable: [URL])) {
+    /// couldn't be listed or hold no images get a notice.
+    private func addInBackground(_ work: @escaping @Sendable () -> (list: BatchInputList, unreadable: [URL], empty: [URL])) {
         addInOrder(work) { [self] found in
             inputs.append(found.list)
-            if let first = found.unreadable.first {
-                let name = first.lastPathComponent
-                notice = found.unreadable.count == 1
-                    ? String(localized: "Can't open \(name)")
-                    : String(localized: "Can't open \(name) and \(found.unreadable.count - 1) more folders")
-            }
+            if let message = BatchInputList.notice(unreadable: found.unreadable, empty: found.empty) { notice = message }
         }
     }
 
@@ -264,15 +254,12 @@ final class BatchModel {
         addInBackground {
             var list = BatchInputList()
             list.add(files: files)
-            return (list, [])
+            return (list, [], [])
         }
     }
 
     func add(folder: URL, subfolders: Bool) {
-        addInBackground {
-            do { return (BatchInputList(try BatchInputList.scan(folder: folder, subfolders: subfolders)), []) }
-            catch { return (BatchInputList(), [folder]) }
-        }
+        addInBackground { BatchInputList.scanReporting(folder: folder, subfolders: subfolders) }
     }
 
     /// Dropped files and folders; folders add with their subfolders.

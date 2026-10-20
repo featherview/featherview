@@ -1,8 +1,8 @@
 import FeatherviewCore
 import SwiftUI
 
-/// The batch window (spec "Window"): images, steps, the selected step's settings; while running,
-/// the run view in place of the last two.
+/// The batch window (design "Layout"): images leading; the cards over the preview trailing, with Presets
+/// and the main button under them; while running, the run view in place of cards and preview.
 struct BatchView: View {
     @Bindable var model: BatchModel
     @State private var namingPreset = false
@@ -22,22 +22,21 @@ struct BatchView: View {
                 }
                 if model.isRunning {
                     BatchRunView(model: model)
+                        .frame(maxHeight: .infinity)
                 } else {
-                    HStack(spacing: 0) {
-                        BatchStepsColumn(model: model)
-                            .frame(width: 230)
-                        Divider()
-                        VStack(spacing: 0) {
-                            BatchStepDetail(step: model.step, model: model)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            Divider()
-                            BatchPreview(model: model)
-                        }
-                    }
+                    // The cards give way first: the preview keeps its height and the cards scroll.
+                    BatchCards(model: model)
+                        .layoutPriority(-1)
+                    Divider()
+                    BatchPreview(model: model)
+                        .frame(minHeight: Theme.batchPreviewMinHeight, maxHeight: Theme.batchPreviewHeight)
                 }
+                Divider()
+                bottomBar
             }
+            .background { cardKeys }
         }
-        .toolbar { toolbar }
+        .navigationTitle("Batch Convert")
         .frame(minWidth: 960, minHeight: 600)
         .sheet(isPresented: $namingPreset) { presetSheet }
         .confirmationDialog("Delete the preset \(model.loadedPreset ?? "")?", isPresented: $confirmingDelete) {
@@ -50,30 +49,25 @@ struct BatchView: View {
         }
     }
 
-    @ToolbarContentBuilder private var toolbar: some ToolbarContent {
-        // Groups, so macOS 26 draws each as a capsule; 14 and 15 look as before.
-        ToolbarItemGroup {
-            Menu {
-                ForEach(model.presetNames, id: \.self) { name in
-                    Toggle(name, isOn: Binding { model.loadedPreset == name } set: { _ in model.loadPreset(name) })
-                }
-                if !model.presetNames.isEmpty { Divider() }
-                Button("Save Preset…") {
-                    presetName = model.loadedPreset ?? ""
-                    namingPreset = true
-                }
-                Button("Delete Preset…") { confirmingDelete = true }
-                    .disabled(model.loadedPreset == nil)
-            } label: {
-                if let name = model.loadedPreset {
-                    Text(model.presetName == nil ? String(localized: "\(name) (edited)", comment: "Preset menu: a preset with unsaved changes") : name)
-                } else {
-                    Text("Presets")
+    /// ⌘2, ⌘3, ⌘4 open Format, Size and Name, matching their numbers.
+    private var cardKeys: some View {
+        ZStack {
+            ForEach(BatchCard.core) { card in
+                if let number = card.number {
+                    Button(card.title) { model.openCard = card }
+                        .keyboardShortcut(KeyEquivalent(Character(String(number))), modifiers: .command)
                 }
             }
-            .disabled(model.isRunning)
         }
-        ToolbarItemGroup(placement: .primaryAction) {
+        .opacity(0)
+        .accessibilityHidden(true)
+        .disabled(model.isRunning)
+    }
+
+    private var bottomBar: some View {
+        HStack {
+            presetsMenu
+            Spacer()
             if model.isRunning {
                 if model.isPaused {
                     Button("Resume") { model.resume() }
@@ -83,11 +77,37 @@ struct BatchView: View {
                 Button("Stop") { model.stop() }
             } else {
                 // ⌘↩, not Return: Return in a field only confirms the value, it must not start a long batch.
-                Button("Start") { model.start() }
+                Button(BatchInputList.convertTitle(count: model.inputs.items.count)) { model.start() }
                     .keyboardShortcut(.return, modifiers: .command)
+                    .buttonStyle(.borderedProminent)
                     .disabled(!model.canStart)
             }
         }
+        .padding(.horizontal, Theme.rowPadding)
+        .padding(.vertical, Theme.messagePadding)
+    }
+
+    private var presetsMenu: some View {
+        Menu {
+            ForEach(model.presetNames, id: \.self) { name in
+                Toggle(name, isOn: Binding { model.loadedPreset == name } set: { _ in model.loadPreset(name) })
+            }
+            if !model.presetNames.isEmpty { Divider() }
+            Button("Save Preset…") {
+                presetName = model.loadedPreset ?? ""
+                namingPreset = true
+            }
+            Button("Delete Preset…") { confirmingDelete = true }
+                .disabled(model.loadedPreset == nil)
+        } label: {
+            if let name = model.loadedPreset {
+                Text(model.presetName == nil ? String(localized: "\(name) (edited)", comment: "Preset menu: a preset with unsaved changes") : name)
+            } else {
+                Text("Presets")
+            }
+        }
+        .fixedSize()
+        .disabled(model.isRunning)
     }
 
     private var presetSheet: some View {
@@ -117,40 +137,6 @@ struct BatchView: View {
             }
         } message: {
             Text("Its settings are lost.")
-        }
-    }
-}
-
-/// Output, Operations (in processing order); each row the step's title and summary.
-private struct BatchStepsColumn: View {
-    @Bindable var model: BatchModel
-
-    var body: some View {
-        List(selection: Binding<BatchCard?> { model.step } set: { if let step = $0 { model.step = step } }) {
-            Section("Output") { rows([.format, .name]) }
-            Section("Operations") { rows([.crop, .size, .orientation, .colour, .filters, .canvas, .border, .text, .watermark]) }
-        }
-    }
-
-    private func rows(_ steps: [BatchCard]) -> some View {
-        ForEach(steps) { step in
-            HStack {
-                Image(systemName: model.isOn(step) ? "circle.fill" : "circle")
-                    .font(.system(size: 7))
-                    .foregroundStyle(model.isOn(step) ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
-                    .accessibilityLabel(model.isOn(step) ? "On" : "Off")
-                // One line: a wrapped title outgrows the list's row height and spills over the next row.
-                // The summary truncates first.
-                Text(step.title)
-                    .lineLimit(1)
-                    .layoutPriority(1)
-                Spacer()
-                Text(model.summary(of: step))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            .tag(step)
         }
     }
 }

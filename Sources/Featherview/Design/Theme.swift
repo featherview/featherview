@@ -289,6 +289,11 @@ enum Theme {
     /// Small button ("Choose…"): 22 tall, 10 side padding.
     static let smallButtonHeight = 22.0
     static let smallButtonPadding = 10.0
+    /// Batch card header: the number circle (Format 2, Size 3, Name 4).
+    static let batchCardNumber = 20.0
+    /// Batch preview: never shorter than this, so tall cards scroll instead of squeezing it; at most its ideal.
+    static let batchPreviewMinHeight = 160.0
+    static let batchPreviewHeight = 220.0
 
     /// Corner radii, from the outside in.
     enum Radius {

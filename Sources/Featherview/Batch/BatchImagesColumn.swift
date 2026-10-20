@@ -11,15 +11,24 @@ struct BatchImagesColumn: View {
         VStack(spacing: 0) {
             header
             Divider()
-            List(selection: $model.selection) {
-                ForEach(model.inputs.items, id: \.self) { input in
-                    BatchImageRow(input: input, state: model.state(of: input))
-                        .background(SystemSelectionOff())
-                        .listRowBackground(model.selection.contains(input)
-                            ? RoundedRectangle(cornerRadius: 6).fill(Color.accentColor.opacity(0.15)) : nil)
+            Group {
+                if model.inputs.items.isEmpty {
+                    emptyState
+                } else {
+                    List(selection: $model.selection) {
+                        ForEach(model.inputs.items, id: \.self) { input in
+                            BatchImageRow(input: input, state: model.state(of: input))
+                                .background(SystemSelectionOff())
+                                .listRowBackground(model.selection.contains(input)
+                                    ? RoundedRectangle(cornerRadius: 6).fill(Color.accentColor.opacity(0.15)) : nil)
+                        }
+                    }
+                    // Not the sidebar style: its source list checks for flat indentation on every insert,
+                    // which loads every row (~750 ms after adding 10,000 images).
+                    .listStyle(.plain)
+                    .onDeleteCommand { if !model.isRunning { model.removeSelected() } }
                 }
             }
-            .onDeleteCommand { if !model.isRunning { model.removeSelected() } }
             .dropDestination(for: URL.self) { urls, _ in
                 guard !model.isRunning else { return false }
                 model.add(dropped: urls)
@@ -32,6 +41,25 @@ struct BatchImagesColumn: View {
             bottomBar
                 .disabled(model.isRunning)
         }
+    }
+
+    /// The window's first move: Choose Folder… stands out, Add Files… and dropping are the other ways in.
+    private var emptyState: some View {
+        VStack(spacing: Theme.emptyCardGap) {
+            // With subfolders, like a dropped folder: a camera card's DCIM holds only subfolders.
+            Button("Choose Folder…") { model.addFolderPanel(subfolders: true) }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+                .controlSize(.large)
+            Button("Add Files…") { model.addFilesPanel() }
+            Text("or drop images here")
+                .font(Theme.hintText)
+                .foregroundStyle(Theme.labelHint)
+        }
+        .padding(Theme.emptyCardPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .disabled(model.isRunning)
     }
 
     private var header: some View {

@@ -35,17 +35,31 @@ public struct BatchInputList: Equatable, Sendable {
     /// order. Every item gets `root: folder` and a URL below `folder`'s path as given.
     public static func scan(folder: URL, subfolders: Bool) throws -> [BatchInput] {
         var inputs: [BatchInput] = []
-        try scan(folder, root: folder, subfolders: subfolders, into: &inputs)
+        var unreadable: [URL] = []
+        try scan(folder, root: folder, subfolders: subfolders, into: &inputs, unreadable: &unreadable)
         return inputs
+    }
+
+    /// A folder the user chose, scanned like `scan(folder:subfolders:)`: `unreadable` names it or
+    /// the subfolders that couldn't be listed, `empty` names it when it holds no images and every
+    /// subfolder could be listed.
+    public static func scanReporting(folder: URL, subfolders: Bool) -> (list: BatchInputList, unreadable: [URL], empty: [URL]) {
+        var inputs: [BatchInput] = []
+        var unreadable: [URL] = []
+        do {
+            try scan(folder, root: folder, subfolders: subfolders, into: &inputs, unreadable: &unreadable)
+        } catch { return (BatchInputList(), [folder], []) }
+        return (BatchInputList(inputs), unreadable, inputs.isEmpty && unreadable.isEmpty ? [folder] : [])
     }
 
     /// Dropped files and folders in the order given; a folder (also through a symlink) adds with
     /// its subfolders. Off the caller's thread, like `scan(folder:subfolders:)`. `unreadable` names
-    /// the folders that couldn't be listed.
-    public static func scan(dropped urls: [URL]) -> (list: BatchInputList, unreadable: [URL]) {
+    /// the folders that couldn't be listed, `empty` those with no images.
+    public static func scan(dropped urls: [URL]) -> (list: BatchInputList, unreadable: [URL], empty: [URL]) {
         var list = BatchInputList()
         var files: [URL] = []
         var unreadable: [URL] = []
+        var empty: [URL] = []
         for url in urls {
             var isFolder: ObjCBool = false
             guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isFolder), isFolder.boolValue else {
@@ -56,13 +70,36 @@ public struct BatchInputList: Equatable, Sendable {
             if (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isPackageKey]).isPackage) == true { continue }
             list.add(files: files)
             files = []
-            do { list.append(try scan(folder: url, subfolders: true)) } catch { unreadable.append(url) }
+            let found = scanReporting(folder: url, subfolders: true)
+            list.append(found.list)
+            unreadable += found.unreadable
+            empty += found.empty
         }
         list.add(files: files)
-        return (list, unreadable)
+        return (list, unreadable, empty)
     }
 
-    private static func scan(_ folder: URL, root: URL, subfolders: Bool, into inputs: inout [BatchInput]) throws {
+    /// The Convert button's title ("Convert 1 Image", "Convert 48 Images"). English agrees through
+    /// inflection; translations give plural variants in the catalog.
+    public static func convertTitle(count: Int) -> String {
+        String(AttributedString(localized: "Convert ^[\(count) Image](inflect: true)",
+                                comment: "Batch window's start button: the number of images in the list").characters)
+    }
+
+    /// What to tell the user after an add: folders that couldn't be listed, else folders with no
+    /// images; nil when every folder added something.
+    public static func notice(unreadable: [URL], empty: [URL]) -> String? {
+        if let first = unreadable.first {
+            let name = first.lastPathComponent
+            return unreadable.count == 1
+                ? String(localized: "Can't open \(name)")
+                : String(localized: "Can't open \(name) and \(unreadable.count - 1) more folders")
+        }
+        return empty.first.map { String(localized: "No images in \($0.lastPathComponent)") }
+    }
+
+    private static func scan(_ folder: URL, root: URL, subfolders: Bool, into inputs: inout [BatchInput],
+                             unreadable: inout [URL]) throws {
         let keys: [URLResourceKey] = [.isDirectoryKey, .isPackageKey, .isRegularFileKey, .isSymbolicLinkKey]
         // Resource values come from the directory listing: no file is opened.
         // Listing fails on a symlinked folder the user chose, so list its target; entries found
@@ -88,7 +125,8 @@ public struct BatchInputList: Equatable, Sendable {
         inputs += FolderScanner.inFinderOrder(files).map { BatchInput(url: $0, root: root) }
         guard subfolders else { return }
         for sub in FolderScanner.inFinderOrder(folders) {
-            try? scan(sub, root: root, subfolders: true, into: &inputs)  // an unreadable subfolder is skipped
+            do { try scan(sub, root: root, subfolders: true, into: &inputs, unreadable: &unreadable) }
+            catch { unreadable.append(sub) }  // skipped, and reported
         }
     }
 

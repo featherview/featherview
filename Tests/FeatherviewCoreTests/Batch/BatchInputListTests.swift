@@ -131,6 +131,44 @@ import Testing
         #expect(dropped.unreadable == [locked])
     }
 
+    @Test func folderWithoutImagesIsReported() throws {
+        // A camera card's DCIM holds only subfolders; an empty folder holds nothing.
+        let dir = try Fixtures.makeTempDir()
+        let empty = dir.appendingPathComponent("Empty")
+        try FileManager.default.createDirectory(at: empty, withIntermediateDirectories: true)
+        let dcim = dir.appendingPathComponent("DCIM/100APPLE")
+        try FileManager.default.createDirectory(at: dcim, withIntermediateDirectories: true)
+        _ = try image(dcim, "a.jpg")
+        let dropped = BatchInputList.scan(dropped: [empty, dir.appendingPathComponent("DCIM")])
+        #expect(names(dropped.list.items) == ["a.jpg"])
+        #expect(dropped.empty == [empty])
+        #expect(BatchInputList.notice(unreadable: [], empty: [empty]) == "No images in Empty")
+        #expect(BatchInputList.notice(unreadable: [], empty: []) == nil)
+        #expect(BatchInputList.notice(unreadable: [dcim], empty: [empty]) == "Can't open 100APPLE")
+    }
+
+    @Test func folderWhoseOnlyImagesSitInAnUnreadableSubfolderIsUnreadableNotEmpty() throws {
+        let dir = try Fixtures.makeTempDir()
+        let dcim = dir.appendingPathComponent("DCIM")
+        let locked = dcim.appendingPathComponent("100APPLE")
+        try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: true)
+        _ = try image(locked, "a.jpg")
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: locked.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) }
+        let dropped = BatchInputList.scan(dropped: [dcim])
+        #expect(dropped.unreadable.map(\.path) == [locked.path])
+        #expect(dropped.empty.isEmpty)
+        let chosen = BatchInputList.scanReporting(folder: dcim, subfolders: true)
+        #expect(chosen.unreadable.map(\.path) == [locked.path])
+        #expect(chosen.empty.isEmpty)
+        #expect(BatchInputList.notice(unreadable: chosen.unreadable, empty: chosen.empty) == "Can't open 100APPLE")
+    }
+
+    @Test func convertTitleAgreesWithTheCount() {
+        #expect(BatchInputList.convertTitle(count: 1) == "Convert 1 Image")
+        #expect(BatchInputList.convertTitle(count: 48) == "Convert 48 Images")
+    }
+
     /// "Recreate subfolders" takes each input's path below its root, so the root must prefix it.
     @Test func scanKeepsItemsUnderTheChosenFolderPath() throws {
         let dir = try Fixtures.makeTempDir()  // under /var, which is a symlink to /private/var
