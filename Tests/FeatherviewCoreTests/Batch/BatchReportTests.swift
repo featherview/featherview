@@ -18,6 +18,11 @@ import Testing
         #expect(beside.contains("next to the originals"))
     }
 
+    @Test func durationEndsWithoutPeriod() {
+        // The sentence adds its own period; German abbreviations ("Sek.") would double it.
+        #expect(!BatchReport.duration(3725.6, locale: Locale(identifier: "de_DE")).hasSuffix("."))
+    }
+
     @Test func failuresByName() {
         let results = [result("a.jpg", .converted), result("b.jpg", .failed, "Can't open b.jpg"),
                        result("c.jpg", .notStarted), result("d.cr3", .failed, "Can't save d.cr3 in its own format")]
