@@ -9,8 +9,8 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
 - Also reads formats macOS can't: QOI, PCX/DCX, XBM, XPM, WBMP, Sun Raster, IFF/LBM (including HAM),
   MacPaint, PAM, farbfeld, X Window Dump, FITS (astronomy) and Windows animated cursors (first frame)
 - Shows layered files from image editors flattened: Photoshop PSB, GIMP XCF, Paint.NET PDN and
-  PaintShop Pro PSP, Krita KRA and OpenRaster ORA (their stored flattened image), Procreate (its
-  stored preview). Blend modes other than normal are drawn as normal; PSB files without a stored
+  PaintShop Pro PSP, Krita KRA and OpenRaster ORA (their stored flattened image), Procreate (at
+  full size, turned the way the canvas was). Blend modes other than normal are drawn as normal; PSB files without a stored
   composite, multichannel PSB and GIMP layer effects aren't shown; `.xcf.gz` isn't read
 - HDR photos (iPhone HEIC and JPEG, HDR AVIF, OpenEXR) show their extra brightness on HDR screens
   (macOS 15 and later)

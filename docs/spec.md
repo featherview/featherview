@@ -398,12 +398,16 @@ the About window.
     or thumbnail at full size it is used; otherwise visible layers are composited with normal
     blending and their opacity, and other blend modes are listed as a known limit.
     Krita (KRA) and OpenRaster (ORA) are zip archives with the flattened picture stored as
-    `mergedimage.png`, which is shown; a file without one can't be opened. Procreate files show
-    their stored preview (`QuickLook/Thumbnail.png`), smaller than the canvas.
+    `mergedimage.png`, which is shown; a file without one can't be opened.
     PSB goes through ImageIO, with its limits: multichannel files and a zip-compressed composite
     can't be opened, and a composite GIMP stored with premultiplied alpha shows dark antialiased
     edges (ImageIO reads it as straight alpha). CMYK and grey PSB colours go through ImageIO's
     colour management, so they differ slightly from a plain conversion.
+    Procreate (`.procreate`) shows the flattened picture Procreate keeps in the file, at full size,
+    in the document's colour profile, and turned and flipped the way the canvas was (as its own
+    preview shows it). Its tiles are LZO1X or LZ4 compressed; LZO1X is our own decoder, LZ4 is
+    macOS's. If that picture is missing or can't be read, the stored preview (at most 1024 pixels
+    wide) is shown instead. Known limit: a flipped canvas is untested against a real file.
   - Every own decoder goes through the same paths as ImageIO's: folder listing by extension,
     downsampled decode at screen size, batch input, info panel (dimensions only). A file it
     can't read shows "Can't open <name>" like any other.
