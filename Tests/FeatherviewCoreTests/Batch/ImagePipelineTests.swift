@@ -35,7 +35,7 @@ import Testing
         var s = BatchSettings()
         s.resize.isOn = true
         s.resize.mode = .widthHeight; s.resize.width = 200
-        s.orientation.rotate = .right
+        s.orientation.isOn = true; s.orientation.rotate = .right
         let output = try ImagePipeline.apply(try cg(PipelineFixtures.solid(.white, width: 400, height: 100)), s, context: context)
         #expect((output.width, output.height) == (50, 200))
     }

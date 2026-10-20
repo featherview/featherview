@@ -1,11 +1,12 @@
 import CoreGraphics
 import CoreImage
 import Foundation
+import UniformTypeIdentifiers
 
 public enum BatchConverter {
     /// One file's work before its commit.
     struct Prepared: Sendable {
-        /// The encoded output; nil in rename mode (the input's bytes are copied at commit).
+        /// The encoded output; nil when the input's bytes are copied at commit (`copiesUnchanged`).
         var data: Data?
         /// For `{date}` in the rename pattern.
         var date: Date?
@@ -42,7 +43,7 @@ public enum BatchConverter {
         let prepare = prepare ?? {
             // Loaded once per batch; when it can't be read every file fails with that sentence.
             let watermark: Result<CIImage?, WatermarkError>
-            if settings.mode != .rename, settings.watermark.isOn {
+            if settings.watermark.isOn {
                 do { watermark = .success(try WatermarkStep.load(settings.watermark.path)) }
                 catch let error as WatermarkError { watermark = .failure(error) }
                 catch { watermark = .failure(.unreadable(settings.watermark.path)) }
@@ -112,14 +113,13 @@ public enum BatchConverter {
         }
     }
 
-    /// Decode (all pages the format needs), the pipeline per page, encode. Rename mode only reads the date.
+    /// Decode (all pages the format needs), the pipeline per page, encode. A copy only reads the date.
     static func prepare(_ input: BatchInput, index: Int, settings: BatchSettings,
                         watermark: Result<CIImage?, WatermarkError>) -> Prepared {
         let url = input.url, name = url.lastPathComponent
-        let usesDate = (settings.mode != .convert && settings.renamePattern.contains("{date}"))
-            || (settings.mode != .rename && settings.text.isOn && settings.text.text.contains("{date}"))
+        let usesDate = settings.renamePattern.contains("{date}") || (settings.text.isOn && settings.text.text.contains("{date}"))
         let date = usesDate ? MetadataReader.dateTaken(of: url) : nil
-        if settings.mode == .rename {
+        if settings.copiesUnchanged {
             // The commit copies the bytes; a dangling link or a folder would copy as a link or fail as "Can't save".
             var isFolder: ObjCBool = false
             let target = url.resolvingSymlinksInPath().path
@@ -135,7 +135,22 @@ public enum BatchConverter {
         case .failure(.unreadable(let file)):
             return Prepared(error: String(localized: "Can't read the watermark image \(file)"))
         }
-        let format = settings.format, options = settings.options
+        let format: OutputFormat, options: FormatOptions
+        if settings.changeFormat {
+            format = settings.format
+            options = settings.options
+        } else {
+            // Its own format, by extension first (.pbm, .pgm and .ppm share one UTType), then by type
+            // (.jpeg, .tif): a CR3 that ImageIO reads still fails.
+            var ext = url.pathExtension.lowercased()
+            ext = ["jfif": "jpg", "jif": "jpg", "jfi": "jpg", "heif": "heic", "hif": "heic"][ext] ?? ext
+            let type = UTType(filenameExtension: ext)
+            guard let own = FormatRegistry.format(id: ext) ?? FormatRegistry.writable.first(where: { type != nil && $0.type == type }),
+                  own.writer == .pdf || own.optionFields.contains(.keepAllPages) || ImageDecoder.pageCount(of: url) <= 1
+            else { return Prepared(error: String(localized: "Can't save \(name) in its own format")) }
+            format = own
+            options = FormatSettings.options(for: own)
+        }
         var limit: Int?, originalSize: CGSize?
         if settings.hasOperations, let size = ImageDecoder.displaySize(of: url),
            let l = ResizeStep.decodeLimit(settings, originalSize: size) {

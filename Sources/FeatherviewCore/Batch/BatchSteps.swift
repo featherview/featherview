@@ -8,19 +8,13 @@ public enum BatchStep: String, CaseIterable, Identifiable, Sendable {
 
     public static let operations: [BatchStep] = [.crop, .resize, .orientation, .colour, .filters, .canvas, .border, .text, .watermark]
 
-    /// False when the mode skips this step (shown dimmed).
-    public func isUsed(in s: BatchSettings) -> Bool {
-        switch self {
-        case .rename: s.mode != .convert
-        case _ where Self.operations.contains(self): s.mode != .rename
-        default: true
-        }
-    }
+    /// Every step applies to every batch (a keep-format batch re-saves files in their own formats).
+    public func isUsed(in s: BatchSettings) -> Bool { true }
 
     public func isOn(in s: BatchSettings) -> Bool {
         switch self {
         case .output: true
-        case .rename: s.mode != .convert
+        case .rename: s.renamePattern != "{name}"
         case .crop: s.crop.isOn
         case .resize: s.resize.isOn
         case .orientation: s.orientation.isOn
@@ -39,7 +33,7 @@ public enum BatchStep: String, CaseIterable, Identifiable, Sendable {
         guard isUsed(in: s) else { return "" }
         switch self {
         case .output:
-            return s.mode == .rename ? String(localized: "Same format", comment: "Batch step summary: rename keeps each file's format") : s.format.name
+            return s.changeFormat ? s.format.name : String(localized: "Same format", comment: "Batch step summary: the batch keeps each file's format")
         case .rename:
             return s.renamePattern
         case .resize:
@@ -69,7 +63,8 @@ public enum BatchRowState: Equatable, Sendable {
 public enum BatchProgress {
     public static func canStart(isRunning: Bool, scans: Int, inputCount: Int, settings: BatchSettings) -> Bool {
         // A scan still in flight would append files the run never sees.
-        !isRunning && scans == 0 && inputCount > 0 && (settings.mode == .rename || settings.hasAbsoluteOutputFolder)
+        // An empty folder means next to each original.
+        !isRunning && scans == 0 && inputCount > 0 && (settings.outputFolder.isEmpty || settings.hasAbsoluteOutputFolder)
     }
 
     /// Estimated seconds left once 3 files are done, from the time spent not paused.

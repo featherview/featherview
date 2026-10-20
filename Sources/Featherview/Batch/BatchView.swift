@@ -52,18 +52,6 @@ struct BatchView: View {
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         // Groups, so macOS 26 draws each as a capsule; 14 and 15 look as before.
-        ToolbarItemGroup(placement: .principal) {
-            Picker("Mode", selection: $model.settings.mode) {
-                Text("Convert").tag(BatchMode.convert)
-                Text("Rename").tag(BatchMode.rename)
-                Text("Convert and Rename").tag(BatchMode.convertAndRename)
-            }
-            // A menu, not segments: three segments with "Convert and Rename" push Start into the overflow
-            // menu at the window's default width, and there the segments lose their names.
-            .pickerStyle(.menu)
-            .fixedSize()
-            .disabled(model.isRunning)
-        }
         ToolbarItemGroup {
             Menu {
                 ForEach(model.presetNames, id: \.self) { name in

@@ -273,7 +273,7 @@ import Testing
 
     private func orient(_ rotate: QuarterTurn, h: Bool = false, v: Bool = false) throws -> RGBAImage {
         var s = OrientationSettings()
-        s.rotate = rotate; s.flipHorizontal = h; s.flipVertical = v
+        s.isOn = true; s.rotate = rotate; s.flipHorizontal = h; s.flipVertical = v
         let out = OrientationStep.apply(PipelineFixtures.quadrants(width: 6, height: 4), s)
         #expect(out.extent.origin == .zero)
         return try PipelineFixtures.pixels(out)

@@ -13,7 +13,7 @@ import Testing
     /// Every field set to something other than its default.
     private func everythingChanged() -> BatchSettings {
         var s = BatchSettings()
-        s.mode = .convertAndRename
+        s.changeFormat = false
         s.formatID = "png"
         s.options.quality = 55
         s.outputFolder = "/tmp/{folder}/out"
@@ -25,7 +25,7 @@ import Testing
             r.percentWidth = 30; r.percentHeight = 40; r.keepAspect = false; r.dontEnlarge = false; r.dontShrink = true; r.dpi = 300
             return r
         }()
-        s.orientation = { var o = OrientationSettings(); o.rotate = .left; o.flipHorizontal = true; o.flipVertical = true; return o }()
+        s.orientation = { var o = OrientationSettings(); o.isOn = true; o.rotate = .left; o.flipHorizontal = true; o.flipVertical = true; return o }()
         s.colour = {
             var c = ColourSettings()
             c.isOn = true; c.greyscale = true; c.negative = true; c.autoAdjust = true
@@ -68,7 +68,7 @@ import Testing
 
     @Test func defaultsMatchTheSpec() {
         let s = BatchSettings()
-        #expect(s.mode == .convert)
+        #expect(s.changeFormat)
         #expect(s.renamePattern == "{name}")
         #expect(s.format == .jpeg)
         #expect(s.resize.keepAspect && s.resize.dontEnlarge && !s.resize.dontShrink)
@@ -84,7 +84,7 @@ import Testing
         #expect(s == BatchSettings())
     }
 
-    @Test func roundTripsEveryField() throws {
+    @Test func roundTripKeepsEverything() throws {
         let s = everythingChanged()
         let back = try JSONDecoder().decode(BatchSettings.self, from: JSONEncoder().encode(s))
         #expect(back == s)
@@ -102,13 +102,68 @@ import Testing
         resize["keepAspect"] = nil
         resize["side"] = "not a number"
         json["resize"] = resize
-        json["mode"] = nil
+        json["changeFormat"] = nil
         let back = try JSONDecoder().decode(BatchSettings.self, from: JSONSerialization.data(withJSONObject: json))
         #expect(back.resize.keepAspect == ResizeSettings().keepAspect)
         #expect(back.resize.side == ResizeSettings().side)
         #expect(back.resize.megapixels == 2.5)
-        #expect(back.mode == .convert)
+        #expect(back.changeFormat)
         #expect(back.text == s.text)
+    }
+
+    private func decode(_ json: String) throws -> BatchSettings {
+        try JSONDecoder().decode(BatchSettings.self, from: Data(json.utf8))
+    }
+
+    @Test func oldConvertPresetKeepsNames() throws {
+        // "Convert" ignored the pattern: the batch must still produce the original names.
+        let s = try decode(#"{"mode":"convert","renamePattern":"x-{n}"}"#)
+        #expect(s.changeFormat)
+        #expect(s.renamePattern == "{name}")
+    }
+
+    @Test func oldRenamePresetKeepsFormatAndDropsOperations() throws {
+        let s = try decode(#"{"mode":"rename","renamePattern":"x-{n}","resize":{"isOn":true},"orientation":{"rotate":"left"},"#
+                           + #""watermark":{"isOn":true}}"#)
+        #expect(!s.changeFormat)
+        #expect(s.renamePattern == "x-{n}")
+        #expect(!s.resize.isOn && !s.orientation.isOn && !s.watermark.isOn)
+        #expect(!s.hasOperations)
+        #expect(s.copiesUnchanged)
+    }
+
+    @Test func oldConvertAndRenameKeepsPattern() throws {
+        let s = try decode(#"{"mode":"convertAndRename","renamePattern":"x-{n}","resize":{"isOn":true}}"#)
+        #expect(s.changeFormat)
+        #expect(s.renamePattern == "x-{n}")
+        #expect(s.resize.isOn)
+    }
+
+    @Test func newSettingsIgnoreOldMode() throws {
+        let s = try decode(#"{"mode":"rename","changeFormat":true,"renamePattern":"x-{n}","resize":{"isOn":true}}"#)
+        #expect(s.changeFormat)
+        #expect(s.renamePattern == "x-{n}")
+        #expect(s.resize.isOn)
+        let t = try decode(#"{"mode":"convert","changeFormat":false,"renamePattern":"x-{n}"}"#)
+        #expect(!t.changeFormat)
+        #expect(t.renamePattern == "x-{n}")
+    }
+
+    @Test func oldOrientationTurnsOnWhenSet() throws {
+        #expect(try decode(#"{"orientation":{"rotate":"left"}}"#).orientation.isOn)
+        #expect(try decode(#"{"orientation":{"flipVertical":true}}"#).orientation.isOn)
+        #expect(try !decode(#"{"orientation":{"rotate":"none"}}"#).orientation.isOn)
+        // Stored off with a rotation set stays off.
+        #expect(try !decode(#"{"orientation":{"isOn":false,"rotate":"left"}}"#).orientation.isOn)
+    }
+
+    @Test func copiesUnchangedOnlyWhenKeepingFormatWithNothingOn() {
+        var s = BatchSettings()
+        #expect(!s.copiesUnchanged)
+        s.changeFormat = false
+        #expect(s.copiesUnchanged)
+        s.border.isOn = true
+        #expect(!s.copiesUnchanged)
     }
 
     @Test func unknownFormatFallsBackToJPEG() throws {
@@ -119,14 +174,14 @@ import Testing
 
     @Test func hasOperationsOnlyWhenAStepIsOn() {
         var s = BatchSettings()
-        s.mode = .convertAndRename
+        s.changeFormat = false
         s.renamePattern = "x-###"
+        s.orientation.rotate = .right  // set but off
         s.safety.replaceExisting = true
         s.resize.side = 99  // settings of a step that is off don't count
         #expect(!s.hasOperations)
         let steps: [(inout BatchSettings) -> Void] = [
-            { $0.crop.isOn = true }, { $0.resize.isOn = true }, { $0.orientation.rotate = .right },
-            { $0.orientation.flipHorizontal = true }, { $0.orientation.flipVertical = true },
+            { $0.crop.isOn = true }, { $0.resize.isOn = true }, { $0.orientation.isOn = true },
             { $0.colour.isOn = true }, { $0.filters.isOn = true }, { $0.canvas.isOn = true },
             { $0.border.isOn = true }, { $0.text.isOn = true }, { $0.watermark.isOn = true },
         ]

@@ -154,7 +154,7 @@ final class BatchPreviewModel {
         guard let first = key.inputs.first else { return ([], 0, "") }
         let s = key.settings
         var namer = BatchNamer(settings: s, inputs: key.inputs)
-        let usesDate = s.mode != .convert && s.renamePattern.contains("{date}")
+        let usesDate = s.renamePattern.contains("{date}")
         let names = key.inputs.prefix(5).map {
             namer.next(for: $0, date: usesDate ? MetadataReader.dateTaken(of: $0.url) : nil).lastPathComponent
         }
@@ -174,7 +174,7 @@ final class BatchPreviewModel {
             return Rendered(cache: cache, error: String(localized: "Can't open \(name)"))
         }
         let s = key.settings
-        guard s.mode != .rename, s.hasOperations else {
+        guard s.hasOperations else {
             return Rendered(cache: cache, output: image, outputSize: size)
         }
         var watermark: CIImage?
