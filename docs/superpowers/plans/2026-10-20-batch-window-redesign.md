@@ -275,7 +275,7 @@ Layout (design "Layout" and "Cards"; values from `Theme`, add tokens there if mi
 - [x] **Step 2:** Rewrite `docs/spec.md` "Batch window › Window" and "Mode and inputs" to the design
   (no mode; Change format / Change size; Next to the originals; keep-format failures; cards; running;
   done; New Batch).
-- [ ] **Step 3 (screen, after the maintainer's go):** release build, window at 960 × 600 and at its
+- [x] **Step 3 (screen, after the maintainer's go):** release build, window at 960 × 600 and at its
   default size, light and dark, English, German and Arabic:
   empty window (Choose Folder is the obvious first control); a folder of 48 JPEGs; each core card
   folds/unfolds, one at a time; Add Step adds Colour and Text, ✕ removes; with Text and Watermark
@@ -286,5 +286,11 @@ Layout (design "Layout" and "Cards"; values from `Theme`, add tokens there if mi
   960 pt keeps the window's content inside the window; 10,000 images: adding them, opening cards
   and adding a step answer within 100 ms p95 (Task 1's harness in `research/batch-timing/`, pointed
   at card headers instead of step rows).
-- [ ] **Step 4:** Fix what this finds (each fix its own commit); tick the plan; commit
+  Measured (release build, 10,000 JPEGs, Accessibility presses only, 3 runs): adding them, one
+  ~93–132 ms gap then p95 0–2 ms; opening a card p95 62–66 ms; adding or removing a step p95 27–28 ms.
+  48-image run, kept-format copy byte-identical, old Rename preset same names, New Batch keeps the
+  failed; English light/dark, German and Arabic at 960 × 600 fit. QA fixes: done view overflow,
+  button shapes, footer heights, sidebar glass, preview layout and empty state, "Zero KB", Save to's
+  Next to the originals button, Watermark summary separator, dark-mode text on the accent.
+- [x] **Step 4:** Fix what this finds (each fix its own commit); tick the plan; commit
   `docs: batch window redesign done after manual QA`.
