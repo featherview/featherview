@@ -42,7 +42,6 @@ struct BatchDoneView: View {
                 Image(systemName: failures.isEmpty ? "checkmark.circle" : "exclamationmark.triangle")
                     .accessibilityHidden(true)
                 Text(model.report ?? "")
-                    .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
                 Spacer(minLength: 0)
             }

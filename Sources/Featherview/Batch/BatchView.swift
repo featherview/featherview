@@ -27,6 +27,7 @@ struct BatchView: View {
                 } else {
                     // The cards give way first: the preview keeps its height and the cards scroll.
                     BatchCards(model: model)
+                        .frame(minHeight: 0, maxHeight: .infinity)
                         .layoutPriority(-1)
                     Divider()
                     BatchPreview(model: model)
