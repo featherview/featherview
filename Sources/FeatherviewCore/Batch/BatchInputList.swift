@@ -35,8 +35,21 @@ public struct BatchInputList: Equatable, Sendable {
     /// order. Every item gets `root: folder` and a URL below `folder`'s path as given.
     public static func scan(folder: URL, subfolders: Bool) throws -> [BatchInput] {
         var inputs: [BatchInput] = []
-        try scan(folder, root: folder, subfolders: subfolders, into: &inputs)
+        var unreadable: [URL] = []
+        try scan(folder, root: folder, subfolders: subfolders, into: &inputs, unreadable: &unreadable)
         return inputs
+    }
+
+    /// A folder the user chose, scanned like `scan(folder:subfolders:)`: `unreadable` names it or
+    /// the subfolders that couldn't be listed, `empty` names it when it holds no images and every
+    /// subfolder could be listed.
+    public static func scanReporting(folder: URL, subfolders: Bool) -> (list: BatchInputList, unreadable: [URL], empty: [URL]) {
+        var inputs: [BatchInput] = []
+        var unreadable: [URL] = []
+        do {
+            try scan(folder, root: folder, subfolders: subfolders, into: &inputs, unreadable: &unreadable)
+        } catch { return (BatchInputList(), [folder], []) }
+        return (BatchInputList(inputs), unreadable, inputs.isEmpty && unreadable.isEmpty ? [folder] : [])
     }
 
     /// Dropped files and folders in the order given; a folder (also through a symlink) adds with
@@ -57,11 +70,10 @@ public struct BatchInputList: Equatable, Sendable {
             if (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isPackageKey]).isPackage) == true { continue }
             list.add(files: files)
             files = []
-            do {
-                let found = try scan(folder: url, subfolders: true)
-                if found.isEmpty { empty.append(url) }
-                list.append(found)
-            } catch { unreadable.append(url) }
+            let found = scanReporting(folder: url, subfolders: true)
+            list.append(found.list)
+            unreadable += found.unreadable
+            empty += found.empty
         }
         list.add(files: files)
         return (list, unreadable, empty)
@@ -86,7 +98,8 @@ public struct BatchInputList: Equatable, Sendable {
         return empty.first.map { String(localized: "No images in \($0.lastPathComponent)") }
     }
 
-    private static func scan(_ folder: URL, root: URL, subfolders: Bool, into inputs: inout [BatchInput]) throws {
+    private static func scan(_ folder: URL, root: URL, subfolders: Bool, into inputs: inout [BatchInput],
+                             unreadable: inout [URL]) throws {
         let keys: [URLResourceKey] = [.isDirectoryKey, .isPackageKey, .isRegularFileKey, .isSymbolicLinkKey]
         // Resource values come from the directory listing: no file is opened.
         // Listing fails on a symlinked folder the user chose, so list its target; entries found
@@ -112,7 +125,8 @@ public struct BatchInputList: Equatable, Sendable {
         inputs += FolderScanner.inFinderOrder(files).map { BatchInput(url: $0, root: root) }
         guard subfolders else { return }
         for sub in FolderScanner.inFinderOrder(folders) {
-            try? scan(sub, root: root, subfolders: true, into: &inputs)  // an unreadable subfolder is skipped
+            do { try scan(sub, root: root, subfolders: true, into: &inputs, unreadable: &unreadable) }
+            catch { unreadable.append(sub) }  // skipped, and reported
         }
     }
 

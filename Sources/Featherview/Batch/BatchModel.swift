@@ -259,12 +259,7 @@ final class BatchModel {
     }
 
     func add(folder: URL, subfolders: Bool) {
-        addInBackground {
-            do {
-                let found = try BatchInputList.scan(folder: folder, subfolders: subfolders)
-                return (BatchInputList(found), [], found.isEmpty ? [folder] : [])
-            } catch { return (BatchInputList(), [folder], []) }
-        }
+        addInBackground { BatchInputList.scanReporting(folder: folder, subfolders: subfolders) }
     }
 
     /// Dropped files and folders; folders add with their subfolders.

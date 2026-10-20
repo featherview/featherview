@@ -147,6 +147,23 @@ import Testing
         #expect(BatchInputList.notice(unreadable: [dcim], empty: [empty]) == "Can't open 100APPLE")
     }
 
+    @Test func folderWhoseOnlyImagesSitInAnUnreadableSubfolderIsUnreadableNotEmpty() throws {
+        let dir = try Fixtures.makeTempDir()
+        let dcim = dir.appendingPathComponent("DCIM")
+        let locked = dcim.appendingPathComponent("100APPLE")
+        try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: true)
+        _ = try image(locked, "a.jpg")
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: locked.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) }
+        let dropped = BatchInputList.scan(dropped: [dcim])
+        #expect(dropped.unreadable.map(\.path) == [locked.path])
+        #expect(dropped.empty.isEmpty)
+        let chosen = BatchInputList.scanReporting(folder: dcim, subfolders: true)
+        #expect(chosen.unreadable.map(\.path) == [locked.path])
+        #expect(chosen.empty.isEmpty)
+        #expect(BatchInputList.notice(unreadable: chosen.unreadable, empty: chosen.empty) == "Can't open 100APPLE")
+    }
+
     @Test func convertTitleAgreesWithTheCount() {
         #expect(BatchInputList.convertTitle(count: 1) == "Convert 1 Image")
         #expect(BatchInputList.convertTitle(count: 48) == "Convert 48 Images")
