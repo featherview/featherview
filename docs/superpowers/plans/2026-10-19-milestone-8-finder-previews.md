@@ -287,8 +287,9 @@ XCF, a two-page DCX, `BIG.QOI` in capitals, a truncated QOI, a 16 × 16 XBM.
 - [ ] **Quick Look:** Space on each shows the image sharp on a Retina screen (if it's soft or a quarter
   of the window, fix the context-size arithmetic in `PreviewProvider`); the DCX shows page 1; the
   truncated file shows Quick Look's generic view; arrow keys move between files in the panel.
-- [ ] **Open panel:** Featherview's ⌘O panel and another app's open panel (TextEdit) show the thumbnail
+- [x] **Open panel:** Featherview's ⌘O panel and another app's open panel (TextEdit) show the thumbnail
   and the preview in the panel's preview pane.
+  Checked: both panels show the thumbnails in icon view and the full preview in column view.
 - [ ] **Download path:** build the English disk image (`scripts/dmg.sh en`), mark it as downloaded
   (`xattr -w com.apple.quarantine "0081;$(printf %x $(date +%s));Safari;" <dmg>`), install the app
   from it, open it once (Open Anyway as the README says), then check one thumbnail and one preview
@@ -296,10 +297,14 @@ XCF, a two-page DCX, `BIG.QOI` in capitals, a truncated QOI, a 16 × 16 XBM.
   `docs/spec.md` "Distribution" and the README instead of working around it.
 - [ ] **Budgets:** launch with a 12 MP JPEG after a real ⌘Q (6 runs, median of 2–6) is unchanged
   against the number in `AGENTS.md`; note the app bundle's size before and after (`du -sh`).
-- [ ] **A big file:** the largest sample XCF and PSP: thumbnail time from the bench `thumbnail`
+- [x] **A big file:** the largest sample XCF and PSP: thumbnail time from the bench `thumbnail`
   command, and Finder stays responsive while it draws. Watch the extension's memory too (Activity
   Monitor, `FeatherviewThumbnail`) with a folder of several large PSP/XCF files: the own decoders
   decode at full size before scaling, and Finder asks for several thumbnails at once.
+  Checked: bench thumbnail 1.1 s for a 56 MB XCF, PSPs at most 89 ms. Finder icon view on 81 files
+  (the 5 largest real XCFs and the PSP samples, 3 copies each, 500 MB, cold cache): Finder answered
+  every request within 476 ms while the thumbnails drew; the extension processes peaked at 954 MB
+  together and fell back to 33 MB.
 - [ ] **Docs:** README feature list (Finder thumbnails and Quick Look for the formats macOS can't
   read), `docs/roadmap.md` row 8 → `done`, tick this plan. Remove the `~/Applications` copy only if
   it wasn't there before. Commit `docs: milestone 8 done after manual QA`.
