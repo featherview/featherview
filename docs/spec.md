@@ -336,7 +336,7 @@ window, nothing to configure.
 - Links: website, source code on GitHub, report a problem (GitHub issue), all opening the browser.
 - "Supported formats": two lists, read and write, built at runtime from ImageIO plus our own
   encoders (see "Formats"), with the macOS version they come from.
-- "MIT License" and "Acknowledgements": the licence text of every bundled library (libwebp), each
+- "MIT License" and "Acknowledgements": the licence text of every bundled library (libwebp, jxrlib), each
   in a scrollable sheet. Copyright line.
 - Clicking the version shows a small "Copy" bubble (as a value in iOS settings does); it copies
   version, macOS version and Mac model as text, for bug reports.
@@ -386,13 +386,26 @@ the About window.
 - Read, formats ImageIO can't read, which Featherview decodes itself:
   - SVG through AppKit (`NSImage` renders it; ImageIO doesn't), rasterised at the size shown.
   - Own decoders, pure Swift, no dependency (milestone 3): QOI, PCX (and multi-page DCX), XBM,
-    XPM, WBMP, Sun Raster (RAS), IFF/LBM (ILBM, incl. HAM and EHB). Also MacPaint (with or
+    XPM, WBMP, Sun Raster (RAS), IFF/LBM (ILBM, incl. HAM and EHB), Kodak Photo CD (PCD: the
+    768 × 512 Base image, turned upright, PhotoYCC converted with reference white at 255; the
+    larger 4Base and 16Base images are a known limit). Also MacPaint (with or
     without a MacBinary header), farbfeld, X Window Dump (version 7, Z pixmaps), FITS and Windows
     animated cursors (ANI). FITS shows the first image in the file (its first plane, or three planes
     as RGB); 8-bit data as stored, everything else stretched linearly between the 0.25th and 99.75th
     percentile; the first row is the bottom one; tile-compressed FITS can't be opened. ANI shows its
     frames at their largest size and plays like any animation ("Animation"). PAM goes through ImageIO, which reads it
     with the rest of the Netpbm family (PFM too).
+  - JPEG XR (.jxr, also HD Photo .wdp/.hdp) through jxrlib (BSD-2-Clause, built from source, per
+    `AGENTS.md`). Every pixel format is brought to 8-bit sRGB: HDR and wide-gamut files are clipped,
+    an embedded colour profile is ignored, premultiplied alpha (Office's HD Photo files) is undone.
+    Known limits: CMYK with alpha and n-channel files can't be opened; only the first frame shows.
+  - BPG without a third-party HEVC decoder (every free one is LGPL): the header's VPS/SPS fields are
+    rebuilt and the stream rewrapped as HEIF, which ImageIO decodes with the system's HEVC decoder.
+    Grey, 4:2:0, 4:2:2 and 4:4:4, 8 to 10 bits, YCbCr (BT 601/709/2020), RGB and YCgCo (4:4:4),
+    full or limited range, alpha (straight or premultiplied). Known limits: the first frame of an
+    animation only, the ICC profile is ignored; 12 and 14 bits, CMYK, and RGB or YCgCo with
+    subsampled chroma can't be opened (macOS decodes nothing); damaged picture data shows as HEVC
+    conceals it, and a fully transparent black picture is taken for a failed decode.
   - Layered app formats, shown flattened (own milestone after 3): PSB (its stored composite
     image), XCF (GIMP), PDN (Paint.NET), PSP (Paint Shop Pro). Where the file stores a composite
     or thumbnail at full size it is used; otherwise visible layers are composited with normal

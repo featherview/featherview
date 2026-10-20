@@ -78,6 +78,7 @@ Sources/Featherview/       the app: views, menus, keyboard, windows (thin, manua
 Sources/FeatherviewThumbnail/, Sources/FeatherviewPreview/
                            Finder thumbnail and Quick Look preview extensions (scripts/bundle.sh
                            wraps each into an .appex; Info.plists and entitlements in Resources/QuickLook/)
+Sources/CJPEGXR/           jxrlib (vendored C, not edited) and the small C shim JPEGXRDecoder calls
 Sources/FeatherviewBench/  featherview-bench (timings without a window); FeatherviewDMG: disk image art
 Tests/FeatherviewCoreTests/ Swift Testing suites, same folders as FeatherviewCore; Fixtures.swift
                            generates test images

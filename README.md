@@ -7,11 +7,12 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
   JPEG 2000, TGA, OpenEXR, DNG and camera RAW), upright and colour-managed
 - Shows SVG, and PDF pages like a multi-page image
 - Also reads formats macOS can't: QOI, PCX/DCX, XBM, XPM, WBMP, Sun Raster, IFF/LBM (including HAM),
-  MacPaint, PAM, farbfeld, X Window Dump, FITS (astronomy) and Windows animated cursors (first frame)
-- Shows layered files from image editors flattened: Photoshop PSB, GIMP XCF, Paint.NET PDN and
-  PaintShop Pro PSP, Krita KRA and OpenRaster ORA (their stored flattened image), Procreate (at
-  full size, turned the way the canvas was). Blend modes other than normal are drawn as normal; PSB files without a stored
-  composite, multichannel PSB and GIMP layer effects aren't shown; `.xcf.gz` isn't read
+  MacPaint, PAM, farbfeld, X Window Dump, FITS (astronomy), Windows animated cursors (first frame),
+  Kodak Photo CD (at 768 × 512), JPEG XR (HD Photo) and BPG
+- Shows layered files from image editors flattened: Photoshop PSB, GIMP XCF, Paint.NET PDN,
+  PaintShop Pro PSP, Krita KRA and OpenRaster ORA (their stored flattened image), and Procreate (at
+  full size, turned the way the canvas was). Blend modes other than normal are drawn as normal; PSB
+  files without a stored composite, multichannel PSB and GIMP layer effects aren't shown; `.xcf.gz` isn't read
 - HDR photos (iPhone HEIC and JPEG, HDR AVIF, OpenEXR) show their extra brightness on HDR screens
   (macOS 15 and later)
 - Saves and batch converts to JPEG, PNG, HEIC, AVIF, TIFF, WebP, GIF, BMP, JPEG 2000, PDF, PSD, TGA,
@@ -28,6 +29,9 @@ Status: early development. Requires macOS 14 or later.
 
 - [libwebp](https://chromium.googlesource.com/webm/libwebp) 1.6.0 (BSD-3-Clause), for writing WebP,
   built from source through [libwebp-Xcode](https://github.com/SDWebImage/libwebp-Xcode).
+- [jxrlib](https://github.com/4creators/jxrlib) (BSD-2-Clause, Microsoft), for reading JPEG XR,
+  vendored in `Sources/CJPEGXR` from [Tom94/jxrlib](https://github.com/Tom94/jxrlib) (Debian's
+  patches applied) and built from source by SwiftPM.
 
 ## Install
 

@@ -45,6 +45,9 @@
 				<string>net.mynetx.featherview.krita</string>
 				<string>net.mynetx.featherview.procreate</string>
 				<string>com.apple.macpaint-image</string>
+				<string>net.mynetx.featherview.photo-cd</string>
+				<string>net.mynetx.featherview.jpeg-xr</string>
+				<string>net.mynetx.featherview.bpg</string>
 			</array>
 			<key>QLThumbnailMinimumDimension</key>
 			<integer>0</integer>

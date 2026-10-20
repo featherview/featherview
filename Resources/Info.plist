@@ -118,11 +118,70 @@
 				<string>net.mynetx.featherview.krita</string>
 				<string>net.mynetx.featherview.procreate</string>
 				<string>com.apple.macpaint-image</string>
+				<string>net.mynetx.featherview.photo-cd</string>
+				<string>net.mynetx.featherview.jpeg-xr</string>
+				<string>net.mynetx.featherview.bpg</string>
 			</array>
 		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.bpg</string>
+			<key>UTTypeDescription</key>
+			<string>BPG image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>bpg</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.jpeg-xr</string>
+			<key>UTTypeDescription</key>
+			<string>JPEG XR image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>jxr</string>
+					<string>wdp</string>
+					<string>hdp</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.photo-cd</string>
+			<key>UTTypeDescription</key>
+			<string>Kodak Photo CD image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>pcd</string>
+				</array>
+			</dict>
+		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
 			<string>net.mynetx.featherview.xcf</string>

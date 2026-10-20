@@ -16,7 +16,16 @@ let package = Package(
     ],
     targets: [
         // Everything testable without a window: scanning, decoding, caching, metadata, rotation, batch.
-        .target(name: "FeatherviewCore", dependencies: [.product(name: "libwebp", package: "libwebp-Xcode")]),
+        .target(name: "FeatherviewCore", dependencies: [.product(name: "libwebp", package: "libwebp-Xcode"), "CJPEGXR"]),
+        // jxrlib (BSD-2-Clause, Microsoft), vendored from github.com/Tom94/jxrlib at 0e1337d (Debian's
+        // patches applied); only JPEGXRDecoder uses it. The encoder sources are there because the glue links them.
+        .target(name: "CJPEGXR", exclude: ["jxrlib/LICENSE"],
+                cSettings: [
+                    .define("__ANSI__"), .define("DISABLE_PERF_MEASUREMENT"),
+                    .headerSearchPath("jxrlib/common/include"), .headerSearchPath("jxrlib/image/sys"),
+                    .headerSearchPath("jxrlib/jxrgluelib"),
+                    .unsafeFlags(["-w"]),  // third-party code we don't edit; its warnings are noise
+                ]),
         // The SwiftUI app. Thin: wires FeatherviewCore to windows, menus and keys.
         .executableTarget(name: "Featherview", dependencies: ["FeatherviewCore"]),
         // Finder thumbnails. SwiftPM can't make app extensions: scripts/bundle.sh wraps this binary in an .appex.

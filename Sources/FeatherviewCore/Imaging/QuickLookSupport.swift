@@ -14,6 +14,7 @@ public enum QuickLookSupport {
         "net.mynetx.featherview.farbfeld", "net.mynetx.featherview.macpaint", "net.mynetx.featherview.xwd",
         "net.mynetx.featherview.fits", "net.mynetx.featherview.ani", "net.mynetx.featherview.openraster",
         "net.mynetx.featherview.krita", "net.mynetx.featherview.procreate", "com.apple.macpaint-image",
+        "net.mynetx.featherview.photo-cd", "net.mynetx.featherview.jpeg-xr", "net.mynetx.featherview.bpg",
     ]
 
     /// `image` scaled to fit `maximum`, never enlarged.
