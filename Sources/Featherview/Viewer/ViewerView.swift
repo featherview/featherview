@@ -652,6 +652,10 @@ struct ViewerCommands: Commands {
         let _ = OpensViewerWindows.install(openWindow)
         CommandGroup(replacing: .appInfo) {
             Button("About Featherview  (A)") { openWindow(id: "about") }
+            Button("Check for Updates…") { Task { await Updater.check(manual: true) } }
+        }
+        CommandGroup(replacing: .help) {
+            Button("Report a Bug…") { NSWorkspace.shared.open(AboutView.bugReportURL) }
         }
         CommandGroup(replacing: .appSettings) {
             Button("Settings…") { SettingsWindow.show() }.keyboardShortcut(",")

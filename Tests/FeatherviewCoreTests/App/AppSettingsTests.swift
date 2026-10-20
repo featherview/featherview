@@ -28,6 +28,9 @@ import Testing
         #expect(defaults.bool(forKey: AppSettings.askBeforeMoveCopy.key) == false)
         #expect(AppSettings.openWith.map { $0.value(in: defaults) } == ["", "", ""])
         #expect(defaults.object(forKey: AppSettings.offeredDefaultViewer.key) as? Bool == false)
+        #expect(defaults.bool(forKey: AppSettings.checkForUpdates.key) == true)
+        #expect(AppSettings.lastUpdateCheck.value(in: defaults) == .distantPast)
+        #expect(AppSettings.skippedVersion.value(in: defaults) == "")
     }
 
     @Test func storedValueWinsAndWrongTypeFallsBack() {

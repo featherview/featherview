@@ -76,6 +76,7 @@ private struct BrowsingSettings: View {
     @AppStorage(AppSettings.showHiddenFiles.key) private var showHidden = AppSettings.showHiddenFiles.defaultValue
     @AppStorage(AppSettings.showNextAfterRemoval.key) private var showNext = AppSettings.showNextAfterRemoval.defaultValue
     @AppStorage(AppSettings.moveSidecars.key) private var sidecars = AppSettings.moveSidecars.defaultValue
+    @AppStorage(AppSettings.checkForUpdates.key) private var checkForUpdates = AppSettings.checkForUpdates.defaultValue
     @State private var jpegApp: String?
     @State private var canClaim = false
 
@@ -104,6 +105,9 @@ private struct BrowsingSettings: View {
             Section("After a move or Move to Trash") {
                 Toggle("Show the next image after moving or trashing one", isOn: $showNext)
                 Toggle("Move, copy and trash sidecar files (.xmp, .aae, .thm) with their image", isOn: $sidecars)
+            }
+            Section("Updates") {
+                Toggle("Check for updates automatically", isOn: $checkForUpdates)
             }
         }
         .onAppear(perform: refresh)

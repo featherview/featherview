@@ -1,0 +1,32 @@
+name: Bug report
+description: Something in Featherview doesn't work as it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What you did, step by step, and which file type (for example a HEIC from an iPhone).
+  - type: input
+    id: version
+    attributes:
+      label: Featherview version and build
+      description: Help › Report a Bug… fills this in.
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+  - type: input
+    id: mac
+    attributes:
+      label: Mac model or chip

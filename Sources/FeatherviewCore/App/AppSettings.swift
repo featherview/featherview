@@ -47,6 +47,11 @@ public enum AppSettings {
     public static let askBeforeMoveCopy = Setting(key: "askBeforeMoveCopy", defaultValue: false)
     // Open with: app paths for ⌥1, ⌥2, ⌥3 ("" = none)
     public static let openWith = (1...3).map { Setting(key: "openWith\($0)", defaultValue: "") }
+    // Updates
+    public static let checkForUpdates = Setting(key: "checkForUpdates", defaultValue: true)
+    public static let lastUpdateCheck = Setting(key: "lastUpdateCheck", defaultValue: Date.distantPast)
+    /// The version Skip This Version was clicked for ("" = none).
+    public static let skippedVersion = Setting(key: "skippedVersion", defaultValue: "")
 
     public static var appearanceMode: AppearanceMode { AppearanceMode(stored: appearance.value()) }
 
@@ -71,6 +76,9 @@ public enum AppSettings {
             overlayTemplate.key: overlayTemplate.defaultValue,
             hidePointer.key: hidePointer.defaultValue,
             askBeforeMoveCopy.key: askBeforeMoveCopy.defaultValue,
+            checkForUpdates.key: checkForUpdates.defaultValue,
+            lastUpdateCheck.key: lastUpdateCheck.defaultValue,
+            skippedVersion.key: skippedVersion.defaultValue,
         ]
         for setting in openWith { values[setting.key] = setting.defaultValue }
         defaults.register(defaults: values)

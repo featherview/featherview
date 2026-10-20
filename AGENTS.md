@@ -41,7 +41,7 @@ It must never derive from another product's code or assets. Its *behaviour* may 
 | Tests | Swift Testing (`import Testing`, `@Test`, `#expect`) in `Tests/FeatherviewCoreTests` |
 | Min macOS | 14.0 (Sonoma) |
 | Bundle ID | `net.mynetx.featherview` — never change it: macOS keys settings and permissions to it |
-| Public URL | `featherview.mynetx.net` — any future update feed (Sparkle appcast) lives here, never on github.io |
+| Public URL | `featherview.mynetx.net` — the update feed (`appcast.xml`, Sparkle format) lives here, never on github.io |
 | Repo | github.com/mynetx/featherview (may move to the `featherview` org later; GitHub redirects) |
 | License | MIT, see `LICENSE` |
 
@@ -137,4 +137,4 @@ restored, which hides ~140 ms that every user who quit normally pays.
 ## Out of scope for v1
 
 Plugins, interactive painting/editing (batch operations are in, see spec), scanning, OCR, printing, slideshows with effects,
-animation playback (v2: spec "Animation"), lossless JPEG crop, video, Windows/Linux, auto-update.
+animation playback (v2: spec "Animation"), lossless JPEG crop, video, Windows/Linux, auto-update (v1 only tells about a new version, spec "Updates").
