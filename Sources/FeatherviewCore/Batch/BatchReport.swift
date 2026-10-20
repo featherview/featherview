@@ -10,9 +10,11 @@ public enum BatchReport {
         let duration = duration(seconds)
         let sizeIn = Int64(bytesIn).formatted(.byteCount(style: .file))
         let sizeOut = Int64(bytesOut).formatted(.byteCount(style: .file))
-        let place = folder.isEmpty
-            ? String(localized: "next to the originals", comment: "Batch done summary: where the files went, after \"Saved to\"")
-            : (folder as NSString).abbreviatingWithTildeInPath
+        guard !folder.isEmpty else {
+            return String(localized: "\(converted) of \(total) images converted in \(duration). \(sizeIn) in, \(sizeOut) out. Saved next to the originals.",
+                          comment: "Batch done summary: converted count, list count, run time, bytes read, bytes written")
+        }
+        let place = (folder as NSString).abbreviatingWithTildeInPath
         return String(localized: "\(converted) of \(total) images converted in \(duration). \(sizeIn) in, \(sizeOut) out. Saved to \(place).",
                       comment: "Batch done summary: converted count, list count, run time, bytes read, bytes written, output folder")
     }

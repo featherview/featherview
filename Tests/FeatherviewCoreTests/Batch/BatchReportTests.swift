@@ -15,7 +15,7 @@ import Testing
         #expect(summary.hasPrefix("2 of 3 "))
         #expect(summary.contains("Out"))
         let beside = BatchReport.summary(results: results, seconds: 72, bytesIn: 0, bytesOut: 0, folder: "")
-        #expect(beside.contains("next to the originals"))
+        #expect(beside.hasSuffix("Saved next to the originals."))
     }
 
     @Test func folderToShow() throws {
