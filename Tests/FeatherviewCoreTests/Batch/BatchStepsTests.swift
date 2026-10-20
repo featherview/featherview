@@ -3,14 +3,14 @@ import Testing
 @testable import FeatherviewCore
 
 @Suite struct BatchStepsTests {
-    @Test func renameIsUsedOnlyWhenTheModeRenames() {
+    @Test func everyStepIsUsedAndRenameIsOnWithAPattern() {
         var s = BatchSettings()
-        #expect(!BatchStep.rename.isUsed(in: s))
-        #expect(BatchStep.resize.isUsed(in: s))
-        s.mode = .rename
-        #expect(BatchStep.rename.isUsed(in: s))
-        #expect(BatchStep.operations.allSatisfy { !$0.isUsed(in: s) })
-        #expect(BatchStep.output.isUsed(in: s) && BatchStep.safety.isUsed(in: s))
+        #expect(BatchStep.allCases.allSatisfy { $0.isUsed(in: s) })
+        #expect(!BatchStep.rename.isOn(in: s))
+        s.changeFormat = false
+        #expect(BatchStep.allCases.allSatisfy { $0.isUsed(in: s) })
+        s.renamePattern = "x-{n}"
+        #expect(BatchStep.rename.isOn(in: s))
     }
 
     @Test func safetyIsOnWhenAnyFlagIsSet() {
@@ -24,7 +24,7 @@ import Testing
         var s = BatchSettings()
         #expect(BatchStep.operations.allSatisfy { !$0.isOn(in: s) })
         s.crop.isOn = true
-        s.orientation.flipVertical = true
+        s.orientation.isOn = true
         #expect(BatchStep.operations.filter { $0.isOn(in: s) } == [.crop, .orientation])
     }
 
@@ -43,8 +43,6 @@ import Testing
         s.resize.mode = .percent
         s.resize.percentWidth = 50
         #expect(BatchStep.resize.summary(in: s) == 0.5.formatted(.percent))
-        s.mode = .rename
-        #expect(BatchStep.resize.summary(in: s) == "")
     }
 
     @Test func otherSummaries() {
@@ -53,7 +51,7 @@ import Testing
         #expect(BatchStep.border.summary(in: s) == "")
         s.border.isOn = true
         #expect(BatchStep.border.summary(in: s) == "on")
-        s.mode = .rename
+        s.changeFormat = false
         #expect(BatchStep.output.summary(in: s) == "Same format")
         #expect(BatchStep.rename.summary(in: s) == "{name}")
     }
@@ -65,10 +63,7 @@ import Testing
         #expect(!BatchProgress.canStart(isRunning: true, scans: 0, inputCount: 1, settings: s))
         #expect(!BatchProgress.canStart(isRunning: false, scans: 1, inputCount: 1, settings: s))
         #expect(!BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 0, settings: s))
-        s.outputFolder = ""
-        #expect(!BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
-        s.mode = .rename
-        #expect(BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
+        s.outputFolder = ""  // next to the originals
     }
 
     @Test func canStartNeedsAnAbsoluteFolder() {

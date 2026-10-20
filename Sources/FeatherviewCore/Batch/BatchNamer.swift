@@ -28,7 +28,6 @@ public struct BatchNamer: Sendable {
     /// folder name, plus the input's subfolder path below its `root` when `recreateSubfolders`.
     public func folder(for input: BatchInput) -> URL {
         let parent = input.url.deletingLastPathComponent().standardizedFileURL
-        // shortcut: an empty output folder means the input's own folder; the window always sets one.
         guard !settings.outputFolder.isEmpty else { return parent }
         let name = parent.path == "/" ? "-" : parent.lastPathComponent
         // Expand ~ here: macOS 14's URL(fileURLWithPath:) doesn't, and it must match hasAbsoluteOutputFolder.
@@ -45,17 +44,16 @@ public struct BatchNamer: Sendable {
     }
 
     /// The next output URL for a file that succeeded. Advances the counter. Extension: the
-    /// output format's, or in `.rename` mode the input's own, as it is.
+    /// output format's, or when keeping the format the input's own, as it is.
     /// Without `replaceExisting`: never an existing file, an input, or a name given earlier in
     /// this run (case-insensitive) — " 2", " 3", … appended. With it: an existing non-input file
     /// may be returned (the caller trashes it first), never a folder; inputs and names given in this run still
     /// get suffixes.
     public mutating func next(for input: BatchInput, date: Date?) -> URL {
         let original = input.url.deletingPathExtension().lastPathComponent
-        let base = settings.mode == .convert ? original
-            : RenamePattern(settings.renamePattern).baseName(original: original, index: counter, date: date)
+        let base = RenamePattern(settings.renamePattern).baseName(original: original, index: counter, date: date)
         counter += 1
-        let ext = settings.mode == .rename ? input.url.pathExtension : settings.format.fileExtension
+        let ext = settings.changeFormat ? settings.format.fileExtension : input.url.pathExtension
         let folder = folder(for: input)
         let suffixKey = folderKey(folder) + "/" + Self.normalized(base + "." + ext)
         var url = Self.fitted(base, suffix: "", ext: ext, in: folder)
@@ -105,7 +103,7 @@ public struct BatchNamer: Sendable {
 }
 
 public enum BatchCopy {
-    /// Rename mode: copies `input`'s bytes to a hidden temp file in `output`'s folder, then moves
+    /// `BatchSettings.copiesUnchanged`: copies `input`'s bytes to a hidden temp file in `output`'s folder, then moves
     /// it in without replacing (`BatchConverter.moveExclusive`). Returns the final URL (a " 2"
     /// suffix if the name was taken meanwhile).
     public static func copy(_ input: URL, to output: URL) throws -> URL {

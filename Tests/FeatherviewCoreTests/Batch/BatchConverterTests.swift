@@ -159,7 +159,6 @@ import Testing
         let out = try Fixtures.makeTempDir()
         let inputs = (1...5).map { URL(fileURLWithPath: "/in/\($0).jpg") }
         let job = job(inputs, out: out) {
-            $0.mode = .convertAndRename
             $0.renamePattern = "{n:3}"
         }
         let order = Box([URL]())
@@ -181,7 +180,7 @@ import Testing
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let input = try Fixtures.writeImage(to: dir.appendingPathComponent("IMG_1.jpg"), width: 8, height: 8)
         let results = await BatchConverter.run(job([input], out: out) {
-            $0.mode = .rename
+            $0.changeFormat = false
             $0.renamePattern = "Holiday {n:3}"
         })
         let output = try #require(results.first?.output)
@@ -196,7 +195,7 @@ import Testing
         let trash = try FakeTrash()
 
         let results = await BatchConverter.run(job([link], out: out) {
-            $0.mode = .rename
+            $0.changeFormat = false
             $0.safety.trashOriginals = true
         }, trash: trash.trash)
 
@@ -211,11 +210,85 @@ import Testing
         let a = try Fixtures.writeImage(to: dir.appendingPathComponent("IMG_1.jpg"), width: 8, height: 8)
         let b = try Fixtures.writeImage(to: dir.appendingPathComponent("IMG_2.jpg"), width: 8, height: 8)
         let results = await BatchConverter.run(job([a, b], out: out) {
-            $0.mode = .convertAndRename
             $0.renamePattern = "Holiday {n:3}"
         })
         #expect(results.map { $0.output?.lastPathComponent } == ["Holiday 001.png", "Holiday 002.png"])
         #expect(results[0].logLine == "IMG_1.jpg → Holiday 001.png")
+    }
+
+    // MARK: Keep format
+
+    @Test func keepFormatCopiesBesideOriginals() async throws {
+        let dir = try Fixtures.makeTempDir()
+        let a = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let b = try Fixtures.writeImage(to: dir.appendingPathComponent("b.png"), width: 8, height: 8, type: .png)
+        let before = [try Data(contentsOf: a), try Data(contentsOf: b)]
+
+        let results = await BatchConverter.run(job([a, b], out: dir) {
+            $0.changeFormat = false
+            $0.outputFolder = ""
+        })
+
+        #expect(results.map(\.status) == [.converted, .converted])
+        #expect(results.map { $0.output?.path } == [dir.appendingPathComponent("a 2.jpg").path, dir.appendingPathComponent("b 2.png").path])
+        #expect(try results.map { try Data(contentsOf: try #require($0.output)) } == before)
+        #expect(try [Data(contentsOf: a), Data(contentsOf: b)] == before)
+    }
+
+    @Test func keepFormatResavesInOwnFormat() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 400, height: 200)
+
+        let results = await BatchConverter.run(job([input], out: out, format: "png") {
+            $0.changeFormat = false
+            $0.resize.isOn = true
+            $0.resize.side = 100
+        })
+
+        let output = try #require(results.first?.output)
+        #expect(output.lastPathComponent == "a.jpg")
+        #expect(ImageDecoder.displaySize(of: output) == CGSize(width: 100, height: 50))
+        let type = CGImageSourceCreateWithURL(output as CFURL, nil).flatMap(CGImageSourceGetType) as String?
+        #expect(type == "public.jpeg")
+    }
+
+    @Test func keepFormatMixedList() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let jpeg = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 40, height: 20)
+        let png = try Fixtures.writeImage(to: dir.appendingPathComponent("b.png"), width: 40, height: 20, type: .png)
+        // Two pages, as in PCXCodecTests.dcxPagesThroughImageDecoder.
+        let first = try PCXCodec.encode(RGBAImage(width: 3, height: 2))
+        let second = try PCXCodec.encode(RGBAImage(width: 5, height: 4))
+        func u32(_ v: Int) -> [UInt8] { (0..<4).map { UInt8(v >> ($0 * 8) & 0xFF) } }
+        let dcx = dir.appendingPathComponent("c.dcx")
+        try Data(u32(0x3ADE68B1) + u32(16) + u32(16 + first.count) + u32(0) + first + second).write(to: dcx)
+        // ImageIO reads it (JPEG bytes); nothing writes CR3.
+        let raw = dir.appendingPathComponent("d.cr3")
+        try FileManager.default.copyItem(at: jpeg, to: raw)
+
+        let results = await BatchConverter.run(job([jpeg, png, dcx, raw], out: out) {
+            $0.changeFormat = false
+            $0.resize.isOn = true
+            $0.resize.side = 10
+        })
+
+        #expect(results.map(\.input) == [jpeg, png, dcx, raw])
+        #expect(results.map(\.status) == [.converted, .converted, .failed, .failed])
+        #expect(results.map { $0.output?.lastPathComponent } == ["a.jpg", "b.png", nil, nil])
+        #expect(results[2].message == "Can't save c.dcx in its own format")
+        #expect(results[3].message == "Can't save d.cr3 in its own format")
+        let png2 = try #require(results[1].output)
+        #expect(CGImageSourceCreateWithURL(png2 as CFURL, nil).flatMap(CGImageSourceGetType) as String? == "public.png")
+    }
+
+    @Test func canStartWithEmptyFolder() {
+        var s = BatchSettings()
+        s.outputFolder = ""
+        #expect(BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
+        s.changeFormat = false
+        #expect(BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
+        s.outputFolder = "relative"
+        #expect(!BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
     }
 
     // MARK: Pages
@@ -451,7 +524,6 @@ import Testing
         let inputs = ["a.jpg", "sub/b.jpg", "c.jpg"].map { root.appendingPathComponent($0) }
 
         let results = await BatchConverter.run(job(inputs, out: out, root: root) {
-            $0.mode = .convertAndRename
             $0.renamePattern = "Holiday {n:3}"
             $0.safety.recreateSubfolders = true
         }, prepare: { _, _ in BatchConverter.Prepared(data: Data("x".utf8)) })

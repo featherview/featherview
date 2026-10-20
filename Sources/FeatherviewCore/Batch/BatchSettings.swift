@@ -6,8 +6,6 @@ import Foundation
 // values when they use them, never trust them. Decoding tolerates missing or wrong-typed keys
 // (presets outlive app versions): each falls back to its default.
 
-public enum BatchMode: String, Codable, Sendable, CaseIterable { case convert, rename, convertAndRename }
-
 /// A position in the picture (not in the UI: it never mirrors).
 public enum ImageAnchor: String, Codable, Sendable, CaseIterable {
     case topLeft, top, topRight, left, center, right, bottomLeft, bottom, bottomRight
@@ -57,11 +55,11 @@ public struct ResizeSettings: Codable, Equatable, Sendable {
 public enum QuarterTurn: String, Codable, Sendable { case none, left, right }
 
 public struct OrientationSettings: Codable, Equatable, Sendable {
+    public var isOn = false
     public var rotate = QuarterTurn.none
     public var flipHorizontal = false
     public var flipVertical = false
     public init() {}
-    public var isOn: Bool { rotate != .none || flipHorizontal || flipVertical }
 }
 
 public struct ColourSettings: Codable, Equatable, Sendable {
@@ -172,10 +170,11 @@ public struct SafetySettings: Codable, Equatable, Sendable {
 }
 
 public struct BatchSettings: Codable, Equatable, Sendable {
-    public var mode = BatchMode.convert
+    /// False: each file keeps its own format (re-saved in it, or copied when nothing changes the pixels).
+    public var changeFormat = true
     public var formatID = "jpg"
     public var options = FormatOptions()
-    /// A path; may contain {folder}.
+    /// A path; may contain {folder}. Empty: next to each original.
     public var outputFolder = ""
     /// A typed relative path would resolve against the app's working directory, "/"; `~` is fine (BatchNamer expands it).
     public var hasAbsoluteOutputFolder: Bool { (outputFolder as NSString).expandingTildeInPath.hasPrefix("/") }
@@ -202,6 +201,9 @@ public struct BatchSettings: Codable, Equatable, Sendable {
         crop.isOn || resize.isOn || orientation.isOn || colour.isOn || filters.isOn || canvas.isOn
             || border.isOn || text.isOn || watermark.isOn
     }
+
+    /// Keep format and nothing changes the pixels: the converter copies each file's bytes.
+    public var copiesUnchanged: Bool { !changeFormat && !hasOperations }
 }
 
 /// One file of the batch's input list.
@@ -272,6 +274,8 @@ extension OrientationSettings {
         rotate = c.value(.rotate, d.rotate)
         flipHorizontal = c.value(.flipHorizontal, d.flipHorizontal)
         flipVertical = c.value(.flipVertical, d.flipVertical)
+        // Stored before the switch existed: on whenever something was set.
+        isOn = c.value(.isOn, rotate != .none || flipHorizontal || flipVertical)
     }
 }
 
@@ -367,7 +371,7 @@ extension BatchSettings {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let d = Self()
-        mode = c.value(.mode, d.mode)
+        changeFormat = c.value(.changeFormat, d.changeFormat)
         formatID = c.value(.formatID, d.formatID)
         options = c.value(.options, d.options)
         outputFolder = c.value(.outputFolder, d.outputFolder)
@@ -377,5 +381,20 @@ extension BatchSettings {
         filters = c.value(.filters, d.filters); canvas = c.value(.canvas, d.canvas)
         border = c.value(.border, d.border); text = c.value(.text, d.text)
         watermark = c.value(.watermark, d.watermark); safety = c.value(.safety, d.safety)
+        // Settings stored with the old three-way mode load the batch they ran.
+        guard !c.contains(.changeFormat),
+              let mode = try? decoder.container(keyedBy: OldKeys.self).decode(String.self, forKey: .mode)
+        else { return }
+        switch mode {
+        case "convert":
+            renamePattern = "{name}"  // "Convert" ignored the pattern
+        case "rename":
+            changeFormat = false  // "Rename" copied the bytes: no operation ran
+            crop.isOn = false; resize.isOn = false; orientation.isOn = false; colour.isOn = false
+            filters.isOn = false; canvas.isOn = false; border.isOn = false; text.isOn = false; watermark.isOn = false
+        default: break
+        }
     }
+
+    private enum OldKeys: String, CodingKey { case mode }
 }

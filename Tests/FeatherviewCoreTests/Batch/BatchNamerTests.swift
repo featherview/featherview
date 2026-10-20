@@ -18,10 +18,10 @@ import Testing
 }
 
 @Suite struct BatchNamerTests {
-    func settings(_ mode: BatchMode = .convert, pattern: String = "{name}", out: String = "/out",
+    func settings(changeFormat: Bool = true, pattern: String = "{name}", out: String = "/out",
                   format: String = "jpg", safety: SafetySettings = SafetySettings()) -> BatchSettings {
         var s = BatchSettings()
-        s.mode = mode
+        s.changeFormat = changeFormat
         s.renamePattern = pattern
         s.outputFolder = out
         s.formatID = format
@@ -35,23 +35,36 @@ import Testing
 
     @Test func counterAdvancesOnlyOnNext() {
         let inputs = [input("/a/x.png"), input("/a/y.png"), input("/a/z.png")]
-        var namer = BatchNamer(settings: settings(.convertAndRename, pattern: "p{n:3}"), inputs: inputs) { _ in false }
+        var namer = BatchNamer(settings: settings(pattern: "p{n:3}"), inputs: inputs) { _ in false }
         // y failed: next is never called for it, so z gets the next number.
         #expect(namer.next(for: inputs[0], date: nil).lastPathComponent == "p001.jpg")
         #expect(namer.next(for: inputs[2], date: nil).lastPathComponent == "p002.jpg")
     }
 
-    @Test func convertModeKeepsNames() {
+    @Test func patternAppliesWithoutMode() {
         let inputs = [input("/a/x.png")]
-        var namer = BatchNamer(settings: settings(.convert, pattern: "p{n}"), inputs: inputs) { _ in false }
-        #expect(namer.next(for: inputs[0], date: nil).path == "/out/x.jpg")
-        var empty = BatchNamer(settings: settings(.convertAndRename, pattern: ""), inputs: inputs) { _ in false }
+        var namer = BatchNamer(settings: settings(pattern: "p{n}"), inputs: inputs) { _ in false }
+        #expect(namer.next(for: inputs[0], date: nil).path == "/out/p1.jpg")
+        var plain = BatchNamer(settings: settings(), inputs: inputs) { _ in false }
+        #expect(plain.next(for: inputs[0], date: nil).path == "/out/x.jpg")
+        var empty = BatchNamer(settings: settings(pattern: ""), inputs: inputs) { _ in false }
         #expect(empty.next(for: inputs[0], date: nil).path == "/out/x.jpg")
     }
 
-    @Test func renameModeKeepsExtension() {
+    @Test func emptyFolderIsNextToOriginal() {
+        let inputs = [input("/a/x.png"), input("/b/c/y.jpg")]
+        for changeFormat in [true, false] {
+            var namer = BatchNamer(settings: settings(changeFormat: changeFormat, out: ""), inputs: inputs) { _ in false }
+            // Keeping the format, the input itself has the name: never replaced.
+            let name = changeFormat ? "x.jpg" : "x 2.png"
+            #expect(namer.next(for: inputs[0], date: nil).path == "/a/\(name)")
+            #expect(namer.folder(for: inputs[1]).path == "/b/c")
+        }
+    }
+
+    @Test func keepFormatKeepsExtension() {
         let inputs = [input("/a/x.PNG"), input("/a/noext")]
-        var namer = BatchNamer(settings: settings(.rename, pattern: "{name}-{n}"), inputs: inputs) { _ in false }
+        var namer = BatchNamer(settings: settings(changeFormat: false, pattern: "{name}-{n}"), inputs: inputs) { _ in false }
         #expect(namer.next(for: inputs[0], date: nil).lastPathComponent == "x-1.PNG")
         #expect(namer.next(for: inputs[1], date: nil).lastPathComponent == "noext-2")
     }
@@ -67,7 +80,7 @@ import Testing
     func clashesFoldCaseLikeAPFS(name: String, pattern: String) {
         // APFS treats ß/ss, ς/σ and ﬀ/ff as one name; an input must never be handed out (and replaced).
         let inputs = [input("/a/" + name), input("/a/x.png")]
-        var namer = BatchNamer(settings: settings(.rename, pattern: pattern, out: "/a",
+        var namer = BatchNamer(settings: settings(changeFormat: false, pattern: pattern, out: "/a",
                                                   safety: SafetySettings(replaceExisting: true)), inputs: inputs) { _ in true }
         #expect(namer.next(for: inputs[1], date: nil).lastPathComponent == pattern + " 2.png")
     }
@@ -75,7 +88,7 @@ import Testing
     @Test(arguments: [".", ".."]) func dotNamesFallBackToTheOriginal(pattern: String) {
         // "<out>/.." is the output folder's parent: with Replace existing the caller would trash it.
         let inputs = [input("/a/scan")]
-        var namer = BatchNamer(settings: settings(.rename, pattern: pattern,
+        var namer = BatchNamer(settings: settings(changeFormat: false, pattern: pattern,
                                                   safety: SafetySettings(replaceExisting: true)), inputs: inputs) { _ in true }
         #expect(namer.next(for: inputs[0], date: nil).path == "/out/scan")
     }
@@ -89,7 +102,7 @@ import Testing
     @Test(arguments: [false, true]) func neverReplacesAnInput(replace: Bool) {
         // b.png's output name would be a.jpg, which is a later input (A.JPG) in the same folder.
         let inputs = [input("/a/b.png"), input("/a/A.JPG")]
-        var namer = BatchNamer(settings: settings(.convertAndRename, pattern: "a", out: "/a",
+        var namer = BatchNamer(settings: settings(pattern: "a", out: "/a",
                                                   safety: SafetySettings(replaceExisting: replace)),
                                inputs: inputs) { $0.lastPathComponent.lowercased() == "a.jpg" }
         #expect(namer.next(for: inputs[0], date: nil).lastPathComponent == "a 2.jpg")
@@ -109,7 +122,7 @@ import Testing
         #expect(namer.folder(for: input("/x.jpg")).path == "/out/-")
         // {folder} is a path placeholder only, never in the rename pattern.
         let inputs = [input("/photos/Holiday/x.jpg")]
-        var renamer = BatchNamer(settings: settings(.rename, pattern: "{folder}"), inputs: inputs) { _ in false }
+        var renamer = BatchNamer(settings: settings(changeFormat: false, pattern: "{folder}"), inputs: inputs) { _ in false }
         #expect(renamer.next(for: inputs[0], date: nil).lastPathComponent == "{folder}.jpg")
     }
 
@@ -142,7 +155,7 @@ import Testing
         let long = String(repeating: "a", count: 252)
         let inputs = [input("/a/\(long).png"), input("/b/\(long).png"), input("/c/x.png")]
         var namer = BatchNamer(settings: settings(format: "heic"), inputs: inputs) { _ in false }
-        var renamer = BatchNamer(settings: settings(.convertAndRename, pattern: String(repeating: "\u{00E9}", count: 200)),
+        var renamer = BatchNamer(settings: settings(pattern: String(repeating: "\u{00E9}", count: 200)),
                                  inputs: inputs) { _ in false }
         let names = [namer.next(for: inputs[0], date: nil), namer.next(for: inputs[1], date: nil),
                      renamer.next(for: inputs[2], date: nil)].map(\.lastPathComponent)
@@ -153,7 +166,7 @@ import Testing
     @Test(.timeLimit(.minutes(1))) func hugeExtensionDoesNotHang() {
         // A legal 255-byte name whose extension alone leaves no room for a " 2" suffix.
         let inputs = [input("/a/x." + String(repeating: "e", count: 253))]
-        var namer = BatchNamer(settings: settings(.rename, out: ""), inputs: inputs) { _ in false }
+        var namer = BatchNamer(settings: settings(changeFormat: false, out: ""), inputs: inputs) { _ in false }
         #expect(namer.next(for: inputs[0], date: nil).lastPathComponent.hasPrefix(" 2."))
     }
 

@@ -31,7 +31,8 @@ struct BatchStepDetail: View {
         case .border: $model.settings.border.isOn
         case .text: $model.settings.text.isOn
         case .watermark: $model.settings.watermark.isOn
-        case .output, .rename, .orientation, .safety: nil
+        case .orientation: $model.settings.orientation.isOn
+        case .output, .rename, .safety: nil
         }
     }
 
@@ -68,7 +69,7 @@ private struct OutputStep: View {
             .fixedSize()
             Button("Options…") { showingOptions = true }
         }
-        .disabled(model.settings.mode == .rename)
+        .disabled(!model.settings.changeFormat)
         .sheet(isPresented: $showingOptions) { optionsSheet }
         LabeledContent("Folder:") {
             TextField("Folder:", text: $model.settings.outputFolder, prompt: Text("Choose a folder"))
