@@ -142,20 +142,25 @@ final class BatchModel {
             isPaused = false
             isFinished = true
             let results = results, folder = settings.outputFolder
-            // Reads every output's size: off the main thread (10,000 files).
-            let line = await Task.detached(priority: .userInitiated) {
-                let converted = results.filter { $0.status == .converted }
-                // Input sizes from add: the originals may be in the Trash by now.
-                let bytesIn = converted.reduce(0) { $0 + list.size(of: $1.input) }
-                let bytesOut = converted.reduce(0) {
-                    $0 + (($1.output.flatMap { try? $0.resourceValues(forKeys: [.fileSizeKey]).fileSize }) ?? 0)
-                }
-                return BatchReport.summary(results: results, seconds: seconds, bytesIn: bytesIn,
-                                           bytesOut: bytesOut, folder: folder)
-            }.value
-            // A settings change or add while sizes were read already left the done view.
-            if isFinished && self.results == results { report = line }
+            // Not awaited by runTask: quitting waits for the commits, not for 10,000 size reads.
+            Task { await summarize(results, list: list, seconds: seconds, folder: folder) }
         }
+    }
+
+    /// Sets `report`; reads every output's size off the main thread (10,000 files).
+    private func summarize(_ results: [BatchResult], list: BatchInputList, seconds: Double, folder: String) async {
+        let line = await Task.detached(priority: .userInitiated) {
+            let converted = results.filter { $0.status == .converted }
+            // Input sizes from add: the originals may be in the Trash by now.
+            let bytesIn = converted.reduce(0) { $0 + list.size(of: $1.input) }
+            let bytesOut = converted.reduce(0) {
+                $0 + (($1.output.flatMap { try? $0.resourceValues(forKeys: [.fileSizeKey]).fileSize }) ?? 0)
+            }
+            return BatchReport.summary(results: results, seconds: seconds, bytesIn: bytesIn,
+                                       bytesOut: bytesOut, folder: folder)
+        }.value
+        // A settings change or add while sizes were read already left the done view.
+        if isFinished && self.results == results { report = line }
     }
 
     private func flushPending() {
