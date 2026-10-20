@@ -3,7 +3,7 @@ import Testing
 @testable import FeatherviewCore
 
 @Suite struct ImageFormatsTests {
-    @Test(arguments: ["a.jpg", "a.JPG", "a.jpeg", "a.png", "a.heic", "a.tiff", "a.gif", "a.webp", "a.jfif", "a.JFIF", "a.jif", "a.jfi", "a.pdf", "a.PDF"])
+    @Test(arguments: ["a.jpg", "a.JPG", "a.jpeg", "a.png", "a.heic", "a.tiff", "a.gif", "a.webp", "a.jfif", "a.JFIF", "a.jif", "a.jfi", "a.pdf", "a.PDF", "a.pam", "a.PAM", "a.pfm"])
     func decodable(_ name: String) {
         #expect(ImageFormats.isDecodable(URL(fileURLWithPath: "/x/\(name)")))
     }
@@ -11,6 +11,15 @@ import Testing
     @Test(arguments: ["a.txt", "a", "a.mov"])
     func notDecodable(_ name: String) {
         #expect(!ImageFormats.isDecodable(URL(fileURLWithPath: "/x/\(name)")))
+    }
+
+    /// PAM (Netpbm P7) has no UTType on macOS, ImageIO reads it by content, alpha included.
+    @Test func pamDecodesWithAlpha() throws {
+        let url = try Fixtures.makeTempDir().appendingPathComponent("a.pam")
+        let header = "P7\nWIDTH 2\nHEIGHT 1\nDEPTH 4\nMAXVAL 255\nTUPLTYPE RGB_ALPHA\nENDHDR\n"
+        try (Data(header.utf8) + Data([255, 0, 0, 255, 0, 255, 0, 0])).write(to: url)
+        let image = try #require(RGBAImage(try ImageDecoder.decode(url)))
+        #expect(image[0, 0] == (255, 0, 0, 255) && image[1, 0].a == 0)
     }
 }
 

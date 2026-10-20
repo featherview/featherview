@@ -50,6 +50,8 @@ public enum OwnDecoders {
         QOICodec.format, PCXCodec.pcx, PCXCodec.dcx,
         XBMDecoder.format, XPMDecoder.format, WBMPDecoder.format,
         SunRasterDecoder.format, ILBMDecoder.format, XCFDecoder.format, PSPDecoder.format, PDNDecoder.format,
+        FarbfeldDecoder.format, MacPaintDecoder.format,
+        ZippedImage.openRaster, ZippedImage.krita, ZippedImage.procreate,
         PDFPages.format,
     ]
 
