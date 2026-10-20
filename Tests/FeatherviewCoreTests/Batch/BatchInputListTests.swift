@@ -131,6 +131,22 @@ import Testing
         #expect(dropped.unreadable == [locked])
     }
 
+    @Test func folderWithoutImagesIsReported() throws {
+        // A camera card's DCIM holds only subfolders; an empty folder holds nothing.
+        let dir = try Fixtures.makeTempDir()
+        let empty = dir.appendingPathComponent("Empty")
+        try FileManager.default.createDirectory(at: empty, withIntermediateDirectories: true)
+        let dcim = dir.appendingPathComponent("DCIM/100APPLE")
+        try FileManager.default.createDirectory(at: dcim, withIntermediateDirectories: true)
+        _ = try image(dcim, "a.jpg")
+        let dropped = BatchInputList.scan(dropped: [empty, dir.appendingPathComponent("DCIM")])
+        #expect(names(dropped.list.items) == ["a.jpg"])
+        #expect(dropped.empty == [empty])
+        #expect(BatchInputList.notice(unreadable: [], empty: [empty]) == "No images in Empty")
+        #expect(BatchInputList.notice(unreadable: [], empty: []) == nil)
+        #expect(BatchInputList.notice(unreadable: [dcim], empty: [empty]) == "Can't open 100APPLE")
+    }
+
     /// "Recreate subfolders" takes each input's path below its root, so the root must prefix it.
     @Test func scanKeepsItemsUnderTheChosenFolderPath() throws {
         let dir = try Fixtures.makeTempDir()  // under /var, which is a symlink to /private/var

@@ -41,11 +41,12 @@ public struct BatchInputList: Equatable, Sendable {
 
     /// Dropped files and folders in the order given; a folder (also through a symlink) adds with
     /// its subfolders. Off the caller's thread, like `scan(folder:subfolders:)`. `unreadable` names
-    /// the folders that couldn't be listed.
-    public static func scan(dropped urls: [URL]) -> (list: BatchInputList, unreadable: [URL]) {
+    /// the folders that couldn't be listed, `empty` those with no images.
+    public static func scan(dropped urls: [URL]) -> (list: BatchInputList, unreadable: [URL], empty: [URL]) {
         var list = BatchInputList()
         var files: [URL] = []
         var unreadable: [URL] = []
+        var empty: [URL] = []
         for url in urls {
             var isFolder: ObjCBool = false
             guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isFolder), isFolder.boolValue else {
@@ -56,10 +57,26 @@ public struct BatchInputList: Equatable, Sendable {
             if (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isPackageKey]).isPackage) == true { continue }
             list.add(files: files)
             files = []
-            do { list.append(try scan(folder: url, subfolders: true)) } catch { unreadable.append(url) }
+            do {
+                let found = try scan(folder: url, subfolders: true)
+                if found.isEmpty { empty.append(url) }
+                list.append(found)
+            } catch { unreadable.append(url) }
         }
         list.add(files: files)
-        return (list, unreadable)
+        return (list, unreadable, empty)
+    }
+
+    /// What to tell the user after an add: folders that couldn't be listed, else folders with no
+    /// images; nil when every folder added something.
+    public static func notice(unreadable: [URL], empty: [URL]) -> String? {
+        if let first = unreadable.first {
+            let name = first.lastPathComponent
+            return unreadable.count == 1
+                ? String(localized: "Can't open \(name)")
+                : String(localized: "Can't open \(name) and \(unreadable.count - 1) more folders")
+        }
+        return empty.first.map { String(localized: "No images in \($0.lastPathComponent)") }
     }
 
     private static func scan(_ folder: URL, root: URL, subfolders: Bool, into inputs: inout [BatchInput]) throws {

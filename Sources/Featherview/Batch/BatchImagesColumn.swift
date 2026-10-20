@@ -46,7 +46,8 @@ struct BatchImagesColumn: View {
     /// The window's first move: Choose Folder… stands out, Add Files… and dropping are the other ways in.
     private var emptyState: some View {
         VStack(spacing: Theme.emptyCardGap) {
-            Button("Choose Folder…") { model.addFolderPanel(subfolders: false) }
+            // With subfolders, like a dropped folder: a camera card's DCIM holds only subfolders.
+            Button("Choose Folder…") { model.addFolderPanel(subfolders: true) }
                 .buttonStyle(.borderedProminent)
                 .tint(Theme.accent)
                 .controlSize(.large)

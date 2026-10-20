@@ -242,16 +242,11 @@ final class BatchModel {
     }
 
     /// Scanned and de-duplicated off the main thread, then appended in the order given; folders that
-    /// couldn't be listed get a notice.
-    private func addInBackground(_ work: @escaping @Sendable () -> (list: BatchInputList, unreadable: [URL])) {
+    /// couldn't be listed or hold no images get a notice.
+    private func addInBackground(_ work: @escaping @Sendable () -> (list: BatchInputList, unreadable: [URL], empty: [URL])) {
         addInOrder(work) { [self] found in
             inputs.append(found.list)
-            if let first = found.unreadable.first {
-                let name = first.lastPathComponent
-                notice = found.unreadable.count == 1
-                    ? String(localized: "Can't open \(name)")
-                    : String(localized: "Can't open \(name) and \(found.unreadable.count - 1) more folders")
-            }
+            if let message = BatchInputList.notice(unreadable: found.unreadable, empty: found.empty) { notice = message }
         }
     }
 
@@ -259,14 +254,16 @@ final class BatchModel {
         addInBackground {
             var list = BatchInputList()
             list.add(files: files)
-            return (list, [])
+            return (list, [], [])
         }
     }
 
     func add(folder: URL, subfolders: Bool) {
         addInBackground {
-            do { return (BatchInputList(try BatchInputList.scan(folder: folder, subfolders: subfolders)), []) }
-            catch { return (BatchInputList(), [folder]) }
+            do {
+                let found = try BatchInputList.scan(folder: folder, subfolders: subfolders)
+                return (BatchInputList(found), [], found.isEmpty ? [folder] : [])
+            } catch { return (BatchInputList(), [folder], []) }
         }
     }
 
