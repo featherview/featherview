@@ -26,6 +26,8 @@ struct BatchImagesColumn: View {
                     // Not the sidebar style: its source list checks for flat indentation on every insert,
                     // which loads every row (~750 ms after adding 10,000 images).
                     .listStyle(.plain)
+                    // The plain style paints an opaque background; the sidebar's glass shows through instead.
+                    .scrollContentBackground(.hidden)
                     .onDeleteCommand { if !model.isRunning { model.removeSelected() } }
                 }
             }
