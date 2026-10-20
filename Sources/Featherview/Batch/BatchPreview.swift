@@ -2,8 +2,8 @@ import CoreImage
 import FeatherviewCore
 import SwiftUI
 
-/// Under the step settings (spec "Window"): the selected input (or the first) with every operation
-/// applied next to the original, and the first output names. Computed off the main thread, 150 ms
+/// Under the cards (spec "Window"): the selected input (or the first) with every operation applied next
+/// to the original, the first output names and the applied steps in order. Computed off the main thread, 150 ms
 /// after the last change, the previous computation cancelled.
 struct BatchPreview: View {
     let model: BatchModel
@@ -14,20 +14,28 @@ struct BatchPreview: View {
         let index = items.firstIndex(where: model.selection.contains) ?? (items.isEmpty ? nil : 0)
         let imageKey = BatchPreviewModel.ImageKey(settings: model.settings, input: index.map { items[$0] }, index: index ?? 0)
         let namesKey = BatchPreviewModel.NamesKey(settings: model.settings, inputs: items)
-        HStack(alignment: .top, spacing: 16) {
-            pane(preview.original, caption: preview.originalSize.map { Text("Original \(Int($0.width)) × \(Int($0.height))") })
-            if let error = preview.error {
-                Text(error)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                pane(preview.output, caption: preview.outputSize.map { Text("Output \(Int($0.width)) × \(Int($0.height))") })
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 16) {
+                pane(preview.original, caption: preview.originalSize.map { Text("Original \(Int($0.width)) × \(Int($0.height))") })
+                if let error = preview.error {
+                    Text(error)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    pane(preview.output, caption: preview.outputSize.map { Text("Output \(Int($0.width)) × \(Int($0.height))") })
+                }
+                names
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            names
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if let applied = BatchCard.appliedLine(model.settings) {
+                Text(applied)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
         }
         .padding()
-        .frame(height: 220)
         .onChange(of: imageKey, initial: true) { preview.updateImage(imageKey) }
         .onChange(of: namesKey, initial: true) { preview.updateNames(namesKey) }
     }

@@ -2,48 +2,25 @@ import AppKit
 import FeatherviewCore
 import SwiftUI
 
-/// The selected step's settings (spec "Window"): one form per step, an On switch for operations.
-struct BatchStepDetail: View {
-    let step: BatchCard
+/// An open card's settings rows (spec "Window"), inside the card list's grouped form.
+struct BatchCardBody: View {
+    let card: BatchCard
     @Bindable var model: BatchModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(step.title).font(.title3.weight(.semibold))
-                Spacer()
-                if let isOn { Toggle("On", isOn: isOn).toggleStyle(.switch) }
-            }
-            .padding([.horizontal, .top])
-            // A grouped form scrolls by itself: labels leading, controls trailing, in one card.
-            Form { Section { form } }
-                .formStyle(.grouped)
-        }
-    }
-
-    private var isOn: Binding<Bool>? {
-        switch step {
-        case .crop: $model.settings.crop.isOn
-        case .size: $model.settings.resize.isOn
-        case .colour: $model.settings.colour.isOn
-        case .filters: $model.settings.filters.isOn
-        case .canvas: $model.settings.canvas.isOn
-        case .border: $model.settings.border.isOn
-        case .text: $model.settings.text.isOn
-        case .watermark: $model.settings.watermark.isOn
-        case .orientation: $model.settings.orientation.isOn
-        case .format, .name: nil
-        }
-    }
-
-    @ViewBuilder private var form: some View {
-        switch step {
-        case .format: OutputStep(model: model)
+        switch card {
+        case .format: FormatStep(model: model)
+        case .size:
+            Toggle("Change size", isOn: $model.settings.resize.isOn)
+            if model.settings.resize.isOn { ResizeStepView(s: $model.settings.resize) }
         case .name:
             RenameStep(pattern: $model.settings.renamePattern)
+            SaveToRow(folder: $model.settings.outputFolder)
+            Text("Safety and dates")
+                .font(Theme.badge)
+                .foregroundStyle(Theme.labelSecondary)
             SafetyStep(s: $model.settings.safety)
         case .crop: CropStepView(s: $model.settings.crop)
-        case .size: ResizeStepView(s: $model.settings.resize)
         case .orientation: OrientationStepView(s: $model.settings.orientation)
         case .colour: ColourStepView(s: $model.settings.colour)
         case .filters: FiltersStepView(s: $model.settings.filters)
@@ -55,42 +32,24 @@ struct BatchStepDetail: View {
     }
 }
 
-// MARK: - Output
+// MARK: - Format and name
 
-private struct OutputStep: View {
+private struct FormatStep: View {
     @Bindable var model: BatchModel
     @State private var showingOptions = false
 
     var body: some View {
-        LabeledContent("Format:") {
-            Picker("Format:", selection: Binding { model.settings.format } set: { model.settings.setFormat($0) }) {
-                ForEach(FormatRegistry.writable) { Text($0.name).tag($0) }
-            }
-            .labelsHidden()
-            .fixedSize()
-            Button("Options…") { showingOptions = true }
-        }
-        .disabled(!model.settings.changeFormat)
-        .sheet(isPresented: $showingOptions) { optionsSheet }
-        LabeledContent("Folder:") {
-            TextField("Folder:", text: $model.settings.outputFolder, prompt: Text("Choose a folder"))
-                .labelsHidden()
-                .frame(minWidth: 220)
-            Button("Choose…", action: chooseFolder)
-        }
-        LabeledContent("") {
-            VStack(alignment: .leading, spacing: 6) {
-                Button("Use the Input's Folder") {
-                    let items = model.inputs.items
-                    if let input = items.first(where: model.selection.contains) ?? items.first {
-                        model.settings.outputFolder = input.url.deletingLastPathComponent().path
-                    }
+        Toggle("Change format", isOn: $model.settings.changeFormat)
+        if model.settings.changeFormat {
+            LabeledContent("Format:") {
+                Picker("Format:", selection: Binding { model.settings.format } set: { model.settings.setFormat($0) }) {
+                    ForEach(FormatRegistry.writable) { Text($0.name).tag($0) }
                 }
-                .disabled(model.inputs.items.isEmpty)
-                Text("{folder} in the path stands for each image's folder name.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                .labelsHidden()
+                .fixedSize()
+                Button("Options…") { showingOptions = true }
             }
+            .sheet(isPresented: $showingOptions) { optionsSheet }
         }
     }
 
@@ -108,6 +67,27 @@ private struct OutputStep: View {
         }
         .frame(width: 420)
     }
+}
+
+/// Empty = next to each original; clearing the field goes back to it.
+private struct SaveToRow: View {
+    @Binding var folder: String
+
+    var body: some View {
+        LabeledContent("Save to:") {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    TextField("Save to:", text: $folder, prompt: Text("Next to the originals"))
+                        .labelsHidden()
+                    Button("Choose…", action: chooseFolder)
+                }
+                Text("{folder} in the path stands for each image's folder name.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
 
     private func chooseFolder() {
         let panel = NSOpenPanel()
@@ -115,7 +95,7 @@ private struct OutputStep: View {
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        model.settings.outputFolder = url.path
+        folder = url.path
     }
 }
 
@@ -538,10 +518,19 @@ private struct IntRow: View {
 
     var body: some View {
         LabeledContent(label) {
-            HStack(spacing: 4) {
-                IntField($value)
-                Text(unit)
-                if let hint { Text(hint).font(.caption).foregroundStyle(.secondary).padding(.leading, 6) }
+            // The hint goes under the field: beside it, Canvas's long note made the card wider than its column.
+            VStack(alignment: .trailing, spacing: 2) {
+                HStack(spacing: 4) {
+                    IntField($value)
+                    Text(unit)
+                }
+                if let hint {
+                    Text(hint)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }

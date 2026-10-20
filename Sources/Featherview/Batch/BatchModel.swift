@@ -6,10 +6,10 @@ import UniformTypeIdentifiers
 extension BatchCard {
     var title: LocalizedStringKey {
         switch self {
-        case .format: "Format and Folder"
-        case .name: "Rename"
+        case .format: "Format"
+        case .name: "Name"
         case .crop: "Crop"
-        case .size: "Resize"
+        case .size: "Size"
         case .orientation: "Rotate and Flip"
         case .colour: "Colour"
         case .filters: "Filters"
@@ -42,7 +42,8 @@ final class BatchModel {
     /// Each input's place in the list: every row asks for its state on each result, so no linear search.
     private var position: [BatchInput: Int] = [:]
     var selection: Set<BatchInput> = []
-    var step = BatchCard.format
+    /// The one unfolded card; nil = all folded.
+    var openCard: BatchCard? = .format
     private(set) var isRunning = false
     private(set) var isPaused = false
     /// In list order, grows while running.
@@ -73,12 +74,6 @@ final class BatchModel {
     init() {
         settings = BatchPresets.current()
     }
-
-    // MARK: - Steps column
-
-    func isOn(_ step: BatchCard) -> Bool { step == .size ? settings.resize.isOn : step.isAdded(in: settings) }
-    /// Empty for a step that is off.
-    func summary(of step: BatchCard) -> String { step.isAdded(in: settings) ? step.summary(in: settings) : "" }
 
     // MARK: - Running
 
