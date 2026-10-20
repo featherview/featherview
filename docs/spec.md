@@ -114,6 +114,11 @@ orientation applied), ⌘Q Quit. Menus also list the single-key commands
 working) so they are discoverable. Single keys are menu shortcuts only while a
 menu is open, so typing in the batch window's text fields never triggers viewer actions.
 
+The Help menu has Report a Bug…:
+it opens the browser at a new GitHub issue from the repo's bug report form
+(`.github/ISSUE_TEMPLATE/bug_report.yml`), with Featherview version and build, macOS version and Mac
+model filled in; the person describes what happened.
+
 ### Rotate
 
 Lossless: only the EXIF orientation tag changes. Supported for JPEG, HEIC and TIFF; other
@@ -333,7 +338,8 @@ Our own About window replaces the plain standard panel. Mac-like, one small
 window, nothing to configure.
 
 - The feather icon, "Featherview", version and build (`0.1.0 (1)`), the one-line description.
-- Links: website, source code on GitHub, report a problem (GitHub issue), all opening the browser.
+- Links: website, source code on GitHub, report a problem (the bug report form, as Help › Report a
+  Bug…), all opening the browser.
 - "Supported formats": two lists, read and write, built at runtime from ImageIO plus our own
   encoders (see "Formats"), with the macOS version they come from.
 - "MIT License" and "Acknowledgements": the licence text of every bundled library (libwebp, jxrlib), each

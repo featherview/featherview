@@ -653,6 +653,9 @@ struct ViewerCommands: Commands {
         CommandGroup(replacing: .appInfo) {
             Button("About Featherview  (A)") { openWindow(id: "about") }
         }
+        CommandGroup(replacing: .help) {
+            Button("Report a Bug…") { NSWorkspace.shared.open(AboutView.bugReportURL) }
+        }
         CommandGroup(replacing: .appSettings) {
             Button("Settings…") { SettingsWindow.show() }.keyboardShortcut(",")
         }

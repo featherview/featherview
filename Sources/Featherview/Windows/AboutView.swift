@@ -10,11 +10,16 @@ struct AboutView: View {
     @State private var showingCopy = false
 
     private static let info = Bundle.main.infoDictionary ?? [:]
-    private static let version = info["CFBundleShortVersionString"] as? String ?? "?"
-    private static let build = info["CFBundleVersion"] as? String ?? "?"
+    static let version = info["CFBundleShortVersionString"] as? String ?? "?"
+    static let build = info["CFBundleVersion"] as? String ?? "?"
     private static let licenseURL = Bundle.main.url(forResource: "LICENSE", withExtension: nil)
     private static let acknowledgementsURL = Bundle.main.url(forResource: "Acknowledgements", withExtension: "txt")
-    private static let macOSVersion: String = {
+    /// The bug report form with this Mac's details filled in (About and Help › Report a Bug…).
+    static var bugReportURL: URL {
+        AboutInfo.bugReportURL(version: version, build: build, macOS: ProcessInfo.processInfo.operatingSystemVersionString,
+                               model: AboutInfo.modelIdentifier())
+    }
+    static let macOSVersion: String = {
         let v = ProcessInfo.processInfo.operatingSystemVersion
         return v.patchVersion == 0 ? "\(v.majorVersion).\(v.minorVersion)" : "\(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
     }()
@@ -67,10 +72,10 @@ struct AboutView: View {
                 HStack(spacing: Theme.aboutLinkGap) {
                     link("Website") { openURL(URL(string: "https://featherview.github.io")!) }
                     LinkSeparator()
-                    link("Source Code") { openURL(URL(string: "https://github.com/mynetx/featherview")!) }
+                    link("Source Code") { openURL(AboutInfo.repository) }
                 }
                 HStack(spacing: Theme.aboutLinkGap) {
-                    link("Report a Problem") { openURL(URL(string: "https://github.com/mynetx/featherview/issues/new")!) }
+                    link("Report a Problem") { openURL(Self.bugReportURL) }
                     LinkSeparator()
                     link("Supported Formats") { sheetText = Self.formatsText }
                 }
