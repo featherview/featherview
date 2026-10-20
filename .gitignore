@@ -5,3 +5,4 @@ build/
 research/
 .claude/settings.local.json
 .claude/worktrees/
+.superpowers/
