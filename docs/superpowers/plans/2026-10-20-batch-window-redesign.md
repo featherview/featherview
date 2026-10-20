@@ -119,7 +119,7 @@ Rules to pin (from the design):
   `String(localized: "Can't save \(name) in its own format")`. The watermark loads whenever
   `watermark.isOn` (no mode check).
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `BatchSettingsTests`: `oldConvertPresetKeepsNames` (JSON `{"mode":"convert","renamePattern":"x-{n}"}`
     → `changeFormat == true`, `renamePattern == "{name}"`); `oldRenamePresetKeepsFormatAndDropsOperations`
     (`{"mode":"rename","resize":{"isOn":true}}` → `changeFormat == false`, `resize.isOn == false`);
@@ -135,14 +135,14 @@ Rules to pin (from the design):
     `QuickLookSupportTests.multiPageShowsFirstPage`, and a `.cr3` file made by copying a JPEG's bytes
     under that name — ImageIO reads it, nothing writes it; resize on → JPEG and PNG converted, DCX
     and CR3 failed with "Can't save … in its own format", in list order); `canStartWithEmptyFolder`.
-- [ ] **Step 2: Run them to see them fail.** `swift test --filter "BatchSettingsTests|BatchNamerTests|BatchConverterTests"`
-- [ ] **Step 3: Implement** the interfaces and rules above. Remove every `mode` use
+- [x] **Step 2: Run them to see them fail.** `swift test --filter "BatchSettingsTests|BatchNamerTests|BatchConverterTests"`
+- [x] **Step 3: Implement** the interfaces and rules above. Remove every `mode` use
   (`BatchConverter.swift:45,119-122`, `BatchNamer.swift:55,58`, `BatchSteps.swift:42,72`).
   The app still compiles: replace the toolbar's mode picker in `BatchView.swift` with nothing yet
   and `BatchStepViews.swift:71`'s `.disabled` with `!changeFormat` (Task 4 replaces both views).
-- [ ] **Step 4: Run the full suite.** `swift test` → all pass (update tests that used `BatchMode`:
+- [x] **Step 4: Run the full suite.** `swift test` → all pass (update tests that used `BatchMode`:
   `BatchNamerTests.settings(_:)` takes `changeFormat:` instead).
-- [ ] **Step 5: Commit** `feat: batch keeps or changes the format per file; old presets load the same batch`
+- [x] **Step 5: Commit** `feat: batch keeps or changes the format per file; old presets load the same batch`
 
 ---
 
