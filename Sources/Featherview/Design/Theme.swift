@@ -80,11 +80,14 @@ enum Theme {
     static let keyCapFill = colour(dark: white(0.07), light: black(0.05))
     static let keyCapLine = colour(dark: white(0.14), light: black(0.12))
     static let keyCapText = colour(dark: white(0.70), light: black(0.60))
+    /// Text and glyphs on the accent (selected rows, prominent buttons): white on the light mode's brown
+    /// (4.8:1), graphite on the dark mode's coral (6.6:1; white there is 2.6:1).
+    static let onAccent = colour(dark: rgb(28, 28, 32, 1), light: white(1))
     /// Key cap and small button on an accent (selected) row.
-    static let onAccentKeyFill = Color.white.opacity(0.22)
-    static let onAccentButtonFill = Color.white.opacity(0.20)
+    static let onAccentKeyFill = colour(dark: black(0.14), light: white(0.22))
+    static let onAccentButtonFill = colour(dark: black(0.12), light: white(0.20))
     /// Count on an accent row.
-    static let onAccentSecondary = Color.white.opacity(0.75)
+    static let onAccentSecondary = colour(dark: rgb(28, 28, 32, 0.70), light: white(0.75))
 
     /// Toggled pill: behind an active toolbar item (Info while the panel is open).
     static let toggledPill = colour(dark: white(0.12), light: black(0.08))

@@ -50,7 +50,7 @@ struct DestinationPanel: View {
         return HStack(spacing: Theme.rowGap) {
             Text(String(DestinationSlots.keys[slot]))
                 .font(Theme.slotKey)
-                .foregroundStyle(selected ? Color.white : Theme.keyCapText)
+                .foregroundStyle(selected ? Theme.onAccent : Theme.keyCapText)
                 .frame(width: Theme.slotKeySize, height: Theme.slotKeySize)
                 .background(selected ? Theme.onAccentKeyFill : Theme.keyCapFill, in: .rect(cornerRadius: Theme.Radius.slotKey))
                 .overlay {
@@ -60,14 +60,14 @@ struct DestinationPanel: View {
                 }
             Text(folder?.lastPathComponent ?? String(localized: "Empty", comment: "Folder slot with no folder chosen"))
                 .font(selected ? Theme.rowSelected : Theme.row)
-                .foregroundStyle(selected ? Color.white : folder == nil ? Theme.labelTertiary : Theme.labelPrimary)
+                .foregroundStyle(selected ? Theme.onAccent : folder == nil ? Theme.labelTertiary : Theme.labelPrimary)
                 .lineLimit(1)
                 .help(folder?.path ?? "")
             Spacer(minLength: 0)
             Button { model.chooseFolder(for: slot) } label: {
                 Text("Choose…")
                     .font(Theme.smallButton)
-                    .foregroundStyle(selected ? Color.white : Theme.labelPrimary)
+                    .foregroundStyle(selected ? Theme.onAccent : Theme.labelPrimary)
                     .padding(.horizontal, Theme.smallButtonPadding)
                     .frame(height: Theme.smallButtonHeight)
                     .background(selected ? Theme.onAccentButtonFill : Theme.keyCapFill, in: .rect(cornerRadius: Theme.Radius.slotKey))

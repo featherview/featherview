@@ -49,7 +49,10 @@ struct BatchImagesColumn: View {
     private var emptyState: some View {
         VStack(spacing: Theme.emptyCardGap) {
             // With subfolders, like a dropped folder: a camera card's DCIM holds only subfolders.
-            Button("Choose Folder…") { model.addFolderPanel(subfolders: true) }
+            // The label's own colour: a prominent button ignores one set on the button.
+            Button { model.addFolderPanel(subfolders: true) } label: {
+                Text("Choose Folder…").foregroundStyle(Theme.onAccent)
+            }
                 .buttonStyle(.borderedProminent)
                 .tint(Theme.accent)
             Button("Add Files…") { model.addFilesPanel() }

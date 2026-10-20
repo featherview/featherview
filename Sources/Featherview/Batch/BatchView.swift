@@ -81,12 +81,14 @@ struct BatchView: View {
                 }
                 Button("Stop") { model.stop() }
             } else if model.isFinished {
-                Button("New Batch") { model.newBatch() }
+                Button { model.newBatch() } label: { Text("New Batch").foregroundStyle(Theme.onAccent) }
                     .keyboardShortcut(.return, modifiers: .command)
                     .buttonStyle(.borderedProminent)
             } else {
                 // ⌘↩, not Return: Return in a field only confirms the value, it must not start a long batch.
-                Button(BatchInputList.convertTitle(count: model.inputs.items.count)) { model.start() }
+                Button { model.start() } label: {
+                    Text(BatchInputList.convertTitle(count: model.inputs.items.count)).foregroundStyle(Theme.onAccent)
+                }
                     .keyboardShortcut(.return, modifiers: .command)
                     .buttonStyle(.borderedProminent)
                     .disabled(!model.canStart)

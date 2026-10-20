@@ -48,10 +48,10 @@ struct FolderChooserView: View {
             HStack(spacing: Theme.rowGap) {
                 Image(systemName: symbol(entry))
                     .font(Theme.rowGlyph)
-                    .foregroundStyle(selected ? Color.white : Theme.labelSecondary)
+                    .foregroundStyle(selected ? Theme.onAccent : Theme.labelSecondary)
                 Text(label(entry))
                     .font(selected ? Theme.rowSelected : Theme.row)
-                    .foregroundStyle(selected ? Color.white : Theme.labelPrimary)
+                    .foregroundStyle(selected ? Theme.onAccent : Theme.labelPrimary)
                     .lineLimit(1)
                 Spacer(minLength: 0)
                 if let count = model.chooserCounts[entry.url] {
