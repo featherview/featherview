@@ -69,6 +69,10 @@ public enum BatchCard: String, CaseIterable, Identifiable, Sendable {
                     : String(localized: "Keep format · saved again", comment: "Batch Format card: files keep their format and are saved again")
             }
             let format = s.format
+            // The encoder searches a quality that reaches the target size and ignores the quality setting.
+            if format.optionFields.contains(.targetSize), let kb = s.options.targetSizeKB, kb > 0 {
+                return String(localized: "\(format.name) · \(String(kb)) KB", comment: "Batch Format card: format name and its target file size")
+            }
             let usesQuality = format.optionFields.contains(.quality)
                 && !(format.optionFields.contains(.lossless) && s.options.lossless)
             guard usesQuality else { return format.name }
@@ -92,7 +96,7 @@ public enum BatchCard: String, CaseIterable, Identifiable, Sendable {
             return String(localized: "\(s.renamePattern) · \(place)", comment: "Batch Name card: rename pattern and the folder saved to")
         case .crop:
             let c = s.crop
-            return c.width > 0 && c.height > 0 ? String(localized: "\(c.width) × \(c.height)") : on
+            return c.width > 0 && c.height > 0 ? String(localized: "\(String(c.width)) × \(String(c.height))") : on
         case .orientation:
             let o = s.orientation
             var parts: [String] = []
@@ -128,7 +132,7 @@ public enum BatchCard: String, CaseIterable, Identifiable, Sendable {
         case .canvas:
             let c = s.canvas
             switch c.method {
-            case .totalSize: return String(localized: "\(c.width) × \(c.height)")
+            case .totalSize: return String(localized: "\(String(c.width)) × \(String(c.height))")
             case .aspectRatio: return String(localized: "\(c.ratioWidth.formatted()):\(c.ratioHeight.formatted())", comment: "Batch Canvas card summary: aspect ratio")
             case .perSide:
                 return c.autoCropBorders ? String(localized: "Auto-crop borders", comment: "Batch Canvas card summary") : on

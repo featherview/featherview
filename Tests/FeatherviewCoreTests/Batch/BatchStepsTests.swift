@@ -35,6 +35,27 @@ import Testing
         #expect(BatchCard.format.summary(in: s) == "PNG")
     }
 
+    @Test func formatSummaryShowsTargetSizeInsteadOfQuality() {
+        var s = BatchSettings()
+        s.formatID = "jpg"
+        s.options.quality = 80
+        s.options.targetSizeKB = 500
+        #expect(BatchCard.format.summary(in: s) == "JPEG · 500 KB")
+        s.options.targetSizeKB = 0
+        #expect(BatchCard.format.summary(in: s) == "JPEG · 80")
+    }
+
+    @Test func canvasAndCropSummariesWritePixelsUngrouped() {
+        var s = BatchSettings()
+        s.canvas.method = .totalSize
+        s.canvas.width = 1920
+        s.canvas.height = 1080
+        #expect(BatchCard.canvas.summary(in: s) == "1920 × 1080")
+        s.crop.width = 3000
+        s.crop.height = 2000
+        #expect(BatchCard.crop.summary(in: s) == "3000 × 2000")
+    }
+
     @Test func keepFormatSummarySaysCopied() {
         var s = BatchSettings()
         s.changeFormat = false
