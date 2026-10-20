@@ -340,4 +340,20 @@ import Testing
         list.removeAll()
         #expect(list.totalBytes == 0)
     }
+
+    /// New Batch after a run that was stopped: converted rows go, failed and not-started rows stay.
+    @Test func newBatchKeepsFailedAndUnstarted() throws {
+        let dir = try Fixtures.makeTempDir()
+        let urls = try ["a.jpg", "b.jpg", "c.jpg", "d.jpg"].map {
+            try Fixtures.writeImage(to: dir.appendingPathComponent($0), width: 4, height: 4)
+        }
+        var list = BatchInputList()
+        list.add(files: urls)
+        let failed = urls[1], notStarted = urls[3]
+        list.keep([notStarted, failed])
+        #expect(list.items.map(\.url) == [failed, notStarted])
+        #expect(list.totalBytes == BatchInput(url: failed).fileSize() + BatchInput(url: notStarted).fileSize())
+        list.add(files: [urls[0], failed])  // a kept row is still a duplicate, a removed one adds again
+        #expect(list.items.map(\.url) == [failed, notStarted, urls[0]])
+    }
 }

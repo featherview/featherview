@@ -3,57 +3,132 @@ import Testing
 @testable import FeatherviewCore
 
 @Suite struct BatchStepsTests {
-    @Test func everyStepIsUsedAndRenameIsOnWithAPattern() {
+    @Test func coreCardsAlwaysAdded() {
         var s = BatchSettings()
-        #expect(BatchStep.allCases.allSatisfy { $0.isUsed(in: s) })
-        #expect(!BatchStep.rename.isOn(in: s))
+        #expect(BatchCard.core.allSatisfy { $0.isAdded(in: s) })
+        BatchCard.size.setAdded(false, in: &s)
+        BatchCard.name.setAdded(false, in: &s)
+        #expect(BatchCard.core.allSatisfy { $0.isAdded(in: s) })
+        #expect(BatchCard.core.map(\.number) == [2, 3, 4])
+        #expect(BatchCard.extras.allSatisfy { $0.number == nil })
+        #expect(BatchCard.extras == [.crop, .orientation, .colour, .filters, .canvas, .border, .text, .watermark])
+    }
+
+    @Test func extrasFollowTheirSwitch() {
+        var s = BatchSettings()
+        #expect(BatchCard.extras.allSatisfy { !$0.isAdded(in: s) })
+        BatchCard.orientation.setAdded(true, in: &s)
+        #expect(s.orientation.isOn)
+        #expect(BatchCard.orientation.isAdded(in: s))
+        BatchCard.watermark.setAdded(true, in: &s)
+        BatchCard.watermark.setAdded(false, in: &s)
+        #expect(!s.watermark.isOn)
+        #expect(BatchCard.extras.filter { $0.isAdded(in: s) } == [.orientation])
+    }
+
+    @Test func formatSummaryJPEGQuality() {
+        var s = BatchSettings()
+        s.formatID = "jpg"
+        s.options.quality = 85
+        #expect(BatchCard.format.summary(in: s) == "JPEG · 85")
+        s.formatID = "png"
+        #expect(BatchCard.format.summary(in: s) == "PNG")
+    }
+
+    @Test func formatSummaryShowsTargetSizeInsteadOfQuality() {
+        var s = BatchSettings()
+        s.formatID = "jpg"
+        s.options.quality = 80
+        s.options.targetSizeKB = 500
+        #expect(BatchCard.format.summary(in: s) == "JPEG · 500 KB")
+        s.options.targetSizeKB = 0
+        #expect(BatchCard.format.summary(in: s) == "JPEG · 80")
+    }
+
+    @Test func canvasAndCropSummariesWritePixelsUngrouped() {
+        var s = BatchSettings()
+        s.canvas.method = .totalSize
+        s.canvas.width = 1920
+        s.canvas.height = 1080
+        #expect(BatchCard.canvas.summary(in: s) == "1920 × 1080")
+        s.crop.width = 3000
+        s.crop.height = 2000
+        #expect(BatchCard.crop.summary(in: s) == "3000 × 2000")
+    }
+
+    @Test func keepFormatSummarySaysCopied() {
+        var s = BatchSettings()
         s.changeFormat = false
-        #expect(BatchStep.allCases.allSatisfy { $0.isUsed(in: s) })
-        s.renamePattern = "x-{n}"
-        #expect(BatchStep.rename.isOn(in: s))
+        #expect(BatchCard.format.summary(in: s) == "Keep format · copied unchanged")
     }
 
-    @Test func safetyIsOnWhenAnyFlagIsSet() {
+    @Test func keepFormatSummarySaysSavedAgain() {
         var s = BatchSettings()
-        #expect(!BatchStep.safety.isOn(in: s))
-        s.safety.keepDates = true
-        #expect(BatchStep.safety.isOn(in: s))
+        s.changeFormat = false
+        s.resize.isOn = true
+        #expect(BatchCard.format.summary(in: s) == "Keep format · saved again")
     }
 
-    @Test func operationsAreOnWhenTheirSettingsAre() {
+    @Test func sizeSummaryOffIsOriginal() {
         var s = BatchSettings()
-        #expect(BatchStep.operations.allSatisfy { !$0.isOn(in: s) })
-        s.crop.isOn = true
-        s.orientation.isOn = true
-        #expect(BatchStep.operations.filter { $0.isOn(in: s) } == [.crop, .orientation])
-    }
-
-    @Test func resizeSummaryFollowsItsMode() {
-        var s = BatchSettings()
-        #expect(BatchStep.resize.summary(in: s) == "")
+        #expect(BatchCard.size.summary(in: s) == "Original size")
         s.resize.isOn = true
         s.resize.side = 2048
-        #expect(BatchStep.resize.summary(in: s) == "2048")
+        #expect(BatchCard.size.summary(in: s) == "Longest side 2048")
         s.resize.mode = .widthHeight
-        s.resize.width = 800
-        #expect(BatchStep.resize.summary(in: s) == "800 × –")
+        s.resize.width = 2000
+        #expect(BatchCard.size.summary(in: s) == "2000 × –")
         s.resize.mode = .megapixels
         s.resize.megapixels = 12
-        #expect(BatchStep.resize.summary(in: s) == "12 MP")
+        #expect(BatchCard.size.summary(in: s) == "12 MP")
         s.resize.mode = .percent
         s.resize.percentWidth = 50
-        #expect(BatchStep.resize.summary(in: s) == 0.5.formatted(.percent))
+        #expect(BatchCard.size.summary(in: s) == 0.5.formatted(.percent))
+        s.resize.keepAspect = false
+        s.resize.percentHeight = 25
+        #expect(BatchCard.size.summary(in: s) == "\(0.5.formatted(.percent)) × \(0.25.formatted(.percent))")
     }
 
-    @Test func otherSummaries() {
+    @Test func nameSummaryNextToOriginals() {
         var s = BatchSettings()
-        #expect(BatchStep.output.summary(in: s) == s.format.name)
-        #expect(BatchStep.border.summary(in: s) == "")
-        s.border.isOn = true
-        #expect(BatchStep.border.summary(in: s) == "on")
+        s.renamePattern = "trip-{n:3}"
+        #expect(BatchCard.name.summary(in: s) == "trip-{n:3} · Next to the originals")
+        s.outputFolder = "/Users/x/Desktop/Out"
+        #expect(BatchCard.name.summary(in: s) == "trip-{n:3} · Out")
+    }
+
+    @Test func extraSummariesDescribeWhatIsSet() {
+        var s = BatchSettings()
+        #expect(BatchCard.colour.summary(in: s) == "On")
+        s.colour.brightness = 10
+        #expect(BatchCard.colour.summary(in: s) == "Brightness +10")
+        s.colour = ColourSettings()
+        s.colour.greyscale = true
+        #expect(BatchCard.colour.summary(in: s) == "Greyscale")
+        s.watermark.position = .bottomRight
+        s.watermark.opacity = 0.6
+        #expect(BatchCard.watermark.summary(in: s) == "Bottom right, \(0.6.formatted(.percent))")
+        #expect(BatchCard.extras.allSatisfy { !$0.summary(in: BatchSettings()).isEmpty })
+    }
+
+    @Test func appliedLineInProcessingOrder() throws {
+        var s = BatchSettings()
+        s.watermark.isOn = true
+        s.resize.isOn = true
+        s.crop.isOn = true
+        let line = try #require(BatchCard.appliedLine(s))
+        let crop = try #require(line.range(of: "crop"))
+        let size = try #require(line.range(of: "size"))
+        let watermark = try #require(line.range(of: "watermark"))
+        #expect(crop.upperBound <= size.lowerBound)
+        #expect(size.upperBound <= watermark.lowerBound)
+    }
+
+    @Test func appliedLineNilWhenNothingOn() {
+        var s = BatchSettings()
         s.changeFormat = false
-        #expect(BatchStep.output.summary(in: s) == "Same format")
-        #expect(BatchStep.rename.summary(in: s) == "{name}")
+        s.renamePattern = "x-{n}"
+        #expect(BatchCard.appliedLine(s) == nil)
     }
 
     @Test func canStartNeedsFilesAFolderAndNoScan() {

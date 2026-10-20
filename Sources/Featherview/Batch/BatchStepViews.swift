@@ -4,7 +4,7 @@ import SwiftUI
 
 /// The selected step's settings (spec "Window"): one form per step, an On switch for operations.
 struct BatchStepDetail: View {
-    let step: BatchStep
+    let step: BatchCard
     @Bindable var model: BatchModel
 
     var body: some View {
@@ -24,7 +24,7 @@ struct BatchStepDetail: View {
     private var isOn: Binding<Bool>? {
         switch step {
         case .crop: $model.settings.crop.isOn
-        case .resize: $model.settings.resize.isOn
+        case .size: $model.settings.resize.isOn
         case .colour: $model.settings.colour.isOn
         case .filters: $model.settings.filters.isOn
         case .canvas: $model.settings.canvas.isOn
@@ -32,16 +32,18 @@ struct BatchStepDetail: View {
         case .text: $model.settings.text.isOn
         case .watermark: $model.settings.watermark.isOn
         case .orientation: $model.settings.orientation.isOn
-        case .output, .rename, .safety: nil
+        case .format, .name: nil
         }
     }
 
     @ViewBuilder private var form: some View {
         switch step {
-        case .output: OutputStep(model: model)
-        case .rename: RenameStep(pattern: $model.settings.renamePattern)
+        case .format: OutputStep(model: model)
+        case .name:
+            RenameStep(pattern: $model.settings.renamePattern)
+            SafetyStep(s: $model.settings.safety)
         case .crop: CropStepView(s: $model.settings.crop)
-        case .resize: ResizeStepView(s: $model.settings.resize)
+        case .size: ResizeStepView(s: $model.settings.resize)
         case .orientation: OrientationStepView(s: $model.settings.orientation)
         case .colour: ColourStepView(s: $model.settings.colour)
         case .filters: FiltersStepView(s: $model.settings.filters)
@@ -49,7 +51,6 @@ struct BatchStepDetail: View {
         case .border: BorderStepView(s: $model.settings.border)
         case .text: TextStepView(s: $model.settings.text)
         case .watermark: WatermarkStepView(s: $model.settings.watermark)
-        case .safety: SafetyStep(s: $model.settings.safety)
         }
     }
 }
