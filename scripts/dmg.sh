@@ -1,7 +1,7 @@
 #!/bin/bash
-# Builds one disk image per language: build/Featherview-<version>-<lang>.dmg.
-# Usage: scripts/dmg.sh [lang ...]   (default: en)
-# A disk image has one background, so each language gets its own; the website links the visitor's.
+# Builds the disk image: build/Featherview-<version>.dmg, one for every language. Its background has
+# room for one language only, so the help text is English (the app itself follows the Mac's language).
+# Usage: scripts/dmg.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VOLUME="Featherview"
@@ -26,8 +26,7 @@ attach_rw() {
 }
 [ "${BASH_SOURCE[0]}" != "$0" ] && return 0  # sourced by scripts/test-dmg.sh
 
-LANGS=("$@")
-[ ${#LANGS[@]} -eq 0 ] && LANGS=(en)
+LANGS=(en)
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
 
 scripts/bundle.sh release
@@ -44,7 +43,7 @@ cleanup() {
 trap cleanup EXIT
 
 for LANG_CODE in "${LANGS[@]}"; do
-    OUT="build/Featherview-$VERSION-$LANG_CODE.dmg"
+    OUT="build/Featherview-$VERSION.dmg"
     STAGE="$WORK/$LANG_CODE/stage"
     RW="$WORK/$LANG_CODE/rw.dmg"
     mkdir -p "$STAGE/.background"

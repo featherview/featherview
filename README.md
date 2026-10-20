@@ -64,7 +64,7 @@ scripts/bundle.sh
 open build/Featherview.app
 ```
 
-Disk images: `scripts/dmg.sh en de` writes `build/Featherview-<version>-<lang>.dmg`, one per language.
+Disk image: `scripts/dmg.sh` writes `build/Featherview-<version>.dmg`.
 
 ## License
 

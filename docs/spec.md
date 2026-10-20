@@ -482,8 +482,9 @@ account). README.md tells users how to open the app the first time.
 The app ships in a disk image whose window shows the app, an arrow to an Applications link, and a
 help box for the first open: open Featherview once, then System Settings › Privacy & Security ›
 Open Anyway (since macOS 15 Control-click › Open no longer does it). Dark background in the icon's
-tile colour with faint feather lines; drawn by code at 1× and 2×, no copied artwork. The help text
-is translated: one disk image per language, built by `scripts/dmg.sh`. Revisit if someone sponsors
+tile colour with faint feather lines; drawn by code at 1× and 2×, no copied artwork. One disk image
+for every language, built by `scripts/dmg.sh`; its help text is English (a background holds one
+language), the app inside follows the Mac's language. Revisit if someone sponsors
 the $99/year Apple Developer Program; then sign with Developer ID and notarize.
 
 ## App icon
