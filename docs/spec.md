@@ -114,7 +114,7 @@ orientation applied), ⌘Q Quit. Menus also list the single-key commands
 working) so they are discoverable. Single keys are menu shortcuts only while a
 menu is open, so typing in the batch window's text fields never triggers viewer actions.
 
-The Help menu has Report a Bug…:
+The app menu has Check for Updates… below About (see "Updates"). The Help menu has Report a Bug…:
 it opens the browser at a new GitHub issue from the repo's bug report form
 (`.github/ISSUE_TEMPLATE/bug_report.yml`), with Featherview version and build, macOS version and Mac
 model filled in; the person describes what happened.
@@ -322,7 +322,8 @@ controls trailing, switches for on/off settings. Every setting below has the def
 
 - Browsing: past the end of a folder: folder chooser (default) / loop this folder / stop; show
   hidden files (off); after Move to Trash or move to folder, show the next image (on); move,
-  copy and trash sidecar files with the same name (`.xmp`, `.aae`, `.thm`) together (on).
+  copy and trash sidecar files with the same name (`.xmp`, `.aae`, `.thm`) together (on); check
+  for updates automatically (on, see "Updates").
 - Viewer: appearance (System; also Light, Dark), for every window of the app; checkerboard behind
   transparent images (on); remember the window's size and position (on); zoom step (10 %); hide
   toolbar and status bar while viewing (off, see "Toolbar").
@@ -491,6 +492,31 @@ Open Anyway (since macOS 15 Control-click › Open no longer does it). Dark back
 tile colour with faint feather lines; drawn by code at 1× and 2×, no copied artwork. The help text
 is translated: one disk image per language, built by `scripts/dmg.sh`. Revisit if someone sponsors
 the $99/year Apple Developer Program; then sign with Developer ID and notarize.
+
+## Updates
+
+Featherview tells people when a newer version exists; they download and install it by hand. It
+never downloads or installs anything itself.
+
+- Feed: `https://featherview.mynetx.net/appcast.xml`, Sparkle appcast format (RSS 2.0 with the
+  `sparkle` namespace). Per `<item>`: `<title>`, `<sparkle:shortVersionString>` (e.g. 1.2.0),
+  `<sparkle:version>` (build), `<sparkle:minimumSystemVersion>`, `<link>` (the release page),
+  `<description>` (release notes, plain text or simple HTML), `<pubDate>`. An item without a
+  version or an https link is ignored; a malformed or empty feed means no update.
+- The request is a plain GET with no cookies, cache or anything about the person beyond the HTTP
+  request itself; User-Agent `Featherview/<version>`; 15 s timeout.
+- Versions compare numerically by dotted parts (1.10 is newer than 1.9; missing parts count as 0).
+  The update offered is the newest release that is newer than the running one, runs on this
+  macOS version, and is newer than a skipped version.
+- Automatic check: about 10 s after launch, off the main thread, when Preferences › Browsing ›
+  "Check for updates automatically" is on (default) and the last successful check is at least
+  24 hours ago. Any failure is silent; it tries again at the next launch.
+- Check for Updates… (app menu) ignores the schedule and the skipped version and always answers:
+  the update window, or a short alert ("Featherview 1.2.0 is the newest version." / "Can't check
+  for updates right now.").
+- Update window: a small window of its own, not modal, in our own look: "Featherview 1.3.0 is
+  available", "You have 1.2.0.", the release notes as plain text (tags stripped, scrollable), and
+  Download (default; opens the release page in the browser), Skip This Version, Later.
 
 ## App icon
 

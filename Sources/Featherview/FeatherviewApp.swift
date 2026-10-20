@@ -160,6 +160,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             forEventClass: AEEventClass(kCoreEventClass), andEventID: AEEventID(kAEOpenDocuments))
     }
 
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        Updater.scheduleAutomaticCheck()
+    }
+
     @objc private func openDocuments(_ event: NSAppleEventDescriptor, withReply reply: NSAppleEventDescriptor) {
         guard let list = event.paramDescriptor(forKeyword: keyDirectObject) else { return }
         let urls = (1...max(list.numberOfItems, 1)).compactMap {
