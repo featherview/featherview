@@ -67,6 +67,13 @@ public struct BatchInputList: Equatable, Sendable {
         return (list, unreadable, empty)
     }
 
+    /// The Convert button's title ("Convert 1 Image", "Convert 48 Images"). English agrees through
+    /// inflection; translations give plural variants in the catalog.
+    public static func convertTitle(count: Int) -> String {
+        String(AttributedString(localized: "Convert ^[\(count) Image](inflect: true)",
+                                comment: "Batch window's start button: the number of images in the list").characters)
+    }
+
     /// What to tell the user after an add: folders that couldn't be listed, else folders with no
     /// images; nil when every folder added something.
     public static func notice(unreadable: [URL], empty: [URL]) -> String? {

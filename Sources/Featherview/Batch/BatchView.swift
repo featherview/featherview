@@ -77,7 +77,7 @@ struct BatchView: View {
                 Button("Stop") { model.stop() }
             } else {
                 // ⌘↩, not Return: Return in a field only confirms the value, it must not start a long batch.
-                Button("Convert \(model.inputs.items.count) Images") { model.start() }
+                Button(BatchInputList.convertTitle(count: model.inputs.items.count)) { model.start() }
                     .keyboardShortcut(.return, modifiers: .command)
                     .buttonStyle(.borderedProminent)
                     .disabled(!model.canStart)

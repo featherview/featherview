@@ -147,6 +147,11 @@ import Testing
         #expect(BatchInputList.notice(unreadable: [dcim], empty: [empty]) == "Can't open 100APPLE")
     }
 
+    @Test func convertTitleAgreesWithTheCount() {
+        #expect(BatchInputList.convertTitle(count: 1) == "Convert 1 Image")
+        #expect(BatchInputList.convertTitle(count: 48) == "Convert 48 Images")
+    }
+
     /// "Recreate subfolders" takes each input's path below its root, so the root must prefix it.
     @Test func scanKeepsItemsUnderTheChosenFolderPath() throws {
         let dir = try Fixtures.makeTempDir()  // under /var, which is a symlink to /private/var
