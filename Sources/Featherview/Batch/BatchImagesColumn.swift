@@ -50,7 +50,6 @@ struct BatchImagesColumn: View {
             Button("Choose Folder…") { model.addFolderPanel(subfolders: true) }
                 .buttonStyle(.borderedProminent)
                 .tint(Theme.accent)
-                .controlSize(.large)
             Button("Add Files…") { model.addFilesPanel() }
             Text("or drop images here")
                 .font(Theme.hintText)
@@ -67,9 +66,12 @@ struct BatchImagesColumn: View {
             Text("Images").font(.headline)
             Spacer()
             if model.scans > 0 { ProgressView().controlSize(.small) }
-            Text(countLine)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
+            // An empty list has nothing to count: the empty state says what to do.
+            if !model.inputs.items.isEmpty {
+                Text(countLine)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
