@@ -105,8 +105,9 @@ struct BatchWrittenPreview: View {
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            VStack(spacing: Theme.messagePadding) {
+        VStack(spacing: Theme.messagePadding) {
+            // Measures the image area only, not the caption row.
+            GeometryReader { geometry in
                 Group {
                     if let image = shown?.image {
                         Image(decorative: image, scale: 1)
@@ -117,17 +118,18 @@ struct BatchWrittenPreview: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                if let shown {
-                    caption(shown)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .truncationMode(.middle)
+                .onChange(of: url, initial: true) {
+                    load(area: PixelSize(width: max(Int((geometry.size.width * displayScale).rounded(.up)), 1),
+                                         height: max(Int((geometry.size.height * displayScale).rounded(.up)), 1)))
                 }
             }
-            .onChange(of: url, initial: true) {
-                load(maxPixelSize: Int((max(geometry.size.width, geometry.size.height) * displayScale).rounded(.up)))
+            if let shown {
+                caption(shown)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             }
         }
     }
@@ -140,11 +142,11 @@ struct BatchWrittenPreview: View {
                     comment: "Batch running preview: file name, pixel size, file size")
     }
 
-    private func load(maxPixelSize: Int) {
+    private func load(area: PixelSize) {
         guard let url else { return shown = nil }
         jobs.submit {
             let loaded = await Task.detached(priority: .userInitiated) {
-                Shown(url: url, image: try? ImageDecoder.decode(url, maxPixelSize: max(maxPixelSize, 1)),
+                Shown(url: url, image: try? ImageDecoder.decode(url, halvingSteps: true, fitting: [area]),
                       size: ImageDecoder.displaySize(of: url),
                       bytes: try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize)
             }.value
