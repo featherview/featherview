@@ -108,6 +108,16 @@
 				<string>net.mynetx.featherview.xcf</string>
 				<string>net.mynetx.featherview.pdn</string>
 				<string>net.mynetx.featherview.psp</string>
+				<string>net.mynetx.featherview.pam</string>
+				<string>net.mynetx.featherview.farbfeld</string>
+				<string>net.mynetx.featherview.macpaint</string>
+				<string>net.mynetx.featherview.xwd</string>
+				<string>net.mynetx.featherview.fits</string>
+				<string>net.mynetx.featherview.ani</string>
+				<string>net.mynetx.featherview.openraster</string>
+				<string>net.mynetx.featherview.krita</string>
+				<string>net.mynetx.featherview.procreate</string>
+				<string>com.apple.macpaint-image</string>
 			</array>
 		</dict>
 	</array>
@@ -313,6 +323,171 @@
 					<string>iff</string>
 					<string>lbm</string>
 					<string>ilbm</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.pam</string>
+			<key>UTTypeDescription</key>
+			<string>PAM image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>pam</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.farbfeld</string>
+			<key>UTTypeDescription</key>
+			<string>farbfeld image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>ff</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.macpaint</string>
+			<key>UTTypeDescription</key>
+			<string>MacPaint image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>mac</string>
+					<string>pnt</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.xwd</string>
+			<key>UTTypeDescription</key>
+			<string>X Window Dump image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>xwd</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.fits</string>
+			<key>UTTypeDescription</key>
+			<string>FITS image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>fits</string>
+					<string>fit</string>
+					<string>fts</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.ani</string>
+			<key>UTTypeDescription</key>
+			<string>Animated cursor</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>ani</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.openraster</string>
+			<key>UTTypeDescription</key>
+			<string>OpenRaster image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>ora</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.krita</string>
+			<key>UTTypeDescription</key>
+			<string>Krita image</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>kra</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.procreate</string>
+			<key>UTTypeDescription</key>
+			<string>Procreate artwork</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>procreate</string>
 				</array>
 			</dict>
 		</dict>

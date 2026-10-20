@@ -4,12 +4,16 @@ import Foundation
 /// What the Finder thumbnail and Quick Look preview extensions need (spec "Formats", Finder previews):
 /// the types only Featherview reads, and decodes through the viewer's own code.
 public enum QuickLookSupport {
-    /// The types of every own format except PDF and SVG, which macOS previews itself.
+    /// The types of every own format except PDF and SVG, which macOS previews itself, and PAM, which ImageIO
+    /// reads but macOS has no type for, so its own previews never get it.
     public static let contentTypes = [
         "net.mynetx.featherview.qoi", "net.mynetx.featherview.pcx", "net.mynetx.featherview.dcx",
         "public.xbitmap-image", "net.mynetx.featherview.xpm", "net.mynetx.featherview.wbmp",
         "net.mynetx.featherview.sun-raster", "net.mynetx.featherview.ilbm", "net.mynetx.featherview.xcf",
-        "net.mynetx.featherview.psp", "net.mynetx.featherview.pdn",
+        "net.mynetx.featherview.psp", "net.mynetx.featherview.pdn", "net.mynetx.featherview.pam",
+        "net.mynetx.featherview.farbfeld", "net.mynetx.featherview.macpaint", "net.mynetx.featherview.xwd",
+        "net.mynetx.featherview.fits", "net.mynetx.featherview.ani", "net.mynetx.featherview.openraster",
+        "net.mynetx.featherview.krita", "net.mynetx.featherview.procreate", "com.apple.macpaint-image",
     ]
 
     /// `image` scaled to fit `maximum`, never enlarged.

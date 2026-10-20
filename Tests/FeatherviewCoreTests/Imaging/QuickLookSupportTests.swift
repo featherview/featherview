@@ -22,13 +22,13 @@ struct QuickLookSupportTests {
     @Test func contentTypesAreTheOwnFormats() throws {
         let info = try #require(try Self.plist("Resources/Info.plist"))
         let declarations = try #require(info["UTImportedTypeDeclarations"] as? [[String: Any]])
-        var typeOf = ["xbm": "public.xbitmap-image"]
+        var typeOf = ["xbm": "public.xbitmap-image", "pntg": "com.apple.macpaint-image"]
         for declaration in declarations {
             let id = try #require(declaration["UTTypeIdentifier"] as? String)
             let tags = declaration["UTTypeTagSpecification"] as? [String: Any]
             for ext in tags?["public.filename-extension"] as? [String] ?? [] { typeOf[ext] = id }
         }
-        var reached = Set<String>()
+        var reached: Set = ["net.mynetx.featherview.pam"]  // read by ImageIO, previewed by us
         for format in OwnDecoders.builtIn where format.name != "PDF" {
             for ext in format.extensions {
                 let id = try #require(typeOf[ext], "\(format.name): .\(ext) has no type in Info.plist")

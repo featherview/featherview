@@ -35,6 +35,16 @@
 				<string>net.mynetx.featherview.xcf</string>
 				<string>net.mynetx.featherview.psp</string>
 				<string>net.mynetx.featherview.pdn</string>
+				<string>net.mynetx.featherview.pam</string>
+				<string>net.mynetx.featherview.farbfeld</string>
+				<string>net.mynetx.featherview.macpaint</string>
+				<string>net.mynetx.featherview.xwd</string>
+				<string>net.mynetx.featherview.fits</string>
+				<string>net.mynetx.featherview.ani</string>
+				<string>net.mynetx.featherview.openraster</string>
+				<string>net.mynetx.featherview.krita</string>
+				<string>net.mynetx.featherview.procreate</string>
+				<string>com.apple.macpaint-image</string>
 			</array>
 			<key>QLIsDataBasedPreview</key>
 			<true/>

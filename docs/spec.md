@@ -386,11 +386,20 @@ the About window.
 - Read, formats ImageIO can't read, which Featherview decodes itself:
   - SVG through AppKit (`NSImage` renders it; ImageIO doesn't), rasterised at the size shown.
   - Own decoders, pure Swift, no dependency (milestone 3): QOI, PCX (and multi-page DCX), XBM,
-    XPM, WBMP, Sun Raster (RAS), IFF/LBM (ILBM, incl. HAM and EHB).
+    XPM, WBMP, Sun Raster (RAS), IFF/LBM (ILBM, incl. HAM and EHB). Also MacPaint (with or
+    without a MacBinary header), farbfeld, X Window Dump (version 7, Z pixmaps), FITS and Windows
+    animated cursors (ANI). FITS shows the first image in the file (its first plane, or three planes
+    as RGB); 8-bit data as stored, everything else stretched linearly between the 0.25th and 99.75th
+    percentile; the first row is the bottom one; tile-compressed FITS can't be opened. ANI shows the
+    first frame of its sequence at the frame's largest size. PAM goes through ImageIO, which reads it
+    with the rest of the Netpbm family (PFM too).
   - Layered app formats, shown flattened (own milestone after 3): PSB (its stored composite
     image), XCF (GIMP), PDN (Paint.NET), PSP (Paint Shop Pro). Where the file stores a composite
     or thumbnail at full size it is used; otherwise visible layers are composited with normal
     blending and their opacity, and other blend modes are listed as a known limit.
+    Krita (KRA) and OpenRaster (ORA) are zip archives with the flattened picture stored as
+    `mergedimage.png`, which is shown; a file without one can't be opened. Procreate files show
+    their stored preview (`QuickLook/Thumbnail.png`), smaller than the canvas.
     PSB goes through ImageIO, with its limits: multichannel files and a zip-compressed composite
     can't be opened, and a composite GIMP stored with premultiplied alpha shows dark antialiased
     edges (ImageIO reads it as straight alpha). CMYK and grey PSB colours go through ImageIO's
