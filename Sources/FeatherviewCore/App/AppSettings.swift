@@ -40,8 +40,8 @@ public enum AppSettings {
     public static let rememberWindowFrame = Setting(key: "rememberWindowFrame", defaultValue: true)
     public static let zoomStepPercent = Setting(key: "zoomStepPercent", defaultValue: 10)
     // Full screen
-    public static let showOverlay = Setting(key: "showOverlay", defaultValue: false)
-    public static let overlayTemplate = Setting(key: "overlayTemplate", defaultValue: "{name} — {index} / {count}")
+    public static let showOverlay = Setting(key: "showOverlay", defaultValue: true)
+    public static let overlayTemplate = Setting(key: "overlayTemplate", defaultValue: "{path} — {index} / {count}")
     public static let hidePointer = Setting(key: "hidePointer", defaultValue: true)
     // Move / copy
     public static let askBeforeMoveCopy = Setting(key: "askBeforeMoveCopy", defaultValue: false)
