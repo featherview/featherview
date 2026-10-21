@@ -94,18 +94,10 @@ enum DefaultViewerOffer {
     static func opensWithFeatherview(_ type: UTType) -> Bool { handler(for: type) == Bundle.main.bundleIdentifier }
 
     /// Makes Featherview the default for `type`. From macOS 26.4 macOS confirms it in a prompt of its own,
-    /// one per type, which is why every click claims a single type.
+    /// one per type, which is why every click claims a single type. No message afterwards: Keep in that
+    /// prompt and a refusal look alike, and Preferences › Browsing shows which app opens the type.
     static func claim(_ type: UTType) async {
-        do {
-            try await NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpen: type)
-        } catch {
-            // Keep in macOS's prompt is the user's answer, not a failure.
-            if (error as? CocoaError)?.code == .userCancelled { return }
-            let name = type.preferredFilenameExtension?.uppercased() ?? type.identifier
-            let alert = NSAlert()
-            alert.messageText = String(localized: "Featherview couldn't become the default for \(name).")
-            alert.runModal()
-        }
+        try? await NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpen: type)
     }
 
     /// Asks once, after the first window is up and its first image (if any) is on screen, never on the launch path.

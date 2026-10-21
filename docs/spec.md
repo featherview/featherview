@@ -180,9 +180,9 @@ the user makes claims one type: never more than one macOS prompt per click.
 - Image › "Always Open .png Files with Featherview" (the current file's extension): the same for
   the current file's type, whichever app opens it now. Never offered for PDF or anything conforming
   to it: Featherview shows PDFs as images, it isn't a PDF reader.
-- Choosing Keep in macOS's prompt changes nothing and says nothing more. If macOS refuses the
-  change, one sentence: "Featherview couldn't become the default for HEIC." Undo is Finder's Get
-  Info › Open with › Change All.
+- Choosing Keep in macOS's prompt, or macOS refusing the change, changes nothing and shows no
+  message (the two look alike to the app; the Preferences row shows which app opens the type).
+  Undo is Finder's Get Info › Open with › Change All.
 
 ## Look
 
