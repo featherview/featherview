@@ -525,7 +525,8 @@ never downloads or installs anything itself.
   for updates right now.").
 - Update window: a small window of its own, not modal, in our own look: "Featherview 1.3.0 is
   available", "You have 1.2.0.", the release notes as plain text (tags stripped, scrollable), and
-  Download (default; opens the release page in the browser), Skip This Version, Later.
+  Download (default; the browser downloads the disk image to Downloads, or opens the release page if
+  the feed names none), Skip This Version, Later.
 
 ## App icon
 

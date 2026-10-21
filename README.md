@@ -42,6 +42,7 @@ Status: public preview (0.9), on the way to 1.0. Requires macOS 14 (Sonoma) or l
 Download `Featherview-<version>.dmg` from the
 [latest release](https://github.com/featherview/featherview/releases/latest), open it and drag `Featherview.app` to
 `Applications`.
+Or with Homebrew: `brew install --cask featherview/tap/featherview`.
 
 Featherview is free and not notarized by Apple (that needs a paid developer account), so macOS
 blocks the first launch. To open it anyway:
@@ -67,7 +68,7 @@ Featherview tells you when a newer version is out; it never downloads or install
   nothing about you or your Mac beyond the request itself (its User-Agent says `Featherview/<version>`).
   If the check fails, nothing is shown and it tries again at a later launch.
 - **What you see:** a small window, "Featherview 1.2.0 is available", with "You have 1.1.0." and
-  what's new. **Download** opens the release page in your browser; **Skip This Version** stops the
+  what's new. **Download** has your browser download the new disk image; **Skip This Version** stops the
   notice for that version (a later one shows again); **Later** asks again at the next check.
 - **By hand:** Featherview › Check for Updates… checks right away and also tells you when you're up
   to date.

@@ -16,6 +16,8 @@ import Testing
           <link>https://featherview.mynetx.net/releases/1.10.0</link>
           <description><![CDATA[<h2>New</h2><ul><li>Faster &amp; smaller</li><li>WebP fix</li></ul>]]></description>
           <pubDate>Mon, 19 Oct 2026 10:00:00 +0000</pubDate>
+          <enclosure url="https://github.com/featherview/featherview/releases/download/v1.10.0/Featherview-1.10.0.dmg"
+                     length="5148568" type="application/x-apple-diskimage"/>
         </item>
         <item>
           <title>Featherview 1.9.0</title>
@@ -25,6 +27,7 @@ import Testing
           <link>https://featherview.mynetx.net/releases/1.9.0</link>
           <description>Plain notes.</description>
           <pubDate>Mon, 12 Oct 2026 10:00:00 +0000</pubDate>
+          <enclosure url="http://example.com/Featherview-1.9.0.dmg" type="application/x-apple-diskimage"/>
         </item>
       </channel>
     </rss>
@@ -36,10 +39,16 @@ import Testing
         #expect(releases == [
             Release(version: "1.10.0", minimumSystemVersion: "15.0",
                     link: URL(string: "https://featherview.mynetx.net/releases/1.10.0")!,
-                    notes: "New\n• Faster & smaller\n• WebP fix"),
+                    notes: "New\n• Faster & smaller\n• WebP fix",
+                    download: URL(string: "https://github.com/featherview/featherview/releases/download/v1.10.0/Featherview-1.10.0.dmg")!),
             Release(version: "1.9.0", minimumSystemVersion: "14.0",
                     link: URL(string: "https://featherview.mynetx.net/releases/1.9.0")!, notes: "Plain notes."),
         ])
+    }
+
+    @Test func downloadIsTheEnclosureOnlyOverHTTPS() {
+        // 1.9.0's enclosure is plain http: Download falls back to the release page.
+        #expect(releases.map(\.download?.lastPathComponent) == ["Featherview-1.10.0.dmg", nil])
     }
 
     @Test func malformedOrEmptyFeedHasNoReleases() {

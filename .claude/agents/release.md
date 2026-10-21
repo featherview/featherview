@@ -1,6 +1,6 @@
 ---
 name: release
-description: Publishes a new Featherview version. Use when the maintainer wants to release ("make a release", "publish a new version", "Release machen"). Collects every commit since the last tag, writes user-facing release notes, picks the semver bump from the commits on its own, and runs the whole pipeline: version in Info.plist, CHANGELOG.md, tests, disk image, tag, GitHub release with the DMG, website appcast and Download button. Say "dry run" to stop before anything is written.
+description: Publishes a new Featherview version. Use when the maintainer wants to release ("make a release", "publish a new version", "Release machen"). Collects every commit since the last tag, writes user-facing release notes, picks the semver bump from the commits on its own, and runs the whole pipeline: version in Info.plist, CHANGELOG.md, tests, disk image, tag, GitHub release with the DMG, website appcast and Download button, Homebrew tap. Say "dry run" to stop before anything is written.
 tools: Bash, Read, Edit, Write
 model: sonnet
 ---
@@ -177,11 +177,14 @@ abort line with what is left to do by hand.
    ```
 
    Check it parses: `xmllint --noout appcast.xml`.
-2. `index.html`: the hero's primary Download button links to
-   `https://github.com/featherview/featherview/releases/latest` and reads "Download X.Y.Z". On the first
-   release it replaces the disabled "coming soon" `<span>` with an `<a class="btn primary">`, and the
-   "In development" pill becomes "Version X.Y.Z · for macOS Sonoma and later".
-3. Commit `feat: Featherview X.Y.Z` (website repo), push.
+2. `index.html`: the hero's primary Download button links straight to the disk image,
+   `https://github.com/featherview/featherview/releases/download/vX.Y.Z/Featherview-X.Y.Z.dmg`, and
+   reads "Download X.Y.Z"; the pill (a link to the latest release) reads "Version X.Y.Z · for macOS
+   Sonoma and later".
+3. Homebrew tap (`featherview/homebrew-tap`, clone it to `$TMPDIR` if needed): in
+   `Casks/featherview.rb` set `version` and `sha256` (`shasum -a 256 build/Featherview-X.Y.Z.dmg`),
+   commit `feat: featherview X.Y.Z`, push.
+4. Commit `feat: Featherview X.Y.Z` (website repo), push.
 
 `· Feed live`: GitHub Pages takes about a minute. Every 20 s, at most 5 minutes:
 

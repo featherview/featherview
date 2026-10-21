@@ -106,7 +106,7 @@ private struct UpdateView: View {
                     Button("Later", action: close).keyboardShortcut(.cancelAction)
                     // The label's own colour: a prominent button ignores one set on the button.
                     Button {
-                        NSWorkspace.shared.open(release.link)
+                        NSWorkspace.shared.open(release.download ?? release.link)
                         close()
                     } label: {
                         Text("Download").foregroundStyle(Theme.onAccent)

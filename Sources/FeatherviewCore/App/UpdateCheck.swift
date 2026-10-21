@@ -4,10 +4,12 @@ import Foundation
 public struct Release: Equatable, Sendable {
     public let version: String
     public let minimumSystemVersion: String
-    /// The release page Download opens.
+    /// The release page; Download opens it when the item has no disk image.
     public let link: URL
     /// Release notes as plain text.
     public let notes: String
+    /// The disk image (the item's https enclosure) Download hands to the browser, which saves it to Downloads.
+    public var download: URL? = nil
 }
 
 /// Spec "Updates": reads the appcast and decides whether to tell about a newer version. Never installs anything.
@@ -89,6 +91,7 @@ private final class AppcastReader: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?,
                 attributes: [String: String] = [:]) {
         if name == "item" { item = [:] }
+        if name == "enclosure", namespaceURI ?? "" == "", let url = attributes["url"] { item?["enclosure"] = url }
         text = ""
     }
 
@@ -106,7 +109,8 @@ private final class AppcastReader: NSObject, XMLParserDelegate {
             if let fields = item, let version = fields["shortVersionString"], !version.isEmpty,
                let link = fields["link"].flatMap(URL.init(string:)), link.scheme == "https" {
                 releases.append(Release(version: version, minimumSystemVersion: fields["minimumSystemVersion"] ?? "0",
-                                        link: link, notes: UpdateCheck.plainText(fields["description"] ?? "")))
+                                        link: link, notes: UpdateCheck.plainText(fields["description"] ?? ""),
+                                        download: fields["enclosure"].flatMap(URL.init(string:)).flatMap { $0.scheme == "https" ? $0 : nil }))
             }
             item = nil
         default: break
