@@ -103,7 +103,7 @@ Rule of thumb: if logic can be tested without a window, it belongs in Feathervie
 
 | Budget | Target |
 |---|---|
-| Cold launch with a file to first image on screen | < 350 ms (12 MP JPEG, Apple Silicon; AppKit + SwiftUI alone take ~300 ms to show the window; with Liquid Glass ~385 ms, accepted for milestone 3 until the own-look pass sets the budget again). Measured after a normal quit (no window restored): ~380 ms (was ~520 ms, issue #2) |
+| Cold launch with a file to first image on screen | < 410 ms (12 MP JPEG, Apple Silicon, after a normal quit, no window restored; AppKit + SwiftUI alone take ~300 ms to show the window, Liquid Glass ~85 ms more). Measured with the own look: ~400 ms (12 MP JPEG), ~395 ms (10,000-file folder) |
 | Next/previous image when prefetched | no visible delay (≈ 20 ms to swap is fine; `Navigate` p50 19 ms, p95 25 ms) |
 | Next/previous image, not prefetched | < 150 ms (12 MP JPEG; `Navigate` ~107 ms landscape, ~61 ms portrait) |
 | Opening a folder of 10,000 files | < 500 ms to first image, UI never blocks |
