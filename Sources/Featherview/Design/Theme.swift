@@ -245,6 +245,10 @@ enum Theme {
     static let fitInsets = EdgeInsets(top: 60, leading: CanvasInsets.side, bottom: 44, trailing: CanvasInsets.side)
     /// Between the file name and its counter in the title.
     static let titleGap = 6.0
+    /// Width the back / forward capsule takes in the toolbar on macOS 26 (measured): a blank item holds it
+    /// until the buttons are built, so the title starts where it stays.
+    // shortcut: measured on macOS 26 only, measure again on 14/15 or a new macOS if the title moves when the buttons appear.
+    static let backForwardWidth = 66.5
     /// Toolbar capsules and their items.
     static let leadingGroup = CGSize(width: 76, height: 32)
     static let trailingGroup = CGSize(width: 256, height: 32)
@@ -359,6 +363,8 @@ enum Theme {
         /// Strip text fade when a different file arrives; drop outline.
         static let stripFade = 0.12
         static let dropOutline = 0.12
+        /// A new window waits at most this long, transparent, for its first image; a slower decode shows it empty.
+        static let firstImageWait = 0.25
 
         /// Reduce Motion: zoom, rotation, panels and sheets become 0; pure opacity changes keep their duration.
         static func duration(_ seconds: Double, reduceMotion: Bool, opacityOnly: Bool = false) -> Double {

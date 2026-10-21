@@ -6,39 +6,48 @@ import SwiftUI
 /// anything that changes per image would rebuild every item on each swap (budget 16 ms).
 struct ViewerToolbar: CustomizableToolbarContent {
     let model: ViewerModel
-    /// False until the first image (or message) shows; see ViewerView.toolbarReady.
+    /// False until the first image (or message) shows; see ViewerView.toolbarReady. Gates the trailing buttons.
     let ready: Bool
 
+    @ViewBuilder private var previous: some View {
+        if ready {
+            ToolbarButton("Previous", "chevron.backward", "Previous image (←)", enabled: { $0.availability.canGoBack }, model) { $0.previous() }
+        } else {
+            Color.clear.frame(width: Theme.backForwardWidth, height: 1)
+        }
+    }
+
     var body: some CustomizableToolbarContent {
-        // Always one item, a blank one until ready: with none the window starts with a plain title bar,
-        // which then grows and moves the image when the buttons arrive.
-        ToolbarItem(id: "previous", placement: .navigation) {
-            if ready {
-                ToolbarButton("Previous", "chevron.backward", "Previous image (←)", enabled: { $0.availability.canGoBack }, model) { $0.previous() }
-            } else {
-                Color.clear.frame(width: 1, height: 1)
-            }
+        // The title is there from the first frame; until the buttons are built (they cost ~20 ms at launch) a blank
+        // item without glass holds the back / forward capsule's place, so the title never moves.
+        if #available(macOS 26, *) {
+            ToolbarItem(id: "previous", placement: .navigation) { previous }
+                .sharedBackgroundVisibility(ready ? .automatic : .hidden)
+        } else {
+            ToolbarItem(id: "previous", placement: .navigation) { previous }
         }
         if ready {
             ToolbarItem(id: "next", placement: .navigation) {
                 ToolbarButton("Next", "chevron.forward", "Next image (→)", enabled: { $0.availability.canGoForward }, model) { $0.next() }
             }
-            // The title after back / forward: the name in the title font, the counter quieter (docs/DESIGN.md
-            // "Typography"). The window's own title is hidden while this shows (ViewerView.matchTitle).
-            if #available(macOS 26, *) {
-                // Text, not a control: no glass behind it.
-                ToolbarItem(id: "title", placement: .navigation) { WindowTitle(model: model) }
-                    .customizationBehavior(.disabled)
-                    .sharedBackgroundVisibility(.hidden)
-            } else {
-                ToolbarItem(id: "title", placement: .navigation) { WindowTitle(model: model) }
-                    .customizationBehavior(.disabled)
-            }
-            // The window's own title, which took the space between, is removed: a flexible space pushes the rest
-            // to the trailing edge.
-            if #available(macOS 26, *) {
-                ToolbarSpacer(.flexible)
-            }
+        }
+        // The title after back / forward: the name in the title font, the counter quieter (docs/DESIGN.md
+        // "Typography"). The window's own title is hidden (ViewerView.matchTitle).
+        if #available(macOS 26, *) {
+            // Text, not a control: no glass behind it.
+            ToolbarItem(id: "title", placement: .navigation) { WindowTitle(model: model) }
+                .customizationBehavior(.disabled)
+                .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(id: "title", placement: .navigation) { WindowTitle(model: model) }
+                .customizationBehavior(.disabled)
+        }
+        // The window's own title, which took the space between, is removed: a flexible space pushes the rest
+        // to the trailing edge.
+        if #available(macOS 26, *) {
+            ToolbarSpacer(.flexible)
+        }
+        if ready {
             if model.pageCount > 1 {
                 ToolbarItem(id: "previousPage", placement: .primaryAction) {
                     ToolbarButton("Previous Page", "arrow.up.doc", "Previous page (⌥←)", enabled: { $0.availability.hasPages }, model) { $0.previousPage() }

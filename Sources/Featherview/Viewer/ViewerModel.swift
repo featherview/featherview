@@ -166,7 +166,14 @@ final class ViewerModel {
     var title: String { titleCounter.map { "\(titleName) \($0)" } ?? titleName }
 
     /// The file (or empty folder) name; the toolbar title shows it in the title font.
-    var titleName: String { list.current?.lastPathComponent ?? emptyFolder?.lastPathComponent ?? "Featherview" }
+    var titleName: String {
+        list.current?.lastPathComponent ?? emptyFolder?.lastPathComponent
+            ?? (isOpening ? openingFile?.lastPathComponent ?? "" : "Featherview")
+    }
+
+    /// The file being opened, named in the title before its image shows; nil for a folder, whose first image
+    /// is known only after its scan (the title stays empty meanwhile, rather than reading "Featherview").
+    private(set) var openingFile: URL?
 
     /// "— 1 / 4" (with the page for multi-page files), shown quieter after the name; nil without a position.
     var titleCounter: String? {
@@ -196,6 +203,7 @@ final class ViewerModel {
         emptyFolder = nil
         let includeHidden = AppSettings.showHiddenFiles.value()
         let isFolder = isFolderPath(url)
+        openingFile = isFolder ? nil : url
         openedFolder = isFolder ? url : url.deletingLastPathComponent()
         // Off the main actor: at launch the main thread is busy building the window, the decode needn't wait.
         let prefetch: DecodeTarget? = zoom != .fit ? nil : .fit(screens)
@@ -209,19 +217,22 @@ final class ViewerModel {
         }
         // A folder's first image is known only after its scan, so the scan runs here too, alongside the
         // window build, and its first image starts decoding at once (it used to wait for both).
-        let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache, decodes, openCount] () -> Result<[URL], Error>? in
+        // Also reads the first image's file details while it decodes, so the status bar is complete in the
+        // frame that shows the image (read after it, they waited for the toolbar build at launch).
+        let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache, decodes, openCount] () -> (scan: Result<[URL], Error>?, info: FileInfo?) in
             await cache.removeAll()
             await fullSizeCache.removeAll()
             guard isFolder else {
                 if let prefetch { await cache.prefetch([url], target: prefetch) }
-                return nil
+                return (nil, FileInfo.read(url: url, page: 0))
             }
             let scan = Result {
                 try Signposts.poster.withIntervalSignpost("Scan") {
                     try FolderScanner.images(around: url, includeHidden: includeHidden, sorted: false)
                 }
             }
-            if let prefetch, let first = FolderScanner.firstInFinderOrder((try? scan.get()) ?? []),
+            let first = FolderScanner.firstInFinderOrder((try? scan.get()) ?? [])
+            if let prefetch, let first,
                // Not on the main actor: at launch it is busy building the window, and the decode would wait for it.
                openCount.withLock({ count in
                    guard count == opening else { return false }
@@ -230,13 +241,14 @@ final class ViewerModel {
                }) {
                 await cache.prefetch([first], target: prefetch)
             }
-            return scan.map(FolderScanner.inFinderOrder)
+            return (scan.map(FolderScanner.inFinderOrder), first.map { FileInfo.read(url: $0, page: 0) })
         }
         openTask = Task {
             defer { if !Task.isCancelled { isOpening = false } }
             // prepare is detached: cancelling this task must reach it.
-            let folderScan = await withTaskCancellationHandler { await prepare.value } onCancel: { prepare.cancel() }
+            let (folderScan, firstInfo) = await withTaskCancellationHandler { await prepare.value } onCancel: { prepare.cancel() }
             guard !Task.isCancelled else { return }
+            if let firstInfo { knownInfo[firstInfo.url] = firstInfo }
             if !isFolder {
                 list = ImageList(urls: [url], current: url)
                 show()
@@ -258,6 +270,8 @@ final class ViewerModel {
                     emptyFolder = urls.isEmpty ? url : nil
                     show()
                 } else if zoom == .fit, prefetchesNeighbors {
+                    // The folder is listed: the title's position and the status bar needn't wait for the neighbours.
+                    isOpening = false
                     // show() ran before the neighbours were known; calling it again could restart the decode.
                     let neighbors = focusDecodes()
                     await cache.prefetch(neighbors, target: .fit(screens))

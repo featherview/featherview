@@ -158,7 +158,9 @@ struct ImageCanvas: NSViewRepresentable {
         view.targetSize = size
         // E3 shadow and hairline only while the picture fits the clear area (a transparent one would show it through).
         let clear = scrollView.contentView.bounds.size
-        let fits = size.width <= clear.width - contentInsets.left - contentInsets.right + 0.5
+        // Fit fits by definition: at launch the first image arrives before the clip is laid out (zero
+        // bounds), and measured, it showed without its shadow until the next update.
+        let fits = zoom == .fit || size.width <= clear.width - contentInsets.left - contentInsets.right + 0.5
             && size.height <= clear.height - contentInsets.top - contentInsets.bottom + 0.5
         let framed = fits && (!image.hasAlpha || checkerboard)
         // Off at the first frame beyond fit; on once a zoom back into fit has landed.

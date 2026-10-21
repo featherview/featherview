@@ -11,7 +11,7 @@ struct ViewerView: View {
     @Environment(\.layoutDirection) private var layoutDirection
     @AppStorage(AppSettings.rememberWindowFrame.key) private var rememberFrame = AppSettings.rememberWindowFrame.defaultValue
     @State private var panController = PanController()
-    /// Toolbar buttons are built only after the first image (or message) is on screen: building them takes
+    /// The trailing toolbar buttons are built only after the first image (or message) is on screen: building them takes
     /// ~130 ms of the main thread, and in the same update they'd hold back that frame at launch (budget 350 ms).
     @State private var toolbarReady = false
     /// An image or message shows, or none will come. An open that ended with a file current still has its
@@ -149,8 +149,8 @@ struct ViewerView: View {
         .onChange(of: toolbarMayBuild, initial: true) { if $1, model.image == nil { ViewerModel.afterFrame { toolbarReady = true } } }
         .toolbar(toolbarHidden || hidesToolbarForFullScreen ? .hidden : .visible, for: .windowToolbar)
         // No hidden toolbar background: the system's scroll edge effect dims a zoomed picture under the toolbar, as in Safari.
-        .onChange(of: toolbarReady && !toolbarHidden) { matchTitle() }
-        .modifier(RemovesWindowTitle(removed: toolbarReady && !toolbarHidden))
+        .onChange(of: toolbarHidden, initial: true) { matchTitle() }
+        .modifier(RemovesWindowTitle(removed: !toolbarHidden))
         .modifier(ToolbarHiddenInFullScreen())
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         // Not set on the window directly: SwiftUI puts the scene's title back on its next update.
@@ -166,6 +166,7 @@ struct ViewerView: View {
             ViewerModel.lastActive.use(model)
             model.becameActive()
         }
+        .background(FirstImageGate(holds: !toolbarMayBuild))
         .background(WindowAccessor { window in
             model.window = window
             matchTitle()
@@ -308,7 +309,7 @@ struct ViewerView: View {
     /// and comes back when the toolbar is hidden or not built yet.
     private func matchTitle() {
         guard #unavailable(macOS 26) else { return }  // RemovesWindowTitle
-        model.window?.titleVisibility = toolbarReady && !toolbarHidden ? .hidden : .visible
+        model.window?.titleVisibility = toolbarHidden ? .visible : .hidden
     }
 
     private func feedAutoHide(_ event: BarsAutoHide.Event) {
@@ -549,6 +550,42 @@ struct WindowAccessor: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+/// Keeps a new window transparent while its first image decodes, so its first frame on screen already shows
+/// the picture instead of an empty canvas that fills a few frames later. The decode and the window build still
+/// run side by side; the window shows with the image, a message, or after `Theme.Motion.firstImageWait`.
+private struct FirstImageGate: NSViewRepresentable {
+    let holds: Bool
+
+    func makeNSView(context: Context) -> GateView { GateView(holds: holds) }
+
+    func updateNSView(_ view: GateView, context: Context) { if !holds { view.release() } }
+
+    final class GateView: NSView {
+        private var holds: Bool
+
+        init(holds: Bool) {
+            self.holds = holds
+            super.init(frame: .zero)
+        }
+
+        required init?(coder: NSCoder) { fatalError("not used") }
+
+        // Before the window's first display: later, its empty frame would already be on screen.
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard holds, let window, !window.isVisible else { holds = false; return }
+            window.alphaValue = 0
+            DispatchQueue.main.asyncAfter(deadline: .now() + Theme.Motion.firstImageWait) { [weak self] in self?.release() }
+        }
+
+        func release() {
+            guard holds else { return }
+            holds = false
+            window?.alphaValue = 1
+        }
+    }
 }
 
 extension FocusedValues {
