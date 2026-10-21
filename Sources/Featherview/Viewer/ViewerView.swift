@@ -687,6 +687,8 @@ struct ViewerCommands: Commands {
     @Environment(\.openWindow) private var openWindow
     @AppStorage(toolbarHiddenKey) private var toolbarHidden = false
     @AppStorage(statusBarHiddenKey) private var statusBarHidden = false
+    /// Bumped after a claim, so the menu asks LaunchServices again for the current file's type.
+    @State private var claims = 0
 
     var body: some Commands {
         // Built at launch even when no window is restored (the last one was closed or minimized): a file
@@ -757,8 +759,9 @@ struct ViewerCommands: Commands {
             OpenWithMenu(model: model)
             if let url = model?.list.current, let type = DefaultViewer.claimableType(for: url) {
                 Button("Always Open .\(url.pathExtension.lowercased()) Files with Featherview") {
-                    Task { await DefaultViewerOffer.claim(type) }
+                    Task { await DefaultViewerOffer.claim(type); claims += 1 }
                 }
+                .disabled(claims >= 0 && DefaultViewerOffer.opensWithFeatherview(type))
             } else {
                 Button("Always Open with Featherview") {}.disabled(true)
             }

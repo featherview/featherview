@@ -178,7 +178,7 @@ the user makes claims one type: never more than one macOS prompt per click.
   (off while Featherview opens it). Footer: "For any other type, open an image of it and choose
   Image › Always Open with Featherview."
 - Image › "Always Open .png Files with Featherview" (the current file's extension): the same for
-  the current file's type, whichever app opens it now. Never offered for PDF or anything conforming
+  the current file's type, whichever app opens it now (off while Featherview opens it). Never offered for PDF or anything conforming
   to it: Featherview shows PDFs as images, it isn't a PDF reader.
 - Choosing Keep in macOS's prompt, or macOS refusing the change, changes nothing and shows no
   message (the two look alike to the app; the Preferences row shows which app opens the type).
