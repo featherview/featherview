@@ -149,6 +149,8 @@ Space preview, open panel preview; no effect on the app's launch time.
 
 ## Own look (any time before the v1 release)
 
+Done: checked on this Mac in light and dark; the launch budget in `AGENTS.md` comes from it.
+
 Decided: the maintainer accepted the mockups' recommendations (artifact KsGLFNEAZZwWU9iEmwNddZ).
 The accepted look is in `docs/spec.md` ("Viewer", "Toolbar", "Look", "Batch window › Window",
 "Preferences", "Distribution"): canvas under the glass toolbar and a floating glass status strip,
