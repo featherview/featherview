@@ -690,6 +690,11 @@ struct ViewerCommands: Commands {
     /// Bumped after a claim, so the menu asks LaunchServices again for the current file's type.
     @State private var claims = 0
 
+    private func showInAbout(_ text: String?) {
+        AboutSheet.shared.text = text
+        openWindow(id: "about")
+    }
+
     var body: some Commands {
         // Built at launch even when no window is restored (the last one was closed or minimized): a file
         // opened from Finder then still gets the main window, which otherwise waited for a window's view.
@@ -699,6 +704,17 @@ struct ViewerCommands: Commands {
             Button("Check for Updates…") { Task { await Updater.check(manual: true) } }
         }
         CommandGroup(replacing: .help) {
+            Button("Featherview Website") { NSWorkspace.shared.open(AboutInfo.website) }
+            Button("Source Code") { NSWorkspace.shared.open(AboutInfo.repository) }
+            Divider()
+            Button("Supported Formats") { showInAbout(AboutView.formatsText) }
+            if let url = AboutView.licenseURL {
+                Button("MIT License") { showInAbout(try? String(contentsOf: url, encoding: .utf8)) }
+            }
+            if let url = AboutView.acknowledgementsURL {
+                Button("Acknowledgements") { showInAbout(try? String(contentsOf: url, encoding: .utf8)) }
+            }
+            Divider()
             Button("Report a Bug…") { NSWorkspace.shared.open(AboutView.bugReportURL) }
         }
         CommandGroup(replacing: .appSettings) {

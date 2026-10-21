@@ -4,6 +4,7 @@ import Foundation
 /// What the About window's Copy button puts on the pasteboard, for bug reports.
 public enum AboutInfo {
     public static let repository = URL(string: "https://github.com/mynetx/featherview")!
+    public static let website = URL(string: "https://featherview.mynetx.net")!
 
     /// Fields of `.github/ISSUE_TEMPLATE/bug_report.yml` that the app fills in (issue forms take them from the query).
     public enum BugReportField: String, CaseIterable, Sendable {

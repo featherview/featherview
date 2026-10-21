@@ -114,7 +114,9 @@ orientation applied), ⌘Q Quit. Menus also list the single-key commands
 working) so they are discoverable. Single keys are menu shortcuts only while a
 menu is open, so typing in the batch window's text fields never triggers viewer actions.
 
-The app menu has Check for Updates… below About (see "Updates"). The Help menu has Report a Bug…:
+The app menu has Check for Updates… below About (see "Updates"). The Help menu repeats About's links:
+Featherview Website and Source Code (browser); Supported Formats, MIT License and Acknowledgements
+(About opens with that text); and, last, Report a Bug…:
 it opens the browser at a new GitHub issue from the repo's bug report form
 (`.github/ISSUE_TEMPLATE/bug_report.yml`), with Featherview version and build, macOS version and Mac
 model filled in; the person describes what happened.

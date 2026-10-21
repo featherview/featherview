@@ -2,18 +2,25 @@ import AppKit
 import FeatherviewCore
 import SwiftUI
 
+/// The text About shows in a sheet (formats, licence, acknowledgements); Help's items set it, then open About.
+@MainActor @Observable
+final class AboutSheet {
+    static let shared = AboutSheet()
+    var text: String?
+}
+
 /// Spec "About window": icon, name, version, links, supported formats, licence and bug-report text.
 struct AboutView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
-    @State private var sheetText: String?
+    private let sheet = AboutSheet.shared
     @State private var showingCopy = false
 
     private static let info = Bundle.main.infoDictionary ?? [:]
     static let version = info["CFBundleShortVersionString"] as? String ?? "?"
     static let build = info["CFBundleVersion"] as? String ?? "?"
-    private static let licenseURL = Bundle.main.url(forResource: "LICENSE", withExtension: nil)
-    private static let acknowledgementsURL = Bundle.main.url(forResource: "Acknowledgements", withExtension: "txt")
+    static let licenseURL = Bundle.main.url(forResource: "LICENSE", withExtension: nil)
+    static let acknowledgementsURL = Bundle.main.url(forResource: "Acknowledgements", withExtension: "txt")
     /// The bug report form with this Mac's details filled in (About and Help › Report a Bug…).
     static var bugReportURL: URL {
         AboutInfo.bugReportURL(version: version, build: build, macOS: ProcessInfo.processInfo.operatingSystemVersionString,
@@ -70,23 +77,23 @@ struct AboutView: View {
                     .foregroundStyle(Theme.aboutCaption)
                 // Two to a row, centred, so none wraps at 320 pt.
                 HStack(spacing: Theme.aboutLinkGap) {
-                    link("Website") { openURL(URL(string: "https://featherview.github.io")!) }
+                    link("Website") { openURL(AboutInfo.website) }
                     LinkSeparator()
                     link("Source Code") { openURL(AboutInfo.repository) }
                 }
                 HStack(spacing: Theme.aboutLinkGap) {
                     link("Report a Problem") { openURL(Self.bugReportURL) }
                     LinkSeparator()
-                    link("Supported Formats") { sheetText = Self.formatsText }
+                    link("Supported Formats") { sheet.text = Self.formatsText }
                 }
                 if Self.licenseURL != nil || Self.acknowledgementsURL != nil {
                     HStack(spacing: Theme.aboutLinkGap) {
                         if let url = Self.licenseURL {
-                            link("MIT License") { sheetText = try? String(contentsOf: url, encoding: .utf8) }
+                            link("MIT License") { sheet.text = try? String(contentsOf: url, encoding: .utf8) }
                         }
                         if Self.licenseURL != nil, Self.acknowledgementsURL != nil { LinkSeparator() }
                         if let url = Self.acknowledgementsURL {
-                            link("Acknowledgements") { sheetText = try? String(contentsOf: url, encoding: .utf8) }
+                            link("Acknowledgements") { sheet.text = try? String(contentsOf: url, encoding: .utf8) }
                         }
                     }
                 }
@@ -107,15 +114,15 @@ struct AboutView: View {
             window.standardWindowButton(.miniaturizeButton)?.isHidden = true
             window.standardWindowButton(.zoomButton)?.isHidden = true
         })
-        .sheet(isPresented: Binding(get: { sheetText != nil }, set: { if !$0 { sheetText = nil } })) {
+        .sheet(isPresented: Binding(get: { sheet.text != nil }, set: { if !$0 { sheet.text = nil } })) {
             VStack(alignment: .trailing) {
                 ScrollView {
-                    Text(sheetText ?? "")
+                    Text(sheet.text ?? "")
                         .font(.system(.body, design: .monospaced))
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Button { sheetText = nil } label: { Text("Done").foregroundStyle(Theme.onAccent) }
+                Button { sheet.text = nil } label: { Text("Done").foregroundStyle(Theme.onAccent) }
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
             }
@@ -156,7 +163,7 @@ struct AboutView: View {
     }
 
     /// The formats Featherview reads and writes, for the text sheet.
-    private static var formatsText: String {
+    static var formatsText: String {
         let read = FormatRegistry.readableNames
         return [String(localized: "Read"),
                 String(localized: "macOS \(macOSVersion): \(read.macOS.formatted(.list(type: .and, width: .narrow)))"),
