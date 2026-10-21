@@ -85,7 +85,7 @@ struct ViewerView: View {
                     .padding(.bottom, canvasInsets.messageBottom)
             }
         }
-        .overlay(alignment: .bottomLeading) {
+        .overlay(alignment: .topLeading) {
             if model.isFullScreen, showOverlay, let url = model.list.current {
                 Text(OverlayTemplate.render(overlayTemplate, values: overlayValues(url)))
                     .font(.callout)
