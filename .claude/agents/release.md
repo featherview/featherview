@@ -23,7 +23,7 @@ Your text is streamed as plain text: no Markdown in it. Before each stage, exact
 
 ```
 ✓ Release <prev> -> <new> (<BUMP>) done
-    https://github.com/mynetx/featherview/releases/tag/v<new>
+    https://github.com/featherview/featherview/releases/tag/v<new>
 ```
 
 On abort: `✗ Release aborted – <reason>`.
@@ -39,13 +39,13 @@ git rev-parse --abbrev-ref HEAD
 git fetch --tags origin
 git status --porcelain
 git remote get-url origin
-gh repo view mynetx/featherview --json visibility -q .visibility
+gh repo view featherview/featherview --json visibility -q .visibility
 git -C ~/Web/mx/featherview.github.io status --porcelain
 git -C ~/Web/mx/featherview.github.io pull --ff-only
 ```
 
-Abort when: the branch isn't `main`; `origin` isn't github.com/mynetx/featherview (any GitHub
-redirect target of it is fine); the repo is not `PUBLIC` (the update notice sends people to the
+Abort when: the branch isn't `main`; `origin` isn't github.com/featherview/featherview (the
+old github.com/mynetx/featherview redirects there and is fine too); the repo is not `PUBLIC` (the update notice sends people to the
 release page, which must be reachable); the app's working tree or the website repo has changes.
 
 ### 2. Previous version
@@ -138,7 +138,7 @@ git push origin vX.Y.Z
 `· GitHub release`:
 
 ```bash
-gh release create vX.Y.Z build/Featherview-X.Y.Z.dmg --repo mynetx/featherview \
+gh release create vX.Y.Z build/Featherview-X.Y.Z.dmg --repo featherview/featherview \
   --title "Featherview X.Y.Z – <title>" --notes-file "$TMPDIR/fv-release.md" --verify-tag
 ```
 
@@ -164,9 +164,9 @@ abort line with what is left to do by hand.
          <sparkle:version>BUILD</sparkle:version>
          <sparkle:shortVersionString>X.Y.Z</sparkle:shortVersionString>
          <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-         <link>https://github.com/mynetx/featherview/releases/tag/vX.Y.Z</link>
+         <link>https://github.com/featherview/featherview/releases/tag/vX.Y.Z</link>
          <description><![CDATA[<ul><li>…</li></ul>]]></description>
-         <enclosure url="https://github.com/mynetx/featherview/releases/download/vX.Y.Z/Featherview-X.Y.Z.dmg"
+         <enclosure url="https://github.com/featherview/featherview/releases/download/vX.Y.Z/Featherview-X.Y.Z.dmg"
                     length="BYTES" type="application/x-apple-diskimage"/>
        </item>
      </channel>
@@ -175,7 +175,7 @@ abort line with what is left to do by hand.
 
    Check it parses: `xmllint --noout appcast.xml`.
 2. `index.html`: the hero's primary Download button links to
-   `https://github.com/mynetx/featherview/releases/latest` and reads "Download X.Y.Z". On the first
+   `https://github.com/featherview/featherview/releases/latest` and reads "Download X.Y.Z". On the first
    release it replaces the disabled "coming soon" `<span>` with an `<a class="btn primary">`, and the
    "In development" pill becomes "Version X.Y.Z · for macOS Sonoma and later".
 3. Commit `feat: Featherview X.Y.Z` (website repo), push.

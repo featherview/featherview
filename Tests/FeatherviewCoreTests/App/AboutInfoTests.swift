@@ -13,7 +13,7 @@ import Testing
 
     @Test func bugReportOpensTheIssueFormWithTheDetailsFilledIn() {
         let url = AboutInfo.bugReportURL(version: "0.1.0", build: "1", macOS: "Version 27.0 (Build 26A434)", model: "Mac14,6")
-        #expect(url.absoluteString == "https://github.com/mynetx/featherview/issues/new?template=bug_report.yml"
+        #expect(url.absoluteString == "https://github.com/featherview/featherview/issues/new?template=bug_report.yml"
                 + "&version=0.1.0%20%281%29&macos=Version%2027.0%20%28Build%2026A434%29&mac=Mac14%2C6")
     }
 

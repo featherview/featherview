@@ -42,7 +42,7 @@ It must never derive from another product's code or assets. Its *behaviour* may 
 | Min macOS | 14.0 (Sonoma) |
 | Bundle ID | `net.mynetx.featherview` — never change it: macOS keys settings and permissions to it |
 | Public URL | `featherview.mynetx.net` — the update feed (`appcast.xml`, Sparkle format) lives here, never on github.io |
-| Repo | github.com/mynetx/featherview (may move to the `featherview` org later; GitHub redirects) |
+| Repo | github.com/featherview/featherview |
 | License | MIT, see `LICENSE` |
 
 ## Commands
