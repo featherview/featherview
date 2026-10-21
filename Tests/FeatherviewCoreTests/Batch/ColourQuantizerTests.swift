@@ -21,8 +21,9 @@ private let isOptimised = true
     }
 
     private func distinct(_ image: RGBAImage) -> Set<UInt32> {
-        Set((0..<image.width * image.height).map { i in
-            UInt32(image.pixels[i * 4]) << 16 | UInt32(image.pixels[i * 4 + 1]) << 8 | UInt32(image.pixels[i * 4 + 2])
+        Set((0..<image.width * image.height).map { (i: Int) -> UInt32 in
+            let r = UInt32(image.pixels[i * 4]), g = UInt32(image.pixels[i * 4 + 1]), b = UInt32(image.pixels[i * 4 + 2])
+            return r << 16 | g << 8 | b
         })
     }
 
