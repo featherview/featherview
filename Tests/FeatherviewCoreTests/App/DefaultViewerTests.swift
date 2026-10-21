@@ -8,21 +8,27 @@ import UniformTypeIdentifiers
     private let home = URL(fileURLWithPath: "/Users/someone")
     private let psd = UTType("com.adobe.photoshop-image")!
 
-    @Test func previewTypesAreClaimed() {
-        let handlers: [UTType: String] = [.jpeg: "com.apple.Preview", psd: "com.adobe.Photoshop"]
-        let types = DefaultViewer.typesToClaim([.jpeg, .png, psd, .jpeg], ownID: ownID) { handlers[$0] }
-        #expect(types == [.jpeg, .png])
+    private func claimable(_ name: String) -> UTType? {
+        DefaultViewer.claimableType(for: URL(fileURLWithPath: "/Users/someone/Pictures/\(name)"))
+    }
+
+    @Test func fileTypeIsClaimable() {
+        #expect(claimable("IMG_1234.JPG") == .jpeg)
+        #expect(claimable("scan.tif") == .tiff)
+        #expect(claimable("layers.psd") == psd)
     }
 
     @Test func pdfIsNeverClaimed() {
-        #expect(DefaultViewer.typesToClaim([.pdf], ownID: ownID) { _ in "com.apple.Preview" } == [])
+        #expect(claimable("manual.pdf") == nil)
     }
 
-    @Test func ownTypesAndDynamicTypesAreSkipped() throws {
-        let dynamic = try #require(UTType(filenameExtension: "zzqx"))
-        #expect(dynamic.identifier.hasPrefix("dyn."))
-        #expect(DefaultViewer.typesToClaim([.gif], ownID: ownID) { _ in ownID } == [])
-        #expect(DefaultViewer.typesToClaim([dynamic], ownID: ownID) { _ in nil } == [])
+    @Test func unknownExtensionsAreNotClaimed() {
+        #expect(claimable("notes.zzqx") == nil)
+        #expect(claimable("README") == nil)
+    }
+
+    @Test func commonTypesStartWithJPEG() {
+        #expect(DefaultViewer.commonTypes == [.jpeg, .png, .heic, .gif, .tiff, .webP])
     }
 
     private func offer(_ path: String, offeredBefore: Bool = false, jpegHandler: String? = "com.apple.Preview") -> Bool {

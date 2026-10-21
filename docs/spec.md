@@ -162,22 +162,27 @@ folder list.
 ### Default viewer
 
 Featherview never makes itself the default app on its own: its document types stay rank Alternate.
-It asks instead.
+It asks instead. From macOS 26.4, macOS confirms every change of a type's default app with a prompt
+of its own, one per type, and there is no way to change several types in one prompt (a default for
+`public.image` doesn't reach the image types, and rank Owner doesn't beat Preview). So each choice
+the user makes claims one type: never more than one macOS prompt per click.
 
 - Once, at the first launch from an Applications folder (`/Applications` or `~/Applications`, not
   from the disk image, `build/` or a translocated copy), and only while Preview or no app opens
-  JPEG: a dialog "Open your images with Featherview?", "Featherview can open your images instead
-  of Preview. You can change this later in Preferences › Browsing.", buttons "Use Featherview"
-  (default) and "Not Now". Either answer ends the asking; it never comes back by itself.
-- "Use Featherview" makes it the default for every image type it reads whose default is Preview
-  or no app. Types another app opens (Photoshop for PSD, GIMP for XCF, an editor for SVG) stay
-  with that app, and PDF always stays with its app: Featherview shows PDFs as images, it isn't a
-  PDF reader.
-- Preferences › Browsing, group "Default app": a line saying which app opens JPEG now, and the
-  button "Use Featherview for Images" (the same action; off while Featherview opens every type it
-  would take). Undo is Finder's Get Info › Open with › Change All.
-- If macOS refuses some types, one sentence: "Featherview couldn't become the default for HEIC
-  and WebP." (the types' extensions, a list from the system formatter). Nothing else changes.
+  JPEG: a dialog "Open JPEG images with Featherview?", "Featherview can open them instead of
+  Preview. Other image types can follow in Preferences › Browsing.", buttons "Use Featherview"
+  (default) and "Not Now". "Use Featherview" makes it the default for JPEG only. Either answer ends
+  the asking; it never comes back by itself.
+- Preferences › Browsing, group "Default app": one row each for JPEG, PNG, HEIC, GIF, TIFF and
+  WebP (the system's name for the type), the app that opens it now, and a "Use Featherview" button
+  (off while Featherview opens it). Footer: "For any other type, open an image of it and choose
+  Image › Always Open with Featherview."
+- Image › "Always Open .png Files with Featherview" (the current file's extension): the same for
+  the current file's type, whichever app opens it now. Never offered for PDF or anything conforming
+  to it: Featherview shows PDFs as images, it isn't a PDF reader.
+- Choosing Keep in macOS's prompt changes nothing and says nothing more. If macOS refuses the
+  change, one sentence: "Featherview couldn't become the default for HEIC." Undo is Finder's Get
+  Info › Open with › Change All.
 
 ## Look
 

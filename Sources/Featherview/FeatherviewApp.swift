@@ -86,21 +86,26 @@ enum DefaultViewerOffer {
         NSWorkspace.shared.urlForApplication(toOpen: type).flatMap { Bundle(url: $0)?.bundleIdentifier }
     }
 
-    static var typesToClaim: [UTType] {
-        DefaultViewer.typesToClaim(DefaultViewer.readableTypes, ownID: Bundle.main.bundleIdentifier ?? "", handler: handler)
+    /// Name of the app that opens `type` now, nil for none.
+    static func appName(for type: UTType) -> String? {
+        NSWorkspace.shared.urlForApplication(toOpen: type).map { FileManager.default.displayName(atPath: $0.path) }
     }
 
-    /// Sets Featherview as the default for every type it may take; names the types macOS refused.
-    static func claim() async {
-        var failed: [UTType] = []
-        for type in typesToClaim {
-            do { try await NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpen: type) } catch { failed.append(type) }
+    static func opensWithFeatherview(_ type: UTType) -> Bool { handler(for: type) == Bundle.main.bundleIdentifier }
+
+    /// Makes Featherview the default for `type`. From macOS 26.4 macOS confirms it in a prompt of its own,
+    /// one per type, which is why every click claims a single type.
+    static func claim(_ type: UTType) async {
+        do {
+            try await NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpen: type)
+        } catch {
+            // Keep in macOS's prompt is the user's answer, not a failure.
+            if (error as? CocoaError)?.code == .userCancelled { return }
+            let name = type.preferredFilenameExtension?.uppercased() ?? type.identifier
+            let alert = NSAlert()
+            alert.messageText = String(localized: "Featherview couldn't become the default for \(name).")
+            alert.runModal()
         }
-        guard !failed.isEmpty else { return }
-        let names = failed.map { $0.preferredFilenameExtension?.uppercased() ?? $0.identifier }.formatted(.list(type: .and))
-        let alert = NSAlert()
-        alert.messageText = String(localized: "Featherview couldn't become the default for \(names).")
-        alert.runModal()
     }
 
     /// Asks once, after the first window is up and its first image (if any) is on screen, never on the launch path.
@@ -117,11 +122,11 @@ enum DefaultViewerOffer {
             UserDefaults.standard.set(true, forKey: AppSettings.offeredDefaultViewer.key)
             let alert = NSAlert()
             alert.alertStyle = .informational
-            alert.messageText = String(localized: "Open your images with Featherview?")
-            alert.informativeText = String(localized: "Featherview can open your images instead of Preview. You can change this later in Preferences › Browsing.")
+            alert.messageText = String(localized: "Open JPEG images with Featherview?")
+            alert.informativeText = String(localized: "Featherview can open them instead of Preview. Other image types can follow in Preferences › Browsing.")
             alert.addButton(withTitle: String(localized: "Use Featherview"))
             alert.addButton(withTitle: String(localized: "Not Now")).keyEquivalent = "\u{1b}"
-            if alert.runModal() == .alertFirstButtonReturn { await claim() }
+            if alert.runModal() == .alertFirstButtonReturn { await claim(.jpeg) }
         }
     }
 }

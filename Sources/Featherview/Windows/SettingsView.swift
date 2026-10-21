@@ -77,22 +77,24 @@ private struct BrowsingSettings: View {
     @AppStorage(AppSettings.showNextAfterRemoval.key) private var showNext = AppSettings.showNextAfterRemoval.defaultValue
     @AppStorage(AppSettings.moveSidecars.key) private var sidecars = AppSettings.moveSidecars.defaultValue
     @AppStorage(AppSettings.checkForUpdates.key) private var checkForUpdates = AppSettings.checkForUpdates.defaultValue
-    @State private var jpegApp: String?
-    @State private var canClaim = false
+    @State private var apps: [UTType: String] = [:]
 
     var body: some View {
         Form {
-            Section("Default app") {
-                LabeledContent("Opens JPEG:") { Text(jpegApp ?? String(localized: "No app")) }
-                Button {
-                    Task { await DefaultViewerOffer.claim(); refresh() }
-                } label: {
-                    HStack(spacing: Theme.buttonIconGap) {
-                        FeatherMark(size: Theme.buttonFeatherSize)
-                        Text("Use Featherview for Images")
+            Section {
+                ForEach(DefaultViewer.commonTypes, id: \.self) { type in
+                    LabeledContent(type.localizedDescription ?? type.identifier) {
+                        HStack {
+                            Text(apps[type] ?? String(localized: "No app")).foregroundStyle(Theme.labelSecondary)
+                            Button("Use Featherview") { Task { await DefaultViewerOffer.claim(type); refresh() } }
+                                .disabled(DefaultViewerOffer.opensWithFeatherview(type))
+                        }
                     }
                 }
-                .disabled(!canClaim)
+            } header: {
+                Text("Default app")
+            } footer: {
+                Text("For any other type, open an image of it and choose Image › Always Open with Featherview.")
             }
             Section("Folders") {
                 Picker("Past the end of a folder:", selection: $pastEnd) {
@@ -115,8 +117,9 @@ private struct BrowsingSettings: View {
     }
 
     private func refresh() {
-        jpegApp = NSWorkspace.shared.urlForApplication(toOpen: .jpeg).map { FileManager.default.displayName(atPath: $0.path) }
-        canClaim = !DefaultViewerOffer.typesToClaim.isEmpty
+        apps = Dictionary(uniqueKeysWithValues: DefaultViewer.commonTypes.compactMap { type in
+            DefaultViewerOffer.appName(for: type).map { (type, $0) }
+        })
     }
 }
 

@@ -713,6 +713,13 @@ struct ViewerCommands: Commands {
             Button("Show in Finder") { model?.showInFinder() }
                 .disabled(model?.availability.hasCurrent != true)
             OpenWithMenu(model: model)
+            if let url = model?.list.current, let type = DefaultViewer.claimableType(for: url) {
+                Button("Always Open .\(url.pathExtension.lowercased()) Files with Featherview") {
+                    Task { await DefaultViewerOffer.claim(type) }
+                }
+            } else {
+                Button("Always Open with Featherview") {}.disabled(true)
+            }
             Button("Show Info  (I)") { model?.showInfo.toggle() }
                 .disabled(model?.availability.hasCurrent != true)
             Divider()

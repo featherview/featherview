@@ -7,22 +7,15 @@ public enum DefaultViewer {
     /// Apps whose image types Featherview may take over: Preview.
     public static let replaceable: Set<String> = ["com.apple.Preview"]
 
-    /// Every type Featherview reads: ImageIO's, plus the extensions of its own decoders.
-    public static var readableTypes: [UTType] {
-        ImageFormats.decodable + OwnDecoders.all.flatMap(\.extensions).compactMap { UTType(filenameExtension: $0) }
-    }
+    /// The types Preferences › Browsing lists, each with its own button. macOS asks once per type
+    /// it hands to another app, so each click claims one type and costs at most one prompt.
+    public static let commonTypes: [UTType] = [.jpeg, .png, .heic, .gif, .tiff, .webP]
 
-    /// The types to make Featherview the default for: each of `types` whose current default
-    /// (`handler`, a bundle identifier, nil = none) is replaceable or none, minus PDF and anything
-    /// conforming to it, minus dynamic types (`dyn.`), minus Featherview's own (`ownID`), deduplicated,
-    /// in the order given.
-    public static func typesToClaim(_ types: [UTType], ownID: String, handler: (UTType) -> String?) -> [UTType] {
-        var seen: Set<UTType> = []
-        return types.filter { type in
-            guard !type.conforms(to: .pdf), !type.identifier.hasPrefix("dyn."), seen.insert(type).inserted else { return false }
-            guard let current = handler(type) else { return true }
-            return current != ownID && replaceable.contains(current)
-        }
+    /// The type "Always Open with Featherview" claims for `file`, from its extension: nil for PDF and
+    /// anything conforming to it (Featherview isn't a PDF reader) and for extensions macOS doesn't know.
+    public static func claimableType(for file: URL) -> UTType? {
+        guard let type = UTType(filenameExtension: file.pathExtension), !type.isDynamic, !type.conforms(to: .pdf) else { return nil }
+        return type
     }
 
     /// Whether the launch offer shows: running from `/Applications` or `~/Applications` (`home`)

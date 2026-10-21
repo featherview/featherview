@@ -25645,184 +25645,6 @@
         }
       }
     },
-    "Featherview can open your images instead of Preview. You can change this later in Preferences › Browsing.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview kann deine Bilder statt Vorschau öffnen. Du kannst das später unter Einstellungen › Blättern ändern."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview peut ouvrir vos images à la place d’Aperçu. Vous pourrez changer cela plus tard dans Préférences › Navigation."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview puede abrir tus imágenes en lugar de Vista Previa. Puedes cambiarlo más tarde en Preferencias › Navegación."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview può aprire le tue immagini al posto di Anteprima. Puoi cambiarlo in seguito in Preferenze › Navigazione."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O Featherview pode abrir suas imagens em vez do Pré-Visualização. Você pode mudar isso depois em Preferências › Navegação."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview может открывать ваши изображения вместо Просмотра. Это можно изменить позже в разделе Настройки › Навигация."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview може відкривати ваші зображення замість Перегляду. Це можна змінити пізніше в Параметри › Навігація."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview może otwierać Twoje obrazki zamiast Podglądu. Możesz to później zmienić w Ustawienia › Przeglądanie."
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview může otevírat vaše obrázky místo Náhledu. Později to můžete změnit v Nastavení › Procházení."
-          }
-        },
-        "el": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Το Featherview μπορεί να ανοίγει τις εικόνες σας αντί για την Προεπισκόπηση. Μπορείτε να το αλλάξετε αργότερα στις Ρυθμίσεις › Περιήγηση."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يمكن لـ Featherview فتح صورك بدلًا من «معاينة». يمكنك تغيير ذلك لاحقًا في التفضيلات › التصفح."
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview יכול לפתוח את התמונות שלך במקום ״תצוגה מקדימה״. ניתן לשנות זאת מאוחר יותר בהעדפות › דפדוף."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview görüntülerinizi Önizleme yerine açabilir. Bunu daha sonra Tercihler › Göz Atma bölümünden değiştirebilirsiniz."
-          }
-        },
-        "hu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A Featherview az Előnézet helyett is megnyithatja a képeit. Ezt később a Beállítások › Böngészés részen módosíthatja."
-          }
-        },
-        "ro": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview îți poate deschide imaginile în locul aplicației Previzualizare. Poți schimba asta mai târziu în Preferințe › Navigare."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "プレビューの代わりに Featherview で画像を開けます。この設定はあとから“環境設定 › ブラウズ”で変更できます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "미리보기 대신 Featherview로 이미지를 열 수 있습니다. 나중에 환경설정 › 탐색에서 변경할 수 있습니다."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview 可以代替“预览”打开你的图像。你以后可以在“偏好设置 › 浏览”中更改。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview 可以取代「預覽程式」打開你的影像。你之後可以在「偏好設定 › 瀏覽」中更改。"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview, Preview की जगह आपकी छवियाँ खोल सकता है। आप इसे बाद में प्राथमिकताएँ › ब्राउज़िंग में बदल सकते हैं।"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview สามารถเปิดภาพของคุณแทนแอปแสดงตัวอย่างได้ คุณเปลี่ยนได้ภายหลังในการตั้งค่า › การเรียกดู"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview có thể mở ảnh của bạn thay cho Xem trước. Bạn có thể thay đổi điều này sau trong Tùy chọn › Duyệt."
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview dapat membuka gambar Anda sebagai pengganti Pratinjau. Anda dapat mengubahnya nanti di Preferensi › Penjelajahan."
-          }
-        },
-        "ms": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview boleh membuka imej anda dan bukannya Pratonton. Anda boleh mengubahnya kemudian dalam Keutamaan › Penyemakan."
-          }
-        },
-        "ca": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El Featherview pot obrir les teves imatges en lloc de la Previsualització. Ho pots canviar més tard a Preferències › Navegació."
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview kan åbne dine billeder i stedet for Eksempel. Du kan ændre det senere i Indstillinger › Gennemsyn."
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview voi avata kuvasi Esikatselun sijaan. Voit muuttaa tätä myöhemmin kohdassa Asetukset › Selaus."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview kan je afbeeldingen openen in plaats van Voorvertoning. Je kunt dit later wijzigen in Voorkeuren › Bladeren."
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview kan öppna dina bilder i stället för Förhandsvisning. Du kan ändra det senare i Inställningar › Bläddring."
-          }
-        }
-      }
-    },
     "Featherview couldn't become the default for %@.": {
       "localizations": {
         "de": {
@@ -43277,362 +43099,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Öppna en bild eller släpp en mapp här"
-          }
-        }
-      }
-    },
-    "Open your images with Featherview?": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bilder mit Featherview öffnen?"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ouvrir vos images avec Featherview ?"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿Abrir tus imágenes con Featherview?"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aprire le immagini con Featherview?"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abrir suas imagens com o Featherview?"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Открывать изображения в Featherview?"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Відкривати зображення у Featherview?"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Otwierać obrazki w Featherview?"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Otevírat obrázky ve Featherview?"
-          }
-        },
-        "el": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Άνοιγμα των εικόνων σας με το Featherview;"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "هل تريد فتح صورك باستخدام Featherview؟"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "לפתוח את התמונות שלך באמצעות Featherview?"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Görüntüleriniz Featherview ile açılsın mı?"
-          }
-        },
-        "hu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Megnyitja a képeit a Featherview-val?"
-          }
-        },
-        "ro": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deschizi imaginile cu Featherview?"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "画像を Featherview で開きますか？"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview로 이미지를 열겠습니까?"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "要用 Featherview 打开你的图像吗？"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "要使用 Featherview 打開你的影像嗎？"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "अपनी छवियाँ Featherview से खोलें?"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "เปิดภาพของคุณด้วย Featherview หรือไม่"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mở ảnh của bạn bằng Featherview?"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Buka gambar Anda dengan Featherview?"
-          }
-        },
-        "ms": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Buka imej anda dengan Featherview?"
-          }
-        },
-        "ca": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vols obrir les imatges amb el Featherview?"
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Åbn dine billeder med Featherview?"
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Avataanko kuvasi Featherview-apilla?"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Je afbeeldingen openen met Featherview?"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Öppna dina bilder med Featherview?"
-          }
-        }
-      }
-    },
-    "Opens JPEG:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Öffnet JPEG:"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ouvre les JPEG :"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abre JPEG:"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apre JPEG:"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abre JPEG:"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "JPEG открывает:"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "JPEG відкриває:"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Otwiera JPEG:"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "JPEG otevírá:"
-          }
-        },
-        "el": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ανοίγει JPEG:"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يفتح JPEG:"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "פותח JPEG:"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "JPEG'i açan:"
-          }
-        },
-        "hu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "JPEG-et megnyitja:"
-          }
-        },
-        "ro": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deschide JPEG:"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "JPEG を開く App："
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "JPEG 열기:"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打开 JPEG："
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打開 JPEG："
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "JPEG खोलता है:"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "เปิด JPEG ด้วย:"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mở JPEG bằng:"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Membuka JPEG:"
-          }
-        },
-        "ms": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Membuka JPEG:"
-          }
-        },
-        "ca": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Obre JPEG:"
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Åbner JPEG:"
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Avaa JPEG-kuvat:"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Opent JPEG:"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Öppnar JPEG:"
           }
         }
       }
@@ -62165,184 +61631,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Använd Featherview"
-          }
-        }
-      }
-    },
-    "Use Featherview for Images": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview für Bilder verwenden"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Utiliser Featherview pour les images"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Usar Featherview para imágenes"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Usa Featherview per le immagini"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Usar o Featherview para Imagens"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Использовать Featherview для изображений"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Використовувати Featherview для зображень"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Używaj Featherview do obrazków"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Používat Featherview pro obrázky"
-          }
-        },
-        "el": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Χρήση του Featherview για εικόνες"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "استخدام Featherview للصور"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "השתמש ב־Featherview לתמונות"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Görüntüler İçin Featherview'u Kullan"
-          }
-        },
-        "hu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Featherview használata a képekhez"
-          }
-        },
-        "ro": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Folosește Featherview pentru imagini"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "画像に Featherview を使用"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이미지에 Featherview 사용"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "使用 Featherview 打开图像"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "使用 Featherview 打開影像"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "छवियों के लिए Featherview का उपयोग करें"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ใช้ Featherview สำหรับภาพ"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dùng Featherview cho ảnh"
-          }
-        },
-        "id": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gunakan Featherview untuk Gambar"
-          }
-        },
-        "ms": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gunakan Featherview untuk Imej"
-          }
-        },
-        "ca": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Utilitza el Featherview per a les imatges"
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Brug Featherview til billeder"
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Käytä Featherview-appia kuville"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gebruik Featherview voor afbeeldingen"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Använd Featherview för bilder"
           }
         }
       }
@@ -85727,6 +85015,896 @@
           "stringUnit": {
             "state": "translated",
             "value": "浮水印"
+          }
+        }
+      }
+    },
+    "Always Open .%@ Files with Featherview": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فتح ملفات ‎.%@ دائمًا باستخدام Featherview"
+          }
+        },
+        "ca": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obre sempre els fitxers .%@ amb el Featherview"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vždy otevírat soubory .%@ ve Featherview"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Åbn altid .%@-filer med Featherview"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ".%@-Dateien immer mit Featherview öffnen"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Πάντα άνοιγμα των αρχείων .%@ με το Featherview"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir siempre los archivos .%@ con Featherview"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avaa .%@-tiedostot aina Featherview-apilla"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toujours ouvrir les fichiers .%@ avec Featherview"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פתח תמיד קובצי ‎.%@ באמצעות Featherview"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ".%@ फ़ाइलें हमेशा Featherview से खोलें"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A(z) .%@ fájlok megnyitása mindig a Featherview-val"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selalu Buka File .%@ dengan Featherview"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri sempre i file .%@ con Featherview"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ".%@ ファイルを常に Featherview で開く"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ".%@ 파일을 항상 Featherview로 열기"
+          }
+        },
+        "ms": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sentiasa Buka Fail .%@ dengan Featherview"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ".%@-bestanden altijd openen met Featherview"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zawsze otwieraj pliki .%@ w Featherview"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sempre Abrir Arquivos .%@ com o Featherview"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deschide întotdeauna fișierele .%@ cu Featherview"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всегда открывать файлы .%@ в Featherview"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öppna alltid .%@-filer med Featherview"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิดไฟล์ .%@ ด้วย Featherview เสมอ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ".%@ Dosyalarını Her Zaman Featherview ile Aç"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завжди відкривати файли .%@ у Featherview"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Luôn mở tệp .%@ bằng Featherview"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "始终用 Featherview 打开 .%@ 文件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一律使用 Featherview 打開 .%@ 檔案"
+          }
+        }
+      }
+    },
+    "Always Open with Featherview": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الفتح دائمًا باستخدام Featherview"
+          }
+        },
+        "ca": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obre sempre amb el Featherview"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vždy otevírat ve Featherview"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Åbn altid med Featherview"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Immer mit Featherview öffnen"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Πάντα άνοιγμα με το Featherview"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir siempre con Featherview"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avaa aina Featherview-apilla"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toujours ouvrir avec Featherview"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פתח תמיד באמצעות Featherview"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "हमेशा Featherview से खोलें"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Megnyitás mindig a Featherview-val"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selalu Buka dengan Featherview"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri sempre con Featherview"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "常に Featherview で開く"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "항상 Featherview로 열기"
+          }
+        },
+        "ms": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sentiasa Buka dengan Featherview"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altijd openen met Featherview"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zawsze otwieraj w Featherview"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sempre Abrir com o Featherview"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deschide întotdeauna cu Featherview"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всегда открывать в Featherview"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öppna alltid med Featherview"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิดด้วย Featherview เสมอ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her Zaman Featherview ile Aç"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завжди відкривати у Featherview"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Luôn mở bằng Featherview"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "始终用 Featherview 打开"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一律使用 Featherview 打開"
+          }
+        }
+      }
+    },
+    "Featherview can open them instead of Preview. Other image types can follow in Preferences › Browsing.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يمكن لـ Featherview فتحها بدلًا من «معاينة». يمكنك إضافة أنواع صور أخرى في التفضيلات › التصفح."
+          }
+        },
+        "ca": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El Featherview les pot obrir en lloc de la Previsualització. Pots afegir altres tipus d’imatge a Preferències › Navegació."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview je může otevírat místo Náhledu. Další typy obrázků můžete přidat v Nastavení › Procházení."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview kan åbne dem i stedet for Eksempel. Andre billedtyper kan du tilføje i Indstillinger › Gennemsyn."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview kann sie statt Vorschau öffnen. Weitere Bildtypen kannst du unter Einstellungen › Blättern hinzufügen."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Το Featherview μπορεί να τις ανοίγει αντί για την Προεπισκόπηση. Μπορείτε να προσθέσετε κι άλλους τύπους εικόνων στις Ρυθμίσεις › Περιήγηση."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview puede abrirlas en lugar de Vista Previa. Puedes añadir otros tipos de imagen en Preferencias › Navegación."
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview voi avata ne Esikatselun sijaan. Voit lisätä muita kuvatyyppejä kohdassa Asetukset › Selaus."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview peut les ouvrir à la place d’Aperçu. Vous pourrez ajouter d’autres types d’images dans Préférences › Navigation."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview יכול לפתוח אותן במקום ״תצוגה מקדימה״. ניתן להוסיף סוגי תמונות נוספים בהעדפות › דפדוף."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview उन्हें Preview की जगह खोल सकता है। अन्य छवि प्रकार आप प्राथमिकताएँ › ब्राउज़िंग में जोड़ सकते हैं।"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A Featherview az Előnézet helyett is megnyithatja őket. További képtípusokat a Beállítások › Böngészés részen adhat hozzá."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview dapat membukanya sebagai pengganti Pratinjau. Anda dapat menambahkan jenis gambar lain di Preferensi › Penjelajahan."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview può aprirle al posto di Anteprima. Puoi aggiungere altri tipi di immagine in Preferenze › Navigazione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プレビューの代わりに Featherview で開けます。ほかの画像の種類は“環境設定 › ブラウズ”で追加できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "미리보기 대신 Featherview로 열 수 있습니다. 다른 이미지 유형은 환경설정 › 탐색에서 추가할 수 있습니다."
+          }
+        },
+        "ms": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview boleh membukanya dan bukannya Pratonton. Anda boleh menambah jenis imej lain dalam Keutamaan › Penyemakan."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview kan ze openen in plaats van Voorvertoning. Andere afbeeldingstypen kun je toevoegen in Voorkeuren › Bladeren."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview może je otwierać zamiast Podglądu. Inne typy obrazków możesz dodać w Ustawienia › Przeglądanie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Featherview pode abri-las em vez do Pré-Visualização. Você pode adicionar outros tipos de imagem em Preferências › Navegação."
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview le poate deschide în locul aplicației Previzualizare. Poți adăuga alte tipuri de imagini în Preferințe › Navigare."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview может открывать их вместо Просмотра. Другие типы изображений можно добавить в разделе Настройки › Навигация."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview kan öppna dem i stället för Förhandsvisning. Andra bildtyper kan du lägga till i Inställningar › Bläddring."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview สามารถเปิดภาพเหล่านั้นแทนแอปแสดงตัวอย่างได้ คุณเพิ่มภาพประเภทอื่นได้ในการตั้งค่า › การเรียกดู"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview bunları Önizleme yerine açabilir. Diğer görüntü türlerini Tercihler › Göz Atma bölümünden ekleyebilirsiniz."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview може відкривати їх замість Перегляду. Інші типи зображень можна додати в Параметри › Навігація."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview có thể mở chúng thay cho Xem trước. Bạn có thể thêm các loại ảnh khác trong Tùy chọn › Duyệt."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview 可以代替“预览”打开它们。你可以在“偏好设置 › 浏览”中添加其他图像类型。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview 可以取代「預覽程式」打開它們。你可以在「偏好設定 › 瀏覽」中加入其他影像類型。"
+          }
+        }
+      }
+    },
+    "For any other type, open an image of it and choose Image › Always Open with Featherview.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لأي نوع آخر، افتح صورة منه واختر صورة › الفتح دائمًا باستخدام Featherview."
+          }
+        },
+        "ca": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per a qualsevol altre tipus, obre’n una imatge i tria Imatge › Obre sempre amb el Featherview."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro jakýkoli jiný typ otevřete obrázek tohoto typu a zvolte Obrázek › Vždy otevírat ve Featherview."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For alle andre typer skal du åbne et billede af typen og vælge Billede › Åbn altid med Featherview."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für jeden anderen Typ öffne ein Bild davon und wähle Bild › Immer mit Featherview öffnen."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Για οποιονδήποτε άλλο τύπο, ανοίξτε μια εικόνα του και επιλέξτε Εικόνα › Πάντα άνοιγμα με το Featherview."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para cualquier otro tipo, abre una imagen de ese tipo y elige Imagen › Abrir siempre con Featherview."
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muille tyypeille avaa sen tyyppinen kuva ja valitse Kuva › Avaa aina Featherview-apilla."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour tout autre type, ouvrez une image de ce type et choisissez Image › Toujours ouvrir avec Featherview."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עבור כל סוג אחר, פתח תמונה מסוג זה ובחר תמונה › פתח תמיד באמצעות Featherview."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "किसी भी अन्य प्रकार के लिए, उस प्रकार की कोई छवि खोलें और छवि › हमेशा Featherview से खोलें चुनें।"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bármely más típushoz nyisson meg egy ilyen képet, és válassza a Kép › Megnyitás mindig a Featherview-val parancsot."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Untuk jenis lain, buka gambar dari jenis tersebut lalu pilih Gambar › Selalu Buka dengan Featherview."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per qualsiasi altro tipo, apri un’immagine di quel tipo e scegli Immagine › Apri sempre con Featherview."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ほかの種類は、その種類の画像を開いて“画像 › 常に Featherview で開く”を選択します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 유형은 해당 유형의 이미지를 열고 이미지 › 항상 Featherview로 열기를 선택하십시오."
+          }
+        },
+        "ms": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Untuk jenis lain, buka imej jenis itu dan pilih Imej › Sentiasa Buka dengan Featherview."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voor elk ander type open je een afbeelding van dat type en kies je Afbeelding › Altijd openen met Featherview."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W przypadku innego typu otwórz obrazek tego typu i wybierz Obrazek › Zawsze otwieraj w Featherview."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para qualquer outro tipo, abra uma imagem desse tipo e escolha Imagem › Sempre Abrir com o Featherview."
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pentru orice alt tip, deschide o imagine de acel tip și alege Imagine › Deschide întotdeauna cu Featherview."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для любого другого типа откройте изображение этого типа и выберите Изображение › Всегда открывать в Featherview."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "För alla andra typer öppnar du en bild av den typen och väljer Bild › Öppna alltid med Featherview."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สำหรับประเภทอื่น ให้เปิดภาพประเภทนั้นแล้วเลือก ภาพ › เปิดด้วย Featherview เสมอ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başka bir tür için o türde bir görüntü açın ve Görüntü › Her Zaman Featherview ile Aç’ı seçin."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для будь-якого іншого типу відкрийте зображення цього типу й виберіть Зображення › Завжди відкривати у Featherview."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Với loại khác, hãy mở một ảnh thuộc loại đó và chọn Ảnh › Luôn mở bằng Featherview."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对于其他类型，请打开该类型的图像，然后选取“图像 › 始终用 Featherview 打开”。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "若是其他類型，請打開該類型的影像，然後選擇「影像 › 一律使用 Featherview 打開」。"
+          }
+        }
+      }
+    },
+    "Open JPEG images with Featherview?": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هل تريد فتح صور JPEG باستخدام Featherview؟"
+          }
+        },
+        "ca": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vols obrir les imatges JPEG amb el Featherview?"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otevírat obrázky JPEG ve Featherview?"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Åbn JPEG-billeder med Featherview?"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JPEG-Bilder mit Featherview öffnen?"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Άνοιγμα των εικόνων JPEG με το Featherview;"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Abrir las imágenes JPEG con Featherview?"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avataanko JPEG-kuvat Featherview-apilla?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir les images JPEG avec Featherview ?"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לפתוח תמונות JPEG באמצעות Featherview?"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JPEG छवियाँ Featherview से खोलें?"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Megnyitja a JPEG-képeket a Featherview-val?"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buka gambar JPEG dengan Featherview?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aprire le immagini JPEG con Featherview?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JPEG 画像を Featherview で開きますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featherview로 JPEG 이미지를 열겠습니까?"
+          }
+        },
+        "ms": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buka imej JPEG dengan Featherview?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JPEG-afbeeldingen openen met Featherview?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwierać obrazki JPEG w Featherview?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir imagens JPEG com o Featherview?"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deschizi imaginile JPEG cu Featherview?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открывать изображения JPEG в Featherview?"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öppna JPEG-bilder med Featherview?"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิดภาพ JPEG ด้วย Featherview หรือไม่"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JPEG görüntüleri Featherview ile açılsın mı?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відкривати зображення JPEG у Featherview?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở ảnh JPEG bằng Featherview?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要用 Featherview 打开 JPEG 图像吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要使用 Featherview 打開 JPEG 影像嗎？"
           }
         }
       }
