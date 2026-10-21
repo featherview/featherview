@@ -14,6 +14,12 @@ struct ViewerView: View {
     /// Toolbar buttons are built only after the first image (or message) is on screen: building them takes
     /// ~130 ms of the main thread, and in the same update they'd hold back that frame at launch (budget 350 ms).
     @State private var toolbarReady = false
+    /// An image or message shows, or none will come. An open that ended with a file current still has its
+    /// image on the way (a big folder's first image decodes after the open), and building first delays it.
+    private var toolbarMayBuild: Bool {
+        model.image != nil || model.errorMessage != nil || model.emptyFolder != nil
+            || (!model.isOpening && model.list.current == nil)
+    }
     @AppStorage(AppSettings.checkerboard.key) private var checkerboard = AppSettings.checkerboard.defaultValue
     @AppStorage(AppSettings.showOverlay.key) private var showOverlay = AppSettings.showOverlay.defaultValue
     @AppStorage(AppSettings.overlayTemplate.key) private var overlayTemplate = AppSettings.overlayTemplate.defaultValue
@@ -140,8 +146,7 @@ struct ViewerView: View {
         .onChange(of: model.image) { hidePointerInFullScreen() }
         .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
         .modifier(ViewerToolbarPlacement(model: model, ready: toolbarReady))
-        .onChange(of: model.image != nil || model.errorMessage != nil || model.emptyFolder != nil || !model.isOpening,
-                  initial: true) { if $1, model.image == nil { ViewerModel.afterFrame { toolbarReady = true } } }
+        .onChange(of: toolbarMayBuild, initial: true) { if $1, model.image == nil { ViewerModel.afterFrame { toolbarReady = true } } }
         .toolbar(toolbarHidden || hidesToolbarForFullScreen ? .hidden : .visible, for: .windowToolbar)
         // No hidden toolbar background: the system's scroll edge effect dims a zoomed picture under the toolbar, as in Safari.
         .onChange(of: toolbarReady && !toolbarHidden) { matchTitle() }
