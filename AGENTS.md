@@ -24,7 +24,7 @@ It must never derive from another product's code or assets. Its *behaviour* may 
 - Matching single-key shortcuts is allowed (it's behaviour, and helps people switching over).
   Do not copy icons, images, UI text, help text, dialog or settings layouts — not even by
   cropping or tracing a screenshot. Our UI is designed for the Mac.
-- The name "IrfanView" may appear only in README.md and on the website (featherview.github.io),
+- The name "IrfanView" may appear only in README.md and on the website (featherview.mynetx.net),
   in a "not affiliated" disclaimer, a plain "alternative to" description or a thank-you to its
   author. Never in code, UI, bundle names or commit messages.
 - No cat imagery in icons or branding.

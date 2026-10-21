@@ -45,8 +45,9 @@ git -C ~/Web/mx/featherview.github.io pull --ff-only
 ```
 
 Abort when: the branch isn't `main`; `origin` isn't github.com/featherview/featherview (the
-old github.com/mynetx/featherview redirects there and is fine too); the repo is not `PUBLIC` (the update notice sends people to the
-release page, which must be reachable); the app's working tree or the website repo has changes.
+old github.com/mynetx/featherview redirects there and is fine too); the repo is not `PUBLIC`
+(the update notice sends people to the release page, which must be reachable); the app's working
+tree or the website repo has changes.
 
 ### 2. Previous version
 
@@ -55,8 +56,9 @@ git tag --list 'v*' --sort=-v:refname | head -1
 /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' -c 'Print :CFBundleVersion' Resources/Info.plist
 ```
 
-No tag yet: this is the first release. It is `1.0.0` (the spec's v1), the bump is `FIRST`, and the
-notes describe the app as a whole (step 4) instead of a change list.
+No tag yet: this is the first release. It is `0.9.0` (a public preview before the spec's v1: not
+notarized, few outside users yet), the bump is `FIRST`, and the notes describe the app as a whole
+(step 4) instead of a change list.
 
 ### 3. Commits since then
 
@@ -83,7 +85,8 @@ Write them yourself from the log. The reader uses Featherview and has never seen
 
 ### 5. Version
 
-Bump from the commits; give one sentence why. Never ask.
+An explicit version in the prompt ("release 1.0.0") wins over the table. Otherwise bump from the
+commits; give one sentence why. Never ask.
 
 | Bump | When |
 |---|---|

@@ -2,6 +2,8 @@
 
 A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversion.
 
+**[Download](https://github.com/featherview/featherview/releases/latest)** · [Website](https://featherview.mynetx.net)
+
 - Opens instantly and flips through every image in the folder with the arrow keys
 - Opens everything macOS can read (JPEG, PNG, HEIC, AVIF, JPEG XL, WebP, TIFF, GIF, BMP, PSD,
   JPEG 2000, TGA, OpenEXR, DNG and camera RAW), upright and colour-managed
@@ -25,7 +27,7 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
 - EXIF info panel; delete moves to Trash
 - In 30 languages, with right-to-left layout in Arabic and Hebrew
 
-Status: early development. Requires macOS 14 or later.
+Status: public preview (0.9), on the way to 1.0. Requires macOS 14 (Sonoma) or later.
 
 ## Third-party code
 
@@ -37,7 +39,8 @@ Status: early development. Requires macOS 14 or later.
 
 ## Install
 
-Download `Featherview-<version>.dmg` from the releases page, open it and drag `Featherview.app` to
+Download `Featherview-<version>.dmg` from the
+[latest release](https://github.com/featherview/featherview/releases/latest), open it and drag `Featherview.app` to
 `Applications`.
 
 Featherview is free and not notarized by Apple (that needs a paid developer account), so macOS
