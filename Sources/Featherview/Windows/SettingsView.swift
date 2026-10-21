@@ -167,7 +167,7 @@ private struct FullScreenSettings: View {
                 Toggle("Show text over the image", isOn: $showOverlay)
                 TextField("Text:", text: $template)
                     .disabled(!showOverlay)
-                Text("{name} {folder} {index} {count} {size} {date}")
+                Text("{name} {folder} {path} {index} {count} {size} {date}")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

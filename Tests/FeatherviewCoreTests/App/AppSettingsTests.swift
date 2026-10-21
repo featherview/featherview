@@ -68,6 +68,14 @@ import Testing
         #expect(OverlayTemplate.render("{name}", values: ["name": "{date}.jpg", "date": "16.10.2026"]) == "{date}.jpg")
     }
 
+    @Test func pathIsTheFullPathWithTheHomeFolderAsTilde() {
+        let home = URL(filePath: "/Users/ann")
+        #expect(OverlayTemplate.path(of: URL(filePath: "/Users/ann/Pictures/a.jpg"), home: home) == "~/Pictures/a.jpg")
+        #expect(OverlayTemplate.path(of: URL(filePath: "/Users/anna/a.jpg"), home: home) == "/Users/anna/a.jpg")
+        #expect(OverlayTemplate.path(of: URL(filePath: "/Volumes/Card/DCIM/a.jpg"), home: home) == "/Volumes/Card/DCIM/a.jpg")
+        #expect(OverlayTemplate.render("{path}", values: ["path": "~/a.jpg"]) == "~/a.jpg")
+    }
+
     @Test func fileValuesUseTheFilesOwnPixelSizeAndDate() throws {
         // Fit mode shows a smaller decode; the overlay must still name the file's real size.
         let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("a.jpg"),

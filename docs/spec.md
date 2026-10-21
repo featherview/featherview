@@ -335,8 +335,8 @@ controls trailing, switches for on/off settings. Every setting below has the def
 - Viewer: appearance (System; also Light, Dark), for every window of the app; checkerboard behind
   transparent images (on); remember the window's size and position (on); zoom step (10 %); hide
   toolbar and status bar while viewing (off, see "Toolbar").
-- Full screen: overlay text (off; template with `{name}`, `{folder}`, `{index}`, `{count}`,
-  `{size}`, `{date}`); hide the pointer (on).
+- Full screen: overlay text (off; template with `{name}`, `{folder}`, `{path}` (full path, home as
+  `~`), `{index}`, `{count}`, `{size}`, `{date}`); hide the pointer (on).
 - Move / copy: the 14 destination slots; ask before each move / copy (off).
 - Open with: up to 3 external apps, opened with ⌥1, ⌥2, ⌥3 on the current file.
 - Formats: per-format defaults (see "Format options"), saved profiles.

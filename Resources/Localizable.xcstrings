@@ -70442,180 +70442,180 @@
         }
       }
     },
-    "{name} {folder} {index} {count} {size} {date}": {
+    "{name} {folder} {path} {index} {count} {size} {date}": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "el": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "hu": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "ro": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "id": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "ms": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "ca": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "fi": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "{name} {folder} {index} {count} {size} {date}"
+            "value": "{name} {folder} {path} {index} {count} {size} {date}"
           }
         }
       }

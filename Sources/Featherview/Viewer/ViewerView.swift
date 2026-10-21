@@ -282,6 +282,7 @@ struct ViewerView: View {
     private func overlayValues(_ url: URL) -> [String: String] {
         var values = ["name": url.lastPathComponent,
                       "folder": url.deletingLastPathComponent().lastPathComponent,
+                      "path": OverlayTemplate.path(of: url, home: FileManager.default.homeDirectoryForCurrentUser),
                       "index": "\(model.list.index + 1)", "count": "\(model.list.urls.count)"]
         if let file = model.fileValues, file.url == url { values.merge(file.values) { $1 } }
         return values
