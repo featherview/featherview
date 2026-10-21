@@ -2,65 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleIdentifier</key>
-	<string>net.mynetx.featherview</string>
-	<key>CFBundleName</key>
-	<string>Featherview</string>
-	<key>CFBundleDisplayName</key>
-	<string>Featherview</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
-	<key>CFBundleLocalizations</key>
-	<array>
-		<string>en</string>
-		<string>zh-Hans</string>
-		<string>zh-Hant</string>
-		<string>hi</string>
-		<string>es</string>
-		<string>ar</string>
-		<string>fr</string>
-		<string>pt-BR</string>
-		<string>ru</string>
-		<string>id</string>
-		<string>de</string>
-		<string>ja</string>
-		<string>tr</string>
-		<string>vi</string>
-		<string>ko</string>
-		<string>it</string>
-		<string>th</string>
-		<string>pl</string>
-		<string>uk</string>
-		<string>ms</string>
-		<string>nl</string>
-		<string>ro</string>
-		<string>el</string>
-		<string>hu</string>
-		<string>sv</string>
-		<string>cs</string>
-		<string>ca</string>
-		<string>he</string>
-		<string>da</string>
-		<string>fi</string>
-	</array>
-	<key>CFBundleExecutable</key>
+	<key>CFBundleDisplayName</key>
 	<string>Featherview</string>
-	<key>NSAccentColorName</key>
-	<string>AccentColor</string>
-	<key>CFBundleIconFile</key>
-	<string>AppIcon</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
-	<key>CFBundleVersion</key>
-	<string>1</string>
-	<key>LSMinimumSystemVersion</key>
-	<string>14.0</string>
-	<key>LSApplicationCategoryType</key>
-	<string>public.app-category.photography</string>
-	<key>NSHighResolutionCapable</key>
-	<true/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -388,18 +333,73 @@
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleExecutable</key>
+	<string>Featherview</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>net.mynetx.featherview</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>zh-Hans</string>
+		<string>zh-Hant</string>
+		<string>hi</string>
+		<string>es</string>
+		<string>ar</string>
+		<string>fr</string>
+		<string>pt-BR</string>
+		<string>ru</string>
+		<string>id</string>
+		<string>de</string>
+		<string>ja</string>
+		<string>tr</string>
+		<string>vi</string>
+		<string>ko</string>
+		<string>it</string>
+		<string>th</string>
+		<string>pl</string>
+		<string>uk</string>
+		<string>ms</string>
+		<string>nl</string>
+		<string>ro</string>
+		<string>el</string>
+		<string>hu</string>
+		<string>sv</string>
+		<string>cs</string>
+		<string>ca</string>
+		<string>he</string>
+		<string>da</string>
+		<string>fi</string>
+	</array>
+	<key>CFBundleName</key>
+	<string>Featherview</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.9.0</string>
+	<key>CFBundleVersion</key>
+	<string>2</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.photography</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>NSAccentColorName</key>
+	<string>AccentColor</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.bpg</string>
-			<key>UTTypeDescription</key>
-			<string>BPG image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>BPG image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.bpg</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -409,15 +409,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.jpeg-xr</string>
-			<key>UTTypeDescription</key>
-			<string>JPEG XR image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>JPEG XR image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.jpeg-xr</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -429,15 +429,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.photo-cd</string>
-			<key>UTTypeDescription</key>
-			<string>Kodak Photo CD image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>Kodak Photo CD image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.photo-cd</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -447,15 +447,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.xcf</string>
-			<key>UTTypeDescription</key>
-			<string>GIMP image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>GIMP image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.xcf</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -465,15 +465,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.pdn</string>
-			<key>UTTypeDescription</key>
-			<string>Paint.NET image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>Paint.NET image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.pdn</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -483,15 +483,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.psp</string>
-			<key>UTTypeDescription</key>
-			<string>PaintShop Pro image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>PaintShop Pro image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.psp</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -502,14 +502,14 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.jfif</string>
-			<key>UTTypeDescription</key>
-			<string>JPEG image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.jpeg</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>JPEG image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.jfif</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -521,15 +521,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.qoi</string>
-			<key>UTTypeDescription</key>
-			<string>QOI image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>QOI image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.qoi</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -539,15 +539,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.pcx</string>
-			<key>UTTypeDescription</key>
-			<string>PCX image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>PCX image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.pcx</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -557,15 +557,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.dcx</string>
-			<key>UTTypeDescription</key>
-			<string>DCX image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>DCX image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.dcx</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -575,15 +575,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.xpm</string>
-			<key>UTTypeDescription</key>
-			<string>XPM image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>XPM image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.xpm</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -593,15 +593,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.wbmp</string>
-			<key>UTTypeDescription</key>
-			<string>WBMP image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>WBMP image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.wbmp</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -611,15 +611,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.sun-raster</string>
-			<key>UTTypeDescription</key>
-			<string>Sun Raster image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>Sun Raster image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.sun-raster</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -630,15 +630,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.ilbm</string>
-			<key>UTTypeDescription</key>
-			<string>Amiga IFF image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>Amiga IFF image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.ilbm</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -650,15 +650,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.pam</string>
-			<key>UTTypeDescription</key>
-			<string>PAM image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>PAM image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.pam</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -668,15 +668,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.farbfeld</string>
-			<key>UTTypeDescription</key>
-			<string>farbfeld image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>farbfeld image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.farbfeld</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -686,15 +686,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.macpaint</string>
-			<key>UTTypeDescription</key>
-			<string>MacPaint image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>MacPaint image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.macpaint</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -705,15 +705,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.xwd</string>
-			<key>UTTypeDescription</key>
-			<string>X Window Dump image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>X Window Dump image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.xwd</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -723,15 +723,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.fits</string>
-			<key>UTTypeDescription</key>
-			<string>FITS image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>FITS image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.fits</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -743,15 +743,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.ani</string>
-			<key>UTTypeDescription</key>
-			<string>Windows animated cursor</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>Windows animated cursor</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.ani</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -761,15 +761,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.openraster</string>
-			<key>UTTypeDescription</key>
-			<string>OpenRaster image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>OpenRaster image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.openraster</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -779,15 +779,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.krita</string>
-			<key>UTTypeDescription</key>
-			<string>Krita image</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>Krita image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.krita</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -797,15 +797,15 @@
 			</dict>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.procreate</string>
-			<key>UTTypeDescription</key>
-			<string>Procreate artwork</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.image</string>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>Procreate artwork</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.procreate</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
