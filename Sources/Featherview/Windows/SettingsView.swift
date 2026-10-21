@@ -21,6 +21,7 @@ enum SettingsWindow {
             let window = NSWindow(contentViewController: tabs)
             window.styleMask = [.titled, .closable]
             controller = NSWindowController(window: window)
+            tabs.fit()  // the first tab's size before the window shows, so opening never animates
         }
         controller?.showWindow(nil)
     }
@@ -33,15 +34,19 @@ private final class SettingsTabs: NSTabViewController {
 
     func add(_ label: String, _ symbol: String, _ view: some View) {
         let index = tabViewItems.count
-        let host = NSHostingController(rootView: view
+        let content = view
             .formStyle(.grouped)  // wraps long labels instead of clipping them at this width
             .toggleStyle(.switch)
             .scrollDisabled(true)
             .frame(width: 560)
             .fixedSize(horizontal: false, vertical: true)
+        // Measured up front: a tab reports its height only once shown, so its first switch would jump.
+        heights[index] = NSHostingController(rootView: content).sizeThatFits(in: NSSize(width: 560, height: 10_000)).height
+        let host = NSHostingController(rootView: content
             .onGeometryChange(for: CGFloat.self, of: \.size.height) { [weak self] in self?.tab(index, height: $0) }
             .frame(minHeight: 0, maxHeight: .infinity, alignment: .top))  // top stays put while the window's height animates
         host.sizingOptions = []
+        host.view.frame = NSRect(x: 0, y: 0, width: 560, height: heights[index] ?? 0)
         host.title = label
         let item = NSTabViewItem(viewController: host)
         item.label = label
@@ -56,10 +61,11 @@ private final class SettingsTabs: NSTabViewController {
 
     private func tab(_ index: Int, height: CGFloat) {
         heights[index] = height
-        if index == selectedTabViewItemIndex { fit() }
+        // Not during the layout pass that reports it: an animated resize there shows only its last frame.
+        if index == selectedTabViewItemIndex { DispatchQueue.main.async { self.fit() } }
     }
 
-    private func fit() {
+    func fit() {
         guard let window = view.window, let height = heights[selectedTabViewItemIndex] else { return }
         var frame = window.frameRect(forContentRect: NSRect(x: 0, y: 0, width: 560, height: height))
         frame.origin = NSPoint(x: window.frame.minX, y: window.frame.maxY - frame.height)
