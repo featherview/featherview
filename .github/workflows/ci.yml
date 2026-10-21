@@ -21,6 +21,8 @@ jobs:
       - name: Build
         run: swift build
       - name: Test
-        run: swift test
+        # shortcut: serial (~2 min); in parallel the run hangs on the 3-core runner, never locally,
+        # find the blocking test when CI needs to be faster.
+        run: swift test --no-parallel
       - name: Bundle
         run: scripts/bundle.sh release

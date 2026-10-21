@@ -111,7 +111,9 @@ import UniformTypeIdentifiers
         return CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, kCGImageAuxiliaryDataTypeISOGainMap) != nil
     }
 
-    @Test(.enabled(if: ImageDecoder.supportsHDR), arguments: ["heic", "avif"])
+    // GitHub's virtual Macs have no encoder for grey HDR HEIC and AVIF; real Macs do.
+    @Test(.enabled(if: ImageDecoder.supportsHDR), .disabled(if: ProcessInfo.processInfo.environment["CI"] != nil),
+          arguments: ["heic", "avif"])
     func greyFloatTIFFKeepsItsPixels(format: String) async throws {
         let input = try greyFloatTIFF()
         let pixel = try firstPixel(try await convert(input, to: format))
