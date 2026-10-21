@@ -61,8 +61,9 @@ private struct FormatStep: View {
                 }
             }
             .formStyle(.grouped)
-            Button("Done") { showingOptions = false }
+            Button { showingOptions = false } label: { Text("Done").foregroundStyle(Theme.onAccent) }
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
                 .padding([.horizontal, .bottom])
         }
         .frame(width: 420)

@@ -184,9 +184,10 @@ It asks instead.
 Featherview looks like a Mac app with a few touches of its own; the app icon (a warm feather on a
 dark tile) carries the identity.
 
-- Colour: controls, selection and focus use the system accent colour, Start included. The feather
-  colours (#ffc766 to #ff7a59) appear only in the About window, the empty-window hint and the disk
-  image.
+- Colour: controls, selection and focus use the app's feather accent (coral in dark, brown in light,
+  never the system blue), Start and every default button included; text on the accent is graphite in
+  dark and white in light. The feather gradient (#ffc766 to #ff7a59) appears only in the About
+  window, the empty-window hint and the disk image.
 - Type: the system font everywhere; tabular figures wherever numbers change in place (status strip,
   batch progress and log).
 - Motion: browsing is instant (no crossfade). A zoom step animates in 120 ms, the info panel slides

@@ -115,7 +115,9 @@ struct AboutView: View {
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Button("Done") { sheetText = nil }.keyboardShortcut(.defaultAction)
+                Button { sheetText = nil } label: { Text("Done").foregroundStyle(Theme.onAccent) }
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
             }
             .padding()
             .frame(width: 520, height: 420)

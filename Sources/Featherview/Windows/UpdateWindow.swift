@@ -90,6 +90,8 @@ private struct UpdateView: View {
                             .foregroundStyle(Theme.labelPrimary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(Theme.rowPadding)
+                            // The notes are English: left to right even in a right-to-left language.
+                            .environment(\.layoutDirection, .leftToRight)
                     }
                     .frame(height: Theme.updateNotesHeight)
                     .background(Theme.cardFill, in: .rect(cornerRadius: Theme.Radius.group))
@@ -102,11 +104,15 @@ private struct UpdateView: View {
                     }
                     Spacer()
                     Button("Later", action: close).keyboardShortcut(.cancelAction)
-                    Button("Download") {
+                    // The label's own colour: a prominent button ignores one set on the button.
+                    Button {
                         NSWorkspace.shared.open(release.link)
                         close()
+                    } label: {
+                        Text("Download").foregroundStyle(Theme.onAccent)
                     }
                     .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
                 }
             }
         }

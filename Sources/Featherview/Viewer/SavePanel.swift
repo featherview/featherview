@@ -79,8 +79,9 @@ enum SavePanel {
                 Form {
                     FormatOptionsView(format: choice.format, options: $choice.options)
                 }
-                Button("Done", action: done)
+                Button(action: done) { Text("Done").foregroundStyle(Theme.onAccent) }
                     .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
             }
             .padding()
             .frame(width: 420)

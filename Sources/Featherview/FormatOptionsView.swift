@@ -120,8 +120,9 @@ struct FormatOptionsView: View {
                 Spacer()
                 Button("Cancel", role: .cancel) { namingProfile = false }
                     .keyboardShortcut(.cancelAction)
-                Button("Save", action: saveProfile)
+                Button(action: saveProfile) { Text("Save").foregroundStyle(Theme.onAccent) }
                     .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
                     .disabled(profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }

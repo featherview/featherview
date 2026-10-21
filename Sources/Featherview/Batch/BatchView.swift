@@ -130,12 +130,15 @@ struct BatchView: View {
                 Spacer()
                 Button("Cancel", role: .cancel) { namingPreset = false }
                     .keyboardShortcut(.cancelAction)
-                Button("Save") {
+                Button {
                     if model.replacesAnotherPreset(presetName) { return confirmingReplace = true }
                     model.savePreset(presetName)
                     namingPreset = false
+                } label: {
+                    Text("Save").foregroundStyle(Theme.onAccent)
                 }
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
                 .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
