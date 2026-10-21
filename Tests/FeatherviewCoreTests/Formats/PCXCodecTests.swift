@@ -61,7 +61,10 @@ import Testing
     }
 
     @Test func sixteenColoursFromFourPlanes() throws {
-        let ega: [UInt8] = (0..<48).map { i -> UInt8 in UInt8(i / 3 * 16 + i % 3) }
+        let ega: [UInt8] = (0..<48).map { (i: Int) -> UInt8 in
+            let value: Int = i / 3 * 16 + i % 3
+            return UInt8(value)
+        }
         // Pixel 0 is index 5 (planes 0 and 2), pixel 1 is index 10 (planes 1 and 3).
         let data = header(bitsPerPixel: 1, planes: 4, width: 2, height: 1, bytesPerLine: 2, ega: ega)
             + [0x80, 0, 0x40, 0, 0x80, 0, 0x40, 0]
@@ -97,7 +100,10 @@ import Testing
     }
 
     @Test func sixteenColoursFromNibblesUncompressed() throws {
-        let ega: [UInt8] = (0..<48).map { i -> UInt8 in UInt8(i / 3 * 16 + i % 3) }
+        let ega: [UInt8] = (0..<48).map { (i: Int) -> UInt8 in
+            let value: Int = i / 3 * 16 + i % 3
+            return UInt8(value)
+        }
         var data = header(bitsPerPixel: 4, planes: 1, width: 3, height: 1, bytesPerLine: 2, ega: ega)
         data[2] = 0  // encoding 0: 0xF0 is a plain byte, not a run
         data += [0x5A, 0xF0]  // indices 5, 10, 15 (+ a padding nibble)

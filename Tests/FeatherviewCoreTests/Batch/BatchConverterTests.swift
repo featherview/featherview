@@ -230,7 +230,8 @@ import Testing
         })
 
         #expect(results.map(\.status) == [.converted, .converted])
-        #expect(results.map { $0.output?.path } == [dir.appendingPathComponent("a 2.jpg").path, dir.appendingPathComponent("b 2.png").path])
+        let expected: [String?] = [dir.appendingPathComponent("a 2.jpg").path, dir.appendingPathComponent("b 2.png").path]
+        #expect(results.map { $0.output?.path } == expected)
         #expect(try results.map { try Data(contentsOf: try #require($0.output)) } == before)
         #expect(try [Data(contentsOf: a), Data(contentsOf: b)] == before)
     }

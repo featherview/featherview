@@ -29,7 +29,8 @@ import Testing
         let image = try pixels(DiskImageArt.render(help: "", scale: 1))
         for x in [300, 620] {
             let p = image[x, DiskImageArt.labelCentreFromTop]
-            #expect((0.2126 * Double(p.r) + 0.7152 * Double(p.g) + 0.0722 * Double(p.b)) / 255 > 0.8)
+            let luminance: Double = 0.2126 * Double(p.r) + 0.7152 * Double(p.g) + 0.0722 * Double(p.b)
+            #expect(luminance / 255 > 0.8)
         }
     }
 

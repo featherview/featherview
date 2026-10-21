@@ -41,10 +41,12 @@ import Testing
     }
 
     @Test func rejectsBadFiles() {
-        #expect(throws: OwnDecodeError.truncated) { try MacPaintDecoder.decode(Data(Self.file().dropLast(2))) }
-        #expect(throws: OwnDecodeError.truncated) { try MacPaintDecoder.decode(Data([UInt8](repeating: 0, count: 100))) }
-        #expect(throws: OwnDecodeError.notThisFormat) {
-            var bytes = Self.file(); bytes[3] = 9; try MacPaintDecoder.decode(Data(bytes))
-        }
+        let cut = Data(Self.file().dropLast(2)), tiny = Data(count: 100)
+        #expect(throws: OwnDecodeError.truncated) { try MacPaintDecoder.decode(cut) }
+        #expect(throws: OwnDecodeError.truncated) { try MacPaintDecoder.decode(tiny) }
+        var wrongVersion = Self.file()
+        wrongVersion[3] = 9
+        let wrongData = Data(wrongVersion)
+        #expect(throws: OwnDecodeError.notThisFormat) { try MacPaintDecoder.decode(wrongData) }
     }
 }
