@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds the disk image: build/Featherview-<version>.dmg, one for every language. Its background has
+# Builds the disk image: build/Featherview-<version>.dmg, a single one for all languages. Its background has
 # room for one language only, so the help text is English (the app itself follows the Mac's language).
 # Usage: scripts/dmg.sh
 set -euo pipefail
