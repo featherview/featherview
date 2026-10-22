@@ -87,4 +87,27 @@ import Testing
         #expect(player.frames.count + player.decodes.count <= 1)
         player.stop()
     }
+
+    @Test func playingBeforeAStepBackDecodesKeepsTheFrames() async throws {
+        let url = try Fixtures.writeAnimatedGIF(to: Fixtures.makeTempDir().appendingPathComponent("a.gif"),
+                                                delays: Array(repeating: 0.05, count: 6), width: 1500, height: 1500)
+        let player = AnimationPlayer(colorSpace: nil)
+        var shown: [CGImage] = []
+        player.onFrame = { shown.append($0) }
+        // Delays far shorter than a frame's decode.
+        player.start(url: url, animation: Animation(delays: Array(repeating: .milliseconds(1), count: 6)), target: .full,
+                     first: Self.bigFirst(), playing: false)
+        player.step(forward: true)
+        for _ in 0..<100 where shown.count < 1 { try await Task.sleep(for: .milliseconds(10)) }
+        player.step(forward: true)
+        for _ in 0..<100 where shown.count < 2 { try await Task.sleep(for: .milliseconds(10)) }
+        player.togglePlaying()
+        await Task.yield()
+        // Back to frame 1, which decodes behind 3 and 4; G before it arrives plays on from the kept frame 2.
+        player.step(forward: false)
+        player.togglePlaying()
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(player.frameCount == 6)
+        player.stop()
+    }
 }

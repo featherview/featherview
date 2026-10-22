@@ -86,6 +86,8 @@ public final class AnimationPlayer {
         playback.togglePlaying()
         pausedFrame = playback.isPlaying ? nil : playback.frame
         if playback.isPlaying {
+            // A step's frame still decoding would show after the frames playing goes on to.
+            generation += 1
             play()
         } else {
             task?.cancel()
@@ -199,10 +201,12 @@ public final class AnimationPlayer {
     private func showFrame(_ index: Int) {
         let generation = generation
         Task {
-            if let image = try? await fetch(index) {
-                guard self.generation == generation else { return }
-                show(image)
-            } else if self.generation == generation, index > 0, index < frameCount {
+            let image: CGImage
+            do {
+                image = try await fetch(index)
+            } catch {
+                // A decode dropped by playing on isn't the file's end.
+                guard error is DecodeError, self.generation == generation, index > 0, index < frameCount else { return }
                 // Past the frames the file holds: it ends at the one before.
                 frameCount = index
                 delays = Array(delays.prefix(index))
@@ -210,7 +214,10 @@ public final class AnimationPlayer {
                 while playback.frame < index - 1, playback.step(forward: true) {}
                 pausedFrame = playback.frame
                 showFrame(playback.frame)
+                return
             }
+            guard self.generation == generation else { return }
+            show(image)
         }
     }
 
