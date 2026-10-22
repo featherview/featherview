@@ -44,6 +44,30 @@ import Testing
     }
 }
 
+@Suite struct DateTakenSeedTests {
+    @Test(arguments: ["2024:05:06 25:00:00", "2024:05:06 12:61:00"])
+    func seedSkipsATimeOutOfRange(_ taken: String) throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8, properties: [
+            kCGImagePropertyExifDictionary: [kCGImagePropertyExifDateTimeOriginal: taken]])
+        let now = try #require(DateTaken.wallTime("2026:01:02 03:04:05"))
+        var d = DateTakenSettings()
+        d.isOn = true; d.mode = .set
+        d.setTo = DateTakenSettings.seed(for: url, now: now)
+        #expect(d.setTo == "2026:01:02 03:04:05")
+        #expect(d.newDate(for: url) == d.setTo)
+    }
+
+    @Test func seedTakesTheInputsDate() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8, properties: [
+            kCGImagePropertyExifDictionary: [kCGImagePropertyExifDateTimeOriginal: "2024:05:06 07:08:09"]])
+        #expect(DateTakenSettings.seed(for: url, now: .now) == "2024:05:06 07:08:09")
+        #expect(DateTakenSettings.seed(for: nil, now: try #require(DateTaken.wallTime("2026:01:02 03:04:05")))
+            == "2026:01:02 03:04:05")
+    }
+}
+
 @Suite struct BatchPreviewNamesTests {
     func photo(_ dir: URL, _ name: String, taken: String) throws -> BatchInput {
         BatchInput(url: try Fixtures.writeImage(to: dir.appendingPathComponent(name), width: 8, height: 8, properties: [

@@ -204,6 +204,11 @@ public struct DateTakenSettings: Codable, Equatable, Sendable {
 
     private var shiftSize: Int { Int(clamping: shiftSeconds.magnitude) }  // abs(Int.min) traps
 
+    /// The first "Set to": `url`'s date taken when it is a valid wall time, else `now` (a wall time).
+    public static func seed(for url: URL?, now: Date = .now.addingTimeInterval(TimeInterval(TimeZone.current.secondsFromGMT()))) -> String {
+        url.flatMap(DateTaken.current).flatMap { DateTaken.wallTime($0) == nil ? nil : $0 } ?? DateTaken.exif(now)
+    }
+
     /// The EXIF date this step gives `url`; nil when off or it can't.
     public func newDate(for url: URL) -> String? {
         guard isOn else { return nil }
