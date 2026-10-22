@@ -1481,6 +1481,8 @@ final class ViewerModel {
     /// View › Zoom and Pan in Step, remembered. On: pane 2 snaps to pane 1's zoom and pan, and pane 1 leads.
     func setCompareInStep(_ on: Bool) {
         UserDefaults.standard.set(on, forKey: AppSettings.compareInStep.key)
+        // Off: pane 2 keeps the matched zoom it shows and is adjusted from there.
+        if !on, compareInStep, let compareSession { compareSession.ownZoom = secondZoom }
         compareInStep = on
         compareLink?.inStep = on
         guard on, let compareLink else { return }
