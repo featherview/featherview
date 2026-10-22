@@ -118,6 +118,7 @@ struct ViewerView: View {
     private func imageCanvas(_ image: CGImage, insets: CanvasInsets, animatesZoom: Bool = true) -> some View {
         ImageCanvas(image: image, player: model.player, size: drawSize(image), pixelWidth: pixelSize(image).width,
                     displayScale: displayScale, background: Theme.background, insets: insets, zoom: model.zoom,
+                    arrival: model.arrival.id, start: model.arrival.start,
                     checkerboard: checkerboard, transform: model.pendingTransform, leaving: model.isLeaving,
                     panController: panController,
                     onDoubleClick: model.toggleFullScreen, onPinch: model.zoom(by:), onSwipe: swiped,
@@ -287,10 +288,16 @@ struct ViewerView: View {
         .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
     }
 
-    /// Fit shrinks large images to the view; a zoom factor scales the file's full pixel size, so a smaller
-    /// decode shown while the full one loads already has its final size (never another file's size).
+    /// Fit shrinks large images to the view; a zoom factor (or a fill mode's, from the fit area) scales the file's
+    /// full pixel size, so a smaller decode shown while the full one loads already has its final size (never
+    /// another file's size).
     private func drawSize(_ image: CGImage) -> CGSize {
-        let factor: Double? = if case .factor(let factor) = model.zoom { factor } else { nil }
+        let factor: Double? = switch model.zoom {
+        case .fit: nil
+        case .factor(let factor): factor
+        case .fillWidth: ZoomSteps.fillFactor(image: pixelSize(image), view: fitArea, displayScale: displayScale, mode: .width)
+        case .fillHeight: ZoomSteps.fillFactor(image: pixelSize(image), view: fitArea, displayScale: displayScale, mode: .height)
+        }
         return ZoomSteps.drawSize(decoded: CGSize(width: image.width, height: image.height), full: fullSize,
                                   factor: factor, view: fitArea, displayScale: displayScale)
     }
@@ -544,7 +551,7 @@ struct ViewerView: View {
         case .flipVertical: model.flip(.vertical)
         case .toggleInfo: if model.canShowInfo { model.showInfo.toggle() }
         case .toggleFullScreen: model.toggleFullScreen()
-        case .fit: model.setZoom(.fit)
+        case .fit: model.setFitMode(.fit)
         case .actualSize: model.setZoom(.factor(1))
         case .zoomIn: model.zoomIn()
         case .zoomOut: model.zoomOut()
@@ -556,7 +563,9 @@ struct ViewerView: View {
         case .saveAs: model.saveAs()
         case .toggleAnimation: model.toggleAnimation()
         case .toggleThumbnails: model.toggleGrid()
-        case .zoomToWidth, .zoomToHeight, .toggleKeepZoom: return false
+        case .zoomToWidth: model.setFitMode(.width)
+        case .zoomToHeight: model.setFitMode(.height)
+        case .toggleKeepZoom: UserDefaults.standard.set(!AppSettings.keepZoom.value(), forKey: AppSettings.keepZoom.key)
         case .swapImages:
             guard model.compareSession != nil else { return false }
             model.swapCompared()
@@ -844,6 +853,7 @@ struct ViewerCommands: Commands {
     @Environment(\.openWindow) private var openWindow
     @AppStorage(toolbarHiddenKey) private var toolbarHidden = false
     @AppStorage(statusBarHiddenKey) private var statusBarHidden = false
+    @AppStorage(AppSettings.keepZoom.key) private var keepZoom = AppSettings.keepZoom.defaultValue
     /// Bumped after a claim, so the menu asks LaunchServices again for the current file's type.
     @State private var claims = 0
 
@@ -1010,8 +1020,10 @@ struct ViewerCommands: Commands {
                     .disabled(model?.availability.canSwap != true)
             }
             Group {
-                Button("Zoom to Fit  (0)") { model?.setZoom(.fit) }
+                Button("Zoom to Fit  (0)") { model?.setFitMode(.fit) }
                 Button("Actual Size  (1)") { model?.setZoom(.factor(1)) }
+                Button("Zoom to Width  (2)") { model?.setFitMode(.width) }
+                Button("Zoom to Height  (3)") { model?.setFitMode(.height) }
             }
             .disabled(model?.availability.hasPicture != true || model?.isGrid == true)
             // In the grid + and − size the thumbnails (Decision 5).
@@ -1025,6 +1037,9 @@ struct ViewerCommands: Commands {
                 }
                 .disabled(model?.availability.hasPicture != true)
             }
+            Divider()
+            Toggle("Keep Zoom  (⇧L)", isOn: $keepZoom)
+                .disabled(model?.isGrid == true)
             Divider()
             SortMenu()
             Divider()

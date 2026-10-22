@@ -1,3 +1,4 @@
+import FeatherviewCore
 import SwiftUI
 
 /// The standard Mac toolbar (spec "Toolbar"): each button does what its key does; the tooltip names the key.
@@ -86,11 +87,25 @@ struct ViewerToolbar: CustomizableToolbarContent {
             }
             ToolbarItem(id: "fit", placement: .primaryAction) {
                 ToolbarButton("Zoom to Fit", "arrow.up.left.and.down.right.magnifyingglass", "Zoom to fit (0)",
-                              enabled: { $0.availability.hasPicture && !$0.isGrid }, model) { $0.setZoom(.fit) }
+                              enabled: { $0.availability.hasPicture && !$0.isGrid }, model) { $0.setFitMode(.fit) }
             }
             ToolbarItem(id: "zoomIn", placement: .primaryAction) {
                 ToolbarButton("Zoom In", "plus.magnifyingglass", "Zoom in (+)", enabled: { $0.availability.hasPicture && !$0.isGrid }, model) { $0.zoomIn() }
             }
+            ToolbarItem(id: "zoomToWidth", placement: .primaryAction) {
+                ToolbarButton("Zoom to Width", "arrow.left.and.right", "Zoom to width (2)",
+                              enabled: { $0.availability.hasPicture && !$0.isGrid }, model) { $0.setFitMode(.width) }
+            }
+            .defaultCustomization(.hidden)
+            ToolbarItem(id: "zoomToHeight", placement: .primaryAction) {
+                ToolbarButton("Zoom to Height", "arrow.up.and.down", "Zoom to height (3)",
+                              enabled: { $0.availability.hasPicture && !$0.isGrid }, model) { $0.setFitMode(.height) }
+            }
+            .defaultCustomization(.hidden)
+            ToolbarItem(id: "keepZoom", placement: .primaryAction) {
+                KeepZoomToggle(model: model)
+            }
+            .defaultCustomization(.hidden)
             ToolbarItem(id: "info", placement: .primaryAction) {
                 InfoToggle(model: model)
             }
@@ -138,6 +153,18 @@ private struct InfoToggle: View {
         Toggle("Info", systemImage: "info.circle", isOn: $model.showInfo)
             .help("Show info (I)")
             .disabled(!model.canShowInfo)
+    }
+}
+
+/// Keep Zoom: on while a new image keeps the zoom and scroll position of the one before.
+private struct KeepZoomToggle: View {
+    let model: ViewerModel
+    @AppStorage(AppSettings.keepZoom.key) private var keepZoom = AppSettings.keepZoom.defaultValue
+
+    var body: some View {
+        Toggle("Keep Zoom", systemImage: "pin", isOn: $keepZoom)
+            .help("Keep zoom (⇧L)")
+            .disabled(model.isGrid)
     }
 }
 
