@@ -12,8 +12,11 @@ public enum ImageEncoder {
     /// than the first. Metadata of `source` (camera, EXIF, GPS, IPTC) is kept where the format and
     /// "keep metadata" allow; the orientation tag is always 1. `dpi` is written for ImageIO formats.
     /// `hdr` writes HEIC and AVIF with a gain map, for pixels decoded as HDR (`ImageDecoder.isHDR`).
+    /// `dateTaken` ("yyyy:MM:dd HH:mm:ss") goes into EXIF and TIFF dates of ImageIO formats, also
+    /// with "keep metadata" off; own encoders and PDF ignore it.
     public static func encode(_ pages: [CGImage], as format: OutputFormat, options: FormatOptions,
-                              metadataFrom source: URL? = nil, dpi: Int? = nil, hdr: Bool = false) throws -> Data {
+                              metadataFrom source: URL? = nil, dpi: Int? = nil, hdr: Bool = false,
+                              dateTaken: String? = nil) throws -> Data {
         guard let first = pages.first else { throw EncodeError.failed }
         switch format.writer {
         case .pdf: return try pdf(pages, options)
@@ -32,6 +35,15 @@ public enum ImageEncoder {
             if let dpi, dpi > 0 {
                 metadata[kCGImagePropertyDPIWidth] = dpi
                 metadata[kCGImagePropertyDPIHeight] = dpi
+            }
+            if let dateTaken {
+                var exif = metadata[kCGImagePropertyExifDictionary] as? [CFString: Any] ?? [:]
+                exif[kCGImagePropertyExifDateTimeOriginal] = dateTaken
+                exif[kCGImagePropertyExifDateTimeDigitized] = dateTaken
+                metadata[kCGImagePropertyExifDictionary] = exif
+                var tiff = metadata[kCGImagePropertyTIFFDictionary] as? [CFString: Any] ?? [:]
+                tiff[kCGImagePropertyTIFFDateTime] = dateTaken
+                metadata[kCGImagePropertyTIFFDictionary] = tiff
             }
             if format.optionFields.contains(.targetSize), let kb = options.targetSizeKB, kb > 0 {
                 return try targetSize(first, type: type, format: format, options: options, metadata: metadata,
