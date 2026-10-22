@@ -9,6 +9,7 @@ extension ViewerModel {
     /// it check if switching orders on a slow disk queues up reads.
     func applySortOrder() {
         sortTask?.cancel()
+        sortedOrder = .stored()
         let scan = openTask
         sortTask = Task {
             await scan?.value

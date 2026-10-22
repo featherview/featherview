@@ -128,6 +128,8 @@ final class ViewerModel {
     /// View › Sort By: each listed file's value for `sortValuesKey`, read off the main thread (ViewerModel+Sort).
     @ObservationIgnored var sortValues: [URL: SortValue] = [:]
     @ObservationIgnored var sortValuesKey = SortKey.name
+    /// The order the list is in, or is being re-sorted into: a window that missed a change re-sorts when it comes back.
+    @ObservationIgnored var sortedOrder = SortOrder.finder
     /// The re-sort running (Date Taken after an open, a new sort order); the next open cancels it.
     @ObservationIgnored var sortTask: Task<Void, Never>?
 
@@ -234,6 +236,7 @@ final class ViewerModel {
         let order = SortOrder.stored()
         // Date Taken reads every file's header: the list starts in name order and re-sorts after the first image.
         let listOrder = order.readsFileHeaders ? SortOrder.finder : order
+        sortedOrder = listOrder
         closeGrid()
         if !keepingCompare { leaveCompare() }
         // Its decode may be dropped by the refocus below; cancelled, it ends quietly instead of showing an error.
@@ -710,6 +713,8 @@ final class ViewerModel {
     /// Called when this viewer's window becomes key: now its neighbours are worth decoding.
     func becameActive() {
         updateAvailability()  // "Past the end of a folder" may have changed in Preferences
+        // View › Sort By may have changed while this window was closed (its onChange didn't run).
+        if sortedOrder != .stored() { applySortOrder() }
         // Pane 2's file may have been trashed or moved in Finder meanwhile.
         if let compareSession, compareSession.errorMessage == nil, !FileManager.default.fileExists(atPath: compareSession.url.path) {
             secondFailed(compareSession, url: compareSession.url)
