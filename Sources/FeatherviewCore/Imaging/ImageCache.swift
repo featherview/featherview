@@ -8,6 +8,14 @@ public enum DecodeTarget: Hashable, Sendable {
     case full
     case fit([PixelSize])
     case step(Int)
+    /// A grid cell's picture, longest side at most this (`ImageDecoder.thumbnail`).
+    case thumbnail(Int)
+
+    /// Whether an image decoded for `self` may be shown for `wanted`: the same target, or a larger thumbnail.
+    func serves(_ wanted: DecodeTarget) -> Bool {
+        if case .thumbnail(let have) = self, case .thumbnail(let want) = wanted { return have >= want }
+        return self == wanted
+    }
 }
 
 /// Decoded images for display, least recently used evicted first. Decodes use halving steps, so an
@@ -15,6 +23,7 @@ public enum DecodeTarget: Hashable, Sendable {
 /// used only for the target it was decoded for. Running decodes are joined only for the same target.
 public actor ImageCache {
     private let capacity: Int
+    private let byteBudget: Int?
     private let hdr: Bool
     private let colorSpace: CGColorSpace?
     private var images: [URL: (target: DecodeTarget, image: CGImage)] = [:]
@@ -23,9 +32,11 @@ public actor ImageCache {
     private let queue: DecodeQueue
 
     /// `colorSpace`: the screen's, see `ImageDecoder.decode`. `queue` runs the decodes; caches that share one
-    /// share its threads and its window.
-    public init(capacity: Int = 8, hdr: Bool = false, colorSpace: CGColorSpace? = nil, queue: DecodeQueue = DecodeQueue()) {
+    /// share its threads and its window. `byteBudget`: at most this many `decodedBytes` are kept as well.
+    public init(capacity: Int = 8, hdr: Bool = false, colorSpace: CGColorSpace? = nil, queue: DecodeQueue = DecodeQueue(),
+                byteBudget: Int? = nil) {
         self.capacity = capacity
+        self.byteBudget = byteBudget
         self.hdr = hdr
         self.colorSpace = colorSpace
         self.queue = queue
@@ -35,7 +46,7 @@ public actor ImageCache {
     /// A decode that every caller has given up on (task cancelled) is skipped if it hasn't started.
     public func image(for url: URL, target: DecodeTarget) async throws -> CGImage {
         try Task.checkCancellation()
-        if let hit = images[url], hit.target == target {
+        if let hit = images[url], hit.target.serves(target) {
             touch(url)
             return hit.image
         }
@@ -47,13 +58,16 @@ public actor ImageCache {
             let hdr = hdr, colorSpace = colorSpace, queue = queue
             let screens: [PixelSize]? = if case .fit(let screens) = target { screens } else { nil }
             let step: Int? = if case .step(let step) = target { step } else { nil }
+            let side: Int? = if case .thumbnail(let side) = target { side } else { nil }
+            let label = side.map { "thumb \($0)" } ?? (screens != nil ? "fit" : step.map { "step \($0)" } ?? "full")
             task = Task.detached(priority: .userInitiated) {
                 try await queue.run(url) {
                     try Signposts.poster.withIntervalSignpost(
                     "Decode", id: Signposts.poster.makeSignpostID(),
-                    "\(url.lastPathComponent, privacy: .public) \(screens != nil ? "fit" : step.map { "step \($0)" } ?? "full", privacy: .public)"
+                    "\(url.lastPathComponent, privacy: .public) \(label, privacy: .public)"
                     ) {
-                        try ImageDecoder.decode(url, halvingSteps: true, fitting: screens, step: step, hdr: hdr, colorSpace: colorSpace)
+                        if let side { try ImageDecoder.thumbnail(url, side: side, colorSpace: colorSpace) }
+                        else { try ImageDecoder.decode(url, halvingSteps: true, fitting: screens, step: step, hdr: hdr, colorSpace: colorSpace) }
                     }
                 }
             }
@@ -80,7 +94,7 @@ public actor ImageCache {
 
     /// Warms the cache in the background. Failures are ignored here; they surface when shown.
     public func prefetch(_ urls: [URL], target: DecodeTarget) {
-        for url in urls where images[url]?.target != target && inFlight[url] == nil {
+        for url in urls where images[url]?.target.serves(target) != true && inFlight[url] == nil {
             Task { _ = try? await self.image(for: url, target: target) }
         }
     }
@@ -115,6 +129,13 @@ public actor ImageCache {
         images[url] = (target, image)
         touch(url)
         while order.count > capacity { images[order.removeFirst()] = nil }
+        // The image just stored stays, even alone over the budget: its caller is about to show it.
+        if let byteBudget {
+            var bytes = decodedBytes
+            while bytes > byteBudget, order.count > 1, let oldest = images.removeValue(forKey: order.removeFirst()) {
+                bytes -= oldest.image.bytesPerRow * oldest.image.height
+            }
+        }
     }
 }
 

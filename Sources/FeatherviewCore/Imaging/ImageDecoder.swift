@@ -129,6 +129,53 @@ public enum ImageDecoder {
         return halvingSteps ? inColorSpace(image, colorSpace) : image
     }
 
+    /// A grid cell's picture: page / frame 0, upright, longest side `min(side, image's longest)`, 8 bits,
+    /// drawn into `colorSpace` like display decodes. The file's embedded thumbnail when `acceptsEmbedded`,
+    /// else a downsampled decode.
+    public static func thumbnail(_ url: URL, side: Int, colorSpace: CGColorSpace?) throws -> CGImage {
+        func display(_ image: CGImage) throws -> CGImage {
+            guard let eight = eightBit(image) else { throw DecodeError.unreadable(url) }
+            return inColorSpace(eight, colorSpace)
+        }
+        if let own = OwnDecoders.format(for: url) {
+            let image: CGImage
+            do {
+                let data = try Data(contentsOf: url, options: .mappedIfSafe)
+                image = try own.decode(data, 0, side)
+            } catch {
+                throw DecodeError.unreadable(url)
+            }
+            return try display(scaled(image, longestSide: side) ?? image)
+        }
+        guard let size = displaySize(of: url),
+              let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary)
+        else { throw DecodeError.unreadable(url) }
+        let full = PixelSize(width: Int(size.width), height: Int(size.height))
+        // Neither FromImage* flag: ImageIO returns the embedded thumbnail if there is one, else decodes at `side`.
+        var options: [CFString: Any] = [
+            kCGImageSourceThumbnailMaxPixelSize: side,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+        ]
+        if let first = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary),
+           acceptsEmbedded(PixelSize(width: first.width, height: first.height), image: full, side: side) {
+            return try display(first)
+        }
+        options[kCGImageSourceCreateThumbnailFromImageAlways] = true
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+        else { throw DecodeError.unreadable(url) }
+        return try display(image)
+    }
+
+    /// Whether an embedded thumbnail of `thumb` may stand in for an image of `image` (both upright) at
+    /// `side`: it covers the side and has the image's aspect within 2 % (no letterbox bars).
+    static func acceptsEmbedded(_ thumb: PixelSize, image: PixelSize, side: Int) -> Bool {
+        guard thumb.height > 0, image.height > 0 else { return false }
+        let aspect = Double(image.width) / Double(image.height)
+        return max(thumb.width, thumb.height) >= min(side, max(image.width, image.height))
+            && abs(Double(thumb.width) / Double(thumb.height) - aspect) <= 0.02 * aspect
+    }
+
     /// An 8-bit display decode drawn into `colorSpace` (see `decode`); anything else unchanged.
     static func inColorSpace(_ image: CGImage, _ colorSpace: CGColorSpace?) -> CGImage {
         guard let colorSpace, image.bitsPerComponent == 8, image.colorSpace != colorSpace else { return image }

@@ -154,4 +154,42 @@ enum Fixtures {
         try Data(bytes: data.bytes, count: data.size).write(to: url)
         return url
     }
+
+    /// A red 4000 × 3000 JPEG carrying the EXIF APP1 segment, with its embedded 160 × 120 thumbnail, of a
+    /// blue JPEG of the same size: a decode shows red, the embedded thumbnail blue.
+    @discardableResult
+    static func writeJPEGWithForeignThumbnail(to url: URL) throws -> URL {
+        func jpeg(red: CGFloat, blue: CGFloat, embedThumbnail: Bool) throws -> [UInt8] {
+            let context = CGContext(data: nil, width: 4000, height: 3000, bitsPerComponent: 8, bytesPerRow: 0,
+                                    space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                    bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+            context.setFillColor(CGColor(red: red, green: 0, blue: blue, alpha: 1))
+            context.fill(CGRect(x: 0, y: 0, width: 4000, height: 3000))
+            let data = NSMutableData()
+            guard let dest = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil)
+            else { throw CocoaError(.fileWriteUnknown) }
+            CGImageDestinationAddImage(dest, context.makeImage()!,
+                                       [kCGImageDestinationEmbedThumbnail: embedThumbnail,
+                                        kCGImagePropertyOrientation: 1] as CFDictionary)
+            guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
+            return [UInt8](data as Data)
+        }
+        /// The APP1 (EXIF) segment's bytes, marker included; segments end at start-of-scan.
+        func app1(_ bytes: [UInt8]) -> Range<Int>? {
+            var i = 2
+            while i + 4 <= bytes.count, bytes[i] == 0xFF, bytes[i + 1] != 0xDA {
+                let end = i + 2 + (Int(bytes[i + 2]) << 8 | Int(bytes[i + 3]))
+                if bytes[i + 1] == 0xE1 { return i..<end }
+                i = end
+            }
+            return nil
+        }
+        let blue = try jpeg(red: 0, blue: 1, embedThumbnail: true)
+        var red = try jpeg(red: 1, blue: 0, embedThumbnail: false)
+        guard let exif = app1(blue) else { throw CocoaError(.fileWriteUnknown) }
+        let at = app1(red) ?? 2..<2
+        red.replaceSubrange(at, with: blue[exif])
+        try Data(red).write(to: url)
+        return url
+    }
 }

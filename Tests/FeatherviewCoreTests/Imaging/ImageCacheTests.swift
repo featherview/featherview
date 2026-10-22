@@ -158,4 +158,42 @@ import Testing
         #expect(try await cache.image(for: url, target: .step(0)).width == 400)
         #expect(try await cache.image(for: url, target: .step(2)).width == 100)
     }
+
+    @Test func byteBudgetEvicts() async throws {
+        let dir = try Fixtures.makeTempDir()
+        let files = try (0..<3).map {
+            try Fixtures.writeImage(to: dir.appendingPathComponent("\($0).jpg"), width: 100, height: 100)
+        }
+        let one = try ImageDecoder.decode(files[0], halvingSteps: true)
+        let cache = ImageCache(capacity: 10, byteBudget: 2 * one.bytesPerRow * one.height)
+        for file in files { _ = try await cache.image(for: file, target: .full) }
+        #expect(await cache.count == 2)
+        #expect(await !cache.contains(files[0]))
+    }
+
+    @Test func largerThumbnailServesSmaller() async throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("a.jpg"), width: 400, height: 300)
+        let cache = ImageCache()
+        let large = try await cache.image(for: url, target: .thumbnail(256))
+        let small = try await cache.image(for: url, target: .thumbnail(128))
+        #expect(large === small)
+    }
+
+    @Test func smallerThumbnailDoesNotServeLarger() async throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("a.jpg"), width: 400, height: 300)
+        let cache = ImageCache()
+        let small = try await cache.image(for: url, target: .thumbnail(128))
+        let large = try await cache.image(for: url, target: .thumbnail(256))
+        #expect(small !== large)
+        #expect(large.width == 256)
+    }
+
+    @Test func thumbnailNeverServesFit() async throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("a.jpg"), width: 1000, height: 750)
+        let cache = ImageCache()
+        let thumb = try await cache.image(for: url, target: .thumbnail(512))
+        let fit = try await cache.image(for: url, target: .fit([PixelSize(width: 2000, height: 2000)]))
+        #expect(thumb !== fit)
+        #expect(fit.width == 1000)
+    }
 }
