@@ -126,16 +126,46 @@ public enum ImageDecoder {
                               hdr: Bool = false, colorSpace: CGColorSpace? = nil) throws -> CGImage {
         let image = try decodeFile(url, maxPixelSize: maxPixelSize, halvingSteps: halvingSteps, screens: screens,
                                    step: step, page: page, hdr: hdr)
-        guard halvingSteps, let colorSpace, image.bitsPerComponent == 8, image.colorSpace != colorSpace else { return image }
+        return halvingSteps ? inColorSpace(image, colorSpace) : image
+    }
+
+    /// An 8-bit display decode drawn into `colorSpace` (see `decode`); anything else unchanged.
+    static func inColorSpace(_ image: CGImage, _ colorSpace: CGColorSpace?) -> CGImage {
+        guard let colorSpace, image.bitsPerComponent == 8, image.colorSpace != colorSpace else { return image }
         return redrawn(image, width: image.width, height: image.height, in: colorSpace) ?? image
+    }
+
+    /// The longest side to decode an image of `size` at for `screens` (`fitDecodeSize`, or with `exact`
+    /// `fitNeededSize`) or for halving step `step`; nil when neither is given.
+    static func targetSize(_ size: CGSize, screens: [PixelSize]?, step: Int?, exact: Bool) -> Int? {
+        if let step { return stepSize(full: Int(max(size.width, size.height)), step: step) }
+        let image = PixelSize(width: Int(size.width), height: Int(size.height))
+        return screens.map { exact ? fitNeededSize(image: image, screens: $0) : fitDecodeSize(image: image, screens: $0) }
+    }
+
+    /// ImageIO options for an upright display decode whose longest side is at most `maxPixelSize`,
+    /// its pixels decoded now rather than at first draw.
+    static func thumbnailOptions(maxPixelSize: Int) -> [CFString: Any] {
+        [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+        ]
+    }
+
+    /// A deep SDR display decode (16-bit PNG/TIFF, float TIFF, EXR) at 8 bits: callers treat > 8 bits
+    /// as HDR and the cache budget assumes 8. nil if it can't be drawn.
+    static func eightBit(_ image: CGImage) -> CGImage? {
+        guard image.bitsPerComponent > 8 else { return image }
+        return redrawn(image, width: image.width, height: image.height,
+                       in: image.colorSpace.flatMap(sdrSpace) ?? CGColorSpace(name: CGColorSpace.sRGB)!)
     }
 
     private static func decodeFile(_ url: URL, maxPixelSize: Int?, halvingSteps: Bool, screens: [PixelSize]?,
                                    step: Int?, page: Int, hdr: Bool) throws -> CGImage {
         func fit(_ size: CGSize, exact: Bool = false) -> Int? {
-            if let step { return stepSize(full: Int(max(size.width, size.height)), step: step) }
-            let image = PixelSize(width: Int(size.width), height: Int(size.height))
-            return screens.map { exact ? fitNeededSize(image: image, screens: $0) : fitDecodeSize(image: image, screens: $0) }
+            targetSize(size, screens: screens, step: step, exact: exact)
         }
         if let own = OwnDecoders.format(for: url) {
             do {
@@ -152,14 +182,9 @@ public enum ImageDecoder {
               let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary)
         else { throw DecodeError.unreadable(url) }
         let full = Int(max(size.width, size.height))
-        var options: [CFString: Any] = [
-            kCGImageSourceCreateThumbnailFromImageAlways: true,
-            kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceShouldCacheImmediately: true,
-            kCGImageSourceThumbnailMaxPixelSize: fit(size, exact: decodesAtExactFit(url)) ?? (halvingSteps
-                ? decodeSize(full: full, target: maxPixelSize ?? full)
-                : min(maxPixelSize ?? full, full)),
-        ]
+        var options = thumbnailOptions(maxPixelSize: fit(size, exact: decodesAtExactFit(url)) ?? (halvingSteps
+            ? decodeSize(full: full, target: maxPixelSize ?? full)
+            : min(maxPixelSize ?? full, full)))
         let wantsHDR = hdr && supportsHDR
         if wantsHDR { options[kCGImageSourceDecodeRequest] = kCGImageSourceDecodeToHDR }
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, page, options as CFDictionary)
@@ -173,11 +198,7 @@ public enum ImageDecoder {
             else { throw DecodeError.unreadable(url) }
             return half
         }
-        // 16-bit PNG/TIFF, float TIFF and EXR decode deep even as SDR; callers treat > 8 bits as HDR
-        // and the cache budget assumes 8.
-        guard let eight = redrawn(image, width: image.width, height: image.height,
-                                  in: image.colorSpace.flatMap(sdrSpace) ?? CGColorSpace(name: CGColorSpace.sRGB)!)
-        else { throw DecodeError.unreadable(url) }
+        guard let eight = eightBit(image) else { throw DecodeError.unreadable(url) }
         return eight
     }
 
