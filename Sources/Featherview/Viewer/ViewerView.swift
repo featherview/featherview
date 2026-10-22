@@ -124,7 +124,7 @@ struct ViewerView: View {
                     onDoubleClick: model.toggleFullScreen, onPinch: model.zoom(by:), onSwipe: swiped,
                     onClick: clickedImage,
                     onFirstDraw: { toolbarReady = true; model.firstImageDrawn() },
-                    onCommit: model.imageCommitted, animatesZoom: animatesZoom)
+                    onCommit: model.imageCommitted, animatesZoom: animatesZoom, compareLink: model.compareLink)
             .contextMenu { ImageContextMenu(model: model) }
             // Under the glass toolbar and the status strip; `insets` keeps a fit image clear of them.
             .ignoresSafeArea()
@@ -552,7 +552,7 @@ struct ViewerView: View {
         case .toggleInfo: if model.canShowInfo { model.showInfo.toggle() }
         case .toggleFullScreen: model.toggleFullScreen()
         case .fit: model.setFitMode(.fit)
-        case .actualSize: model.setZoom(.factor(1))
+        case .actualSize: model.actualSize()
         case .zoomIn: model.zoomIn()
         case .zoomOut: model.zoomOut()
         case .open: model.showOpenPanel()
@@ -1018,10 +1018,12 @@ struct ViewerCommands: Commands {
             if model?.compareSession != nil {
                 Button("Swap Images  (X)") { model?.swapCompared() }
                     .disabled(model?.availability.canSwap != true)
+                Toggle("Zoom and Pan in Step", isOn: Binding(get: { model?.compareInStep == true },
+                                                              set: { model?.setCompareInStep($0) }))
             }
             Group {
                 Button("Zoom to Fit  (0)") { model?.setFitMode(.fit) }
-                Button("Actual Size  (1)") { model?.setZoom(.factor(1)) }
+                Button("Actual Size  (1)") { model?.actualSize() }
                 Button("Zoom to Width  (2)") { model?.setFitMode(.width) }
                 Button("Zoom to Height  (3)") { model?.setFitMode(.height) }
             }

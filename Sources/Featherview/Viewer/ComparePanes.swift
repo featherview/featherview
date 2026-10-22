@@ -49,7 +49,8 @@ struct ComparePanes<First: View>: View {
             ImageCanvas(image: image, size: drawSize(image), pixelWidth: pixelSize(image).width, displayScale: displayScale,
                         background: Theme.background, insets: insets, zoom: model.secondZoom, checkerboard: checkerboard,
                         panController: secondPan, onDoubleClick: model.toggleFullScreen, onPinch: model.zoom(by:),
-                        onSwipe: onSwipe, onClick: onClick, onCommit: model.secondCommitted, animatesZoom: false)
+                        onSwipe: onSwipe, onClick: onClick, onCommit: model.secondCommitted, animatesZoom: false,
+                        compareLink: model.compareLink, pane: .second)
                 .contextMenu {
                     Button("Swap Images") { model.swapCompared() }
                         .disabled(!model.availability.canSwap)
