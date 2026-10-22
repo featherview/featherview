@@ -186,6 +186,39 @@ import Testing
         #expect(show.current == u(4))
     }
 
+    @Test func failedAtTheStartTurnsBack() {
+        var show = Slideshow(urls: urls(5), from: u(1), options: options(), seed: 1)
+        _ = show.step(forward: true)  // at 2
+        #expect(show.step(forward: false) == u(1))
+        #expect(show.failed(u(1)) == u(2))
+        #expect(!show.isFinished)
+        #expect(show.step(forward: true) == u(3))
+    }
+
+    @Test func failedAtTheEndFinishesOnThePrevious() {
+        var show = Slideshow(urls: urls(5), from: u(4), options: options(), seed: 1)
+        #expect(advance(&show, at: t0) == u(5))
+        #expect(show.failed(u(5)) == u(4))
+        #expect(show.isFinished)
+        #expect(show.current == u(4))
+        show.shown(u(4), at: t0)
+        #expect(show.due == nil)
+    }
+
+    @Test func failedRunCrossingRoundsFindsTheReadableOne() {
+        for seed in UInt64(1)...200 {
+            var show = Slideshow(urls: urls(4), from: u(1), options: options(shuffle: true, repeats: true), seed: seed)
+            var next = advance(&show, at: t0)
+            var tries = 0
+            while let url = next, url != u(1), tries < 20 {
+                next = show.failed(url)
+                tries += 1
+            }
+            #expect(next == u(1), "seed \(seed)")
+            #expect(!show.isFinished)
+        }
+    }
+
     @Test func shownResetsTheFailureRun() {
         var show = Slideshow(urls: urls(3), from: u(1), options: options(repeats: true), seed: 1)
         #expect(show.failed(u(1)) == u(2))
@@ -225,6 +258,19 @@ import Testing
         #expect(show.remove(u(1)) == nil)
         #expect(show.current == u(3))
         #expect(show.step(forward: true) == u(4))
+    }
+
+    @Test func removeLastOfRoundFinishesOnFinderNeighbour() {
+        var show = Slideshow(urls: urls(5), from: u(5), options: options(), seed: 1)
+        #expect(show.remove(u(5)) == u(4))
+        #expect(show.current == u(4))
+        #expect(show.isFinished)
+        var first = Slideshow(urls: urls(3), from: u(1), options: options(), seed: 1)
+        _ = first.step(forward: true)
+        #expect(first.remove(u(1)) == nil)  // not current
+        #expect(first.remove(u(2)) == u(3))
+        #expect(first.remove(u(3)) == nil)  // the last one gone
+        #expect(first.isFinished)
     }
 
     @Test func removeLastLeftFinishes() {

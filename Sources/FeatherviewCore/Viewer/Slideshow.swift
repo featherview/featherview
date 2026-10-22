@@ -34,7 +34,8 @@ public struct Slideshow: Equatable, Sendable {
     private var nextRound: [URL] = []
     private var generator: SplitMix64
     private var forward = true
-    private var failures = 0
+    /// The images that couldn't be shown since the last one that could.
+    private var failedRun: Set<URL> = []
 
     /// The first round plays from `current` (or the first image when it isn't listed).
     public init(urls: [URL], from current: URL, options: Options, seed: UInt64) {
@@ -52,7 +53,7 @@ public struct Slideshow: Equatable, Sendable {
     /// `current` is on screen: its interval starts now (only while playing).
     public mutating func shown(_ url: URL, at now: ContinuousClock.Instant) {
         guard url == current else { return }
-        failures = 0
+        failedRun = []
         if isPlaying { due = now + options.interval }
     }
 
@@ -98,18 +99,31 @@ public struct Slideshow: Equatable, Sendable {
         if due != nil { due = now + options.interval }
     }
 
-    /// `url` couldn't be shown: the next one in the direction of travel. After as many failures in
-    /// a row as there are images, nil and finished on the last one.
+    /// `url` couldn't be shown: the next one in the direction of travel that hasn't failed since the
+    /// last image shown, turning back at an end of the order (finished there when it was the end).
+    /// Nil and finished on `url` when every image of the order failed in a row.
     public mutating func failed(_ url: URL) -> URL? {
         guard url == current else { return nil }
-        failures += 1
-        guard failures < urls.count else { return finish() }
-        return (forward ? step(forward: true) : step(forward: false)) ?? finish()
+        failedRun.insert(url)
+        guard !failedRun.isSuperset(of: urls) else { return finish() }
+        var direction = forward
+        var turned = false
+        while true {
+            if let next = step(forward: direction) {
+                if failedRun.contains(next) { continue }
+                if turned, !direction { _ = finish() }
+                return next
+            }
+            if turned { return finish() }
+            direction.toggle()
+            turned = true
+        }
     }
 
     /// Drops `url` (Trash, move). If it was current: the next image in play order, else the previous
-    /// one; nil and finished when none is left.
+    /// one, else (the round ran out) finished on its Finder neighbour; nil and finished when none is left.
     public mutating func remove(_ url: URL) -> URL? {
+        let finderIndex = urls.firstIndex(of: url) ?? 0
         urls.removeAll { $0 == url }
         let wasCurrent = url == current
         if let index = round.firstIndex(of: url) {
@@ -122,7 +136,12 @@ public struct Slideshow: Equatable, Sendable {
         if current != nil { return current }
         if options.repeats, !nextRound.isEmpty { startNextRound(); return current }
         if position > 0 { position -= 1; return current }
-        return finish()
+        guard !urls.isEmpty else { return finish() }
+        round = [urls[min(finderIndex, urls.count - 1)]]
+        position = 0
+        drawNextRound()
+        _ = finish()
+        return current
     }
 
     /// Interval changes apply to the image on screen (`shownAt`); Shuffle restarts the round from it.
