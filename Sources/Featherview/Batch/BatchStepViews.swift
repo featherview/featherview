@@ -28,6 +28,8 @@ struct BatchCardBody: View {
         case .border: BorderStepView(s: $model.settings.border)
         case .text: TextStepView(s: $model.settings.text)
         case .watermark: WatermarkStepView(s: $model.settings.watermark)
+        // shortcut: no settings rows yet, until the batch window task adds them.
+        case .frames, .tiles, .dateTaken: EmptyView()
         }
     }
 }

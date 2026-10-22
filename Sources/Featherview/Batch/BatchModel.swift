@@ -17,6 +17,9 @@ extension BatchCard {
         case .border: "Border"
         case .text: "Text"
         case .watermark: "Watermark"
+        case .frames: "Frames and Pages"
+        case .tiles: "Tiles"
+        case .dateTaken: "Date Taken"
         }
     }
 }
