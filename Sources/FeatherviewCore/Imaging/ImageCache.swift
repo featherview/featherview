@@ -26,7 +26,9 @@ public actor ImageCache {
     private let byteBudget: Int?
     private let hdr: Bool
     private let colorSpace: CGColorSpace?
-    private var images: [URL: (target: DecodeTarget, image: CGImage)] = [:]
+    // Behind a lock, not only the actor: `cached` answers without a hop.
+    private nonisolated let kept = OSAllocatedUnfairLock<[URL: (target: DecodeTarget, image: CGImage)]>(initialState: [:])
+    private var images: [URL: (target: DecodeTarget, image: CGImage)] { kept.withLock { $0 } }
     private var order: [URL] = []  // least recently used first
     private var inFlight: [URL: (target: DecodeTarget, task: Task<CGImage, Error>)] = [:]
     // Per task, not per URL: a decode a newer request took over from must still be cancellable by its waiters.
@@ -105,14 +107,19 @@ public actor ImageCache {
         }
     }
 
+    /// The kept image for `url` if it serves `target`, at once and from any thread; doesn't count as a use.
+    public nonisolated func cached(_ url: URL, target: DecodeTarget) -> CGImage? {
+        kept.withLock { $0[url] }.flatMap { $0.target.serves(target) ? $0.image : nil }
+    }
+
     public func remove(_ url: URL) {
-        images[url] = nil
+        drop(url)
         inFlight[url] = nil
         order.removeAll { $0 == url }
     }
 
     public func removeAll() {
-        images = [:]
+        kept.withLock { $0 = [:] }
         inFlight = [:]
         order = []
     }
@@ -131,14 +138,19 @@ public actor ImageCache {
         order.append(url)
     }
 
+    @discardableResult
+    private func drop(_ url: URL) -> (target: DecodeTarget, image: CGImage)? {
+        kept.withLock { $0.removeValue(forKey: url) }
+    }
+
     private func store(_ image: CGImage, _ target: DecodeTarget, for url: URL) {
-        images[url] = (target, image)
+        kept.withLock { $0[url] = (target, image) }
         touch(url)
-        while order.count > capacity { images[order.removeFirst()] = nil }
+        while order.count > capacity { drop(order.removeFirst()) }
         // The image just stored stays, even alone over the budget: its caller is about to show it.
         if let byteBudget {
             var bytes = decodedBytes
-            while bytes > byteBudget, order.count > 1, let oldest = images.removeValue(forKey: order.removeFirst()) {
+            while bytes > byteBudget, order.count > 1, let oldest = drop(order.removeFirst()) {
                 bytes -= oldest.image.bytesPerRow * oldest.image.height
             }
         }

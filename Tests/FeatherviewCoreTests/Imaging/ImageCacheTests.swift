@@ -232,4 +232,20 @@ import os
         #expect(thumb !== fit)
         #expect(fit.width == 1000)
     }
+
+    /// The grid shows a kept picture in the same frame from it; it never holds what the budget evicted.
+    @Test func cachedAnswersAtOnceWithKeptImagesOnly() async throws {
+        let dir = try Fixtures.makeTempDir()
+        let files = try (0..<3).map {
+            try Fixtures.writeImage(to: dir.appendingPathComponent("\($0).jpg"), width: 400, height: 300)
+        }
+        let one = try await ImageCache().image(for: files[0], target: .thumbnail(128))
+        let cache = ImageCache(capacity: .max, byteBudget: 2 * one.bytesPerRow * one.height)
+        for file in files { _ = try await cache.image(for: file, target: .thumbnail(128)) }
+        #expect(cache.cached(files[0], target: .thumbnail(128)) == nil)
+        #expect(cache.cached(files[2], target: .thumbnail(128)) != nil)
+        #expect(cache.cached(files[2], target: .thumbnail(256)) == nil)
+        await cache.remove(files[2])
+        #expect(cache.cached(files[2], target: .thumbnail(128)) == nil)
+    }
 }
