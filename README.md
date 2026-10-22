@@ -8,6 +8,7 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
 - Opens everything macOS can read (JPEG, PNG, HEIC, AVIF, JPEG XL, WebP, TIFF, GIF, BMP, PSD,
   JPEG 2000, TGA, OpenEXR, DNG and camera RAW), upright and colour-managed
 - Shows SVG, and PDF pages like a multi-page image
+- Plays animated GIF, PNG, WebP, HEIC and AVIF, and Windows animated cursors; G pauses, ⌥→ / ⌥← step frames
 - Also reads formats macOS can't: QOI, PCX/DCX, XBM, XPM, WBMP, Sun Raster, IFF/LBM (including HAM),
   MacPaint, PAM, farbfeld, X Window Dump, FITS (astronomy), Windows animated cursors (first frame),
   Kodak Photo CD (at 768 × 512), JPEG XR (HD Photo) and BPG

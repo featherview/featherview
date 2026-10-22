@@ -312,15 +312,15 @@ Needs the maintainer's go (screen bursts). Sample folder: Task 1's fixtures writ
 1600×1200 GIF, and `aero_busy.ani` from the VM's `C:\Windows\Cursors` (556 KB: copied over in
 base64 pieces of ≤ 64 KB through `vmpal_exec`, kept in the scratchpad, never committed).
 
-- [ ] **Step 1: Check by hand** (release build): each format plays at its pace (a 40 ms GIF visibly
+- [x] **Step 1: Check by hand** (release build): each format plays at its pace (a 40 ms GIF visibly
   smooth; `aero_busy.ani` turns like the Windows busy cursor, 18 frames at 50 ms); G pauses / plays, the status bar switches "6 frames" ↔ "frame 3 / 6"; ⌥→ / ⌥← step and stop at
   the ends; menu and toolbar titles; held → through a folder of animations and JPEGs: no stray frames,
   swap budget (`Navigate` p50/p95 in the log) unchanged; zoom in on a playing GIF re-targets; full
   screen plays; Accessibility "Play animated images" off → opens paused, G plays; window minimized →
   CPU drops to idle (Activity Monitor), restored → plays on.
-- [ ] **Step 2: Measure:** launch with a GIF after ⌘Q (< 410 ms budget, same as a JPEG of its size);
+- [x] **Step 2: Measure:** launch with a GIF after ⌘Q (< 410 ms budget, same as a JPEG of its size);
   memory while the 60-frame big GIF plays (frame budget + cache); CPU while a small GIF loops.
-- [ ] **Step 3: Docs:** spec "Animation" gets Decisions 1–10 in spec wording (drop "(v2)", remove
+- [x] **Step 3: Docs:** spec "Animation" gets Decisions 1–10 in spec wording (drop "(v2)", remove
   "first frame; animation in v2" from "Viewer" and ANI's "(playing it: …)"); `docs/parity.md` rows → `v2`;
   roadmap: a row `| 9 | Animation | docs/superpowers/plans/2026-10-22-milestone-9-animation.md | done |`,
   the "Animation (v2)" section moved under it; README features line; `AGENTS.md`: drop "animation

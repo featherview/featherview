@@ -148,13 +148,13 @@ zero-delay one), default settings.
 
 | Area | Observed behaviour | Featherview | Status |
 |---|---|---|---|
-| Playing | An animated GIF plays as soon as it opens, at the delays in the file, in a loop. | Same (spec "Animation"). | open |
-| Loop count | A file asking to loop only once kept looping. | Same: always loops. | open |
-| Zero delay | Frames with no delay play at a moderate pace, not as fast as possible. | Delays of 10 ms or less count as 100 ms, as browsers do. | open |
-| Pause | G stops the animation on the frame shown and starts it again from there; the Options menu has the same command. | G, and Image › Pause / Play Animation. | open |
-| Frames | Ctrl+Page Down / Up step one frame while stopped. | ⌥→ / ⌥← step frames (pages' keys, stopping playback), nothing past either end. | open |
-| Status bar | The last field shows the number of frames; it doesn't change while playing or stepping. The title shows no frame. | The frame count while playing; "frame 3 / 6" while paused; title unchanged. | open |
-| Next file | Moving on from a stopped animation to another one plays the new one; pause isn't remembered. | Same; coming back starts again at frame 1. | open |
+| Playing | An animated GIF plays as soon as it opens, at the delays in the file, in a loop. | Same (spec "Animation"). | v2 |
+| Loop count | A file asking to loop only once kept looping. | Same: always loops. | v2 |
+| Zero delay | Frames with no delay play at a moderate pace, not as fast as possible. | Delays of 10 ms or less count as 100 ms, as browsers do. | v2 |
+| Pause | G stops the animation on the frame shown and starts it again from there; the Options menu has the same command. | G, and Image › Pause / Play Animation. | v2 |
+| Frames | Ctrl+Page Down / Up step one frame while stopped. | ⌥→ / ⌥← step frames (pages' keys, stopping playback), nothing past either end. | v2 |
+| Status bar | The last field shows the number of frames; it doesn't change while playing or stepping. The title shows no frame. | The frame count while playing; "frame 3 / 6" while paused; title unchanged. | v2 |
+| Next file | Moving on from a stopped animation to another one plays the new one; pause isn't remembered. | Same; coming back starts again at frame 1. | v2 |
 
 ## Thumbnails
 

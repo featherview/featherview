@@ -19,7 +19,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 6 | Languages | `docs/superpowers/plans/2026-10-18-milestone-6-languages.md` | done |
 | 7 | App formats | `docs/superpowers/plans/2026-10-17-milestone-7-app-formats.md` | done |
 | 8 | Finder previews | `docs/superpowers/plans/2026-10-19-milestone-8-finder-previews.md` | done |
-| 9 | Animation (v2) | `docs/superpowers/plans/2026-10-22-milestone-9-animation.md` | in progress |
+| 9 | Animation (v2) | `docs/superpowers/plans/2026-10-22-milestone-9-animation.md` | done |
 | 10 | Document icon (v2) | `docs/superpowers/plans/2026-10-22-document-icon.md` | done |
 | 11 | Viewer conveniences (v2) | `docs/superpowers/plans/2026-10-22-milestone-11-viewer-conveniences.md` | planned |
 | 12 | Zoom modes and flip (v2) | `docs/superpowers/plans/2026-10-22-milestone-12-zoom-modes-flip.md` | planned |
@@ -239,7 +239,7 @@ JPEG XL as an output format in Save As and batch with quality and lossless optio
 (check whether this macOS writes it), else libjxl built from source if it meets the dependency
 rules in `AGENTS.md`.
 
-### Animation (v2)
+### Animation (v2, done)
 
 Spec: "Animation". Animated GIF, PNG (APNG), WebP and HEIC sequences play in the viewer through
 ImageIO's frames and delays; Windows animated cursors (ANI) play from their own frame order and

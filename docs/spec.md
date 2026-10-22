@@ -30,7 +30,7 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
   even if hidden or of an unknown extension; symlinked folders are followed; folders and broken
   links with image names are skipped.
 - Supported formats: everything ImageIO decodes on the user's Mac (JPEG, PNG, HEIC, WebP,
-  TIFF, GIF (first frame; animation in v2), BMP, camera RAW, …), plus PDF (see "Formats").
+  TIFF, GIF (animations play, see "Animation"), BMP, camera RAW, …), plus PDF (see "Formats").
 - Window title: `filename — 3 / 120`; for a multi-page file `filename — page 2 / 3 — 3 / 120`.
   A multi-page file always opens on page 1.
 - The whole app is light or dark: Appearance in Preferences is System (the default), Light or Dark.
@@ -407,8 +407,8 @@ the About window.
     without a MacBinary header), farbfeld, X Window Dump (version 7, Z pixmaps), FITS and Windows
     animated cursors (ANI). FITS shows the first image in the file (its first plane, or three planes
     as RGB); 8-bit data as stored, everything else stretched linearly between the 0.25th and 99.75th
-    percentile; the first row is the bottom one; tile-compressed FITS can't be opened. ANI shows its
-    first frame at its largest size (playing it: "Animation", v2). PAM goes through ImageIO, which reads it
+    percentile; the first row is the bottom one; tile-compressed FITS can't be opened. ANI plays its
+    frames at their largest size ("Animation"). PAM goes through ImageIO, which reads it
     with the rest of the Netpbm family (PFM too).
   - JPEG XR (.jxr, also HD Photo .wdp/.hdp) through jxrlib (BSD-2-Clause, built from source, per
     `AGENTS.md`). Every pixel format is brought to 8-bit sRGB: HDR and wide-gamut files are clipped,
@@ -478,12 +478,31 @@ sequences are not offered for writing; any other type a newer macOS adds appears
 Orientation is always applied to the pixels and the tag reset to 1 (not an option). Options are
 remembered per format and can be saved as named profiles.
 
-### Animation (v2)
+### Animation
 
-Animated GIF, PNG (APNG), WebP and HEIC sequences, and Windows animated cursors (ANI), play in the
-viewer in a loop, with the delays the file gives. The first frame shows as fast as a still image;
-the rest follow. Converting (batch, Save As, copy) uses the first frame. Details (pause, stepping
-frames, frame count in the status bar) are decided in the milestone's plan.
+Animated GIF, PNG (APNG), WebP, HEIC and AVIF sequences, and Windows animated cursors (ANI), play
+in the viewer. The first frame shows as fast as a still image; the rest follow. Converting (batch,
+Save As, copy) uses the first frame.
+
+- Which files: an ImageIO file with more than one frame whose type is GIF, PNG, WebP, HEIC sequence
+  or AVIF sequence, and ANI. A multi-image HEIC that isn't a sequence and a multi-page TIFF are not
+  animations. `.apng` files are listed and read as PNG.
+- Playing starts on open and loops forever, whatever loop count the file asks for. Each newly shown
+  file starts at frame 1, playing; pause isn't remembered across files.
+- Delays: each frame's own delay as the file stores it (not ImageIO's rounded value); 10 ms or less
+  counts as 100 ms, as in browsers. ANI: its per-step rates, else its header rate, in 1/60 s.
+- G pauses and plays (Image › Pause Animation / Play Animation, disabled for stills). ⌥→ / ⌥← step
+  one frame and pause; nothing past either end. The page menu items and toolbar buttons serve
+  both, titled Next Frame / Previous Frame while an animation shows.
+- Status bar: "6 frames" while playing, "frame 3 / 6" while paused. The title and the full-screen
+  overlay don't change.
+- The system's Accessibility › Motion › Play animated images, when off: animations open paused on
+  frame 1, G still plays; a change applies at once. No setting of Featherview's own.
+- Frames decode at the image's size on screen (fit, or the zoom's step); zooming keeps the frame
+  shown. All frames stay in memory when they fit in 64 MiB, else only the frame shown and the next
+  two; leaving the file drops them.
+- A late frame is never skipped: it shows as soon as it is decoded, and its delay counts from then.
+  Playback stops while the window is hidden or minimized and goes on from the same frame.
 
 ## Not in v1
 
