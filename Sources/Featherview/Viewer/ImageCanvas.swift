@@ -68,6 +68,10 @@ struct ImageCanvas: NSViewRepresentable {
     let insets: CanvasInsets
     /// A change of it on the same image animates the resize (spec "Look"); a new image never animates.
     let zoom: ViewerModel.Zoom
+    /// A change places the picture at `start` (Zoom to Width at its top, Zoom to Height at its leading edge):
+    /// a cut for a new image, animated for a fit mode chosen on the one shown. `.keep` keeps the relative position.
+    var arrival = 0
+    var start = ZoomStart.keep
     let checkerboard: Bool
     /// Mirror and quarter turns to show the picture with (R, L, H, V before the file is rewritten): turns animate
     /// about its centre, a mirror shows at once.
@@ -145,7 +149,10 @@ struct ImageCanvas: NSViewRepresentable {
         }
         let zoomChanged = view.zoom != nil && view.zoom != zoom && !insetsChanged
         let panelRefit = panelMoved && view.zoom == zoom
-        let animate = animatesZoom && view.shows(image) && (zoomChanged || panelRefit) && pinch == nil
+        let startPoint = view.arrival == arrival ? nil
+            : ZoomSteps.startOrigin(start, document: size, clear: scrollView.clearRect.size, rightToLeft: rtl)
+        view.arrival = arrival
+        let animate = animatesZoom && view.shows(image) && (zoomChanged || panelRefit || startPoint != nil) && pinch == nil
             && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         view.zoom = zoom
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -174,13 +181,13 @@ struct ImageCanvas: NSViewRepresentable {
         let framed = fits && (!image.hasAlpha || checkerboard)
         // Off at the first frame beyond fit; on once a zoom back into fit has landed.
         if !framed || !(animate && (resized || insetsChanged)) { view.setFramed(framed) }
-        if resized || insetsChanged {
+        if resized || insetsChanged || startPoint != nil {
             let clip = scrollView.contentView
             cut { view.animator().setFrameSize(size) }
             let visible = scrollView.clearRect
             let offset = pinch == nil ? CGPoint(x: visible.width / 2, y: visible.height / 2)
                 : CGPoint(x: anchor.x - oldVisible.minX, y: anchor.y - oldVisible.minY)
-            let point = CGPoint(x: centre.x * size.width - offset.x, y: centre.y * size.height - offset.y)
+            let point = startPoint ?? CGPoint(x: centre.x * size.width - offset.x, y: centre.y * size.height - offset.y)
             guard animate else { return moveVisibleOrigin(scrollView, to: point) }
             if panelRefit {
                 // The clip keeps a picture smaller than the clear area centred, which overrides an animated scroll
@@ -296,6 +303,8 @@ private final class ImageLayerView: NSView {
     var zoom: ViewerModel.Zoom?
     /// The frame size the canvas last asked for (the animation's end while one runs); nil before the first update.
     var targetSize: CGSize?
+    /// The canvas's `arrival` last placed; nil before the first update.
+    var arrival: Int?
     /// Holds the picture, its shadow and hairline, and carries the mirror; the quarter turns are on its sublayers.
     private let pictureLayer = CALayer()
     private let imageLayer = CALayer()

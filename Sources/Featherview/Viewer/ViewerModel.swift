@@ -10,7 +10,31 @@ final class ViewerModel {
         case fit
         /// 1 = one image pixel per screen pixel.
         case factor(Double)
+        /// Zoom to Width / Height: one side fills the fit area, a factor per image (`factor(for:)`).
+        case fillWidth, fillHeight
+
+        init(_ mode: FitMode) {
+            switch mode {
+            case .fit: self = .fit
+            case .width: self = .fillWidth
+            case .height: self = .fillHeight
+            }
+        }
+
+        /// Where a new image, or this zoom chosen on the image shown, starts.
+        var start: ZoomStart {
+            switch self {
+            case .fillWidth: .top
+            case .fillHeight: .leading
+            case .fit, .factor: .keep
+            }
+        }
+
+        var isFill: Bool { self == .fillWidth || self == .fillHeight }
     }
+
+    /// Where every new image starts unless Keep Zoom is on (View › Zoom to Fit / Width / Height).
+    private static var fitMode: FitMode { FitMode(rawValue: AppSettings.fitMode.value()) ?? .fit }
 
     var list = ImageList(urls: []) { didSet { updateAvailability() } }
     var image: CGImage? { didSet { isLeaving = false } }
@@ -28,7 +52,17 @@ final class ViewerModel {
     var showInfo = false
     /// I, the menu item and the toolbar button: an image is shown, not the grid or two compared.
     var canShowInfo: Bool { availability.hasCurrent && !isGrid && compareSession == nil }
-    private(set) var zoom = Zoom.fit
+    private(set) var zoom = Zoom(ViewerModel.fitMode)
+    /// The zoom the canvas draws `image` at: a new file's reset to the fit mode reaches it with that file's image,
+    /// so the picture being left doesn't zoom (or animate) on its way out.
+    private(set) var shownZoom = Zoom(ViewerModel.fitMode)
+    /// Bumped when a picture arrives (another file or page, or a fit mode chosen): the canvas then places it at
+    /// `start` instead of keeping the relative scroll position.
+    private(set) var arrival: (id: Int, start: ZoomStart) = (0, .keep)
+    /// The file and page `image` shows, for `arrival`.
+    @ObservationIgnored private var onScreen: (url: URL, page: Int)?
+    /// The file and page `show` last decoded for: another one starts in the fit mode unless Keep Zoom is on.
+    @ObservationIgnored private var showing: (url: URL, page: Int)?
     /// Bumped when the current file changes on disk (rotation), so views reading it refresh.
     private(set) var fileRevision = 0
     /// For the image on screen, read off the main thread: the previous image's until the next one is shown,
@@ -43,11 +77,19 @@ final class ViewerModel {
 
     /// The scale the image is shown at, from its full pixel size (not the screen-size decode).
     var zoomPercent: Int? {
+        if case .factor(let factor) = zoom { return Int((factor * 100).rounded()) }
+        guard let size = fileInfo?.pixelSize ?? unsavedSize else { return nil }
+        let factor = self.factor(for: size) ?? ZoomSteps.fitFactor(image: size, view: viewSize, displayScale: displayScale)
+        return Int((factor * 100).rounded())
+    }
+
+    /// The zoom factor an image of `size` (its full pixel size) shows at; nil at fit, which decodes at fit size.
+    func factor(for size: CGSize) -> Double? {
         switch zoom {
-        case .factor(let factor): return Int((factor * 100).rounded())
-        case .fit:
-            guard let size = fileInfo?.pixelSize ?? unsavedSize else { return nil }
-            return Int((ZoomSteps.fitFactor(image: size, view: viewSize, displayScale: displayScale) * 100).rounded())
+        case .fit: nil
+        case .factor(let factor): factor
+        case .fillWidth: ZoomSteps.fillFactor(image: size, view: viewSize, displayScale: displayScale, mode: .width)
+        case .fillHeight: ZoomSteps.fillFactor(image: size, view: viewSize, displayScale: displayScale, mode: .height)
         }
     }
 
@@ -104,7 +146,10 @@ final class ViewerModel {
     /// Plays the animation on screen; the canvas shows its frames after the model's image (frame 0).
     let player = AnimationPlayer(colorSpace: ViewerModel.screenSpace)
     /// The viewer area, kept up to date by the view; fit-mode zoom steps start from it.
-    var viewSize = CGSize.zero
+    var viewSize = CGSize.zero {
+        // A fill factor follows the window: a new halving step re-decodes.
+        didSet { if viewSize != oldValue, zoom.isFill { setZoom(zoom) } }
+    }
     var displayScale = 2.0
     /// Brings this model's window back if it was closed. Only the main viewer sets it (AppDelegate):
     /// an extra window opening a file must not raise or reopen the main one.
@@ -177,7 +222,7 @@ final class ViewerModel {
     @ObservationIgnored private var forward = true
     /// The halving step the image on screen was decoded at while zoomed (page 0), with the longest side it was
     /// worked out from (`fileInfo` is still the previous file's until the decode lands); zooming within it decodes nothing.
-    @ObservationIgnored private var shownStep: (step: Int, full: Int)?
+    @ObservationIgnored private var shownStep: (step: Int, size: CGSize)?
     private var loadTask: Task<Void, Never>?
     /// The page decode running, if any: ImageIO can't stop one, so the next waits for it (see show).
     private var pageDecode: Task<CGImage, Error>?
@@ -274,6 +319,7 @@ final class ViewerModel {
         let isFolder = isFolderPath(url)
         openingFile = isFolder ? nil : url
         openedFolder = isFolder ? url : url.deletingLastPathComponent()
+        if !AppSettings.keepZoom.value() { zoom = Zoom(Self.fitMode) }
         // Off the main actor: at launch the main thread is busy building the window, the decode needn't wait.
         let prefetch: DecodeTarget? = zoom != .fit ? nil : .fit(screens)
         ready = [:]
@@ -416,11 +462,13 @@ final class ViewerModel {
 
     func setZoom(_ zoom: Zoom) {
         var needsReload = (zoom == .fit) != (self.zoom == .fit)
-        // Past the decoded step the image shows enlarged (drawn at its full size) until the next step lands.
-        if case .factor(let factor) = zoom, !needsReload, page == 0, let shownStep {
-            needsReload = ImageDecoder.zoomStep(full: shownStep.full, factor: factor) != shownStep.step
-        }
         self.zoom = zoom
+        shownZoom = zoom
+        // Past the decoded step the image shows enlarged (drawn at its full size) until the next step lands.
+        if !needsReload, page == 0, let shownStep, let factor = self.factor(for: shownStep.size) {
+            let full = Int(max(shownStep.size.width, shownStep.size.height))
+            needsReload = ImageDecoder.zoomStep(full: full, factor: factor) != shownStep.step
+        }
         // A held image is gone from disk: show() would release it and decode the next file at the held page.
         // The unsaved image is full size: no decode.
         if needsReload, !list.isHolding, unsaved == nil {
@@ -499,23 +547,33 @@ final class ViewerModel {
     func zoomIn() { zoom(by: zoomMultiplier) }
     func zoomOut() { zoom(by: 1 / zoomMultiplier) }
 
-    /// A zoom step, or a pinch step. From fit, steps from the scale the image is shown at, which needs its full pixel size.
+    /// View › Zoom to Fit / Width / Height (0, 2, 3): every new image starts in it from now on, and the image
+    /// shown goes to it, at its start edge.
+    func setFitMode(_ mode: FitMode) {
+        UserDefaults.standard.set(mode.rawValue, forKey: AppSettings.fitMode.key)
+        setZoom(Zoom(mode))
+        arrival = (arrival.id + 1, zoom.start)
+    }
+
+    /// A zoom step, or a pinch step. From fit or a fill mode, steps from the scale the image is shown at, which
+    /// needs its full pixel size.
     func zoom(by multiplier: Double) {
         if case .factor(let factor) = zoom {
             setZoom(.factor(ZoomSteps.step(factor, by: multiplier)))
             return
         }
         if let unsavedSize {
-            let fit = ZoomSteps.fitFactor(image: unsavedSize, view: viewSize, displayScale: displayScale)
-            return setZoom(.factor(ZoomSteps.step(fit, by: multiplier)))
+            let shown = factor(for: unsavedSize) ?? ZoomSteps.fitFactor(image: unsavedSize, view: viewSize, displayScale: displayScale)
+            return setZoom(.factor(ZoomSteps.step(shown, by: multiplier)))
         }
         guard let url = list.current else { return }
+        let from = zoom
         Task {
             let page = page
             let size = await Task.detached { ImageDecoder.displaySize(of: url, page: page) }.value
-            guard zoom == .fit, list.current == url else { return }
-            let fit = size.map { ZoomSteps.fitFactor(image: $0, view: viewSize, displayScale: displayScale) } ?? 1
-            setZoom(.factor(ZoomSteps.step(fit, by: multiplier)))
+            guard zoom == from, list.current == url else { return }
+            let shown = size.map { factor(for: $0) ?? ZoomSteps.fitFactor(image: $0, view: viewSize, displayScale: displayScale) } ?? 1
+            setZoom(.factor(ZoomSteps.step(shown, by: multiplier)))
         }
     }
 
@@ -543,6 +601,11 @@ final class ViewerModel {
             errorMessage = nil  // an old file's error would hide the "Open an image" hint
             return
         }
+        // Another file or page starts in the fit mode; a zoom change or a rewritten file shows the same one again.
+        if showing.map({ $0.url != url || $0.page != page }) ?? true, !AppSettings.keepZoom.value() {
+            zoom = Zoom(Self.fitMode)
+        }
+        showing = (url, page)
         let size: [PixelSize]? = zoom == .fit ? screens : nil
         let neighbors = focusDecodes()
         let started = ContinuousClock.now
@@ -582,7 +645,7 @@ final class ViewerModel {
                 } else {
                     let decode = await zoomDecode(url)
                     guard !Task.isCancelled else { return }
-                    if case .step(let step) = decode.target, let full = decode.full { shownStep = (step, full) }
+                    if case .step(let step) = decode.target, let full = decode.size { shownStep = (step, full) }
                     zoomed = true
                     target = decode.target
                     decoded = try await decode.cache.image(for: url, target: decode.target)
@@ -667,15 +730,15 @@ final class ViewerModel {
 
     /// The halving step to decode zoomed `url` at, for the current factor, and the cache it goes in: `cache`
     /// when that step is no larger than the fit decode, else the one-image `fullSizeCache`. Full size in
-    /// `fullSizeCache` when the size can't be read (the decode then reports the file). `full` is the longest side.
-    private func zoomDecode(_ url: URL) async -> (target: DecodeTarget, cache: ImageCache, full: Int?) {
+    /// `fullSizeCache` when the size can't be read (the decode then reports the file). `size` is the file's pixel size.
+    private func zoomDecode(_ url: URL) async -> (target: DecodeTarget, cache: ImageCache, size: CGSize?) {
         let size = await pageZeroInfo(url).pixelSize
         // Read after the wait: setZoom can't re-decode before `shownStep` is set, so it must see the latest factor.
-        guard case .factor(let factor) = zoom, let size else { return (.full, fullSizeCache, nil) }
+        guard let size, let factor = self.factor(for: size) else { return (.full, fullSizeCache, nil) }
         let pixels = PixelSize(width: Int(size.width), height: Int(size.height))
         let decision = ImageDecoder.zoomDecode(size: pixels, factor: factor, screens: screens,
                                                   exactFit: ImageDecoder.decodesAtExactFit(url))
-        return (.step(decision.step), decision.withinFit ? cache : fullSizeCache, max(pixels.width, pixels.height))
+        return (.step(decision.step), decision.withinFit ? cache : fullSizeCache, size)
     }
 
     /// `url`'s page-0 info, read and kept in `knownInfo` when missing: a zoomed decode is smaller than the file,
@@ -744,6 +807,11 @@ final class ViewerModel {
             }
             writtenChanges = nil
         }
+        if image == nil || onScreen.map({ $0.url != url || $0.page != page }) ?? true {
+            arrival = (arrival.id + 1, AppSettings.keepZoom.value() ? .keep : zoom.start)
+        }
+        onScreen = (url, page)
+        if shownZoom != zoom { shownZoom = zoom }
         image = decoded
         errorMessage = nil
         // Starting from a window, the first interval waits for full screen (fullScreenTransitionEnded).
@@ -1214,6 +1282,9 @@ final class ViewerModel {
         endNavigation("superseded")
         player.stop()
         gridReturn = list.current
+        // Coming back from the grid is a new image: the fit mode, unless Keep Zoom.
+        showing = nil
+        onScreen = nil
         errorMessage = nil  // the viewed image's error would sit over the cells
         gridFocus = list.current
         gridSelection = list.current.map { [$0] } ?? []
@@ -1373,10 +1444,7 @@ final class ViewerModel {
             // Pane 1's details are the previous file's until its decode lands: pane 2 keeps its zoom meanwhile.
             return compareSession.info?.url == compareSession.url ? compareSession.lastMatched.map { .factor($0) } ?? .fit : .fit
         }
-        let factor = switch zoom {
-        case .factor(let factor): factor
-        case .fit: ZoomSteps.fitFactor(image: first, view: viewSize, displayScale: displayScale)
-        }
+        let factor = self.factor(for: first) ?? ZoomSteps.fitFactor(image: first, view: viewSize, displayScale: displayScale)
         let matched = CompareSync.matchedFactor(factor, first: first, second: second)
         compareSession.lastMatched = matched
         return .factor(matched)
@@ -1386,7 +1454,7 @@ final class ViewerModel {
     var secondZoomPercent: Int? {
         switch secondZoom {
         case .factor(let factor): return Int((factor * 100).rounded())
-        case .fit:
+        case .fit, .fillWidth, .fillHeight:
             guard let size = compareSession?.info?.pixelSize else { return nil }
             return Int((ZoomSteps.fitFactor(image: size, view: viewSize, displayScale: displayScale) * 100).rounded())
         }
