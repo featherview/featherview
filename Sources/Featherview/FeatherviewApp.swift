@@ -112,6 +112,7 @@ enum DefaultViewerOffer {
         Task {
             while ViewerModel.main.isOpening { try? await Task.sleep(for: .milliseconds(50)) }
             try? await Task.sleep(for: .milliseconds(100))  // the frame with the image commits first
+            RecentFiles.shared.reload()
             guard DefaultViewer.shouldOffer(bundleURL: Bundle.main.bundleURL, home: FileManager.default.homeDirectoryForCurrentUser,
                                             offeredBefore: AppSettings.offeredDefaultViewer.value(),
                                             jpegHandler: handler(for: .jpeg)) else { return }
@@ -135,7 +136,8 @@ struct ExtraViewer: View {
 
     var body: some View {
         ViewerView(model: model)
-            .onAppear { if let url, model.list.current == nil { model.open(url) } }
+            // Not remembered: a restored window isn't the user opening a file; Finder's files are noted in openDocuments.
+            .onAppear { if let url, model.list.current == nil { model.open(url, remember: false) } }
             .onDisappear { ViewerModel.lastActive.close(model) }
     }
 }
@@ -164,6 +166,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Updater.scheduleAutomaticCheck()
+        // Open Recent also when no viewer window comes back (showOnce reads it sooner when one does).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { RecentFiles.shared.reload() }
     }
 
     @objc private func openDocuments(_ event: NSAppleEventDescriptor, withReply reply: NSAppleEventDescriptor) {
@@ -178,6 +182,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if index == 0, ViewerModel.windows.mainTakesFile(mainIsEmpty: mainIsEmpty) {
                 viewer.open(url)
             } else {
+                RecentFiles.shared.note(url)
                 ViewerModel.windows.openExtra(url)
             }
         }

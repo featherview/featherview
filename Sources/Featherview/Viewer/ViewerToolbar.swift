@@ -94,6 +94,9 @@ struct ViewerToolbar: CustomizableToolbarContent {
             ToolbarItem(id: "info", placement: .primaryAction) {
                 InfoToggle(model: model)
             }
+            ToolbarItem(id: "share", placement: .primaryAction) {
+                ShareButton(model: model)
+            }
             ToolbarItem(id: "trash", placement: .primaryAction) {
                 ToolbarButton("Move to Trash", "trash", "Move to Trash (⌘⌫)", enabled: { $0.availability.canChangeFile }, model) { $0.moveCurrentToTrash() }
             }
@@ -135,6 +138,22 @@ private struct InfoToggle: View {
         Toggle("Info", systemImage: "info.circle", isOn: $model.showInfo)
             .help("Show info (I)")
             .disabled(!model.canShowInfo)
+    }
+}
+
+/// Share: its own view, so only it reads the current file (see `ViewerToolbar`).
+private struct ShareButton: View {
+    let model: ViewerModel
+
+    var body: some View {
+        if model.availability.canChangeFile, let url = model.list.current {
+            ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
+                .help("Share")
+        } else {
+            Button("Share", systemImage: "square.and.arrow.up") {}
+                .help("Share")
+                .disabled(true)
+        }
     }
 }
 

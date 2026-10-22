@@ -647,6 +647,10 @@ struct ImageContextMenu: View {
         Divider()
         Button("Show in Finder") { model.showInFinder() }
         OpenWithMenu(model: model)
+        Divider()
+        ShareMenu(model: model)
+        Button("Set as Desktop Picture") { model.setDesktopPicture() }
+            .disabled(!model.availability.canSetDesktop)
     }
 }
 
@@ -864,6 +868,7 @@ struct ViewerCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button("Open…  (O)") { (model ?? ViewerModel.lastActive.current).showOpenPanel() }
                 .keyboardShortcut("o")
+            RecentMenu()
             Button("Compare With…") { model?.showCompareOpenPanel() }
                 .keyboardShortcut("o", modifiers: [.command, .option])
                 .disabled(model?.availability.canCompare != true)
@@ -876,6 +881,8 @@ struct ViewerCommands: Commands {
             Button("Save As…  (S)") { model?.saveAs() }
                 .keyboardShortcut("s", modifiers: [.command, .shift])
                 .disabled(model?.availability.canChangeFile != true)
+            Divider()
+            ShareMenu(model: model)
         }
         CommandGroup(replacing: .pasteboard) {
             // Text fields and selected text (batch window, Info panel) keep their own Copy and Paste.
@@ -938,6 +945,8 @@ struct ViewerCommands: Commands {
             Button("Show in Finder") { model?.showInFinder() }
                 .disabled(model?.availability.hasCurrent != true || model?.isGrid == true)
             OpenWithMenu(model: model)
+            Button("Set as Desktop Picture") { model?.setDesktopPicture() }
+                .disabled(model?.availability.canSetDesktop != true)
             if let url = model?.list.current, model?.isGrid != true, let type = DefaultViewer.claimableType(for: url) {
                 Button("Always Open .\(url.pathExtension.lowercased()) Files with Featherview") {
                     Task { await DefaultViewerOffer.claim(type); claims += 1 }
@@ -968,6 +977,10 @@ struct ViewerCommands: Commands {
             }
             .disabled(model == nil || toolbarHidden)
             Button(statusBarHidden ? "Show Status Bar" : "Hide Status Bar") { statusBarHidden.toggle() }
+        }
+        CommandGroup(before: .windowList) {
+            Toggle("Float on Top", isOn: Binding(get: { model?.isFloating == true }, set: { model?.isFloating = $0 }))
+                .disabled(model == nil || model?.isFullScreen == true)
         }
         CommandGroup(after: .toolbar) {
             Button(model?.isGrid == true ? "Show Image  (T)" : "Show Thumbnails  (T)") { model?.toggleGrid() }
