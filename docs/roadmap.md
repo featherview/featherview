@@ -19,6 +19,15 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 6 | Languages | `docs/superpowers/plans/2026-10-18-milestone-6-languages.md` | done |
 | 7 | App formats | `docs/superpowers/plans/2026-10-17-milestone-7-app-formats.md` | done |
 | 8 | Finder previews | `docs/superpowers/plans/2026-10-19-milestone-8-finder-previews.md` | done |
+| 9 | Animation (v2) | `docs/superpowers/plans/2026-10-22-milestone-9-animation.md` | in progress |
+| 10 | Document icon (v2) | `docs/superpowers/plans/2026-10-22-document-icon.md` | planned |
+| 11 | Viewer conveniences (v2) | | observe first |
+| 12 | Zoom modes and flip (v2) | | observe first |
+| 13 | Thumbnail window (v2) | | planning |
+| 14 | Slideshow (v2) | | observe first |
+| 15 | Compare images (v2) | | observe first |
+| 16 | Batch extras (v2) | | observe first |
+| 17 | JPEG XL writing (v2) | | planning |
 
 ## 1. Core viewer and batch
 
@@ -163,9 +172,48 @@ measured again at its end (after a real ⌘Q) and that number becomes the budget
 
 ## v2 (not in v1)
 
-JPEG XL writing (libjxl), thumbnail browser, slideshow (observe first; separate from thumbnails), animation (below), a document icon for the formats only Featherview reads
-(drawn from the feather mark, shown in Finder where Featherview is the default app and no thumbnail
-is available), anything in "Out of scope for v1" in `AGENTS.md`.
+The reference viewer's menu commands that make sense on a Mac, split into milestones 9–17, plus
+JPEG XL writing. Left out on purpose: painting and editing in the viewer, printing, scanning, OCR,
+plugins and video (`AGENTS.md` "Out of scope for v1"); file search (Spotlight and Finder do it), hex
+view, e-mail (the Share menu covers it), screenshots (macOS has them), showing or hiding the menu bar
+and title (not a Mac thing), new blank images, panoramas and tiled images (editing).
+
+### Viewer conveniences (v2, observe first)
+
+File › Open Recent, Rename… (F2), a random image, sorting the viewer's list (name, date, size,
+type), Share, Set as Desktop Picture, Float on Top, and pasting a clipboard image as an unsaved
+image that Save As can write.
+
+### Zoom modes and flip (v2, observe first)
+
+Fit width, fit height and no fit next to fit (0) and actual size (1); keeping the zoom (and
+scroll position) when moving to the next image; flip horizontally / vertically (V / H), lossless
+through the orientation like rotate.
+
+### Thumbnail window (v2)
+
+Parity "Thumbnails". A window of the viewer's own list as thumbnails, opened on the current image
+(T), Return to view, selection for move, copy, Trash and batch (B), sort, a size slider. Decoded off
+the main thread at cell size; a 10,000-file folder stays responsive.
+
+### Slideshow (v2, observe first)
+
+Plays the viewer's list (or a chosen list) full screen at an interval, without transition effects;
+automatic viewing in the window (⇧A in the reference). Separate from thumbnails.
+
+### Compare images (v2, observe first)
+
+Two to four images side by side with zoom and pan kept in step.
+
+### Batch extras (v2, observe first)
+
+Extract all frames or pages to files, split an image into tiles, set the date taken, and a watched
+folder that runs a batch preset on files as they arrive.
+
+### JPEG XL writing (v2)
+
+JPEG XL as an output format in Save As and batch, through libjxl built from source (if it meets the
+dependency rules in `AGENTS.md`), with quality and lossless options.
 
 ### Animation (v2)
 
