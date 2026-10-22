@@ -178,42 +178,59 @@ plugins and video (`AGENTS.md` "Out of scope for v1"); file search (Spotlight an
 view, e-mail (the Share menu covers it), screenshots (macOS has them), showing or hiding the menu bar
 and title (not a Mac thing), new blank images, panoramas and tiled images (editing).
 
+Each milestone takes the reference viewer's feature in the Mac's form: Mac menu names and
+places, the system's own panels and services, no separate tool windows where Mac apps use a mode
+of the same window.
+
 ### Viewer conveniences (v2, observe first)
 
-File › Open Recent, Rename… (F2), a random image, sorting the viewer's list (name, date, size,
-type), Share, Set as Desktop Picture, Float on Top, and pasting a clipboard image as an unsaved
-image that Save As can write.
+File › Open Recent (also in the Dock menu); Rename… (F2 as the single key) by editing the name in
+the window's title, as Preview does; View › Sort By (name, date, size, kind) for the viewer's list,
+as in Finder; Share (toolbar button and File › Share, the system's share menu, which also covers
+e-mail); Set as Desktop Picture; Window › Float on Top, as QuickTime Player has it; File › New from
+Clipboard (⌘N), an unsaved image that Save As writes, as in Preview. Not taken: a random image
+command (shuffle belongs to the slideshow).
 
 ### Zoom modes and flip (v2, observe first)
 
-Fit width, fit height and no fit next to fit (0) and actual size (1); keeping the zoom (and
-scroll position) when moving to the next image; flip horizontally / vertically (V / H), lossless
-through the orientation like rotate.
+View › Zoom to Width / Zoom to Height next to Zoom to Fit (0) and Actual Size (1), for tall or wide
+images; View › Keep Zoom, which keeps the zoom and scroll position from image to image (for checking
+the same detail across a series). Flip Horizontal / Vertical (H / V) in the Image menu, as in
+Preview's Tools menu, lossless through the orientation like rotate.
 
 ### Thumbnail window (v2)
 
-Parity "Thumbnails". A window of the viewer's own list as thumbnails, opened on the current image
-(T), Return to view, selection for move, copy, Trash and batch (B), sort, a size slider. Decoded off
-the main thread at cell size; a 10,000-file folder stays responsive.
+Parity "Thumbnails", in the Mac form: a grid mode of the viewer window itself (as Photos and
+Finder's icon view), not a second window. T or ⌘-shortcut toggles it, opening on the current image;
+Return or double-click views the selected image; selection for move, copy, Trash and batch (B);
+View › Sort By shared with the viewer; a size slider; Quick Look on Space. No folder tree (Finder
+and the Go menu choose folders). Decoded off the main thread at cell size; a 10,000-file folder stays
+responsive.
 
 ### Slideshow (v2, observe first)
 
-Plays the viewer's list (or a chosen list) full screen at an interval, without transition effects;
-automatic viewing in the window (⇧A in the reference). Separate from thumbnails.
+View › Slideshow, as in Preview: full screen through the system's full-screen mode, the viewer's
+list at an interval, with shuffle and repeat, no transition effects. Playing in the window as well
+(automatic viewing in the reference).
 
 ### Compare images (v2, observe first)
 
-Two to four images side by side with zoom and pan kept in step.
+Two to four images in one window, side by side, zoom and pan in step; started from the thumbnail
+grid's selection. If observation shows macOS window tiling with Keep Zoom covers it, the milestone
+shrinks to that.
 
 ### Batch extras (v2, observe first)
 
-Extract all frames or pages to files, split an image into tiles, set the date taken, and a watched
-folder that runs a batch preset on files as they arrive.
+Extract all frames or pages to files; split an image into tiles; set the date taken (as Photos'
+Adjust Date and Time). Instead of the reference's watched folder, which needs the app running: a
+Shortcuts action (App Intents) that runs a batch preset on files, and a Finder Quick Action with it,
+so folder actions and automations can use it the Mac way.
 
 ### JPEG XL writing (v2)
 
-JPEG XL as an output format in Save As and batch, through libjxl built from source (if it meets the
-dependency rules in `AGENTS.md`), with quality and lossless options.
+JPEG XL as an output format in Save As and batch with quality and lossless options: ImageIO first
+(check whether this macOS writes it), else libjxl built from source if it meets the dependency
+rules in `AGENTS.md`.
 
 ### Animation (v2)
 
