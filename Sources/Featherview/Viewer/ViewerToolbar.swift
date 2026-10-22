@@ -68,6 +68,16 @@ struct ViewerToolbar: CustomizableToolbarContent {
             ToolbarItem(id: "rotateRight", placement: .primaryAction) {
                 ToolbarButton("Rotate Right", "rotate.right", "Rotate right (R)", enabled: { $0.availability.canChangeFile }, model) { $0.rotate(.clockwise) }
             }
+            ToolbarItem(id: "flipHorizontal", placement: .primaryAction) {
+                ToolbarButton("Flip Horizontal", "arrow.left.and.right.righttriangle.left.righttriangle.right", "Flip horizontal (H)",
+                              enabled: { $0.availability.canChangeFile }, model) { $0.flip(.horizontal) }
+            }
+            .defaultCustomization(.hidden)
+            ToolbarItem(id: "flipVertical", placement: .primaryAction) {
+                ToolbarButton("Flip Vertical", "arrow.up.and.down.righttriangle.up.righttriangle.down", "Flip vertical (V)",
+                              enabled: { $0.availability.canChangeFile }, model) { $0.flip(.vertical) }
+            }
+            .defaultCustomization(.hidden)
             ToolbarItem(id: "zoomOut", placement: .primaryAction) {
                 ToolbarButton("Zoom Out", "minus.magnifyingglass", "Zoom out (−)", enabled: { $0.availability.hasCurrent && !$0.isGrid }, model) { $0.zoomOut() }
             }

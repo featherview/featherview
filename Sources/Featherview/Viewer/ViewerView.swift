@@ -61,7 +61,7 @@ struct ViewerView: View {
             } else if let image = model.image {
                 ImageCanvas(image: image, player: model.player, size: drawSize(image), pixelWidth: pixelSize(image).width,
                             displayScale: displayScale, background: Theme.background, insets: canvasInsets, zoom: model.zoom,
-                            checkerboard: checkerboard, turns: model.pendingTurns, leaving: model.isLeaving,
+                            checkerboard: checkerboard, transform: model.pendingTransform, leaving: model.isLeaving,
                             panController: panController,
                             onDoubleClick: model.toggleFullScreen, onPinch: model.zoom(by:), onSwipe: swiped,
                             onClick: clickedImage,
@@ -470,6 +470,8 @@ struct ViewerView: View {
         switch action {
         case .rotateRight: model.rotate(.clockwise)
         case .rotateLeft: model.rotate(.counterClockwise)
+        case .flipHorizontal: model.flip(.horizontal)
+        case .flipVertical: model.flip(.vertical)
         case .toggleInfo: model.showInfo.toggle()
         case .toggleFullScreen: model.toggleFullScreen()
         case .fit: model.setZoom(.fit)
@@ -484,7 +486,7 @@ struct ViewerView: View {
         case .saveAs: model.saveAs()
         case .toggleAnimation: model.toggleAnimation()
         case .toggleThumbnails: model.toggleGrid()
-        case .flipHorizontal, .flipVertical, .zoomToWidth, .zoomToHeight, .toggleKeepZoom: return false
+        case .zoomToWidth, .zoomToHeight, .toggleKeepZoom: return false
         case .swapImages, .toggleDifference: return false  // compare mode only
         case .slideshow, .playInWindow: break
         }
@@ -559,6 +561,8 @@ struct ImageContextMenu: View {
         Divider()
         Button("Rotate Left") { model.rotate(.counterClockwise) }
         Button("Rotate Right") { model.rotate(.clockwise) }
+        Button("Flip Horizontal") { model.flip(.horizontal) }
+        Button("Flip Vertical") { model.flip(.vertical) }
         Divider()
         Button("Move to Folder…") { model.showDestinations(.move) }
         Button("Copy to Folder…") { model.showDestinations(.copy) }
@@ -832,6 +836,8 @@ struct ViewerCommands: Commands {
             Group {
                 Button("Rotate Right  (R)") { model?.rotate(.clockwise) }
                 Button("Rotate Left  (L)") { model?.rotate(.counterClockwise) }
+                Button("Flip Horizontal  (H)") { model?.flip(.horizontal) }
+                Button("Flip Vertical  (V)") { model?.flip(.vertical) }
                 Divider()
                 // ⌘⌫ is handled by the viewer, not as a menu shortcut (see ViewerView.handle).
                 Button("Move to Folder…  (F7)") { model?.showDestinations(.move) }

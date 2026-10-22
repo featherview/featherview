@@ -69,8 +69,9 @@ struct ImageCanvas: NSViewRepresentable {
     /// A change of it on the same image animates the resize (spec "Look"); a new image never animates.
     let zoom: ViewerModel.Zoom
     let checkerboard: Bool
-    /// Quarter turns to show the picture turned by, animated about its centre (R / L before the file is rewritten).
-    var turns = 0
+    /// Mirror and quarter turns to show the picture with (R, L, H, V before the file is rewritten): turns animate
+    /// about its centre, a mirror shows at once.
+    var transform = PictureTransform()
     /// Fades the picture out (Trash or a move); a new image shows at full opacity.
     var leaving = false
     let panController: PanController
@@ -152,9 +153,11 @@ struct ImageCanvas: NSViewRepresentable {
         // A fit picture turned a quarter ends at the size it will fit at, not overflowing.
         let clearSize = CGSize(width: scrollView.contentView.bounds.width - contentInsets.left - contentInsets.right,
                                height: scrollView.contentView.bounds.height - contentInsets.top - contentInsets.bottom)
-        let turnScale = zoom == .fit && turns % 2 != 0 && size.width > 0 && size.height > 0
+        let turnScale = zoom == .fit && transform.turns % 2 != 0 && size.width > 0 && size.height > 0
             ? min(1, clearSize.width / size.height, clearSize.height / size.width) : 1
-        view.turn(to: turns, scale: turnScale, animated: sameImage && !reduceMotion)
+        // A flip shows at once, also the half turn a vertical one carries.
+        let flipped = view.mirror(transform.mirrored)
+        view.turn(to: transform.turns, scale: turnScale, animated: sameImage && !reduceMotion && !flipped)
         if leaving, sameImage { view.fadeOut() }
         // The size last asked for, not the frame: mid-animation the frame is part-way, and a new image
         // at the same zoom must leave the running animation alone.
@@ -291,12 +294,15 @@ private final class ImageLayerView: NSView {
     var zoom: ViewerModel.Zoom?
     /// The frame size the canvas last asked for (the animation's end while one runs); nil before the first update.
     var targetSize: CGSize?
+    /// Holds the picture, its shadow and hairline, and carries the mirror; the quarter turns are on its sublayers.
+    private let pictureLayer = CALayer()
     private let imageLayer = CALayer()
     /// The E3 elevation's contact and ambient shadows and the picture hairline, while the picture fits.
     private let shadowLayers = Theme.Elevation.e3.layers.map { _ in CALayer() }
     private let hairline = CALayer()
     private var framed = false
     private var shownTurns = 0
+    private var mirrored = false
     private var dragStart: (mouse: NSPoint, origin: NSPoint)?
 
     override init(frame: NSRect) {
@@ -304,10 +310,12 @@ private final class ImageLayerView: NSView {
         wantsLayer = true
         imageLayer.contentsGravity = .resize
         imageLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
-        for shadow in shadowLayers.reversed() { layer?.addSublayer(shadow) }
+        pictureLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+        for shadow in shadowLayers.reversed() { pictureLayer.addSublayer(shadow) }
         hairline.borderWidth = 1
-        layer?.addSublayer(hairline)
-        layer?.addSublayer(imageLayer)
+        pictureLayer.addSublayer(hairline)
+        pictureLayer.addSublayer(imageLayer)
+        layer?.addSublayer(pictureLayer)
         setFramed(false)
     }
 
@@ -365,6 +373,17 @@ private final class ImageLayerView: NSView {
         CATransaction.commit()
     }
 
+    /// Mirrors the picture left–right about its centre (or back), without animation; true when that changed.
+    func mirror(_ on: Bool) -> Bool {
+        guard on != mirrored else { return false }
+        mirrored = on
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        pictureLayer.transform = on ? CATransform3DMakeScale(-1, 1, 1) : CATransform3DIdentity
+        CATransaction.commit()
+        return true
+    }
+
     /// Moves the picture on screen from `old` to `new` (where it is now) with the info panel's curve.
     func slide(from old: CGRect, to new: CGRect) {
         guard let layer, new.width > 0 else { return }
@@ -417,6 +436,7 @@ private final class ImageLayerView: NSView {
         } else {
             imageLayer.wantsExtendedDynamicRangeContent = isHDR
         }
+        place(pictureLayer)
         place(imageLayer)
         // Below 2× smooth; from 2× on, show the pixels.
         imageLayer.magnificationFilter = smooth ? .linear : .nearest
@@ -429,6 +449,7 @@ private final class ImageLayerView: NSView {
         super.layout()
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        place(pictureLayer)
         place(imageLayer)
         if framed { layoutFrameLayers() }
         CATransaction.commit()
