@@ -178,7 +178,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for (index, url) in urls.enumerated() {
             // The main window takes the first file while it has none (launch) or no viewer window is open;
             // every other file gets a window.
-            let mainIsEmpty = viewer.list.current == nil && !viewer.isOpening && viewer.emptyFolder == nil
+            let mainIsEmpty = viewer.list.current == nil && !viewer.isOpening && viewer.emptyFolder == nil && viewer.unsaved == nil
             if index == 0, ViewerModel.windows.mainTakesFile(mainIsEmpty: mainIsEmpty) {
                 viewer.open(url)
             } else {
@@ -192,6 +192,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { !isBusy() }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let unsaved = ViewerModel.all.allObjects.filter { $0.unsaved != nil }
+        if !unsaved.isEmpty {
+            Task {
+                for model in unsaved {
+                    guard await model.confirmDiscard() else { return sender.reply(toApplicationShouldTerminate: false) }
+                    model.show()  // the covered image, should the quit be cancelled after all
+                }
+                // Asked about every image: the batch check comes next.
+                switch applicationShouldTerminate(sender) {
+                case .terminateNow: sender.reply(toApplicationShouldTerminate: true)
+                case .terminateCancel: sender.reply(toApplicationShouldTerminate: false)
+                default: break  // the batch replies once it has stopped
+                }
+            }
+            return .terminateLater
+        }
         if isBusy() {
             let alert = NSAlert()
             alert.messageText = String(localized: "Quit while the batch is running?")

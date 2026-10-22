@@ -34,4 +34,17 @@ public enum ClipboardImage {
             return ImageFormats.decodable.contains { type.conforms(to: $0) }
         }
     }
+
+    /// What New from Clipboard opens.
+    public enum Content: Equatable, Sendable {
+        case file(URL)
+        case data(type: String)
+    }
+
+    /// Copied files: the first one Featherview reads, never the icon Finder puts beside them; else the first
+    /// image type ImageIO decodes.
+    public static func content(fileURLs: [URL], types: [String]) -> Content? {
+        if !fileURLs.isEmpty { return fileURLs.first(where: ImageFormats.isDecodable).map(Content.file) }
+        return preferredType(types).map { .data(type: $0) }
+    }
 }

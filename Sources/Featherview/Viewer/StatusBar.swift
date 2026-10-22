@@ -54,6 +54,7 @@ struct StatusBar: View {
     private var fields: [String] {
         if model.isGrid { return gridFields }
         if let pane { return paneFields(pane) }
+        if let size = model.unsavedSize { return StatusLine.unsaved(pixelSize: size, zoomPercent: model.zoomPercent).fields }
         // While the folder is listed the position isn't known yet; "1 / 1" would be wrong.
         guard model.list.current != nil, !model.isOpening else { return [] }
         // The image still on screen until the next one is shown: dropping its fields would shift the bar each swap.

@@ -82,14 +82,14 @@ struct ViewerToolbar: CustomizableToolbarContent {
         // Two blocks: Swift 6.3 (CI) takes at most 10 items in one.
         if ready {
             ToolbarItem(id: "zoomOut", placement: .primaryAction) {
-                ToolbarButton("Zoom Out", "minus.magnifyingglass", "Zoom out (−)", enabled: { $0.availability.hasCurrent && !$0.isGrid }, model) { $0.zoomOut() }
+                ToolbarButton("Zoom Out", "minus.magnifyingglass", "Zoom out (−)", enabled: { $0.availability.hasPicture && !$0.isGrid }, model) { $0.zoomOut() }
             }
             ToolbarItem(id: "fit", placement: .primaryAction) {
                 ToolbarButton("Zoom to Fit", "arrow.up.left.and.down.right.magnifyingglass", "Zoom to fit (0)",
-                              enabled: { $0.availability.hasCurrent && !$0.isGrid }, model) { $0.setZoom(.fit) }
+                              enabled: { $0.availability.hasPicture && !$0.isGrid }, model) { $0.setZoom(.fit) }
             }
             ToolbarItem(id: "zoomIn", placement: .primaryAction) {
-                ToolbarButton("Zoom In", "plus.magnifyingglass", "Zoom in (+)", enabled: { $0.availability.hasCurrent && !$0.isGrid }, model) { $0.zoomIn() }
+                ToolbarButton("Zoom In", "plus.magnifyingglass", "Zoom in (+)", enabled: { $0.availability.hasPicture && !$0.isGrid }, model) { $0.zoomIn() }
             }
             ToolbarItem(id: "info", placement: .primaryAction) {
                 InfoToggle(model: model)

@@ -9,11 +9,17 @@ enum SavePanel {
     /// Shows the sheet on `window` (a modal panel without one). The panel's own replace prompt is the
     /// only overwrite confirmation. On Save, the format and its options are remembered.
     static func run(for url: URL, window: NSWindow?) async -> (url: URL, format: OutputFormat, options: FormatOptions)? {
+        await run(name: url.lastPathComponent, folder: url.deletingLastPathComponent(), window: window)
+    }
+
+    /// The same for an image without a file: `name` (no extension) in `folder`.
+    static func run(name: String, folder: URL, window: NSWindow?) async -> (url: URL, format: OutputFormat, options: FormatOptions)? {
+        let url = folder.appendingPathComponent(name)
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
         // Shown, so the extension visibly follows the chosen format.
         panel.isExtensionHidden = false
-        panel.directoryURL = url.deletingLastPathComponent()
+        panel.directoryURL = folder
         let choice = Choice(format: FormatSettings.lastFormat())
         let setType = { (format: OutputFormat, base: URL) in
             if let type = format.type { panel.allowedContentTypes = [type] }

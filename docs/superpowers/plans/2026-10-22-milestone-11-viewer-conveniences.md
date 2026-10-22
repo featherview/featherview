@@ -86,7 +86,7 @@ section for these yet; Task 10 writes one from the Decisions below. Rules: `AGEN
    - What it takes: a copied image file Featherview reads (Finder's Copy) opens that file, as ⌘O
      would; otherwise the first image type on the clipboard ImageIO decodes (PNG, TIFF, JPEG, HEIC, …),
      full size, orientation applied. Disabled when neither is there (checked when the app becomes
-     active and after Featherview's own ⌘C).
+     active, after Featherview's own ⌘C, when a menu opens and on ⌘N, by the clipboard's change count).
    - Shown as an unsaved image: title "Untitled" with the window's edited dot, status strip with
      pixel size and zoom only. Zoom, full screen, ⌘C and Save As work; everything acting on a file
      (rotate, Trash, F7 / F8, Rename, Share, Desktop Picture, Info, Show in Finder, Open With) is
