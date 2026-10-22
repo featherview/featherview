@@ -28,6 +28,11 @@ public struct StatusLine: Equatable, Sendable {
         return StatusLine(fields: fields)
     }
 
+    /// An image without a file (pasted from the clipboard): size and zoom only.
+    public static func unsaved(pixelSize: CGSize?, zoomPercent: Int?) -> StatusLine {
+        StatusLine(fields: describe(pixelSize: pixelSize, zoomPercent: zoomPercent, fileBytes: nil))
+    }
+
     /// The thumbnail grid's status bar while more than one cell is selected.
     public static func selection(count: Int, total: Int) -> StatusLine {
         StatusLine(fields: [String(localized: "\(count.formatted()) of \(total.formatted()) selected")])

@@ -18,13 +18,22 @@ public enum ImageSaver {
     /// written, so a failure leaves it as it was. Reads and writes files: call it off the main thread.
     public static func save(_ source: URL, page: Int, to destination: URL, as format: OutputFormat,
                             options: FormatOptions) throws {
+        try write(ImageEncoder.encode(pages(of: source, page: page, for: format, options: options),
+                                      as: format, options: options, metadataFrom: source), to: destination)
+    }
+
+    /// Writes an image that has no file (pasted from the clipboard), without metadata; replaces as above.
+    public static func save(_ image: CGImage, to destination: URL, as format: OutputFormat,
+                            options: FormatOptions) throws {
+        try write(ImageEncoder.encode([image], as: format, options: options), to: destination)
+    }
+
+    private static func write(_ data: Data, to destination: URL) throws {
         let destination = destination.resolvingSymlinksInPath()  // replaceItemAt can't replace a link: replace what it points to
         var isFolder: ObjCBool = false
         if FileManager.default.fileExists(atPath: destination.path, isDirectory: &isFolder), isFolder.boolValue {
             throw CocoaError(.fileWriteFileExists, userInfo: [NSFilePathErrorKey: destination.path])  // never replace a folder
         }
-        let data = try ImageEncoder.encode(pages(of: source, page: page, for: format, options: options),
-                                           as: format, options: options, metadataFrom: source)
         let temp = destination.deletingLastPathComponent()
             .appendingPathComponent(".featherview-\(UUID().uuidString).tmp")
         defer { try? FileManager.default.removeItem(at: temp) }

@@ -352,3 +352,14 @@ import Testing
         }
     }
 }
+
+@Suite struct DesktopFormatTests {
+    @Test func desktopCanShow() {
+        for ext in ["jpg", "heic", "png"] {
+            #expect(ImageFormats.desktopCanShow(URL(fileURLWithPath: "/a.\(ext)")), "\(ext)")
+        }
+        for ext in ["qoi", "xcf", "pdf"] {
+            #expect(!ImageFormats.desktopCanShow(URL(fileURLWithPath: "/a.\(ext)")), "\(ext)")
+        }
+    }
+}

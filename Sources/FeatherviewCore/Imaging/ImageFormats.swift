@@ -23,6 +23,11 @@ public enum ImageFormats {
         return decodable.contains { type.conforms(to: $0) }
     }
 
+    /// What macOS's desktop picture can show: ImageIO's formats only, not our own decoders or PDF.
+    public static func desktopCanShow(_ url: URL) -> Bool {
+        isDecodable(url) && OwnDecoders.format(for: url) == nil && UTType(filenameExtension: url.pathExtension)?.conforms(to: .pdf) != true
+    }
+
     /// Only a TIFF or a multi-page own format (DCX) can have pages (`ImageDecoder.pageCount`); by
     /// extension, so other files skip that header read.
     // shortcut: a TIFF saved under another extension shows its first page only, read the type from the decode if that comes up.

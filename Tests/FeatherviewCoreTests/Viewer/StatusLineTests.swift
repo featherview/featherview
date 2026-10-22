@@ -59,4 +59,10 @@ import Testing
         let bare = StatusLine.pane(name: "IMG_1.jpg", pixelSize: nil, zoomPercent: nil, fileBytes: nil, modified: nil)
         #expect(bare.fields == ["IMG_1.jpg"])
     }
+
+    @Test func unsavedStatusLine() {
+        // Formatted for the test's locale, as `make` does: "1,200 × 800" and "50%" under en.
+        let line = StatusLine.unsaved(pixelSize: CGSize(width: 1200, height: 800), zoomPercent: 50)
+        #expect(line.fields == ["\(1200.formatted()) × \(800.formatted())", 0.5.formatted(.percent)])
+    }
 }
