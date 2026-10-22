@@ -53,6 +53,20 @@ public enum GridSelection {
     public static func indices(of selected: Set<URL>, in urls: [URL]) -> IndexSet {
         IndexSet(urls.indices.filter { selected.contains(urls[$0]) })
     }
+
+    /// A click on cell `index` (Decision 10): ⇧ selects from the anchor's cell to it, in place of the selection;
+    /// ⌘ toggles it; plain selects only it. The anchor is a file, so it follows its cell when the list changes;
+    /// ⇧ with no anchor listed is a plain click.
+    public static func click(_ index: Int, in urls: [URL], selection: Set<Int>, anchor: URL?,
+                             shift: Bool, command: Bool) -> (selection: Set<Int>, anchor: URL) {
+        if shift, let anchor, let from = urls.firstIndex(of: anchor) {
+            return (Set(min(from, index)...max(from, index)), anchor)
+        }
+        guard command, !shift else { return ([index], urls[index]) }
+        var selection = selection
+        if selection.remove(index) == nil { selection.insert(index) }
+        return (selection, urls[index])
+    }
 }
 
 /// The grid's keys. Arrows belong to the collection view, other ⌘ keys to the menus.

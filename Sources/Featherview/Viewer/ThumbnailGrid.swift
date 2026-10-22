@@ -64,8 +64,8 @@ struct ThumbnailGrid: NSViewRepresentable {
         private var insets: CanvasInsets?
         /// The cell to scroll to the middle once the grid has its width (entering).
         private var pendingScroll: Int?
-        /// ⇧-click extends from here.
-        private var anchor: Int?
+        /// ⇧-click selects from this file's cell; a file, so it follows its cell when the list changes.
+        private var anchor: URL?
         private var visible: Range<Int>?
         /// The way the user last scrolled: cells ahead of it are decoded first.
         private var forward = true
@@ -113,7 +113,10 @@ struct ThumbnailGrid: NSViewRepresentable {
             grid.urls = new
             grid.reloadData()
             grid.selectionIndexPaths = Self.paths(GridSelection.indices(of: selected, in: new))
-            if entering, let focus = model.gridFocus { pendingScroll = new.firstIndex(of: focus) }
+            if entering, let focus = model.gridFocus {
+                pendingScroll = new.firstIndex(of: focus)
+                anchor = focus
+            }
             syncSelection(focus: nil)
             fillKey = nil
             refocus(force: true)
@@ -192,17 +195,10 @@ struct ThumbnailGrid: NSViewRepresentable {
         /// Click, ⇧-click range, ⌘-click toggle (Decision 10); the clicked cell takes the focus.
         func clicked(_ index: Int, _ flags: NSEvent.ModifierFlags) {
             guard let grid else { return }
-            var selection = Set(grid.selectionIndexPaths.map(\.item))
-            if flags.contains(.shift), let anchor {
-                selection.formUnion(min(anchor, index)...max(anchor, index))
-            } else if flags.contains(.command) {
-                if selection.remove(index) == nil { selection.insert(index) }
-                anchor = index
-            } else {
-                selection = [index]
-                anchor = index
-            }
-            grid.selectionIndexPaths = Self.paths(selection)
+            let click = GridSelection.click(index, in: urls, selection: Set(grid.selectionIndexPaths.map(\.item)), anchor: anchor,
+                                            shift: flags.contains(.shift), command: flags.contains(.command))
+            anchor = click.anchor
+            grid.selectionIndexPaths = Self.paths(click.selection)
             syncSelection(focus: index)
         }
 
@@ -217,7 +213,7 @@ struct ThumbnailGrid: NSViewRepresentable {
 
         private func select(_ index: Int) {
             guard let grid, urls.indices.contains(index) else { return }
-            anchor = index
+            anchor = urls[index]
             let path = IndexPath(item: index, section: 0)
             grid.selectionIndexPaths = [path]
             grid.scrollToItems(at: [path], scrollPosition: .nearestHorizontalEdge)
@@ -245,7 +241,7 @@ struct ThumbnailGrid: NSViewRepresentable {
         /// The keyboard's selection (arrows, ⇧-arrows, ⌘A): a single cell added takes the focus.
         func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {
             let single = indexPaths.count == 1 ? indexPaths.first?.item : nil
-            if let single { anchor = single }
+            if let single { anchor = urls[single] }
             syncSelection(focus: single)
         }
 

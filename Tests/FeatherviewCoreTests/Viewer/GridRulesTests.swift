@@ -63,6 +63,36 @@ import Testing
         #expect(GridSelection.indices(of: [urls[2], x], in: list) == IndexSet([1]))
     }
 
+    @Test func shiftClickRangesFromTheAnchor() {
+        let click = GridSelection.click(4, in: urls, selection: [1], anchor: urls[1], shift: true, command: false)
+        #expect(click.selection == [1, 2, 3, 4])
+        #expect(click.anchor == urls[1])
+    }
+
+    @Test func shiftClickReplacesTheLastRange() {
+        let first = GridSelection.click(4, in: urls, selection: [1], anchor: urls[1], shift: true, command: false)
+        let second = GridSelection.click(2, in: urls, selection: first.selection, anchor: first.anchor, shift: true, command: false)
+        #expect(second.selection == [1, 2])
+    }
+
+    @Test func shiftClickFollowsTheAnchorsFileWhenTheListChanges() {
+        let shrunk = [urls[0], urls[3], urls[4]]
+        #expect(GridSelection.click(0, in: shrunk, selection: [], anchor: urls[4], shift: true, command: false).selection == [0, 1, 2])
+        let gone = GridSelection.click(0, in: shrunk, selection: [], anchor: urls[2], shift: true, command: false)
+        #expect(gone.selection == [0])
+        #expect(gone.anchor == shrunk[0])
+    }
+
+    @Test func plainAndCommandClicks() {
+        let plain = GridSelection.click(3, in: urls, selection: [0, 1], anchor: urls[0], shift: false, command: false)
+        #expect(plain.selection == [3])
+        #expect(plain.anchor == urls[3])
+        #expect(GridSelection.click(1, in: urls, selection: [0, 1], anchor: urls[0], shift: false, command: true).selection == [0])
+        let added = GridSelection.click(3, in: urls, selection: [0], anchor: urls[0], shift: false, command: true)
+        #expect(added.selection == [0, 3])
+        #expect(added.anchor == urls[3])
+    }
+
     @Test(arguments: [
         ("\r", MenuKey.Modifiers(), GridKey.view), ("\u{3}", [], .view), ("\u{1B}", [], .leave),
         (" ", [], .quickLook), ("\u{F728}", [], .trash), ("\u{7F}", .command, .trash),
