@@ -26,7 +26,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 13 | Thumbnail grid (v2) | `docs/superpowers/plans/2026-10-22-milestone-13-thumbnails.md` | planned |
 | 14 | Slideshow (v2) | `docs/superpowers/plans/2026-10-22-milestone-14-slideshow.md` | planned |
 | 15 | Compare images (v2) | `docs/superpowers/plans/2026-10-22-milestone-15-compare.md` | planned |
-| 16 | Batch extras (v2) | | planning |
+| 16 | Batch extras (v2) | `docs/superpowers/plans/2026-10-22-milestone-16-batch-extras.md` | planned |
 | 17 | JPEG XL writing (v2) | | planning |
 
 ## 1. Core viewer and batch
