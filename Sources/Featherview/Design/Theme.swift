@@ -11,7 +11,7 @@ enum Theme {
     // MARK: Appearance
 
     /// Sets the whole app light, dark or back to the system's: every window, its toolbar, title and glass follow.
-    static func apply(_ mode: AppearanceMode) {
+    @MainActor static func apply(_ mode: AppearanceMode) {
         NSApp.appearance = switch mode {
         case .system: nil
         case .light: NSAppearance(named: .aqua)

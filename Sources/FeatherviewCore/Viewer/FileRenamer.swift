@@ -25,7 +25,7 @@ public enum FileRenamer {
         let name = trimmed(name)
         if name.isEmpty { return .empty }
         if name.contains("/") || name.contains(":")
-            || name.unicodeScalars.contains { $0.properties.generalCategory == .control } { return .invalidCharacter }
+            || name.unicodeScalars.contains(where: { $0.properties.generalCategory == .control }) { return .invalidCharacter }
         if name.hasPrefix(".") { return .hidden }
         // APFS and HFS+ cap a name at 255 characters (UTF-16 units on HFS+), not UTF-8 bytes.
         if name.utf16.count > 255 { return .tooLong }

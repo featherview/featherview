@@ -18,12 +18,12 @@ enum MenuKeys {
     static func install() {
         let center = NotificationCenter.default
         center.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { note in
-            let isMain = note.object as? NSMenu === NSApp.mainMenu
-            MainActor.assumeIsolated { if isMain { begin() } }
+            let menu = (note.object as? NSMenu).map(ObjectIdentifier.init)  // Sendable, unlike the note
+            MainActor.assumeIsolated { if menu != nil, menu == NSApp.mainMenu.map(ObjectIdentifier.init) { begin() } }
         }
         center.addObserver(forName: NSMenu.didEndTrackingNotification, object: nil, queue: .main) { note in
-            let isMain = note.object as? NSMenu === NSApp.mainMenu
-            MainActor.assumeIsolated { if isMain { restore() } }
+            let menu = (note.object as? NSMenu).map(ObjectIdentifier.init)  // Sendable, unlike the note
+            MainActor.assumeIsolated { if menu != nil, menu == NSApp.mainMenu.map(ObjectIdentifier.init) { restore() } }
         }
     }
 
