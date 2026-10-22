@@ -12,11 +12,16 @@ final class RecentFiles {
     private(set) var urls: [URL] = []
     @ObservationIgnored private var loaded = false
     @ObservationIgnored private var waiting: [URL] = []
+    /// Bumped by every change, so an older reload's result never overwrites a newer list.
+    @ObservationIgnored private var generation = 0
 
+    /// On the open path: no reload, which stats every recent item.
     func note(_ url: URL) {
         guard loaded else { return waiting.append(url) }
         NSDocumentController.shared.noteNewRecentDocumentURL(url)
-        reload()
+        generation += 1
+        urls = Array(([url] + urls.filter { $0.standardizedFileURL != url.standardizedFileURL })
+            .prefix(NSDocumentController.shared.maximumRecentDocumentCount))
     }
 
     func clear() {
@@ -33,8 +38,17 @@ final class RecentFiles {
                 MainActor.assumeIsolated { RecentFiles.shared.reload() }
             }
         }
-        let fresh = NSDocumentController.shared.recentDocumentURLs.filter { FileManager.default.fileExists(atPath: $0.path) }
-        if fresh != urls { urls = fresh }
+        generation += 1
+        let current = generation
+        let candidates = NSDocumentController.shared.recentDocumentURLs
+        // Off the main thread: a stat on an unresponsive share or a sleeping disk can take seconds.
+        Task.detached(priority: .utility) {
+            let fresh = candidates.filter { FileManager.default.fileExists(atPath: $0.path) }
+            await MainActor.run {
+                let recents = RecentFiles.shared
+                if recents.generation == current, fresh != recents.urls { recents.urls = fresh }
+            }
+        }
     }
 }
 
