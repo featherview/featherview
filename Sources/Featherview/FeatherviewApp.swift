@@ -109,6 +109,7 @@ enum DefaultViewerOffer {
         Task {
             while ViewerModel.main.isOpening { try? await Task.sleep(for: .milliseconds(50)) }
             try? await Task.sleep(for: .milliseconds(100))  // the frame with the image commits first
+            RecentFiles.shared.reload()
             guard DefaultViewer.shouldOffer(bundleURL: Bundle.main.bundleURL, home: FileManager.default.homeDirectoryForCurrentUser,
                                             offeredBefore: AppSettings.offeredDefaultViewer.value(),
                                             jpegHandler: handler(for: .jpeg)) else { return }

@@ -65,6 +65,8 @@ final class ViewerModel {
         var canCompare = false
         /// X: comparing, and pane 2's file opened.
         var canSwap = false
+        /// Set as Desktop Picture: a file the system itself can show.
+        var canSetDesktop = false
     }
     /// Stored, and set only when a value flips: buttons reading `list` would all re-evaluate on every image.
     private(set) var availability = Availability()
@@ -82,7 +84,9 @@ final class ViewerModel {
                                canShowGrid: isGrid || (!list.isEmpty && !isOpening),
                                canCompare: list.current != nil && !list.isHolding && !isGrid,
                                canSwap: compareSession != nil && compareSession?.errorMessage == nil
-                                   && list.current != nil && !list.isHolding)
+                                   && list.current != nil && !list.isHolding,
+                               canSetDesktop: list.current != nil && !list.isHolding && !isGrid
+                                   && list.current.map(ImageFormats.desktopCanShow) == true)
         if new != availability { availability = new }
         if isAnimation != (player.frameCount > 1) { isAnimation.toggle() }
     }
@@ -222,7 +226,9 @@ final class ViewerModel {
     /// A file shows at once; its folder is scanned off the main thread meanwhile, because a big
     /// folder takes longer to list and sort than the image takes to decode.
     /// `keepingCompare`: pane 1 changes folder (a swap or a compare start), pane 2 stays.
-    func open(_ url: URL, keepingCompare: Bool = false) {
+    /// `remember`: listed in File › Open Recent (not for browsing into another folder).
+    func open(_ url: URL, keepingCompare: Bool = false, remember: Bool = true) {
+        if remember { RecentFiles.shared.note(url) }
         openTask?.cancel()
         closeGrid()
         if !keepingCompare { leaveCompare() }
@@ -366,7 +372,7 @@ final class ViewerModel {
     func chooserMove(_ delta: Int) { chooserSession.move(delta) }
     func chooserEnter() { chooserSession.enter() }
     func chooserUp() { chooserSession.up() }
-    func chooserOpen() { chooserSession.open { [weak self] in self?.open($0, keepingCompare: true) } }
+    func chooserOpen() { chooserSession.open { [weak self] in self?.open($0, keepingCompare: true, remember: false) } }
     func closeChooser() {
         countTask?.cancel()
         chooserSession.close()
@@ -1040,7 +1046,7 @@ final class ViewerModel {
         if isGrid {
             viewFromGrid(first)
         } else if list.current != first {
-            if list.select(first) { show() } else { open(first, keepingCompare: true) }
+            if list.select(first) { show() } else { open(first, keepingCompare: true, remember: false) }
         }
         showInfo = false
         if let compareSession {
@@ -1081,7 +1087,7 @@ final class ViewerModel {
         // shortcut: a file gone in Finder shows until a swap or the app is reactivated; watch it if users ask.
         guard FileManager.default.fileExists(atPath: second.path) else { return secondFailed(compareSession, url: second) }
         compareSession.change(to: first)
-        if list.select(second) { show() } else { open(second, keepingCompare: true) }
+        if list.select(second) { show() } else { open(second, keepingCompare: true, remember: false) }
         showSecond()
     }
 
@@ -1201,6 +1207,8 @@ final class ViewerModel {
     weak var window: NSWindow?
     /// Kept up to date by the view from the window's full-screen notifications.
     var isFullScreen = false
+    /// Window › Float on Top, per window, not remembered.
+    var isFloating = false { didSet { window?.level = isFloating ? .floating : .normal } }
     /// True while the viewer itself has the keyboard, not a text field or selected text beside it;
     /// ⌘C copies the image only then. Kept up to date by the view.
     var hasKeyboardFocus = false
