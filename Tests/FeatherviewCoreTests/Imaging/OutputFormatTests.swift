@@ -149,6 +149,21 @@ import Testing
         #expect(png?[kCGImagePropertyPNGInterlaceType] as? Int == 1)
     }
 
+    @Test(arguments: [OutputFormat.jpeg, .png])
+    func encodeWritesDateTaken(_ format: OutputFormat) throws {
+        let date = "2024:07:01 12:00:00"
+        let data = try ImageEncoder.encode([image()], as: format, options: FormatOptions().with { $0.keepMetadata = false },
+                                           dateTaken: date)
+        let properties = try props(data)
+        let exif = properties[kCGImagePropertyExifDictionary] as? [CFString: Any]
+        #expect(exif?[kCGImagePropertyExifDateTimeOriginal] as? String == date)
+        #expect(exif?[kCGImagePropertyExifDateTimeDigitized] as? String == date)
+        if format.id == "jpg" {
+            let tiff = properties[kCGImagePropertyTIFFDictionary] as? [CFString: Any]
+            #expect(tiff?[kCGImagePropertyTIFFDateTime] as? String == date)
+        }
+    }
+
     @Test(arguments: TIFFCompression.allCases)
     func tiffCompression(_ compression: TIFFCompression) throws {
         let data = try ImageEncoder.encode([image()], as: .tiff, options: FormatOptions().with { $0.tiffCompression = compression })
