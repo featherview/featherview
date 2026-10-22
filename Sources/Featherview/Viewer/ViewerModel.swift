@@ -734,6 +734,7 @@ final class ViewerModel {
     /// After Trash or a move: the image leaves the list. With "show the next image" on (default) the
     /// next one shows; off, the removed image stays until the next key, which then shows the one after it.
     private func removeFromList(_ url: URL) async {
+        RecentFiles.shared.reload()
         ready[url] = nil
         await cache.remove(url)
         await fullSizeCache.remove(url)

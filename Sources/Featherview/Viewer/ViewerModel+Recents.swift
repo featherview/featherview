@@ -9,19 +9,20 @@ final class RecentFiles {
     static let shared = RecentFiles()
 
     /// Newest first, only items that still exist.
-    private(set) var urls: [URL] = []
+    var urls: [URL] { list.urls }
+    private var list = RecentList()
     @ObservationIgnored private var loaded = false
     @ObservationIgnored private var waiting: [URL] = []
-    /// Bumped by every change, so an older reload's result never overwrites a newer list.
-    @ObservationIgnored private var generation = 0
 
-    /// On the open path: no reload, which stats every recent item.
+    private var limit: Int { NSDocumentController.shared.maximumRecentDocumentCount }
+
+    /// On the open path: no reload, which stats every recent item. A gone file (a stale entry chosen) isn't
+    /// noted again; the reload drops its entry.
     func note(_ url: URL) {
         guard loaded else { return waiting.append(url) }
+        guard !RecentList.isGone(url) else { return reload() }
         NSDocumentController.shared.noteNewRecentDocumentURL(url)
-        generation += 1
-        urls = Array(([url] + urls.filter { $0.standardizedFileURL != url.standardizedFileURL })
-            .prefix(NSDocumentController.shared.maximumRecentDocumentCount))
+        list.note(url, limit: limit)
     }
 
     func clear() {
@@ -29,6 +30,7 @@ final class RecentFiles {
         reload()
     }
 
+    /// Also after the app's own Trash and move: the system's bookmark follows a moved file to its new path.
     func reload() {
         if !loaded {
             loaded = true
@@ -38,16 +40,13 @@ final class RecentFiles {
                 MainActor.assumeIsolated { RecentFiles.shared.reload() }
             }
         }
-        generation += 1
-        let current = generation
+        let token = list.startReload()
         let candidates = NSDocumentController.shared.recentDocumentURLs
+        let limit = limit
         // Off the main thread: a stat on an unresponsive share or a sleeping disk can take seconds.
         Task.detached(priority: .utility) {
-            let fresh = candidates.filter { FileManager.default.fileExists(atPath: $0.path) }
-            await MainActor.run {
-                let recents = RecentFiles.shared
-                if recents.generation == current, fresh != recents.urls { recents.urls = fresh }
-            }
+            let fresh = candidates.filter { !RecentList.isGone($0) }
+            await MainActor.run { RecentFiles.shared.list.finishReload(fresh, token: token, limit: limit) }
         }
     }
 }
