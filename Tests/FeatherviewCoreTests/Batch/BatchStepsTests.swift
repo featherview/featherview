@@ -11,7 +11,60 @@ import Testing
         #expect(BatchCard.core.allSatisfy { $0.isAdded(in: s) })
         #expect(BatchCard.core.map(\.number) == [2, 3, 4])
         #expect(BatchCard.extras.allSatisfy { $0.number == nil })
-        #expect(BatchCard.extras == [.crop, .orientation, .colour, .filters, .canvas, .border, .text, .watermark])
+    }
+
+    @Test func extrasOrder() {
+        #expect(BatchCard.extras == [.frames, .crop, .orientation, .colour, .filters, .canvas, .border, .text, .watermark,
+                                     .tiles, .dateTaken])
+    }
+
+    @Test func appliedLineOrder() {
+        var s = BatchSettings()
+        s.dateTaken.isOn = true
+        s.tiles.isOn = true
+        s.crop.isOn = true
+        s.frames.isOn = true
+        #expect(BatchCard.appliedLine(s) == "Applied: frames and pages → crop → tiles → date taken")
+    }
+
+    @Test func tilesSummary() {
+        var s = BatchSettings()
+        s.tiles.columns = 3
+        s.tiles.rows = 2
+        #expect(BatchCard.tiles.summary(in: s) == "3 × 2")
+        s.tiles.overlap = 20
+        #expect(BatchCard.tiles.summary(in: s) == "3 × 2, overlap 20 px")
+    }
+
+    @Test func dateSummaries() {
+        var s = BatchSettings()
+        #expect(BatchCard.frames.summary(in: s) == "Every frame or page")
+        s.dateTaken.mode = .set
+        #expect(BatchCard.dateTaken.summary(in: s) == "Choose a date")
+        s.dateTaken.setTo = "2024:07:01 18:30:00"
+        let set = BatchCard.dateTaken.summary(in: s)
+        #expect(set.hasPrefix("Set to") && set.contains("2024"))
+        s.dateTaken.mode = .shift
+        #expect(BatchCard.dateTaken.summary(in: s) == "No shift")
+        s.dateTaken.shiftSeconds = -5400
+        #expect(BatchCard.dateTaken.summary(in: s).hasPrefix("Earlier by"))
+        s.dateTaken.shiftSeconds = 90
+        #expect(BatchCard.dateTaken.summary(in: s).hasPrefix("Later by"))
+    }
+
+    @Test func addAndRemove() {
+        var s = BatchSettings()
+        let cards: [BatchCard] = [.frames, .tiles, .dateTaken]
+        for card in cards {
+            card.setAdded(true, in: &s)
+            #expect(card.isAdded(in: s))
+        }
+        #expect(s.frames.isOn && s.tiles.isOn && s.dateTaken.isOn)
+        for card in cards {
+            card.setAdded(false, in: &s)
+            #expect(!card.isAdded(in: s))
+        }
+        #expect(!s.frames.isOn && !s.tiles.isOn && !s.dateTaken.isOn)
     }
 
     @Test func extrasFollowTheirSwitch() {

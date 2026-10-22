@@ -1,17 +1,19 @@
 import Foundation
 
 /// The batch window's cards: Format, Size and Name always shown (numbered after the images, step 1),
-/// the eight rarer steps added on demand.
+/// the rarer steps added on demand.
 public enum BatchCard: String, CaseIterable, Identifiable, Sendable {
-    case format, size, name, crop, orientation, colour, filters, canvas, border, text, watermark
+    case format, size, name, frames, crop, orientation, colour, filters, canvas, border, text, watermark, tiles, dateTaken
 
     public var id: String { rawValue }
 
     public static let core: [BatchCard] = [.format, .size, .name]
     /// The Add Step menu's order.
-    public static let extras: [BatchCard] = [.crop, .orientation, .colour, .filters, .canvas, .border, .text, .watermark]
+    public static let extras: [BatchCard] = [.frames, .crop, .orientation, .colour, .filters, .canvas, .border, .text, .watermark,
+                                             .tiles, .dateTaken]
     /// Spec "Per-image operations": Size runs where Resize does.
-    private static let processingOrder: [BatchCard] = [.crop, .size, .orientation, .colour, .filters, .canvas, .border, .text, .watermark]
+    private static let processingOrder: [BatchCard] = [.frames, .crop, .size, .orientation, .colour, .filters, .canvas, .border,
+                                                       .text, .watermark, .tiles, .dateTaken]
 
     /// The card's place in the user's order (the images are 1); nil for added steps.
     public var number: Int? {
@@ -35,6 +37,9 @@ public enum BatchCard: String, CaseIterable, Identifiable, Sendable {
         case .border: s.border.isOn
         case .text: s.text.isOn
         case .watermark: s.watermark.isOn
+        case .frames: s.frames.isOn
+        case .tiles: s.tiles.isOn
+        case .dateTaken: s.dateTaken.isOn
         }
     }
 
@@ -50,10 +55,13 @@ public enum BatchCard: String, CaseIterable, Identifiable, Sendable {
         case .border: s.border.isOn = on
         case .text: s.text.isOn = on
         case .watermark: s.watermark.isOn = on
+        case .frames: s.frames.isOn = on
+        case .tiles: s.tiles.isOn = on
+        case .dateTaken: s.dateTaken.isOn = on
         }
     }
 
-    /// Whether the card's step changes the pixels in this batch (Size: when Change size is on).
+    /// Whether the card's step is applied in this batch (Size: when Change size is on).
     private func isApplied(in s: BatchSettings) -> Bool {
         self == .size ? s.resize.isOn : number == nil && isAdded(in: s)
     }
@@ -152,6 +160,34 @@ public enum BatchCard: String, CaseIterable, Identifiable, Sendable {
             let w = s.watermark
             return String(localized: "\(Self.anchorName(w.position)) · \(w.opacity.formatted(.percent))",
                           comment: "Batch Watermark card summary: position and opacity")
+        case .frames:
+            return String(localized: "Every frame or page", comment: "Batch Frames and Pages card summary")
+        case .tiles:
+            let t = s.tiles
+            return t.overlap == 0
+                ? String(localized: "\(String(t.columns)) × \(String(t.rows))", comment: "Batch Tiles card summary: columns × rows")
+                : String(localized: "\(String(t.columns)) × \(String(t.rows)), overlap \(t.overlap) px",
+                         comment: "Batch Tiles card summary: columns × rows and the pixels neighbouring tiles share")
+        case .dateTaken:
+            let d = s.dateTaken
+            switch d.mode {
+            case .set:
+                guard let date = Self.wallTime(d.setTo) else {
+                    return String(localized: "Choose a date", comment: "Batch Date Taken card summary: no date set yet")
+                }
+                var style = Date.FormatStyle(date: .abbreviated, time: .shortened)
+                style.timeZone = .gmt
+                return String(localized: "Set to \(date.formatted(style))", comment: "Batch Date Taken card summary: the date and time set")
+            case .shift:
+                guard d.shiftSeconds != 0 else {
+                    return String(localized: "No shift", comment: "Batch Date Taken card summary: shift by zero")
+                }
+                let duration = Duration.seconds(abs(d.shiftSeconds))
+                    .formatted(.units(allowed: [.days, .hours, .minutes, .seconds], width: .abbreviated))
+                return d.shiftSeconds > 0
+                    ? String(localized: "Later by \(duration)", comment: "Batch Date Taken card summary: shifted later, e.g. 1 hr, 30 min")
+                    : String(localized: "Earlier by \(duration)", comment: "Batch Date Taken card summary: shifted earlier, e.g. 1 hr, 30 min")
+            }
         }
     }
 
@@ -177,7 +213,19 @@ public enum BatchCard: String, CaseIterable, Identifiable, Sendable {
         case .border: String(localized: "border", comment: "Batch applied line: step name")
         case .text: String(localized: "text", comment: "Batch applied line: step name")
         case .watermark: String(localized: "watermark", comment: "Batch applied line: step name")
+        case .frames: String(localized: "frames and pages", comment: "Batch applied line: step name")
+        case .tiles: String(localized: "tiles", comment: "Batch applied line: step name")
+        case .dateTaken: String(localized: "date taken", comment: "Batch applied line: step name")
         }
+    }
+
+    /// An EXIF wall time "yyyy:MM:dd HH:mm:ss" as a date in GMT (formatted back in GMT, it reads the same).
+    private static func wallTime(_ exif: String) -> Date? {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = .gmt
+        f.dateFormat = "yyyy:MM:dd HH:mm:ss"
+        return f.date(from: exif)
     }
 
     private static func signed(_ n: Int) -> String { n.formatted(.number.sign(strategy: .always())) }

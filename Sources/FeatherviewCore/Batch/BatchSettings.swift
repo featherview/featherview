@@ -156,6 +156,34 @@ public struct WatermarkSettings: Codable, Equatable, Sendable {
     public init() {}
 }
 
+/// Every frame or page of an input becomes its own output.
+public struct FramesSettings: Codable, Equatable, Sendable {
+    public var isOn = false
+    public init() {}
+}
+
+/// Cuts each finished output into columns × rows.
+public struct TilesSettings: Codable, Equatable, Sendable {
+    public var isOn = false
+    /// 1…100 each.
+    public var columns = 2, rows = 2
+    /// Pixels neighbours share; negative leaves gaps.
+    public var overlap = 0
+    public init() {}
+}
+
+public enum DateTakenMode: String, Codable, Sendable, CaseIterable { case set, shift }
+
+public struct DateTakenSettings: Codable, Equatable, Sendable {
+    public var isOn = false
+    public var mode = DateTakenMode.shift
+    /// Wall time "yyyy:MM:dd HH:mm:ss", as EXIF stores it; empty = not chosen.
+    public var setTo = ""
+    /// Signed: + later, − earlier.
+    public var shiftSeconds = 0
+    public init() {}
+}
+
 public struct SafetySettings: Codable, Equatable, Sendable {
     public var replaceExisting = false
     public var trashOriginals = false
@@ -182,6 +210,7 @@ public struct BatchSettings: Codable, Equatable, Sendable {
     public var crop = CropSettings(), resize = ResizeSettings(), orientation = OrientationSettings()
     public var colour = ColourSettings(), filters = FilterSettings(), canvas = CanvasSettings()
     public var border = BorderSettings(), text = TextSettings(), watermark = WatermarkSettings()
+    public var frames = FramesSettings(), tiles = TilesSettings(), dateTaken = DateTakenSettings()
     public var safety = SafetySettings()
 
     public init() {}
@@ -202,8 +231,12 @@ public struct BatchSettings: Codable, Equatable, Sendable {
             || border.isOn || text.isOn || watermark.isOn
     }
 
-    /// Keep format and nothing changes the pixels: the converter copies each file's bytes.
-    public var copiesUnchanged: Bool { !changeFormat && !hasOperations }
+    /// An input may yield several outputs (frames, pages or tiles).
+    public var splits: Bool { frames.isOn || tiles.isOn }
+
+    /// Keep format, nothing changes the pixels and one output per input: the converter copies each
+    /// file's bytes (Date Taken rewrites the date in them losslessly).
+    public var copiesUnchanged: Bool { !changeFormat && !hasOperations && !splits }
 }
 
 /// One file of the batch's input list.
@@ -356,6 +389,34 @@ extension WatermarkSettings {
     }
 }
 
+extension FramesSettings {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init()
+        isOn = c.value(.isOn, isOn)
+    }
+}
+
+extension TilesSettings {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = Self()
+        isOn = c.value(.isOn, d.isOn)
+        columns = c.value(.columns, d.columns); rows = c.value(.rows, d.rows)
+        overlap = c.value(.overlap, d.overlap)
+    }
+}
+
+extension DateTakenSettings {
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = Self()
+        isOn = c.value(.isOn, d.isOn)
+        mode = c.value(.mode, d.mode); setTo = c.value(.setTo, d.setTo)
+        shiftSeconds = c.value(.shiftSeconds, d.shiftSeconds)
+    }
+}
+
 extension SafetySettings {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -381,6 +442,8 @@ extension BatchSettings {
         filters = c.value(.filters, d.filters); canvas = c.value(.canvas, d.canvas)
         border = c.value(.border, d.border); text = c.value(.text, d.text)
         watermark = c.value(.watermark, d.watermark); safety = c.value(.safety, d.safety)
+        frames = c.value(.frames, d.frames); tiles = c.value(.tiles, d.tiles)
+        dateTaken = c.value(.dateTaken, d.dateTaken)
         // Settings stored with the old three-way mode load the batch they ran.
         guard !c.contains(.changeFormat),
               let mode = try? decoder.container(keyedBy: OldKeys.self).decode(String.self, forKey: .mode)

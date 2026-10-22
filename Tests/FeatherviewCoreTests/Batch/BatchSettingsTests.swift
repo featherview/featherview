@@ -63,6 +63,13 @@ import Testing
             return w
         }()
         s.safety = SafetySettings(replaceExisting: true, trashOriginals: true, keepDates: true, recreateSubfolders: true)
+        s.frames.isOn = true
+        s.tiles = { var t = TilesSettings(); t.isOn = true; t.columns = 3; t.rows = 4; t.overlap = -5; return t }()
+        s.dateTaken = {
+            var d = DateTakenSettings()
+            d.isOn = true; d.mode = .set; d.setTo = "2024:07:01 18:30:00"; d.shiftSeconds = -3600
+            return d
+        }()
         return s
     }
 
@@ -93,6 +100,41 @@ import Testing
         #expect(s.crop != d.crop && s.resize != d.resize && s.orientation != d.orientation && s.colour != d.colour)
         #expect(s.filters != d.filters && s.canvas != d.canvas && s.border != d.border && s.text != d.text)
         #expect(s.watermark != d.watermark && s.safety != d.safety)
+        #expect(s.frames != d.frames && s.tiles != d.tiles && s.dateTaken != d.dateTaken)
+    }
+
+    @Test func newStepsDefaultOff() {
+        let s = BatchSettings()
+        #expect(!s.frames.isOn && !s.tiles.isOn && !s.dateTaken.isOn)
+        #expect(!s.splits)
+        #expect(s.tiles.columns == 2 && s.tiles.rows == 2 && s.tiles.overlap == 0)
+        #expect(s.dateTaken.mode == .shift && s.dateTaken.setTo == "" && s.dateTaken.shiftSeconds == 0)
+    }
+
+    @Test func oldPresetLoadsWithStepsOff() throws {
+        let s = try decode(#"{"changeFormat":false,"formatID":"png","crop":{"isOn":true}}"#)
+        #expect(s.frames == FramesSettings() && s.tiles == TilesSettings() && s.dateTaken == DateTakenSettings())
+        #expect(s.crop.isOn)
+    }
+
+    @Test func wrongTypedTilesFallBack() throws {
+        let s = try decode(#"{"tiles":{"isOn":true,"columns":"x","rows":5},"dateTaken":{"isOn":true,"mode":"nope","shiftSeconds":60}}"#)
+        #expect(s.tiles.isOn && s.tiles.columns == 2 && s.tiles.rows == 5)
+        #expect(s.dateTaken.isOn && s.dateTaken.mode == .shift && s.dateTaken.shiftSeconds == 60)
+    }
+
+    @Test func splitsAreNotCopies() {
+        var s = BatchSettings()
+        s.changeFormat = false
+        s.frames.isOn = true
+        #expect(s.splits && !s.copiesUnchanged && !s.hasOperations)
+        s.frames.isOn = false
+        s.tiles.isOn = true
+        #expect(s.splits && !s.copiesUnchanged)
+        s.tiles.isOn = false
+        // The date is rewritten losslessly on the copied bytes.
+        s.dateTaken.isOn = true
+        #expect(!s.splits && s.copiesUnchanged)
     }
 
     @Test func missingNestedKeyKeepsDefault() throws {
