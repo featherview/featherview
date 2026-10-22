@@ -56,6 +56,8 @@ final class ViewerModel {
         var canGoBack = false
         var canGoForward = false
         var hasCurrent = false
+        /// W, ⇧A: an image shows and its folder is listed.
+        var canStartSlideshow = false
         /// Rotate, Trash, F7 / F8: not on a held (already removed) image.
         var canChangeFile = false
         var hasPages = false
@@ -77,6 +79,7 @@ final class ViewerModel {
         let new = Availability(canGoBack: canBrowse && (slideshow != nil || pastEnd.canStep(forward: false, index: list.index, count: list.urls.count)),
                                canGoForward: canBrowse && (slideshow != nil || pastEnd.canStep(forward: true, index: list.index, count: list.urls.count)),
                                hasCurrent: list.current != nil,
+                               canStartSlideshow: Slideshow.mayStart(hasCurrent: list.current != nil, isOpening: isOpening),
                                // In the grid these act on one viewed image (Decision 13).
                                canChangeFile: list.current != nil && !list.isHolding && !isGrid,
                                hasPages: (pageCount > 1 || player.frameCount > 1) && !list.isHolding && !isGrid,
@@ -659,7 +662,7 @@ final class ViewerModel {
         }
         image = decoded
         errorMessage = nil
-        // Starting from a window, the first interval waits for full screen (enteredFullScreen).
+        // Starting from a window, the first interval waits for full screen (fullScreenTransitionEnded).
         if slideshow != nil, !waitingForFullScreen {
             slideshow?.shown(url, at: .now)
             slideshowChanged()
@@ -1239,10 +1242,11 @@ final class ViewerModel {
     func startSlideshow(fullScreen: Bool) {
         if isGrid { viewFromGrid(gridFocus) }
         leaveCompare()
-        guard slideshow == nil, let current = list.current else { return }
+        guard slideshow == nil, Slideshow.mayStart(hasCurrent: list.current != nil, isOpening: isOpening),
+              let current = list.current else { return }
         slideshow = Slideshow(urls: list.urls, from: current, options: AppSettings.slideshowOptions,
                               seed: .random(in: .min ... .max))
-        if fullScreen, !isFullScreen {
+        if Slideshow.waitsForFullScreen(requested: fullScreen, isFullScreen: isFullScreen, hasWindow: window != nil) {
             waitingForFullScreen = true
             toggleFullScreen()
         }
@@ -1291,8 +1295,9 @@ final class ViewerModel {
         Task { await cache.prefetch(neighbors, target: .fit(screens)) }
     }
 
-    /// The window finished entering full screen: a slideshow started from the window starts its first interval.
-    func enteredFullScreen() {
+    /// The window finished entering or leaving full screen: a slideshow started from the window starts its first
+    /// interval, also when AppKit dropped the toggle (sent while leaving full screen).
+    func fullScreenTransitionEnded() {
         guard waitingForFullScreen else { return }
         waitingForFullScreen = false
         // Not on screen yet: `shown` starts it when it is.

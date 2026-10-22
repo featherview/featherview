@@ -222,7 +222,10 @@ struct ViewerView: View {
             if note.object as? NSWindow === model.window { model.isFullScreen = true }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { note in
-            if note.object as? NSWindow === model.window { model.enteredFullScreen() }
+            if note.object as? NSWindow === model.window { model.fullScreenTransitionEnded() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { note in
+            if note.object as? NSWindow === model.window { model.fullScreenTransitionEnded() }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willExitFullScreenNotification)) { note in
             if note.object as? NSWindow === model.window { model.isFullScreen = false }
@@ -983,7 +986,7 @@ struct ViewerCommands: Commands {
                     if playing { model?.endSlideshow() } else { model?.startSlideshow(fullScreen: false) }
                 }
             }
-            .disabled(!playing && model?.availability.hasCurrent != true)
+            .disabled(!playing && model?.availability.canStartSlideshow != true)
             if let state = model?.slideshowState {
                 Button(state == .playing ? "Pause Slideshow  (Space)" : "Resume Slideshow  (Space)") {
                     model?.toggleSlideshowPause()

@@ -19,6 +19,14 @@ public struct Slideshow: Equatable, Sendable {
     /// The choices of View › Slideshow Options › Show Each Image For, in seconds.
     public static let intervals: [Int] = [1, 2, 3, 5, 10, 20, 30, 60]
 
+    /// W and ⇧A: not while the folder is still listed, when the play order would hold only the opened file.
+    public static func mayStart(hasCurrent: Bool, isOpening: Bool) -> Bool { hasCurrent && !isOpening }
+
+    /// The first interval waits for full screen only when a window is about to enter it.
+    public static func waitsForFullScreen(requested: Bool, isFullScreen: Bool, hasWindow: Bool) -> Bool {
+        requested && !isFullScreen && hasWindow
+    }
+
     public private(set) var options: Options
     public private(set) var isPaused = false
     public private(set) var isFinished = false
