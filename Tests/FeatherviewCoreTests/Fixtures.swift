@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
+import libwebp
 
 /// Test images are generated, never committed: tiny, exact, and no licensing questions.
 enum Fixtures {
@@ -78,6 +79,79 @@ enum Fixtures {
         CGImageDestinationAddImage(dest, context.makeImage()!,
                                    [kCGImageDestinationEncodeRequest: kCGImageDestinationEncodeToISOGainmap] as CFDictionary)
         guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
+        return url
+    }
+
+    /// Solid frame `n` of an animation: red = 40·n, so tests can tell frames apart.
+    static func animationFrame(_ n: Int, width: Int, height: Int) -> CGImage {
+        let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        context.setFillColor(CGColor(red: CGFloat(40 * n % 256) / 255, green: 0, blue: 0, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage()!
+    }
+
+    /// An animation through ImageIO: one frame per delay (seconds), stored as `delayKey` in `dictionary`.
+    private static func writeSequence(to url: URL, type: String, dictionary: CFString, delayKey: CFString,
+                                      delays: [Double], width: Int, height: Int) throws -> URL {
+        guard let dest = CGImageDestinationCreateWithURL(url as CFURL, type as CFString, delays.count, nil)
+        else { throw CocoaError(.fileWriteUnknown) }
+        for (n, delay) in delays.enumerated() {
+            CGImageDestinationAddImage(dest, animationFrame(n, width: width, height: height),
+                                       [dictionary: [delayKey: delay]] as CFDictionary)
+        }
+        guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
+        return url
+    }
+
+    @discardableResult
+    static func writeAnimatedGIF(to url: URL, delays: [Double], width: Int = 8, height: Int = 6) throws -> URL {
+        try writeSequence(to: url, type: UTType.gif.identifier, dictionary: kCGImagePropertyGIFDictionary,
+                          delayKey: kCGImagePropertyGIFDelayTime, delays: delays, width: width, height: height)
+    }
+
+    @discardableResult
+    static func writeAPNG(to url: URL, delays: [Double], width: Int = 8, height: Int = 6) throws -> URL {
+        try writeSequence(to: url, type: UTType.png.identifier, dictionary: kCGImagePropertyPNGDictionary,
+                          delayKey: kCGImagePropertyAPNGDelayTime, delays: delays, width: width, height: height)
+    }
+
+    @discardableResult
+    static func writeHEICS(to url: URL, delays: [Double], width: Int = 8, height: Int = 6) throws -> URL {
+        try writeSequence(to: url, type: "public.heics", dictionary: kCGImagePropertyHEICSDictionary,
+                          delayKey: kCGImagePropertyHEICSDelayTime, delays: delays, width: width, height: height)
+    }
+
+    /// An animated WebP through libwebp's `WebPAnimEncoder` (ImageIO can't write WebP), lossless.
+    @discardableResult
+    static func writeAnimatedWebP(to url: URL, delays: [Double], width: Int = 8, height: Int = 6) throws -> URL {
+        var options = WebPAnimEncoderOptions()
+        guard WebPAnimEncoderOptionsInit(&options) != 0,
+              let encoder = WebPAnimEncoderNew(Int32(width), Int32(height), &options) else { throw CocoaError(.fileWriteUnknown) }
+        defer { WebPAnimEncoderDelete(encoder) }
+        var config = WebPConfig()
+        guard WebPConfigInit(&config) != 0 else { throw CocoaError(.fileWriteUnknown) }
+        config.lossless = 1
+        var timestamp: Int32 = 0
+        for (n, delay) in delays.enumerated() {
+            var picture = WebPPicture()
+            guard WebPPictureInit(&picture) != 0 else { throw CocoaError(.fileWriteUnknown) }
+            defer { WebPPictureFree(&picture) }
+            picture.width = Int32(width)
+            picture.height = Int32(height)
+            picture.use_argb = 1
+            let red = UInt8(40 * n % 256)
+            let pixels = (0..<width * height * 4).map { i -> UInt8 in i % 4 == 0 ? red : i % 4 == 3 ? 255 : 0 }
+            guard pixels.withUnsafeBufferPointer({ WebPPictureImportRGBA(&picture, $0.baseAddress, Int32(width * 4)) }) != 0,
+                  WebPAnimEncoderAdd(encoder, &picture, timestamp, &config) != 0 else { throw CocoaError(.fileWriteUnknown) }
+            timestamp += Int32((delay * 1000).rounded())
+        }
+        var data = WebPData()
+        guard WebPAnimEncoderAdd(encoder, nil, timestamp, nil) != 0,
+              WebPAnimEncoderAssemble(encoder, &data) != 0 else { throw CocoaError(.fileWriteUnknown) }
+        defer { WebPDataClear(&data) }
+        try Data(bytes: data.bytes, count: data.size).write(to: url)
         return url
     }
 }

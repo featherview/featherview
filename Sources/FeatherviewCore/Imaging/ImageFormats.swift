@@ -12,6 +12,8 @@ public enum ImageFormats {
         if OwnDecoders.format(for: url) != nil { return true }
         // macOS has no UTType for these JPEG extensions (browsers save .jfif), ImageIO reads them.
         var ext = ["jfif", "jif", "jfi"].contains(url.pathExtension.lowercased()) ? "jpg" : url.pathExtension
+        // macOS has no UTType ImageIO lists for animated PNG's extension, ImageIO reads it as PNG.
+        if ext.lowercased() == "apng" { ext = "png" }
         // macOS has no UTType for Photoshop Large Documents, ImageIO reads them as PSD (by content).
         if ext.lowercased() == "psb" { ext = "psd" }
         // macOS has no UTType for Netpbm's PAM, ImageIO reads it with the rest of the family (by content).
@@ -27,5 +29,11 @@ public enum ImageFormats {
     public static func mayHavePages(_ url: URL) -> Bool {
         if let own = OwnDecoders.format(for: url) { return own.hasPages }
         return UTType(filenameExtension: url.pathExtension)?.conforms(to: .tiff) == true
+    }
+
+    /// Only these can be animations (`Animation.read`); by extension, so stills skip that property read.
+    public static func mayAnimate(_ url: URL) -> Bool {
+        if let own = OwnDecoders.format(for: url) { return own.delays != nil }
+        return ["gif", "png", "apng", "webp", "heic", "heics", "heif", "avif"].contains(url.pathExtension.lowercased())
     }
 }

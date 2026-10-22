@@ -16,17 +16,21 @@ public struct OwnFormat: Sendable {
     /// Decodes `page`. Raster formats ignore `maxPixelSize` and return full size (ImageDecoder scales
     /// down); vector formats render at it.
     public let decode: @Sendable (_ data: Data, _ page: Int, _ maxPixelSize: Int?) throws -> CGImage
+    /// Seconds per animation frame, for a format that animates (ANI); nil otherwise.
+    public let delays: (@Sendable (_ data: Data) -> [Double]?)?
 
     public init(name: String, extensions: [String], hasPages: Bool = false,
                 size: @escaping @Sendable (Data, Int) -> CGSize?,
                 pageCount: @escaping @Sendable (Data) -> Int = { _ in 1 },
-                decode: @escaping @Sendable (Data, Int, Int?) throws -> CGImage) {
+                decode: @escaping @Sendable (Data, Int, Int?) throws -> CGImage,
+                delays: (@Sendable (Data) -> [Double]?)? = nil) {
         self.name = name
         self.extensions = extensions
         self.hasPages = hasPages
         self.size = size
         self.pageCount = pageCount
         self.decode = decode
+        self.delays = delays
     }
 
     /// A raster format: decoders return `RGBAImage`, sizes come from the header.

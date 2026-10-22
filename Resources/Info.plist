@@ -34,6 +34,18 @@
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
+			<string>PNG image</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>net.mynetx.featherview.apng</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
 			<string>QOI image</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
@@ -517,6 +529,23 @@
 					<string>jfif</string>
 					<string>jif</string>
 					<string>jfi</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.png</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>PNG image</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.apng</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>apng</string>
 				</array>
 			</dict>
 		</dict>

@@ -372,17 +372,17 @@ enum Theme {
         }
 
         /// The SwiftUI animation for a movement, nil under Reduce Motion.
-        static func moving(_ seconds: Double, reduceMotion: Bool) -> Animation? {
+        static func moving(_ seconds: Double, reduceMotion: Bool) -> SwiftUI.Animation? {
             reduceMotion ? nil : .easeInOut(duration: seconds)
         }
 
         /// Things that arrive: ease-out, nil under Reduce Motion.
-        static func arriving(_ seconds: Double, reduceMotion: Bool) -> Animation? {
+        static func arriving(_ seconds: Double, reduceMotion: Bool) -> SwiftUI.Animation? {
             reduceMotion ? nil : .easeOut(duration: seconds)
         }
 
         /// Pure opacity: linear, kept under Reduce Motion.
-        static func fade(_ seconds: Double) -> Animation { .linear(duration: seconds) }
+        static func fade(_ seconds: Double) -> SwiftUI.Animation { .linear(duration: seconds) }
     }
 }
 
