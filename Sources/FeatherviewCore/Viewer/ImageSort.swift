@@ -56,24 +56,16 @@ public enum ImageSort {
         case .name:
             break
         case .dateModified, .size:
-            let resourceKey: URLResourceKey = key == .size ? .fileSizeKey : .contentModificationDateKey
+            // One stat per file, read fresh (a save changes size and date), following a symlink to the image:
+            // URL resource values cost ~4x as much, ~90 ms for 10,000 files ahead of a folder's first image.
             for url in urls {
-                // A URL keeps the values it read once: drop them, or a file saved since keeps its old size and date.
-                var fresh = url
-                fresh.removeAllCachedResourceValues()
-                // The scanner lists symlinked images: read the image's size and date, not the link's.
-                // Resolving only links: a realpath walk on every file cost ~20x the lookup itself.
-                guard var resources = try? fresh.resourceValues(forKeys: [resourceKey, .isSymbolicLinkKey]) else { continue }
-                if resources.isSymbolicLink == true {
-                    var target = url.resolvingSymlinksInPath()
-                    target.removeAllCachedResourceValues()
-                    guard let targetResources = try? target.resourceValues(forKeys: [resourceKey]) else { continue }
-                    resources = targetResources
-                }
+                var info = stat()
+                guard url.withUnsafeFileSystemRepresentation({ $0.map { stat($0, &info) } }) == 0 else { continue }
                 if key == .size {
-                    values[url] = resources.fileSize.map(SortValue.bytes)
+                    values[url] = .bytes(Int(info.st_size))
                 } else {
-                    values[url] = resources.contentModificationDate.map(SortValue.date)
+                    let time = info.st_mtimespec
+                    values[url] = .date(Date(timeIntervalSince1970: TimeInterval(time.tv_sec) + TimeInterval(time.tv_nsec) / 1e9))
                 }
             }
         case .kind:

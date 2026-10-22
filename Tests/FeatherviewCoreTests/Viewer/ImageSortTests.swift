@@ -123,6 +123,29 @@ import UniformTypeIdentifiers
         #expect(sorted < plain * 2, "\(sorted) vs \(plain)")
     }
 
+    @Test func sizeAndDateCostAboutAStat() throws {
+        // A folder opens on its first image by date or size: all values are read before that image decodes.
+        let dir = try Fixtures.makeTempDir()
+        let names = (0..<2_000).map { "\($0).jpg" }
+        for name in names { FileManager.default.createFile(atPath: dir.appendingPathComponent(name).path, contents: Data(count: 1)) }
+        let fresh = { names.map { URL(fileURLWithPath: dir.appendingPathComponent($0).path) } }
+        func fastest(_ body: ([URL]) -> Void) -> Duration {
+            (0..<5).map { _ in
+                let urls = fresh()
+                let start = ContinuousClock.now
+                body(urls)
+                return ContinuousClock.now - start
+            }.min()!
+        }
+        let plain = fastest { for url in $0 { var info = stat(); _ = stat(url.path, &info) } }
+        for key in [SortKey.size, .dateModified] {
+            var values: [URL: SortValue] = [:]
+            let read = fastest { values = ImageSort.values(of: $0, key: key) }
+            #expect(values.count == 2_000)
+            #expect(read < plain * 3, "\(key): \(read) vs \(plain)")
+        }
+    }
+
     @Test func kindIsPerExtensionIgnoringCase() {
         let (a, b, c) = (url("a.jpg"), url("b.JPG"), url("c.zzzq"))
         let values = ImageSort.values(of: [a, b, c], key: .kind)
