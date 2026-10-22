@@ -40,6 +40,9 @@ struct ViewerView: View {
     @State private var barsVisible = true
     /// Counts each arming of the rest timer: a Bool id could re-arm before SwiftUI saw it go false, and the timer task never restarted.
     @State private var hideArm = 0
+    /// The full-screen slideshow capsule: shown on pointer movement, hidden at rest unless the pointer is over it.
+    @State private var controlsShown = false
+    @State private var controlsHovered = false
 
     private var showsStatusBar: Bool { !statusBarHidden && !model.isFullScreen }
     private var canvasInsets: CanvasInsets {
@@ -258,9 +261,23 @@ struct ViewerView: View {
                     .animation(Theme.Motion.fade(barsVisible ? Theme.Motion.barsIn : Theme.Motion.barsOut), value: barsVisible)
             }
         }
+        .overlay(alignment: .bottom) {
+            if model.isFullScreen, let state = model.slideshowState {
+                SlideshowControls(state: state, previous: { model.previous() }, togglePause: { model.toggleSlideshowPause() },
+                                  next: { model.next() }, end: { model.endSlideshowLeavingFullScreen() })
+                    .onHover { controlsHovered = $0 }
+                    .onDisappear { controlsHovered = false }
+                    .opacity(controlsShown ? 1 : 0)
+                    .allowsHitTesting(controlsShown)
+                    // Opacity only, so Reduce Motion keeps it.
+                    .animation(Theme.Motion.fade(controlsShown ? Theme.Motion.barsIn : Theme.Motion.barsOut), value: controlsShown)
+                    .padding(.bottom, Theme.slideshowControlsBottom)
+            }
+        }
         .onContinuousHover(coordinateSpace: .global) { phase in
             switch phase {
             case .active(let point):
+                showSlideshowControls()
                 let overStrip = showsStatusBar && point.y > windowSize.height - canvasInsets.bottom
                 feedAutoHide(.pointerOverBars(point.y < toolbarHeight || overStrip))
                 feedAutoHide(point.y < 4 ? .pointerAtTopEdge : .pointerMoved)
@@ -283,7 +300,13 @@ struct ViewerView: View {
         .onChange(of: barsVisible) { fadeBars(visible: $1) }
         .task(id: hideArm) { await hideBarsAtRest() }
         // On a new image and on entering full screen (double-click, F or Return leave the image as is).
-        .onChange(of: model.image) { hidePointerInFullScreen() }
+        // A slideshow hides the pointer only at rest, with its capsule.
+        .onChange(of: model.image) { if model.slideshowState == nil { hidePointerInFullScreen() } }
+        // Paused or finished: the capsule stays up, so a mouse user sees how to go on.
+        .onChange(of: [model.slideshowState != .playing, model.isFullScreen]) {
+            if model.slideshowState != .playing { showSlideshowControls() }
+        }
+        .task(id: controlsShown) { if controlsShown { await hideSlideshowControlsAtRest() } }
         .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
     }
 
@@ -363,6 +386,35 @@ struct ViewerView: View {
 
     private func hidePointerInFullScreen() {
         if model.isFullScreen, hidePointer { NSCursor.setHiddenUntilMouseMoves(true) }
+    }
+
+    /// Shows the full-screen slideshow capsule and restarts its rest time; kept out of SwiftUI's state, as
+    /// re-rendering on every pointer move would cost browsing.
+    private func showSlideshowControls() {
+        guard model.isFullScreen, model.slideshowState != nil else { return }
+        autoHide.controlsHideAt = ProcessInfo.processInfo.systemUptime + BarsAutoHide.rest
+        if !controlsShown { controlsShown = true }
+    }
+
+    /// Hides the capsule (and, if set, the pointer) after `BarsAutoHide.rest` without movement, unless the pointer
+    /// is over it or the slideshow is paused or finished.
+    private func hideSlideshowControlsAtRest() async {
+        while let hideAt = autoHide.controlsHideAt {
+            let now = ProcessInfo.processInfo.systemUptime
+            if hideAt > now {
+                try? await Task.sleep(for: .seconds(hideAt - now))
+                if Task.isCancelled { return }
+                continue
+            }
+            let state = model.slideshowState
+            if state != nil, controlsHovered || state != .playing {
+                autoHide.controlsHideAt = now + BarsAutoHide.rest
+                continue
+            }
+            autoHide.controlsHideAt = nil
+            controlsShown = false
+            if state != nil { hidePointerInFullScreen() }
+        }
     }
 
     private func overlayValues(_ url: URL) -> [String: String] {
@@ -694,6 +746,8 @@ struct OpenWithMenu: View {
     /// Whether `machine.hideAt` was set after the last event (see `ViewerView.hideArm`).
     var armed = false
     var keyMonitor: Any?
+    /// When the full-screen slideshow capsule hides (see `ViewerView.showSlideshowControls`).
+    var controlsHideAt: Double?
 }
 
 /// Reports the hosting window once it exists.

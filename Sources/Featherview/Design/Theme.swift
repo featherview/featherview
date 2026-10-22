@@ -321,6 +321,10 @@ enum Theme {
     static let gridSliderWidth = 96.0
     /// Compare: the divider between the two panes.
     static let compareDivider = 1.0
+    /// Slideshow capsule in full screen: items 36 × 28 (the toolbar's), 4 apart, 4 padding, 24 above the bottom edge.
+    static let slideshowControlsGap = 4.0
+    static let slideshowControlsPadding = 4.0
+    static let slideshowControlsBottom = 24.0
     @MainActor static let gridName = NSFont.systemFont(ofSize: 11)
     /// The grid's AppKit colours: the same tokens as the SwiftUI ones above.
     static let gridSelected = NSColor(toggledPill)
@@ -361,6 +365,8 @@ enum Theme {
         static let aboutTile = 28.8
         /// Thumbnail grid: the selected cell's backdrop and the loading square.
         static let gridCell = 8.0
+        /// Slideshow capsule: half of its 36 pt height.
+        static let slideshowControls = 18.0
     }
 
     // MARK: Motion
