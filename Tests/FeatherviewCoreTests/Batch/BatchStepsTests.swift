@@ -50,6 +50,8 @@ import Testing
         #expect(BatchCard.dateTaken.summary(in: s).hasPrefix("Earlier by"))
         s.dateTaken.shiftSeconds = 90
         #expect(BatchCard.dateTaken.summary(in: s).hasPrefix("Later by"))
+        s.dateTaken.shiftSeconds = .min  // a decoded preset may hold any Int
+        #expect(BatchCard.dateTaken.summary(in: s).hasPrefix("Earlier by"))
     }
 
     @Test func addAndRemove() {

@@ -182,7 +182,7 @@ public enum BatchCard: String, CaseIterable, Identifiable, Sendable {
                 guard d.shiftSeconds != 0 else {
                     return String(localized: "No shift", comment: "Batch Date Taken card summary: shift by zero")
                 }
-                let duration = Duration.seconds(abs(d.shiftSeconds))
+                let duration = Duration.seconds(d.shiftSeconds == .min ? .max : abs(d.shiftSeconds))  // abs(Int.min) traps
                     .formatted(.units(allowed: [.days, .hours, .minutes, .seconds], width: .abbreviated))
                 return d.shiftSeconds > 0
                     ? String(localized: "Later by \(duration)", comment: "Batch Date Taken card summary: shifted later, e.g. 1 hr, 30 min")
