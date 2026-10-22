@@ -24,11 +24,16 @@ extension ViewerModel {
             }
             if unsaved != nil, !(await confirmDiscard()) { return }
             let previous = rotateTask
-            let scan = openTask
             // Queued like Trash: a rotation or scan still running would change the list it covers.
             rotateTask = Task {
                 await previous?.value
-                await scan?.value
+                // An open started while waiting replaces the scan (open() sees no unsaved image yet): the cover
+                // waits for whichever is current, so it covers that open's list and nothing lands on it afterwards.
+                var waited: Task<Void, Never>?
+                while let scan = openTask, scan != waited {
+                    waited = scan
+                    await scan.value
+                }
                 cover(with: image)
             }
         }
