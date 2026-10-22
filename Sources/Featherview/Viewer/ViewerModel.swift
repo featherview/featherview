@@ -239,9 +239,11 @@ final class ViewerModel {
         ready = [:]
         knownInfo = [:]
         // The old folder's waiting decodes go; a folder's first image is known only after its scan, which refocuses.
+        // Pane 2's file stays in the window: dropped, its decode (a swap asks for it next) would never be asked again.
+        let kept = keepingCompare ? compareSession.map { [$0.url] } ?? [] : []
         let opening = openCount.withLock { count in
             count += 1
-            decodes.focus(isFolder ? [] : [url])
+            decodes.focus((isFolder ? [] : [url]) + kept)
             return count
         }
         // A folder's first image is known only after its scan, so the scan runs here too, alongside the
@@ -265,7 +267,7 @@ final class ViewerModel {
                // Not on the main actor: at launch it is busy building the window, and the decode would wait for it.
                openCount.withLock({ count in
                    guard count == opening else { return false }
-                   decodes.focus([first])
+                   decodes.focus([first] + kept)
                    return true
                }) {
                 await cache.prefetch([first], target: prefetch)
