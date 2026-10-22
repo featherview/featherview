@@ -20,7 +20,7 @@ public enum DecodeTarget: Hashable, Sendable {
 
 /// Decoded images for display, least recently used evicted first. Decodes use halving steps, so an
 /// image can be up to 2× the requested size per side (see `ImageDecoder.decodeSize`). One image is kept per URL, and
-/// used only for the target it was decoded for. Running decodes are joined only for the same target.
+/// used only for the targets it serves (`DecodeTarget.serves`). Running decodes are joined by the same rule.
 public actor ImageCache {
     private let capacity: Int
     private let byteBudget: Int?
@@ -51,7 +51,7 @@ public actor ImageCache {
             return hit.image
         }
         let task: Task<CGImage, Error>
-        if let running = inFlight[url], running.target == target, !running.task.isCancelled {
+        if let running = inFlight[url], running.target.serves(target), !running.task.isCancelled {
             task = running.task
             inFlight[url]?.waiters += 1
         } else {
@@ -82,7 +82,8 @@ public actor ImageCache {
             Task { await self.leave(url, task) }
         }
         // Outside the queue's window (the user moved on while it ran) it would push out an image still wanted.
-        if inFlight[url]?.task == task, queue.wants(url) { store(image, target, for: url) }
+        // Stored for the decode's own target: a joined smaller thumbnail must not hide that it is larger.
+        if let running = inFlight[url], running.task == task, queue.wants(url) { store(image, running.target, for: url) }
         return image
     }
 

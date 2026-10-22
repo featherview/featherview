@@ -179,6 +179,19 @@ import Testing
         #expect(large === small)
     }
 
+    @Test func smallerThumbnailJoinsRunningLargerDecode() async throws {
+        let url = try Fixtures.makeTempDir().appendingPathComponent("a.jpg")
+        try Fixtures.writeImage(to: url, width: 6000, height: 4000)
+        let cache = ImageCache()
+        let large = Task { try await cache.image(for: url, target: .thumbnail(256)) }
+        while await !cache.isDecoding(url) { await Task.yield() }
+        // A second decode would take over the running one, which could then neither store nor be cancelled.
+        let small = try await cache.image(for: url, target: .thumbnail(128))
+        #expect(try await large.value === small)
+        // Kept as the 256 decode it is, so it still serves 256.
+        #expect(try await cache.image(for: url, target: .thumbnail(256)) === small)
+    }
+
     @Test func smallerThumbnailDoesNotServeLarger() async throws {
         let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("a.jpg"), width: 400, height: 300)
         let cache = ImageCache()
