@@ -155,6 +155,10 @@ into the spec), `docs/parity.md` "Animation". Rules: `AGENTS.md`.
 
 ### Task 2: ANI frames and rates
 
+Wave A leftovers this task also does: add `.ani` back to `mayAnimateByExtension` in
+`AnimationTests.swift` (its comment marks the spot); in `FrameSourceTests.swift`, replace the local
+`writeGIF` with `Fixtures.writeAnimatedGIF` and give the toy own format `delays`.
+
 **Files:**
 - Modify: `Sources/FeatherviewCore/Formats/ANIDecoder.swift`
 - Test: `Tests/FeatherviewCoreTests/Formats/ANIDecoderTests.swift`
