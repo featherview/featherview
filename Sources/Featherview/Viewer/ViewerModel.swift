@@ -853,16 +853,31 @@ final class ViewerModel {
     }
 
     /// Several files leave the list; in the grid the cell after the last of them is selected (the one before it at
-    /// the end), and the grid leaves when none are left.
+    /// the end), and the grid leaves when none are left. The grid's selection goes in one pass: one list update,
+    /// so the grid reloads once, however many files there are.
     private func removeFromList(_ urls: [URL]) async {
-        guard !urls.isEmpty else { return }
-        if isGrid {
-            let focus = GridSelection.focusAfterRemoval(urls: list.urls, removed: Set(urls))
-            gridSelection = focus.map { [$0] } ?? []
-            gridFocus = focus
+        guard isGrid, slideshow == nil, compareSession == nil else {
+            for url in urls { await removeFromList(url) }  // the viewer's one file, with hold, slideshow, compare
+            return
         }
-        for url in urls { await removeFromList(url) }
-        if isGrid, list.isEmpty { viewFromGrid(nil) }
+        guard !urls.isEmpty else { return }
+        let removed = Set(urls)
+        let focus = GridSelection.focusAfterRemoval(urls: list.urls, removed: removed)
+        gridSelection = focus.map { [$0] } ?? []
+        gridFocus = focus
+        RecentFiles.shared.reload()
+        ready = ready.filter { !removed.contains($0.key) }
+        let caches = [cache, fullSizeCache] + (thumbnails.map { [$0.cache] } ?? [])
+        await Task.detached(priority: .userInitiated) {
+            for cache in caches { for url in urls { await cache.remove(url) } }
+        }.value
+        let wasCurrent = list.current.map(removed.contains) ?? false
+        list.remove(removed)
+        if wasCurrent {
+            if list.isEmpty { emptyFolder = openedFolder ?? urls[0].deletingLastPathComponent() }
+            show()
+        }
+        if list.isEmpty { viewFromGrid(nil) }
     }
 
     /// After Trash or a move: the image leaves the list. With "show the next image" on (default) the
