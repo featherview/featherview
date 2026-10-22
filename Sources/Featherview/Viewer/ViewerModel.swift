@@ -353,20 +353,23 @@ final class ViewerModel {
         revealWindow()
     }
 
-    /// A file just saved into the folder joins the list, which keeps its current image (an empty folder gets the file).
+    /// A file just saved into the folder joins the list at its sorted place, the current image stays (an empty folder
+    /// gets the file). Named under the list's folder URL, as the panel may give a symlinked or /private form.
     func addToList(saved: URL) async {
-        guard let folder, ImageFormats.isDecodable(saved),
-              saved.deletingLastPathComponent().resolvingSymlinksInPath().path == folder.resolvingSymlinksInPath().path
+        guard let base = list.urls.first?.deletingLastPathComponent() ?? folder, ImageFormats.isDecodable(saved),
+              saved.deletingLastPathComponent().resolvingSymlinksInPath().path == base.resolvingSymlinksInPath().path
         else { return }
+        let saved = base.appendingPathComponent(saved.lastPathComponent, isDirectory: false)
         let scan = openTask
-        let includeHidden = AppSettings.showHiddenFiles.value()
-        guard let urls = try? await Task.detached(priority: .userInitiated, operation: {
-            try FolderScanner.images(around: folder, includeHidden: includeHidden)
-        }).value else { return }
-        // An open or a folder change while it was listed has the newer list.
-        guard openTask == scan, self.folder == folder, !urls.isEmpty else { return }
-        list = ImageList(urls: urls, current: list.current ?? saved)
-        emptyFolder = nil
+        await readSortValues(for: [saved])
+        // An open while the values were read has the newer list.
+        guard openTask == scan else { return }
+        if list.isEmpty {
+            list = ImageList(urls: [saved], current: saved)
+            emptyFolder = nil
+        } else {
+            relist(list.urls + [saved])
+        }
     }
 
     func next() {
