@@ -39,6 +39,59 @@ enum Fixtures {
         return url
     }
 
+    /// A 64 × 32 picture in four quadrants, stored with `orientation`: top-leading red, top-trailing green,
+    /// bottom-leading blue, bottom-trailing white (before the tag is applied).
+    static func writeQuadrants(to url: URL, type: UTType, orientation: Int) throws -> URL {
+        let context = CGContext(
+            data: nil, width: 64, height: 32, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        // Core Graphics counts y from the bottom.
+        let quadrants: [(CGRect, CGColor)] = [
+            (CGRect(x: 0, y: 16, width: 32, height: 16), CGColor(red: 1, green: 0, blue: 0, alpha: 1)),
+            (CGRect(x: 32, y: 16, width: 32, height: 16), CGColor(red: 0, green: 1, blue: 0, alpha: 1)),
+            (CGRect(x: 0, y: 0, width: 32, height: 16), CGColor(red: 0, green: 0, blue: 1, alpha: 1)),
+            (CGRect(x: 32, y: 0, width: 32, height: 16), CGColor(red: 1, green: 1, blue: 1, alpha: 1)),
+        ]
+        for (rect, colour) in quadrants {
+            context.setFillColor(colour)
+            context.fill(rect)
+        }
+        guard let dest = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil)
+        else { throw CocoaError(.fileWriteUnknown) }
+        CGImageDestinationAddImage(dest, context.makeImage()!,
+                                   [kCGImagePropertyOrientation: orientation] as CFDictionary)
+        guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
+        return url
+    }
+
+    /// The upright decode's four corner colours as "RG/BW": top row, then bottom row ("?" for any other colour).
+    static func corners(of url: URL) -> String {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                  kCGImageSourceCreateThumbnailFromImageAlways: true,
+                  kCGImageSourceCreateThumbnailWithTransform: true,
+                  kCGImageSourceThumbnailMaxPixelSize: 64,
+              ] as CFDictionary) else { return "" }
+        let (width, height) = (image.width, image.height)
+        let context = CGContext(
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let bytes = context.data!.assumingMemoryBound(to: UInt8.self)  // row 0 is the top
+        func colour(_ x: Int, _ y: Int) -> String {
+            let i = (y * width + x) * 4
+            switch (bytes[i] > 128, bytes[i + 1] > 128, bytes[i + 2] > 128) {
+            case (true, false, false): return "R"
+            case (false, true, false): return "G"
+            case (false, false, true): return "B"
+            case (true, true, true): return "W"
+            default: return "?"
+            }
+        }
+        let (l, t, r, b) = (4, 4, width - 5, height - 5)  // clear of compression bleed at edges and borders
+        return colour(l, t) + colour(r, t) + "/" + colour(l, b) + colour(r, b)
+    }
+
     /// A file with an image extension but garbage content.
     static func writeCorrupt(to url: URL) throws -> URL {
         try Data("not an image".utf8).write(to: url)
