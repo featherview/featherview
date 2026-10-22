@@ -53,6 +53,43 @@ import UniformTypeIdentifiers
         #expect(ImageSort.sorted([a, b, c], by: SortOrder(key: .kind, ascending: false), values: kinds) == [c, a, b])
     }
 
+    @Test func equalKindsAndSizesFallBackToFinderOrder() {
+        // Ties are the common case (one kind, camera files of one size): they must keep Finder's name order.
+        let urls = ["IMG_10.jpg", "IMG_2.jpg", "img_1.jpg", "IMG_3.png", "IMG_20.png"].map(url)
+        let kinds = Dictionary(uniqueKeysWithValues: urls.map {
+            ($0, SortValue.text($0.pathExtension == "png" ? "PNG image" : "JPEG image"))
+        })
+        #expect(names(ImageSort.sorted(urls.shuffled(), by: SortOrder(key: .kind, ascending: true), values: kinds))
+                == ["img_1.jpg", "IMG_2.jpg", "IMG_10.jpg", "IMG_3.png", "IMG_20.png"])
+        #expect(names(ImageSort.sorted(urls.shuffled(), by: SortOrder(key: .kind, ascending: false), values: kinds))
+                == ["IMG_3.png", "IMG_20.png", "img_1.jpg", "IMG_2.jpg", "IMG_10.jpg"])
+        let sizes = Dictionary(uniqueKeysWithValues: urls.map { ($0, SortValue.bytes(500)) })
+        #expect(names(ImageSort.sorted(urls.shuffled(), by: SortOrder(key: .size, ascending: false), values: sizes))
+                == ["img_1.jpg", "IMG_2.jpg", "IMG_3.png", "IMG_10.jpg", "IMG_20.png"])
+    }
+
+    @Test func insertingMatchesSorted() {
+        let urls = (0..<200).map { url("img\($0 % 37)-\($0).jpg") }
+        for key in SortKey.allCases {
+            var values: [URL: SortValue] = [:]
+            for (i, u) in urls.enumerated() where i % 7 != 0 {  // some values missing
+                switch key {
+                case .name: break
+                case .dateModified, .dateTaken: values[u] = .date(Date(timeIntervalSince1970: Double(i % 11)))
+                case .size: values[u] = .bytes(i % 13)
+                case .kind: values[u] = .text("kind \(i % 5)")
+                }
+            }
+            for ascending in [true, false] {
+                let order = SortOrder(key: key, ascending: ascending)
+                let listed = ImageSort.sorted(Array(urls.shuffled().prefix(150)), by: order, values: values)
+                let added = urls.filter { !listed.contains($0) }
+                #expect(ImageSort.inserting(added, into: listed, by: order, values: values)
+                        == ImageSort.sorted(urls, by: order, values: values), "\(key) \(ascending)")
+            }
+        }
+    }
+
     @Test func valuesReadModificationDateAndSize() throws {
         let dir = try Fixtures.makeTempDir()
         let small = dir.appendingPathComponent("small.jpg")
@@ -123,6 +160,29 @@ import UniformTypeIdentifiers
         #expect(sorted < plain * 2, "\(sorted) vs \(plain)")
     }
 
+    @Test func sizeAndDateCostAboutAStat() throws {
+        // A folder opens on its first image by date or size: all values are read before that image decodes.
+        let dir = try Fixtures.makeTempDir()
+        let names = (0..<2_000).map { "\($0).jpg" }
+        for name in names { FileManager.default.createFile(atPath: dir.appendingPathComponent(name).path, contents: Data(count: 1)) }
+        let fresh = { names.map { URL(fileURLWithPath: dir.appendingPathComponent($0).path) } }
+        func fastest(_ body: ([URL]) -> Void) -> Duration {
+            (0..<5).map { _ in
+                let urls = fresh()
+                let start = ContinuousClock.now
+                body(urls)
+                return ContinuousClock.now - start
+            }.min()!
+        }
+        let plain = fastest { for url in $0 { var info = stat(); _ = stat(url.path, &info) } }
+        for key in [SortKey.size, .dateModified] {
+            var values: [URL: SortValue] = [:]
+            let read = fastest { values = ImageSort.values(of: $0, key: key) }
+            #expect(values.count == 2_000)
+            #expect(read < plain * 3, "\(key): \(read) vs \(plain)")
+        }
+    }
+
     @Test func kindIsPerExtensionIgnoringCase() {
         let (a, b, c) = (url("a.jpg"), url("b.JPG"), url("c.zzzq"))
         let values = ImageSort.values(of: [a, b, c], key: .kind)
@@ -169,6 +229,31 @@ import UniformTypeIdentifiers
             }
         }
         #expect(ImageSort.first([], by: .finder, values: [:]) == nil)
+    }
+
+    @Test func resortedRereadsDatesAndSizes() throws {
+        // A lossless rotate rewrites the file while the folder is open: its old date must not keep its place.
+        let dir = try Fixtures.makeTempDir()
+        let (a, b) = (dir.appendingPathComponent("a.jpg"), dir.appendingPathComponent("b.jpg"))
+        try Data(count: 10).write(to: a)
+        try Data(count: 20).write(to: b)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 2_000)], ofItemAtPath: a.path)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_000)], ofItemAtPath: b.path)
+        let stale: [URL: SortValue] = [a: .date(Date(timeIntervalSince1970: 0)), b: .date(Date(timeIntervalSince1970: 1_000))]
+        let byDate = ImageSort.resorted([a, b], by: SortOrder(key: .dateModified, ascending: false), cached: stale)
+        #expect(byDate.urls == [a, b])
+        #expect(byDate.values[a] == .date(Date(timeIntervalSince1970: 2_000)))
+        let bySize = ImageSort.resorted([a, b], by: SortOrder(key: .size, ascending: true), cached: [a: .bytes(99), b: .bytes(1)])
+        #expect(bySize.urls == [a, b])
+    }
+
+    @Test func resortedKeepsCachedDateTaken() {
+        // Date Taken reads every header: a new direction reuses what the last sort read, and reads only new files.
+        let (a, b) = (url("a.jpg"), url("b.jpg"))
+        let cached: [URL: SortValue] = [a: .date(Date(timeIntervalSince1970: 200)), b: .date(Date(timeIntervalSince1970: 100))]
+        let result = ImageSort.resorted([a, b], by: SortOrder(key: .dateTaken, ascending: true), cached: cached)
+        #expect(result.urls == [b, a])
+        #expect(result.values == cached)
     }
 
     @Test func readsFileHeadersOnlyForDateTaken() {
