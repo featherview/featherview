@@ -1040,6 +1040,31 @@ import Testing
         #expect(modified == DateTaken.instant("2020:02:03 04:05:06", offset: nil))
     }
 
+    @Test(arguments: [true, false]) func dateSetInJXL(keepMetadata: Bool) async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8, properties: [
+            kCGImagePropertyExifDictionary: [kCGImagePropertyExifDateTimeOriginal: "2026:05:01 12:00:00",
+                                             kCGImagePropertyExifDateTimeDigitized: "2026:05:01 12:00:00"],
+            kCGImagePropertyTIFFDictionary: [kCGImagePropertyTIFFDateTime: "2026:05:01 12:00:00"]])
+
+        let result = try #require(await BatchConverter.run(job([input], out: out, format: "jxl") {
+            $0.options.keepMetadata = keepMetadata
+            $0.dateTaken.isOn = true
+            $0.dateTaken.mode = .set
+            $0.dateTaken.setTo = "2020:02:03 04:05:06"
+        }).first)
+
+        #expect(result.status == .converted)
+        let output = try #require(result.output)
+        let source = try #require(CGImageSourceCreateWithURL(output as CFURL, nil))
+        let p = try #require(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+        let exif = p[kCGImagePropertyExifDictionary] as? [CFString: Any]
+        #expect(exif?[kCGImagePropertyExifDateTimeOriginal] as? String == "2020:02:03 04:05:06")
+        #expect(exif?[kCGImagePropertyExifDateTimeDigitized] as? String == "2020:02:03 04:05:06")
+        #expect((p[kCGImagePropertyTIFFDictionary] as? [CFString: Any])?[kCGImagePropertyTIFFDateTime] as? String
+                == "2020:02:03 04:05:06")
+    }
+
     @Test func dateShiftLosslessCopy() async throws {
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 16, height: 8, properties: [

@@ -12,8 +12,8 @@ public enum ImageEncoder {
     /// than the first. Metadata of `source` (camera, EXIF, GPS, IPTC) is kept where the format and
     /// "keep metadata" allow; the orientation tag is always 1. `dpi` is written for ImageIO formats.
     /// `hdr` writes HEIC and AVIF with a gain map, for pixels decoded as HDR (`ImageDecoder.isHDR`).
-    /// `dateTaken` ("yyyy:MM:dd HH:mm:ss") goes into EXIF and TIFF dates of ImageIO formats, also
-    /// with "keep metadata" off; own encoders and PDF ignore it.
+    /// `dateTaken` ("yyyy:MM:dd HH:mm:ss") goes into EXIF and TIFF dates of ImageIO formats and JPEG XL,
+    /// also with "keep metadata" off; other own encoders and PDF ignore it.
     public static func encode(_ pages: [CGImage], as format: OutputFormat, options: FormatOptions,
                               metadataFrom source: URL? = nil, dpi: Int? = nil, hdr: Bool = false,
                               dateTaken: String? = nil) throws -> Data {
@@ -29,7 +29,7 @@ public enum ImageEncoder {
                                           effort: options.effort, kind: options.webpKind)
         case .jxl:
             return try JXLEncoder.encode(first, quality: options.quality, lossless: options.lossless, effort: options.effort,
-                                         xmp: options.keepMetadata ? source.flatMap(metadataXMP) : nil)
+                                         xmp: metadataXMP(of: options.keepMetadata ? source : nil, dateTaken: dateTaken))
         case .pcx:  // PCX's header can't hold every size
             guard let data = try? PCXCodec.encode(try rgba(first)) else { throw EncodeError.failed }
             return data
@@ -170,10 +170,9 @@ public enum ImageEncoder {
 
     /// The source's EXIF, TIFF, GPS and IPTC as XMP (ImageIO's view of them), for a JPEG XL `xml ` box:
     /// rationals stay exact there, unlike through the property dictionaries. Drops what no longer
-    /// matches the upright pixels. Nil when there is nothing to keep or the file can't be read.
-    static func metadataXMP(of input: URL) -> Data? {
-        guard let source = CGImageSourceCreateWithURL(input as CFURL, nil),
-              let original = CGImageSourceCopyMetadataAtIndex(source, 0, nil) else { return nil }
+    /// matches the upright pixels. `dateTaken` replaces the EXIF and TIFF dates, as for ImageIO formats.
+    /// Nil when there is nothing to write.
+    static func metadataXMP(of input: URL?, dateTaken: String? = nil) -> Data? {
         let kept: Set<String> = [
             kCGImageMetadataNamespaceTIFF, kCGImageMetadataNamespaceExif, kCGImageMetadataNamespaceExifEX,
             kCGImageMetadataNamespaceExifAux, kCGImageMetadataNamespaceDublinCore, kCGImageMetadataNamespacePhotoshop,
@@ -182,11 +181,21 @@ public enum ImageEncoder {
         let dropped: Set<String> = ["tiff:Orientation", "exif:PixelXDimension", "exif:PixelYDimension"]
         let metadata = CGImageMetadataCreateMutable()
         var any = false
-        CGImageMetadataEnumerateTagsUsingBlock(original, nil, nil) { path, tag in
-            guard let namespace = CGImageMetadataTagCopyNamespace(tag) as String?, kept.contains(namespace),
-                  !dropped.contains(path as String) else { return true }
-            if CGImageMetadataSetTagWithPath(metadata, nil, path, tag) { any = true }
-            return true
+        if let input, let source = CGImageSourceCreateWithURL(input as CFURL, nil),
+           let original = CGImageSourceCopyMetadataAtIndex(source, 0, nil) {
+            CGImageMetadataEnumerateTagsUsingBlock(original, nil, nil) { path, tag in
+                guard let namespace = CGImageMetadataTagCopyNamespace(tag) as String?, kept.contains(namespace),
+                      !dropped.contains(path as String) else { return true }
+                if CGImageMetadataSetTagWithPath(metadata, nil, path, tag) { any = true }
+                return true
+            }
+        }
+        if let dateTaken {
+            for (dictionary, key) in [(kCGImagePropertyExifDictionary, kCGImagePropertyExifDateTimeOriginal),
+                                      (kCGImagePropertyExifDictionary, kCGImagePropertyExifDateTimeDigitized),
+                                      (kCGImagePropertyTIFFDictionary, kCGImagePropertyTIFFDateTime)] {
+                if CGImageMetadataSetValueMatchingImageProperty(metadata, dictionary, key, dateTaken as CFString) { any = true }
+            }
         }
         guard any else { return nil }
         return CGImageMetadataCreateXMPData(metadata, nil) as Data?
