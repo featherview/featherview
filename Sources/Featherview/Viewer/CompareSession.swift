@@ -18,7 +18,9 @@ final class CompareSession {
     var leader: Pane = .first
     /// Pane 2's own zoom while not in step.
     var ownZoom: ViewerModel.Zoom = .fit
+    /// D: pane 2 shows `difference` instead of `image`.
     var showsDifference = false
+    /// |pane 1 − pane 2| at pane 1's decoded size; the previous one stays until the next lands.
     var difference: CGImage?
     /// Pane 2's decode beyond fit size: one image, on the viewer's queue, gone when comparing ends.
     let zoomCache: ImageCache

@@ -16,6 +16,8 @@ struct ComparePanes<First: View>: View {
     let showsStrips: Bool
     let stripsVisible: Bool
     let secondPan: PanController
+    /// Pane 1's draw size and pixel width for a picture of its decoded size; the difference is drawn with them.
+    let firstLayout: (CGImage) -> (size: CGSize, pixelWidth: Double)
     let onSwipe: (_ likeRightArrow: Bool) -> Void
     let onClick: () -> Void
 
@@ -46,8 +48,12 @@ struct ComparePanes<First: View>: View {
 
     @ViewBuilder private var second: some View {
         if let image = session.image {
-            ImageCanvas(image: image, size: drawSize(image), pixelWidth: pixelSize(image).width, displayScale: displayScale,
-                        background: Theme.background, insets: insets, zoom: model.secondZoom, checkerboard: checkerboard,
+            // One canvas for both, so turning the difference on or off keeps the scroll position.
+            let shown = differenceShown
+            ImageCanvas(image: shown?.image ?? image, size: shown?.size ?? drawSize(image),
+                        pixelWidth: shown?.pixelWidth ?? pixelSize(image).width, displayScale: displayScale,
+                        background: Theme.background, insets: insets, zoom: shown == nil ? model.secondZoom : model.shownZoom,
+                        checkerboard: checkerboard, transform: shown == nil ? PictureTransform() : model.pendingTransform,
                         panController: secondPan, onDoubleClick: model.toggleFullScreen, onPinch: model.zoom(by:),
                         onSwipe: onSwipe, onClick: onClick, onCommit: model.secondCommitted, animatesZoom: false)
                 .contextMenu {
@@ -64,6 +70,13 @@ struct ComparePanes<First: View>: View {
         } else {
             Color(nsColor: Theme.background)
         }
+    }
+
+    /// The difference, drawn exactly as pane 1 draws its picture, once it has landed.
+    private var differenceShown: (image: CGImage, size: CGSize, pixelWidth: Double)? {
+        guard session.showsDifference, let difference = session.difference, let first = model.image else { return nil }
+        let layout = firstLayout(first)
+        return (difference, layout.size, layout.pixelWidth)
     }
 
     /// At pane 2's zoom from the file's full pixel size, so a smaller decode already has its final size.

@@ -37,7 +37,12 @@ final class ViewerModel {
     private static var fitMode: FitMode { FitMode(rawValue: AppSettings.fitMode.value()) ?? .fit }
 
     var list = ImageList(urls: []) { didSet { updateAvailability() } }
-    var image: CGImage? { didSet { isLeaving = false } }
+    var image: CGImage? {
+        didSet {
+            isLeaving = false
+            if compareSession != nil, image !== oldValue { updateAvailability(); updateDifference() }
+        }
+    }
     /// Rotations and flips asked for (R, L, H, V) that the picture on screen doesn't show yet: the canvas shows
     /// them while the file is rewritten and decoded again.
     var pendingChanges: [OrientationChange] = []
@@ -113,6 +118,8 @@ final class ViewerModel {
         var canCompare = false
         /// X: comparing, and pane 2's file opened.
         var canSwap = false
+        /// D: comparing, both pictures decoded, pane 2's file opened.
+        var canShowDifference = false
         /// Set as Desktop Picture: a file the system itself can show.
         var canSetDesktop = false
     }
@@ -136,6 +143,8 @@ final class ViewerModel {
                                canCompare: list.current != nil && !list.isHolding && !isGrid,
                                canSwap: compareSession != nil && compareSession?.errorMessage == nil
                                    && list.current != nil && !list.isHolding,
+                               canShowDifference: compareSession != nil && compareSession?.errorMessage == nil
+                                   && image != nil && compareSession?.image != nil,
                                canSetDesktop: list.current != nil && !list.isHolding && !isGrid
                                    && list.current.map(ImageFormats.desktopCanShow) == true)
         if new != availability { availability = new }
@@ -766,7 +775,11 @@ final class ViewerModel {
             let animation = await Task.detached(priority: .userInitiated) { Animation.read(url) }.value
             // Another file, page or zoom took its place meanwhile.
             guard let animation, list.current == url, page == 0, image === first, player.url == nil, !isGrid else { return }
-            player.start(url: url, animation: animation, target: target, first: first, playing: AXAnimatedImagesEnabled())
+            // The difference is made from frame 0: playback waits until it's off.
+            let differenceShows = compareSession?.showsDifference == true
+            if differenceShows, AXAnimatedImagesEnabled() { pausedForDifference = true }
+            player.start(url: url, animation: animation, target: target, first: first,
+                         playing: AXAnimatedImagesEnabled() && !differenceShows)
             updateAvailability()
         }
     }
@@ -1382,6 +1395,10 @@ final class ViewerModel {
     private(set) var compareSession: CompareSession? { didSet { updateAvailability() } }
     /// The running `CompareShow` signpost: from showSecond() until pane 2's canvas commits `image`.
     @ObservationIgnored private var compareShow: (state: OSSignpostIntervalState, image: CGImage?)?
+    /// The difference being made; a newer one replaces any still waiting.
+    @ObservationIgnored private let differences = LatestWins()
+    /// Pane 1's animation was playing when the difference came on; it plays again when the difference goes.
+    @ObservationIgnored private var pausedForDifference = false
 
     /// Shows `first` in pane 1 (selected in the list, or its folder opened) and `second` in pane 2. Leaves the grid.
     func compare(_ first: URL, with second: URL) {
@@ -1419,6 +1436,7 @@ final class ViewerModel {
         guard let compareSession else { return }
         compareSession.task?.cancel()
         endCompareShow("superseded")
+        endDifference(compareSession)
         self.compareSession = nil
         focusDecodes()
     }
@@ -1497,6 +1515,7 @@ final class ViewerModel {
                 compareSession.info = info
                 compareSession.errorMessage = nil
                 updateAvailability()
+                updateDifference()
                 let elapsed = started.duration(to: .now).components
                 let ms = elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000
                 Self.log.debug("compare \(url.lastPathComponent, privacy: .public): \(ms) ms")
@@ -1520,9 +1539,45 @@ final class ViewerModel {
         endCompareShow("failed")
         session.image = nil
         session.info = nil
-        session.difference = nil
+        endDifference(session)
         session.errorMessage = String(localized: "Can't open \(url.lastPathComponent)")
         updateAvailability()
+    }
+
+    /// D: pane 2 shows |first − second| instead of the second picture, or the second picture again.
+    func toggleDifference() {
+        guard let compareSession else { return }
+        if compareSession.showsDifference { return endDifference(compareSession) }
+        guard availability.canShowDifference else { return }
+        compareSession.showsDifference = true
+        if player.isPlaying {
+            player.togglePlaying()
+            pausedForDifference = true
+        }
+        updateDifference()
+    }
+
+    /// Makes the difference of the two pictures on screen off the main thread. Pane 2 keeps the previous one until
+    /// it lands; one made from pictures no longer shown is dropped.
+    private func updateDifference() {
+        guard let session = compareSession, session.showsDifference, let first = image, let second = session.image else { return }
+        let space = Self.screenSpace
+        differences.submit { [weak self] in
+            let made = await Task.detached(priority: .userInitiated) {
+                try? ImageDifference.make(first, second, colorSpace: space)
+            }.value
+            guard let self, let made, compareSession === session, session.showsDifference,
+                  image === first, session.image === second else { return }
+            session.difference = made
+        }
+    }
+
+    /// The difference goes (D again, leaving compare, pane 2 can't open); pane 1's animation plays again.
+    private func endDifference(_ session: CompareSession) {
+        session.showsDifference = false
+        session.difference = nil
+        if pausedForDifference, !player.isPlaying, player.frameCount > 1 { player.togglePlaying() }
+        pausedForDifference = false
     }
 
     /// Pane 2's canvas committed `committed` to the screen.

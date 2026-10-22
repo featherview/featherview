@@ -77,6 +77,10 @@ struct StatusBar: View {
         case .second:
             // The picture on screen and its details, until the next file's decode lands with its own.
             guard let session = model.compareSession, let info = session.info, session.image != nil else { return [] }
+            if session.showsDifference, session.difference != nil {
+                return StatusLine.pane(name: CompareText.difference, pixelSize: nil, zoomPercent: model.zoomPercent,
+                                       fileBytes: nil, modified: nil).fields
+            }
             return StatusLine.pane(name: info.url.lastPathComponent, pixelSize: info.pixelSize,
                                    zoomPercent: model.secondZoomPercent, fileBytes: info.bytes, modified: info.modified).fields
         }
