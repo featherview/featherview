@@ -903,7 +903,6 @@ final class ViewerModel {
         guard let sheet = dateSheet else { return }
         dateSheet = nil
         let selected = [sheet.url] + sheet.others
-        let urls = DateTaken.distinctFiles(selected)
         // Without a start date for the first file, the others get the same date.
         let delta = sheet.current.flatMap(DateTaken.wallTime).flatMap { from in
             DateTaken.wallTime(date).map { Int($0.timeIntervalSince(from)) }
@@ -912,7 +911,8 @@ final class ViewerModel {
         // Behind rotations and flips: they swap the same file in.
         rotateTask = Task {
             await previous?.value
-            let failures = await Task.detached(priority: .userInitiated) {
+            let (count, failures) = await Task.detached(priority: .userInitiated) {
+                let urls = DateTaken.distinctFiles(selected)  // resolves links: file access
                 var failures: [(url: URL, error: any Error)] = []
                 for url in urls {
                     do {
@@ -924,7 +924,7 @@ final class ViewerModel {
                         failures.append((url, error))
                     }
                 }
-                return failures
+                return (urls.count, failures)
             }.value
             for url in selected { knownInfo[url] = nil }
             fileRevision += 1  // the Info panel reloads
@@ -938,7 +938,7 @@ final class ViewerModel {
             if failures.count > 1 {
                 errorMessage = String(localized: "\(failures.count) files couldn't be changed")
             } else if let failure = failures.first {
-                errorMessage = urls.count == 1 && failure.error as? DateTakenError == .unsupportedFormat
+                errorMessage = count == 1 && failure.error as? DateTakenError == .unsupportedFormat
                     ? String(localized: "The date taken can be changed in JPEG, HEIC, TIFF and PSD files only")
                     : String(localized: "Can't change the date taken of \(failure.url.lastPathComponent)")
             }
