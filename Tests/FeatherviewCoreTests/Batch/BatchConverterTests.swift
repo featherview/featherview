@@ -307,6 +307,49 @@ import Testing
         #expect(types == ["public.heif", "public.jpeg"])
     }
 
+    @Test func jxlInputsKeepTheirFormat() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let inputs = try ["a.jxl", "b.jxl"].map { name in
+            let source = try ImageDecoder.decode(
+                try Fixtures.writeImage(to: dir.appendingPathComponent(name + ".png"), width: 40, height: 20, type: .png))
+            let url = dir.appendingPathComponent(name)
+            try JXLEncoder.encode(source, quality: 90, lossless: false, effort: 3, xmp: nil).write(to: url)
+            return url
+        }
+
+        let results = await BatchConverter.run(job(inputs, out: out) {
+            $0.changeFormat = false
+            $0.resize.isOn = true
+            $0.resize.side = 10
+        })
+
+        #expect(results.map(\.status) == [.converted, .converted])
+        #expect(results.map { $0.output?.lastPathComponent } == ["a.jxl", "b.jxl"])
+        for result in results {
+            let output = try #require(result.output)
+            #expect(CGImageSourceCreateWithURL(output as CFURL, nil).flatMap(CGImageSourceGetType) as String? == "public.jpeg-xl")
+        }
+    }
+
+    @Test func convertsToJXL() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let jpeg = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 40, height: 20)
+        let context = try #require(CGContext(data: nil, width: 20, height: 20, bitsPerComponent: 8, bytesPerRow: 0,
+                                             space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(CGColor(red: 0, green: 0.5, blue: 1, alpha: 0.5))
+        context.fill(CGRect(x: 0, y: 0, width: 10, height: 20))
+        let png = dir.appendingPathComponent("b.png")
+        let dest = try #require(CGImageDestinationCreateWithURL(png as CFURL, "public.png" as CFString, 1, nil))
+        CGImageDestinationAddImage(dest, try #require(context.makeImage()), nil)
+        #expect(CGImageDestinationFinalize(dest))
+
+        let results = await BatchConverter.run(job([jpeg, png], out: out, format: "jxl") { $0.changeFormat = true })
+
+        #expect(results.map(\.status) == [.converted, .converted])
+        #expect(results.map { $0.output?.lastPathComponent } == ["a.jxl", "b.jxl"])
+    }
+
     @Test func canStartWithEmptyFolder() {
         var s = BatchSettings()
         s.outputFolder = ""

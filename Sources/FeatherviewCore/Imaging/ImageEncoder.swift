@@ -27,6 +27,9 @@ public enum ImageEncoder {
         case .webp:
             return try WebPEncoder.encode(try rgba(first), quality: options.quality, lossless: options.lossless,
                                           effort: options.effort, kind: options.webpKind)
+        case .jxl:
+            return try JXLEncoder.encode(first, quality: options.quality, lossless: options.lossless, effort: options.effort,
+                                         xmp: options.keepMetadata ? source.flatMap(metadataXMP) : nil)
         case .pcx:  // PCX's header can't hold every size
             guard let data = try? PCXCodec.encode(try rgba(first)) else { throw EncodeError.failed }
             return data
@@ -163,6 +166,30 @@ public enum ImageEncoder {
     static func rgba(_ image: CGImage) throws -> RGBAImage {
         guard let pixels = RGBAImage(image) else { throw EncodeError.failed }
         return pixels
+    }
+
+    /// The source's EXIF, TIFF, GPS and IPTC as XMP (ImageIO's view of them), for a JPEG XL `xml ` box:
+    /// rationals stay exact there, unlike through the property dictionaries. Drops what no longer
+    /// matches the upright pixels. Nil when there is nothing to keep or the file can't be read.
+    static func metadataXMP(of input: URL) -> Data? {
+        guard let source = CGImageSourceCreateWithURL(input as CFURL, nil),
+              let original = CGImageSourceCopyMetadataAtIndex(source, 0, nil) else { return nil }
+        let kept: Set<String> = [
+            kCGImageMetadataNamespaceTIFF, kCGImageMetadataNamespaceExif, kCGImageMetadataNamespaceExifEX,
+            kCGImageMetadataNamespaceExifAux, kCGImageMetadataNamespaceDublinCore, kCGImageMetadataNamespacePhotoshop,
+            kCGImageMetadataNamespaceIPTCCore, kCGImageMetadataNamespaceIPTCExtension,
+        ].map { $0 as String }.reduce(into: []) { $0.insert($1) }
+        let dropped: Set<String> = ["tiff:Orientation", "exif:PixelXDimension", "exif:PixelYDimension"]
+        let metadata = CGImageMetadataCreateMutable()
+        var any = false
+        CGImageMetadataEnumerateTagsUsingBlock(original, nil, nil) { path, tag in
+            guard let namespace = CGImageMetadataTagCopyNamespace(tag) as String?, kept.contains(namespace),
+                  !dropped.contains(path as String) else { return true }
+            if CGImageMetadataSetTagWithPath(metadata, nil, path, tag) { any = true }
+            return true
+        }
+        guard any else { return nil }
+        return CGImageMetadataCreateXMPData(metadata, nil) as Data?
     }
 
     /// Keeps TIFF (camera make/model), EXIF, GPS and IPTC; drops what no longer matches the new pixels.

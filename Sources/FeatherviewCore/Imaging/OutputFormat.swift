@@ -12,6 +12,8 @@ public struct OutputFormat: Hashable, Sendable, Identifiable {
         case pbm, pgm, ppm, qoi, pcx
         /// libwebp (the one third-party encoder, spec "Formats").
         case webp
+        /// libjxl: ImageIO reads JPEG XL but writes none.
+        case jxl
     }
 
     /// Stable key, stored in settings: never change one once shipped. The file extension for known formats.
@@ -26,6 +28,9 @@ public struct OutputFormat: Hashable, Sendable, Identifiable {
 
     public static func == (a: OutputFormat, b: OutputFormat) -> Bool { a.id == b.id }
     public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+
+    /// The effort slider's range: libjxl's 1...9 (10 needs its expert mode), libwebp's method 0...6.
+    public var effortRange: ClosedRange<Int> { writer == .jxl ? 1...9 : 0...6 }
 
     public var type: UTType? {
         if case .imageIO(let identifier) = writer { return UTType(identifier) }
@@ -100,6 +105,7 @@ public enum FormatRegistry {
         "com.microsoft.dds", "public.pvr", "public.heics",
         "public.pbm",  // writes colour ASCII PPM under the .pbm name; ours writes real PBM
         "org.webmproject.webp",  // ours, through libwebp, if a newer ImageIO writes it too
+        "public.jpeg-xl",  // ours, through libjxl, if a newer ImageIO writes it too
     ]
 
     /// Known ImageIO types: id (= extension), name, options, defaults.
@@ -144,6 +150,9 @@ public enum FormatRegistry {
         formats.append(OutputFormat(id: "webp", name: "WebP", fileExtension: "webp", writer: .webp,
                                     optionFields: [.webpKind, .lossless, .quality, .effort],
                                     defaultOptions: FormatOptions().with { $0.quality = 75 }))
+        formats.append(OutputFormat(id: "jxl", name: "JPEG XL", fileExtension: "jxl", writer: .jxl,
+                                    optionFields: [.lossless, .quality, .effort, .keepMetadata],
+                                    defaultOptions: FormatOptions().with { $0.quality = 90; $0.effort = 7 }))
         return formats.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }()
 
