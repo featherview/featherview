@@ -23,7 +23,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 10 | Document icon (v2) | `docs/superpowers/plans/2026-10-22-document-icon.md` | ready |
 | 11 | Viewer conveniences (v2) | | observe first |
 | 12 | Zoom modes and flip (v2) | | observe first |
-| 13 | Thumbnail window (v2) | | planning |
+| 13 | Thumbnail grid (v2) | `docs/superpowers/plans/2026-10-22-milestone-13-thumbnails.md` | planned |
 | 14 | Slideshow (v2) | | observe first |
 | 15 | Compare images (v2) | | observe first |
 | 16 | Batch extras (v2) | | observe first |
