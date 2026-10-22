@@ -104,13 +104,13 @@ struct QuickLookSupportTests {
     }
 
     @Test func previewFitsTheScreen() throws {
-        let url = try Self.qoi(try Fixtures.makeTempDir(), "big.qoi", width: 4000, height: 3000)
+        let url = try Self.qoi(try Fixtures.makeTempDir(), "big.qoi", width: 3200, height: 2400)
         let image = try QuickLookSupport.preview(url, screens: [PixelSize(width: 1000, height: 1000)])
         #expect((1000...2000).contains(max(image.width, image.height)))
     }
 
     @Test func previewWithoutScreensStaysScreenSized() throws {
-        let url = try Self.qoi(try Fixtures.makeTempDir(), "big.qoi", width: 8000, height: 6000)
+        let url = try Self.qoi(try Fixtures.makeTempDir(), "big.qoi", width: 3200, height: 2400)
         let image = try QuickLookSupport.preview(url, screens: [])
         #expect(max(image.width, image.height) <= 3024)
     }

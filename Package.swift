@@ -31,7 +31,7 @@ let package = Package(
                     .define("__ANSI__"), .define("DISABLE_PERF_MEASUREMENT"),
                     .headerSearchPath("jxrlib/common/include"), .headerSearchPath("jxrlib/image/sys"),
                     .headerSearchPath("jxrlib/jxrgluelib"),
-                    .unsafeFlags(["-w"]),  // third-party code we don't edit; its warnings are noise
+                    .unsafeFlags(["-w", "-O2"]),  // third-party code we don't edit: no warnings; optimised in debug too, for the tests
                 ]),
         // libjxl 0.12.0 (BSD-3-Clause + patent grant) with highway (Apache-2.0 or BSD-3-Clause), brotli (MIT) and
         // skcms (BSD-3-Clause), vendored from github.com/libjxl/libjxl at v0.12.0 (a7a9c787; highway 457c8917,
@@ -41,9 +41,9 @@ let package = Package(
                 exclude: ["libjxl/LICENSE", "libjxl/PATENTS", "highway/LICENSE", "highway/LICENSE-BSD3",
                           "brotli/LICENSE", "skcms/LICENSE"],
                 cSettings: cjpegxlDefines.map { .define($0.0, to: $0.1) } + cjpegxlHeaderPaths.map { .headerSearchPath($0) }
-                    + [.unsafeFlags(["-w"])],  // third-party code we don't edit; its warnings are noise
+                    + [.unsafeFlags(["-w", "-O2"])],  // third-party code we don't edit: no warnings; optimised in debug too, for the tests
                 cxxSettings: cjpegxlDefines.map { .define($0.0, to: $0.1) } + cjpegxlHeaderPaths.map { .headerSearchPath($0) }
-                    + [.unsafeFlags(["-w"])]),
+                    + [.unsafeFlags(["-w", "-O2"])]),
         // The SwiftUI app. Thin: wires FeatherviewCore to windows, menus and keys.
         .executableTarget(name: "Featherview", dependencies: ["FeatherviewCore", "FeatherviewJXL"]),
         // Finder thumbnails. SwiftPM can't make app extensions: scripts/bundle.sh wraps this binary in an .appex.
