@@ -23,11 +23,25 @@ import UniformTypeIdentifiers
         return Array(try Data(contentsOf: url))
     }
 
-    /// RIFF "ACON": the "anih" header, an optional "seq " order, the frames in LIST "fram".
-    static func ani(frames: [[UInt8]], sequence: [Int]? = nil, iconFlag: Bool = true) -> [UInt8] {
-        let anih = [36, frames.count, sequence?.count ?? frames.count, 0, 0, 0, 0, 10, iconFlag ? 1 : 0].flatMap(le32)
+    /// The ICO as a CUR (type 2, hotspot 0, 0), as Windows' cursors are.
+    static func cur(sizes: [Int], colour: (UInt8, UInt8, UInt8, UInt8)) throws -> [UInt8] {
+        var bytes = try ico(sizes: sizes, colour: colour)
+        bytes[2] = 2
+        for entry in 0..<sizes.count {
+            let hotspot = 6 + 16 * entry + 4
+            bytes.replaceSubrange(hotspot..<hotspot + 4, with: [0, 0, 0, 0])
+        }
+        return bytes
+    }
+
+    /// RIFF "ACON": the "anih" header (rate in jiffies), optional "seq " order and "rate" per step, the
+    /// frames in LIST "fram".
+    static func ani(frames: [[UInt8]], sequence: [Int]? = nil, rate: Int = 10, rates: [Int]? = nil,
+                    iconFlag: Bool = true) -> [UInt8] {
+        let anih = [36, frames.count, sequence?.count ?? frames.count, 0, 0, 0, 0, rate, iconFlag ? 1 : 0].flatMap(le32)
         var body = Array("ACON".utf8) + chunk("anih", anih)
         if let sequence { body += chunk("seq ", sequence.flatMap(le32)) }
+        if let rates { body += chunk("rate", rates.flatMap(le32)) }
         body += chunk("LIST", Array("fram".utf8) + frames.flatMap { chunk("icon", $0) })
         return Array("RIFF".utf8) + le32(body.count) + body
     }
@@ -62,6 +76,58 @@ import UniformTypeIdentifiers
         }
         #expect(throws: OwnDecodeError.corrupt) {
             try ANIDecoder.format.decode(Data(Self.ani(frames: [try Self.ico(sizes: [16], colour: (0, 0, 0, 255))], sequence: [7])), 0, nil)
+        }
+    }
+
+    static let colours: [(UInt8, UInt8, UInt8, UInt8)] = [(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255)]
+    static func threeFrames() throws -> [[UInt8]] { try colours.map { try ico(sizes: [16], colour: $0) } }
+
+    @Test func stepsFollowSequence() throws {
+        let data = Data(Self.ani(frames: try Self.threeFrames(), sequence: [2, 0, 2]))
+        for (step, frame) in [(0, 2), (1, 0), (2, 2)] {
+            let image = try #require(RGBAImage(try ANIDecoder.format.decode(data, step, nil)))
+            #expect(image[5, 5] == Self.colours[frame], "step \(step)")
+        }
+        #expect(ANIDecoder.format.delays?(data)?.count == 3)
+        #expect(ANIDecoder.format.pageCount(data) == 1)
+    }
+
+    @Test func ratesPerStep() throws {
+        let data = Data(Self.ani(frames: try Self.threeFrames(), rates: [6, 30, 6]))
+        #expect(ANIDecoder.format.delays?(data) == [0.1, 0.5, 0.1])
+    }
+
+    @Test func headerRateWithoutRateChunk() throws {
+        let data = Data(Self.ani(frames: try Self.threeFrames(), rate: 10))
+        let sixth: Double = 1.0 / 6
+        #expect(ANIDecoder.format.delays?(data) == [sixth, sixth, sixth])
+    }
+
+    @Test func zeroRateIsHundredMilliseconds() throws {
+        let url = try Fixtures.makeTempDir().appendingPathComponent("z.ani")
+        try Data(Self.ani(frames: try Self.threeFrames(), rate: 0)).write(to: url)
+        #expect(Animation.read(url)?.delays == Array(repeating: .milliseconds(100), count: 3))
+    }
+
+    @Test func outOfRangeStepIsCorrupt() throws {
+        let data = Data(Self.ani(frames: try Self.threeFrames(), sequence: [0, 9, 1]))
+        #expect(throws: OwnDecodeError.corrupt) { try ANIDecoder.format.decode(data, 1, nil) }
+        #expect(throws: OwnDecodeError.corrupt) { try ANIDecoder.format.decode(data, 3, nil) }
+        #expect(ANIDecoder.format.size(data, 1) == nil)
+        let image = try #require(RGBAImage(try ANIDecoder.format.decode(data, 0, nil)))
+        #expect(image[5, 5] == Self.colours[0])
+    }
+
+    @Test func busyCursorShape() throws {
+        let frames = try (0..<18).map { n in try Self.cur(sizes: [64, 48, 32], colour: (UInt8(n * 10), 0, 0, 255)) }
+        let data = Data(Self.ani(frames: frames, rate: 3))
+        #expect(ANIDecoder.format.delays?(data) == Array(repeating: 0.05, count: 18))
+        for step in 0..<18 {
+            #expect(ANIDecoder.format.size(data, step) == CGSize(width: 64, height: 64))
+            let image = try #require(RGBAImage(try ANIDecoder.format.decode(data, step, nil)))
+            let colour: (UInt8, UInt8, UInt8, UInt8) = (UInt8(step * 10), 0, 0, 255)
+            #expect(image.width == 64)
+            #expect(image[5, 5] == colour, "step \(step)")
         }
     }
 }

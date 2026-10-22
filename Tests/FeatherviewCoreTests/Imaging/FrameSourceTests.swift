@@ -8,8 +8,7 @@ import UniformTypeIdentifiers
 @Suite struct FrameSourceTests {
     static let screen = [PixelSize(width: 800, height: 600)]
 
-    /// A GIF whose frame n is solid (red 40·n), or the given image. Local until Task 1's
-    /// `Fixtures.writeAnimatedGIF` is merged.
+    /// A GIF of the given frames, for frames that aren't solid (`Fixtures.writeAnimatedGIF` only writes solid ones).
     static func writeGIF(to url: URL, frames: [CGImage]) throws -> URL {
         guard let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.gif.identifier as CFString, frames.count, nil)
         else { throw CocoaError(.fileWriteUnknown) }
@@ -41,8 +40,8 @@ import UniformTypeIdentifiers
     }
 
     @Test func frameZeroMatchesStillDecode() async throws {
-        let url = try Self.writeGIF(to: Fixtures.makeTempDir().appendingPathComponent("a.gif"),
-                                    frames: (0..<3).map { Self.solid($0, width: 400, height: 300) })
+        let url = try Fixtures.writeAnimatedGIF(to: Fixtures.makeTempDir().appendingPathComponent("a.gif"),
+                                                delays: [0.04, 0.04, 0.04], width: 400, height: 300)
         let still = try ImageDecoder.decode(url, halvingSteps: true, fitting: Self.screen)
         let frame = try await FrameSource(url: url, target: .fit(Self.screen), colorSpace: nil).frame(0)
         #expect(frame.width == still.width)
@@ -75,8 +74,8 @@ import UniformTypeIdentifiers
     }
 
     @Test func stepTargetHalves() async throws {
-        let url = try Self.writeGIF(to: Fixtures.makeTempDir().appendingPathComponent("a.gif"),
-                                    frames: (0..<2).map { Self.solid($0, width: 400, height: 300) })
+        let url = try Fixtures.writeAnimatedGIF(to: Fixtures.makeTempDir().appendingPathComponent("a.gif"),
+                                                delays: [0.04, 0.04], width: 400, height: 300)
         let frame = try await FrameSource(url: url, target: .step(1), colorSpace: nil).frame(1)
         #expect(frame.width == 200)
         #expect(frame.height == 150)
@@ -84,9 +83,10 @@ import UniformTypeIdentifiers
 
     @Test func truncatedAnimationStopsAtLastGoodFrame() async throws {
         let dir = try Fixtures.makeTempDir()
-        let frames = (0..<4).map { Self.solid($0, width: 40, height: 30) }
-        let two = try Data(contentsOf: Self.writeGIF(to: dir.appendingPathComponent("two.gif"), frames: Array(frames[..<2])))
-        let four = try Data(contentsOf: Self.writeGIF(to: dir.appendingPathComponent("four.gif"), frames: frames))
+        let two = try Data(contentsOf: Fixtures.writeAnimatedGIF(to: dir.appendingPathComponent("two.gif"),
+                                                                 delays: [0.04, 0.04], width: 40, height: 30))
+        let four = try Data(contentsOf: Fixtures.writeAnimatedGIF(to: dir.appendingPathComponent("four.gif"),
+                                                                  delays: [0.04, 0.04, 0.04, 0.04], width: 40, height: 30))
         // The two-frame file without its trailer is the four-frame file's start; cut a few bytes into frame 2.
         let url = dir.appendingPathComponent("cut.gif")
         try four.prefix(two.count - 1 + 20).write(to: url)
@@ -106,12 +106,14 @@ import UniformTypeIdentifiers
             var image = RGBAImage(width: 4, height: 2)
             for y in 0..<2 { for x in 0..<4 { image[x, y] = (UInt8(40 * index), 0, 0, 255) } }
             return image.makeCGImage()!
-        })
+        },
+        delays: { data in Array(repeating: 0.04, count: Int(data.first ?? 1)) })
 
     @Test func ownFormatFrames() async throws {
         OwnDecoders.register(Self.toy)
         let url = try Fixtures.makeTempDir().appendingPathComponent("a.fvanim")
         try Data([3]).write(to: url)
+        #expect(Animation.read(url)?.frameCount == 3)
         let source = try FrameSource(url: url, target: .fit(Self.screen), colorSpace: nil)
         let frame = try await source.frame(1)
         #expect(Self.pixel(frame, x: 1, y: 1)[0] == 40)

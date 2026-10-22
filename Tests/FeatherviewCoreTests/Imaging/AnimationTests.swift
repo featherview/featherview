@@ -50,8 +50,7 @@ import UniformTypeIdentifiers
     }
 
     @Test func mayAnimateByExtension() {
-        // .ani joins once ANIDecoder gives its delays (Task 2).
-        for ext in ["gif", "apng", "heics", "webp"] {
+        for ext in ["gif", "apng", "heics", "webp", "ani"] {
             #expect(ImageFormats.mayAnimate(URL(filePath: "/x/a.\(ext)")), "\(ext)")
         }
         for ext in ["jpg", "tif", "qoi"] {
