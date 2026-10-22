@@ -405,8 +405,17 @@ struct ViewerView: View {
         feedAutoHide(.key(browsing: browsing))
         if model.isChooserOpen { return handleChooser(press, modifiers) }
         if let operation = model.destinationPanel { return handleDestinations(press, modifiers, operation) }
-        // The grid's keys reach its collection view (gridKey); the viewer's keys do nothing there (Decision 13).
-        if model.isGrid { return .handled }
+        // The grid's keys, when its collection view hasn't the keyboard (the size slider, Tab); the viewer's keys do
+        // nothing there (Decision 13).
+        if model.isGrid {
+            var gridModifiers: MenuKey.Modifiers = []
+            if modifiers.contains(.command) { gridModifiers.insert(.command) }
+            if modifiers.contains(.shift) { gridModifiers.insert(.shift) }
+            if modifiers.contains(.option) { gridModifiers.insert(.option) }
+            if modifiers.contains(.control) { gridModifiers.insert(.control) }
+            guard let key = GridKey.action(characters: press.characters, modifiers: gridModifiers), gridKey(key) else { return .ignored }
+            return .handled
+        }
         if modifiers == .option {
             switch press.key {
             case .rightArrow, .leftArrow:

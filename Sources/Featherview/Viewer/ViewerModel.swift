@@ -74,7 +74,7 @@ final class ViewerModel {
                                // In the grid these act on one viewed image (Decision 13).
                                canChangeFile: list.current != nil && !list.isHolding && !isGrid,
                                hasPages: (pageCount > 1 || player.frameCount > 1) && !list.isHolding && !isGrid,
-                               canShowGrid: !list.isEmpty && !isOpening)
+                               canShowGrid: isGrid || (!list.isEmpty && !isOpening))
         if new != availability { availability = new }
         if isAnimation != (player.frameCount > 1) { isAnimation.toggle() }
     }
@@ -905,6 +905,7 @@ final class ViewerModel {
             image = nil
         }
         isGrid = false
+        thumbnails?.queue.focus([])  // waiting cell decodes would compete with this image's
         show()
     }
 
@@ -920,6 +921,7 @@ final class ViewerModel {
     /// Another file or folder opens: the grid goes, with its thumbnails.
     func closeGrid() {
         isGrid = false
+        thumbnails?.queue.focus([])
         thumbnails = nil
         gridFocus = nil
         gridSelection = []

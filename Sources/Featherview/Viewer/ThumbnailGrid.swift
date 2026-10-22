@@ -242,10 +242,11 @@ struct ThumbnailGrid: NSViewRepresentable {
             return item
         }
 
-        /// The keyboard's selection (arrows, ⇧-arrows, ⌘A): a single cell added takes the focus.
+        /// The keyboard's selection (arrows, ⇧-arrows, ⌘A): a single cell added takes the focus; only a plain arrow
+        /// (the selection is that cell) moves the ⇧-click anchor.
         func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {
             let single = indexPaths.count == 1 ? indexPaths.first?.item : nil
-            if let single { anchor = urls[single] }
+            if let single, collectionView.selectionIndexPaths.count == 1 { anchor = urls[single] }
             syncSelection(focus: single)
         }
 
