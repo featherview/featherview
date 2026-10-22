@@ -25,7 +25,7 @@ public enum FileRenamer {
         let name = trimmed(name)
         if name.isEmpty { return .empty }
         if name.contains("/") || name.contains(":")
-            || name.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) { return .invalidCharacter }
+            || name.unicodeScalars.contains { $0.properties.generalCategory == .control } { return .invalidCharacter }
         if name.hasPrefix(".") { return .hidden }
         if name.utf8.count > 255 { return .tooLong }
         return nil

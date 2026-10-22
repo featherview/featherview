@@ -97,6 +97,14 @@ import Testing
         #expect(FileRenamer.check("a b.jpg") == nil)
     }
 
+    @Test func checkAcceptsFormatCharacters() {
+        #expect(FileRenamer.check("👨\u{200D}👩\u{200D}👧.jpg") == nil)
+        #expect(FileRenamer.check("می\u{200C}خواهم.jpg") == nil)
+        #expect(FileRenamer.check("\u{200F}שלום.jpg") == nil)
+        #expect(FileRenamer.check("soft\u{AD}hyphen.jpg") == nil)
+        #expect(FileRenamer.check("a\u{7F}b") == .invalidCharacter)
+    }
+
     @Test func stemRange() {
         #expect(FileRenamer.stemRange(of: "IMG_1.jpg") == NSRange(location: 0, length: 5))
         #expect(FileRenamer.stemRange(of: "a.tar.gz") == NSRange(location: 0, length: 5))
