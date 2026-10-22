@@ -12,10 +12,11 @@ enum Corpus {
         var quality: Double = 0.9
         var orientation = 1
         var seed: UInt32 = 0
+        var embedThumbnail = false
     }
 
     static func write(to dir: URL) throws {
-        for folder in ["browse", "browse-heic", "browse-50mp"] {
+        for folder in ["browse", "browse-heic", "browse-50mp", "grid-heic"] {
             try FileManager.default.createDirectory(at: dir.appendingPathComponent(folder), withIntermediateDirectories: true)
         }
         var files = [
@@ -36,6 +37,10 @@ enum Corpus {
             // Slow decodes, for the Task 6 gate: HEIC (the iPhone's default) and 50 MP JPEG.
             files.append(File(name: String(format: "browse-heic/%04d.heic", i), width: landscape ? 4032 : 3024,
                               height: landscape ? 3024 : 4032, type: .heic, quality: 0.8, seed: UInt32(i)))
+            // The grid's first screen when HEICs carry ImageIO's embedded thumbnail (320 × 240).
+            files.append(File(name: String(format: "grid-heic/%04d.heic", i), width: landscape ? 4032 : 3024,
+                              height: landscape ? 3024 : 4032, type: .heic, quality: 0.8, seed: UInt32(i),
+                              embedThumbnail: true))
             if i <= 20 {
                 files.append(File(name: String(format: "browse-50mp/%04d.jpg", i), width: landscape ? 8688 : 5792,
                                   height: landscape ? 5792 : 8688, type: .jpeg, seed: UInt32(i)))
@@ -87,6 +92,7 @@ enum Corpus {
         else { throw CocoaError(.fileWriteUnknown, userInfo: [NSFilePathErrorKey: url.path]) }
         var properties: [CFString: Any] = [kCGImagePropertyOrientation: file.orientation]
         if file.type != .png { properties[kCGImageDestinationLossyCompressionQuality] = file.quality }
+        if file.embedThumbnail { properties[kCGImageDestinationEmbedThumbnail] = true }
         CGImageDestinationAddImage(destination, image, properties as CFDictionary)
         guard CGImageDestinationFinalize(destination)
         else { throw CocoaError(.fileWriteUnknown, userInfo: [NSFilePathErrorKey: url.path]) }

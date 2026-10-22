@@ -9,6 +9,7 @@ let knownOptions: [String: Set<String>] = [
     "decode": ["--raw", "--screen", "--runs", "--json", "--baseline"],
     "browse": ["--screen", "--interval-ms"],
     "thumbnail": ["--out"],
+    "grid": ["--points", "--scale", "--cells", "--width", "--json", "--baseline"],
 ]
 
 /// `--name value` pairs, each name's values in order.

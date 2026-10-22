@@ -11,6 +11,8 @@ let usage = """
                                                     [--json out.json] [--baseline in.json]
       swift run -c release featherview-bench browse <dir>/browse [--interval-ms 300] [--screen WxH]
       swift run -c release featherview-bench thumbnail <file or dir> [--out <dir>]
+      swift run -c release featherview-bench grid <dir> [--points 128] [--scale 2] [--cells 40] [--width N]
+                                                  [--json out.json] [--baseline in.json]
 
     corpus  writes generated test images into <dir> (never commit them).
     decode  times the viewer's fit decode per file and screen, plus one full-size decode per file,
@@ -23,6 +25,10 @@ let usage = """
             exits 1 if one gets no thumbnail; --out also writes them as PNG. It doesn't say which extension
             drew a thumbnail: for formats only Featherview reads, any thumbnail at all is ours. macOS uses the
             copy of the app registered with the highest version (`pluginkit -m -v -p com.apple.quicklook.thumbnail`).
+    grid    the grid's first screen: the first --cells files in Finder order, all asked at once as thumbnails
+            (`ThumbnailSize.decodeSide` of --points at --scale) through one byte-budgeted cache and a
+            --width-wide queue (default the app's: cores − 2, within 2…6). Prints the time until the last
+            one is done, p50 / p95 per file and the cache's decoded bytes. Budgets: browse < 400 ms, grid-heic < 150 ms.
     Screens are in pixels; default 3024x1964 3456x2234 5120x2880 (decode), 3024x1964 (browse).
     """
 
@@ -84,6 +90,12 @@ do { options = try parseOptions(arguments, mode: mode) } catch { fail(error.mess
         guard let screen = Screen(text) else { fail("Bad screen size \(text), expected WxH.") }
         return screen
     }
+}
+
+@MainActor func decimal(_ name: String, default value: Double) -> Double {
+    guard let text = option(name) else { return value }
+    guard let number = Double(text), number > 0 else { fail("Bad \(name) \(text), expected a number above 0.") }
+    return number
 }
 
 @MainActor func number(_ name: String, default value: Int) -> Int {
@@ -153,6 +165,11 @@ func imageFiles(in dir: URL) -> [URL] {
         rows += fileRows
     }
 
+    report(rows)
+}
+
+/// `--json` writes the rows, `--baseline` compares them (exits 1 if a median is > 10 % slower or a row is gone).
+@MainActor func report(_ rows: [Row]) {
     if let path = option("--json") {
         do {
             let encoder = JSONEncoder()
@@ -242,6 +259,56 @@ struct Step: Sendable {
     print("peak cache: \(peakCache / 1_000_000) MB decoded, peak footprint: \(peak / 1_000_000) MB (screen \(screen[0]), every \(interval) ms)")
 }
 
+// MARK: - grid
+
+@MainActor func runGrid() async {
+    let points = decimal("--points", default: ThumbnailSize.standard)
+    let scale = decimal("--scale", default: 2)
+    let cells = number("--cells", default: 40)
+    // Decision 8's grid queue, as the app sets it up.
+    let width = number("--width", default: max(2, min(6, ProcessInfo.processInfo.activeProcessorCount - 2)))
+    let urls = Array(((try? FolderScanner.images(around: folder)) ?? []).prefix(cells))
+    guard !urls.isEmpty else { fail("No images in \(folder.path). Run `corpus` first.") }
+    let side = ThumbnailSize.decodeSide(points: points, scale: scale)
+    let target = DecodeTarget.thumbnail(side)
+    let decodes = DecodeQueue(width: width)
+    let cache = ImageCache(capacity: urls.count, colorSpace: displayP3, queue: decodes,
+                           byteBudget: ThumbnailSize.cacheBudget(screens: [PixelSize(width: 3024, height: 1964)]))
+
+    // All cells at once, as a first screen asks; each file's time runs from that moment, as its cell sees it.
+    let start = ContinuousClock.now
+    decodes.focus(urls)
+    let times = await withTaskGroup(of: (String, Double?).self) { group in
+        for url in urls {
+            group.addTask {
+                let image = try? await cache.image(for: url, target: target)
+                return (url.lastPathComponent, image.map { _ in ms(start.duration(to: .now)) })
+            }
+        }
+        var times: [(String, Double?)] = []
+        for await time in group { times.append(time) }
+        return times
+    }
+    let total = ms(start.duration(to: .now))
+    let failed = times.filter { $0.1 == nil }.map(\.0)
+    failed.forEach { print("Can't decode \($0)") }
+    let sorted = times.compactMap(\.1).sorted()
+    let megabytes = Double(await cache.decodedBytes) / 1_000_000
+    print("\(urls.count) files, \(f(points)) pt at \(f(scale))×, side \(side) px, width \(width)")
+    print("total \(f(total)) ms, per file p50 \(f(percentile(sorted, 0.5))) ms, p95 \(f(percentile(sorted, 0.95))) ms")
+    print("cache: \(f(megabytes)) MB decoded")
+
+    let file = "\(urls.count) files", screen = "grid \(side)"
+    report([
+        Row(file: file, screen: screen + " total", width: side, height: side, megabytes: megabytes,
+            firstMs: total, medianMs: total, p95Ms: total, minMs: total),
+        Row(file: file, screen: screen + " per file", width: side, height: side, megabytes: megabytes,
+            firstMs: sorted.first ?? 0, medianMs: percentile(sorted, 0.5), p95Ms: percentile(sorted, 0.95),
+            minMs: sorted.first ?? 0),
+    ])
+    if !failed.isEmpty { exit(1) }
+}
+
 switch mode {
 case "corpus":
     do {
@@ -251,6 +318,7 @@ case "corpus":
     }
 case "decode": runDecode()
 case "browse": await runBrowse()
+case "grid": await runGrid()
 case "thumbnail": await runThumbnail(folder, out: option("--out").map { URL(fileURLWithPath: $0) })
 default: fail("Unknown mode \(mode).")
 }
