@@ -308,6 +308,8 @@ struct ViewerView: View {
         }
         .task(id: controlsShown) { if controlsShown { await hideSlideshowControlsAtRest() } }
         .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
+        // A slideshow started inside full screen changes neither of the above, nor shows the capsule.
+        .onChange(of: model.slideshowState != nil) { if $1 { hidePointerInFullScreen() } }
     }
 
     /// Fit shrinks large images to the view; a zoom factor scales the file's full pixel size, so a smaller
