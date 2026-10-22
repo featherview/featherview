@@ -69,6 +69,19 @@ import UniformTypeIdentifiers
         #expect(ImageSort.values(of: [dir.appendingPathComponent("gone.jpg")], key: .size).isEmpty)
     }
 
+    @Test func valuesFollowSymlinksToTheImage() throws {
+        let dir = try Fixtures.makeTempDir()
+        let png = try Fixtures.writeImage(to: dir.appendingPathComponent("big.png"), width: 4, height: 4, type: .png)
+        let date = Date(timeIntervalSince1970: 1_000_000)
+        try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: png.path)
+        let link = dir.appendingPathComponent("link.png")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: png)
+        let size = try #require(png.resourceValues(forKeys: [.fileSizeKey]).fileSize)
+        #expect(ImageSort.values(of: [link], key: .size)[link] == .bytes(size))
+        #expect(ImageSort.values(of: [link], key: .dateModified)[link] == .date(date))
+        #expect(ImageSort.values(of: [link], key: .dateTaken)[link] == .date(date))
+    }
+
     @Test func kindIsPerExtensionIgnoringCase() {
         let (a, b, c) = (url("a.jpg"), url("b.JPG"), url("c.zzzq"))
         let values = ImageSort.values(of: [a, b, c], key: .kind)
