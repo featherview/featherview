@@ -459,6 +459,7 @@ struct ViewerView: View {
         case .about: openWindow(id: "about")
         case .saveAs: model.saveAs()
         case .toggleAnimation: model.toggleAnimation()
+        case .toggleThumbnails: return .ignored
         }
         return .handled
     }

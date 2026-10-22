@@ -151,4 +151,21 @@ import Testing
         other.remove(urls[3], hold: true)  // not current: nothing to hold
         #expect(!other.isHolding)
     }
+
+    @Test func selectMakesCurrent() {
+        var list = ImageList(urls: urls, current: urls[1])
+        list.remove(urls[1], hold: true)
+        let selected = list.select(urls[3])  // #expect can't call a mutating method
+        #expect(selected)
+        #expect(list.current == urls[3])
+        #expect(!list.isHolding)
+        #expect(list.position == "3 / 3")
+    }
+
+    @Test func selectUnknownIsFalse() {
+        var list = ImageList(urls: urls, current: urls[1])
+        let selected = list.select(URL(fileURLWithPath: "/x/zzz.jpg"))
+        #expect(!selected)
+        #expect(list == ImageList(urls: urls, current: urls[1]))
+    }
 }

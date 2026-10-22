@@ -39,6 +39,8 @@ public enum AppSettings {
     public static let checkerboard = Setting(key: "checkerboard", defaultValue: true)
     public static let rememberWindowFrame = Setting(key: "rememberWindowFrame", defaultValue: true)
     public static let zoomStepPercent = Setting(key: "zoomStepPercent", defaultValue: 10)
+    /// The thumbnail grid's cell side in points (`ThumbnailSize.range`).
+    public static let thumbnailSize = Setting(key: "thumbnailSize", defaultValue: ThumbnailSize.standard)
     // Full screen
     public static let showOverlay = Setting(key: "showOverlay", defaultValue: true)
     public static let overlayTemplate = Setting(key: "overlayTemplate", defaultValue: "{path} — {index} / {count}")
@@ -72,6 +74,7 @@ public enum AppSettings {
             checkerboard.key: checkerboard.defaultValue,
             rememberWindowFrame.key: rememberWindowFrame.defaultValue,
             zoomStepPercent.key: zoomStepPercent.defaultValue,
+            thumbnailSize.key: thumbnailSize.defaultValue,
             showOverlay.key: showOverlay.defaultValue,
             overlayTemplate.key: overlayTemplate.defaultValue,
             hidePointer.key: hidePointer.defaultValue,

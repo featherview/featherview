@@ -49,6 +49,14 @@ public struct ImageList: Equatable, Sendable {
     /// Stops holding a removed image; the one after it becomes current.
     public mutating func release() { held = nil }
 
+    /// Makes `url` current (drops a held image); false and unchanged when it isn't listed.
+    public mutating func select(_ url: URL) -> Bool {
+        guard let found = urls.firstIndex(of: url) else { return false }
+        held = nil
+        index = found
+        return true
+    }
+
     /// Drops the current entry (after Trash); the following image becomes current.
     public mutating func removeCurrent() {
         if let current { remove(current) }

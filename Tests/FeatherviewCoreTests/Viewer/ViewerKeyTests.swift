@@ -42,4 +42,10 @@ import Testing
         #expect(!ViewerKey.arrowGoesForward(isRightArrow: true, rightToLeft: true))   // → is previous in Arabic/Hebrew
         #expect(ViewerKey.arrowGoesForward(isRightArrow: false, rightToLeft: true))
     }
+
+    @Test func tTogglesThumbnails() {
+        #expect(ViewerKey.action(characters: "t", shift: false) == .toggleThumbnails)
+        #expect(ViewerKey.action(characters: "T", shift: false) == .toggleThumbnails)  // Caps Lock
+        #expect(ViewerKey.action(characters: "T", shift: true) == nil)
+    }
 }
