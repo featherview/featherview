@@ -18,7 +18,7 @@ public enum DateTaken {
         return calendar
     }
 
-    /// EXIF `DateTimeOriginal` as stored; nil when missing, a placeholder or a time out of range (what `shifted` can't read).
+    /// EXIF `DateTimeOriginal` as stored; nil when missing or a placeholder.
     public static func original(of url: URL) -> String? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
         return original(source)
@@ -26,7 +26,7 @@ public enum DateTaken {
 
     static func original(_ source: CGImageSource) -> String? {
         guard let date = exifValue(source, kCGImagePropertyExifDateTimeOriginal),
-              MetadataReader.exifDate(date) != nil, wallTime(date) != nil else { return nil }
+              MetadataReader.exifDate(date) != nil else { return nil }
         return date
     }
 
@@ -37,7 +37,11 @@ public enum DateTaken {
 
     /// The date taken, else the file's modification date as a wall time in the Mac's time zone.
     public static func current(of url: URL) -> String? {
-        if let date = original(of: url) { return date }
+        original(of: url) ?? fileDate(of: url)
+    }
+
+    /// The file's modification date as a wall time in the Mac's time zone.
+    public static func fileDate(of url: URL) -> String? {
         guard let modified = (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
         else { return nil }
         let local = Calendar(identifier: .gregorian)

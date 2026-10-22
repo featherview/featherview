@@ -141,14 +141,14 @@ import UniformTypeIdentifiers
         #expect(DateTaken.current(of: dated) == "2020:01:02 03:04:05")
     }
 
-    @Test func originalRefusesTimesOutOfRange() throws {
+    @Test func originalKeepsTimesOutOfRange() throws {
         let dir = try Fixtures.makeTempDir()
         var props = Self.exifDate
         props[kCGImagePropertyExifDictionary] = [kCGImagePropertyExifDateTimeOriginal: "2020:01:01 24:00:00"]
         let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8, properties: props)
-        // A date the shift can't read counts as none, so the grid shifts the others instead of copying it.
-        #expect(DateTaken.original(of: url) == nil)
-        #expect(DateTaken.current(of: url).flatMap(DateTaken.wallTime) != nil)
+        // Stored as it is (a batch Shift fails the file); the file date stays at hand for Adjust Date Taken.
+        #expect(DateTaken.original(of: url) == "2020:01:01 24:00:00")
+        #expect(DateTaken.fileDate(of: url).flatMap(DateTaken.wallTime) != nil)
     }
 
     @Test func applyChangesInPlaceAndFileDates() throws {

@@ -924,9 +924,16 @@ final class ViewerModel {
     func showAdjustDate() {
         guard canAdjustDate, let url = isGrid ? gridSelection.first : list.current else { return }
         let others = isGrid ? Array(gridSelection.dropFirst()) : []
+        let grid = isGrid
         Task {
-            let (original, current) = await Task.detached { (DateTaken.original(of: url), DateTaken.current(of: url)) }.value
-            dateSheet = DateSheetState(url: url, others: others, original: original, fileDate: original == nil ? current : nil)
+            let (original, fileDate) = await Task.detached {
+                // A stored date the shift can't read counts as none: the others shift from the file date instead.
+                let original = DateTaken.original(of: url).flatMap { DateTaken.wallTime($0) == nil ? nil : $0 }
+                return (original, original == nil ? DateTaken.fileDate(of: url) : nil)
+            }.value
+            // The sheet doesn't name its file: not over another one the user moved on to meanwhile.
+            guard isGrid == grid, (grid ? gridSelection.first : list.current) == url else { return }
+            dateSheet = DateSheetState(url: url, others: others, original: original, fileDate: fileDate)
         }
     }
 

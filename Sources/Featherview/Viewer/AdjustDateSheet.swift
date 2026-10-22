@@ -67,6 +67,9 @@ private struct SecondsDatePicker: NSViewRepresentable {
         picker.datePickerStyle = .textFieldAndStepper
         picker.datePickerElements = [.yearMonthDay, .hourMinuteSecond]
         picker.timeZone = TimeZone(secondsFromGMT: 0)
+        // The years EXIF can hold.
+        picker.minDate = DateTaken.wallTime("0001:01:01 00:00:00")
+        picker.maxDate = DateTaken.wallTime("9999:12:31 23:59:59")
         picker.target = context.coordinator
         picker.action = #selector(Coordinator.changed(_:))
         return picker
