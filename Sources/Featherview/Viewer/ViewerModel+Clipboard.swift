@@ -12,7 +12,10 @@ extension ViewerModel {
         let pasteboard = NSPasteboard.general
         let content = ClipboardWatch.content(pasteboard)
         if case .file(let url) = content { return open(url) }
-        guard case .data(let type) = content, let data = pasteboard.data(forType: NSPasteboard.PasteboardType(type)) else { return }
+        guard case .data(let type) = content, let data = pasteboard.data(forType: NSPasteboard.PasteboardType(type)) else {
+            ClipboardWatch.shared.refresh()  // emptied since the menu item was last updated
+            return NSSound.beep()
+        }
         Task {
             let image = await Task.detached(priority: .userInitiated) { ClipboardImage.image(from: data) }.value
             guard let image else {
