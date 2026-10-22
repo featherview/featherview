@@ -9,6 +9,8 @@ public enum EncodeError: Error, Equatable {
 /// Turns upright pixels into a file's bytes in any `OutputFormat`, with its options (spec "Format options").
 public enum ImageEncoder {
     /// `FeatherviewJXL.JXLEncoder.encode`, set by the app at launch (not linked here, see Package.swift); nil: JPEG XL fails.
+    /// Unsafe is sound only if it is written once before any encode: at launch, or in tests through `Fixtures.jxl`
+    /// (a `static let`, so its one write happens before every test that runs it reads).
     nonisolated(unsafe) public static var jxlEncoder: (@Sendable (CGImage, _ quality: Int, _ lossless: Bool, _ effort: Int,
                                                                  _ xmp: Data?) throws -> Data)?
 

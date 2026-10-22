@@ -165,6 +165,7 @@ import Testing
 
     @Test(arguments: FormatRegistry.writable)
     func everyFormatWritesSomethingReadable(format: OutputFormat) throws {
+        _ = Fixtures.jxl
         let data = try ImageEncoder.encode([image()], as: format, options: format.defaultOptions)
         #expect(data.count > 0)
         guard case .imageIO = format.writer else { return }  // own formats are checked by their codec tests
