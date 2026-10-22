@@ -181,7 +181,37 @@ public struct DateTakenSettings: Codable, Equatable, Sendable {
     public var setTo = ""
     /// Signed: + later, − earlier.
     public var shiftSeconds = 0
+    /// The direction while `shiftSeconds` is 0, where the sign can't hold it.
+    public var earlierAtZero = false
     public init() {}
+
+    public var shiftsEarlier: Bool {
+        get { shiftSeconds == 0 ? earlierAtZero : shiftSeconds < 0 }
+        set {
+            earlierAtZero = newValue
+            shiftSeconds = (newValue ? -1 : 1) * shiftSize
+        }
+    }
+
+    /// One part of the shift's size: `unit` seconds each, `count` of them within the next larger part.
+    public func shiftPart(unit: Int, count: Int) -> Int { shiftSize / unit % count }
+
+    public mutating func setShiftPart(_ new: Int, unit: Int, count: Int) {
+        let earlier = shiftsEarlier, size = shiftSize
+        earlierAtZero = earlier
+        shiftSeconds = (earlier ? -1 : 1) * (size - size / unit % count * unit + new * unit)
+    }
+
+    private var shiftSize: Int { Int(clamping: shiftSeconds.magnitude) }  // abs(Int.min) traps
+
+    /// The EXIF date this step gives `url`; nil when off or it can't.
+    public func newDate(for url: URL) -> String? {
+        guard isOn else { return nil }
+        switch mode {
+        case .set: return DateTaken.wallTime(setTo) != nil ? setTo : nil
+        case .shift: return DateTaken.current(of: url).flatMap { DateTaken.shifted($0, by: shiftSeconds) }
+        }
+    }
 }
 
 public struct SafetySettings: Codable, Equatable, Sendable {
@@ -414,6 +444,7 @@ extension DateTakenSettings {
         isOn = c.value(.isOn, d.isOn)
         mode = c.value(.mode, d.mode); setTo = c.value(.setTo, d.setTo)
         shiftSeconds = c.value(.shiftSeconds, d.shiftSeconds)
+        earlierAtZero = c.value(.earlierAtZero, d.earlierAtZero)
     }
 }
 

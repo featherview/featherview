@@ -243,25 +243,10 @@ private struct CountRow: View {
 
 private struct DateTakenStepView: View {
     @Binding var s: DateTakenSettings
-    /// The direction while the shift is 0, where the sign can't hold it.
-    @State private var earlierAtZero = false
 
-    private var earlier: Binding<Bool> {
-        Binding { s.shiftSeconds == 0 ? earlierAtZero : s.shiftSeconds < 0 } set: {
-            earlierAtZero = $0
-            s.shiftSeconds = ($0 ? -1 : 1) * abs(s.shiftSeconds)
-        }
-    }
-
-    /// One part of the shift's size: `unit` seconds each, `range` of them within the next larger part.
     private func part(_ unit: Int, _ range: ClosedRange<Int>) -> Binding<Int> {
-        clamped(Binding {
-            abs(s.shiftSeconds) / unit % (range.upperBound + 1)
-        } set: { new in
-            let size = abs(s.shiftSeconds)
-            let rest = size - size / unit % (range.upperBound + 1) * unit
-            s.shiftSeconds = (earlier.wrappedValue ? -1 : 1) * (rest + new * unit)
-        }, range)
+        clamped(Binding { s.shiftPart(unit: unit, count: range.upperBound + 1) }
+                set: { s.setShiftPart($0, unit: unit, count: range.upperBound + 1) }, range)
     }
 
     var body: some View {
@@ -279,7 +264,7 @@ private struct DateTakenStepView: View {
                     .fixedSize()
             }
         case .shift:
-            Picker("Shift:", selection: earlier) {
+            Picker("Shift:", selection: $s.shiftsEarlier) {
                 // Own keys: "Later" alone is the update prompt's "not now".
                 Text(LocalizedStringResource("dateShift.later", defaultValue: "Later", comment: "Batch Date Taken: shift the date forward")).tag(false)
                 Text(LocalizedStringResource("dateShift.earlier", defaultValue: "Earlier", comment: "Batch Date Taken: shift the date back")).tag(true)
