@@ -121,13 +121,13 @@ struct AboutView: View {
                         .font(Font(Theme.aboutTextFont))
                         .textSelection(.enabled)
                         .frame(width: Theme.aboutTextWidth, alignment: .leading)
-                        .padding(.trailing)  // clear of the scroller
+                        .padding([.horizontal, .top])  // inside the scroll view: its scroller sits in the margin
                 }
                 Button { sheet.text = nil } label: { Text("Done").foregroundStyle(Theme.onAccent) }
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
+                    .padding([.horizontal, .bottom])
             }
-            .padding()
             .frame(height: Theme.aboutTextHeight)
         }
     }
