@@ -404,7 +404,7 @@ final class ViewerModel {
     func show(page: Int = 0, keepsPlayer: Bool = false) {
         // First: no frame of the file shown so far may land on the next one's canvas.
         if !keepsPlayer || player.url != list.current {
-            player.stop()
+            player.stop(showing: player.url == list.current ? image : nil)
             updateAvailability()
         }
         loadTask?.cancel()

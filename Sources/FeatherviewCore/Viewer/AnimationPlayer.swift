@@ -54,8 +54,10 @@ public final class AnimationPlayer {
         play()
     }
 
-    /// Synchronous: once it returns no frame of this file reaches the canvas.
-    public func stop() {
+    /// Synchronous: once it returns no frame of this file reaches the canvas. `first`, the model's image, goes back
+    /// on the canvas when a later frame shows: the same file shown again sends the canvas no update to put it back.
+    public func stop(showing first: CGImage? = nil) {
+        if current != nil, let first { onFrame(first) }
         task?.cancel()
         task = nil
         generation += 1

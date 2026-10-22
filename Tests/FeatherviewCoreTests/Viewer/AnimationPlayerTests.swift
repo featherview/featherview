@@ -58,4 +58,21 @@ import Testing
         #expect(player.pausedFrame == 1)
         player.stop()
     }
+
+    @Test func stopShowingPutsFrameZeroBack() async throws {
+        let url = try Self.gif(frames: 3, delay: 0.04)
+        let player = AnimationPlayer(colorSpace: nil)
+        var shown: [CGImage] = []
+        player.onFrame = { shown.append($0) }
+        let first = Self.bigFirst()
+        player.start(url: url, animation: try #require(Animation.read(url)), target: .full, first: first, playing: false)
+        player.stop(showing: first)
+        // Frame 0 is on the canvas already.
+        #expect(shown.isEmpty)
+        player.start(url: url, animation: try #require(Animation.read(url)), target: .full, first: first, playing: false)
+        player.step(forward: true)
+        for _ in 0..<50 where player.current == nil { try await Task.sleep(for: .milliseconds(20)) }
+        player.stop(showing: first)
+        #expect(shown.last === first)
+    }
 }
