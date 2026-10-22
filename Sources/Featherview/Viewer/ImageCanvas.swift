@@ -87,6 +87,8 @@ struct ImageCanvas: NSViewRepresentable {
     var onFirstDraw: @MainActor () -> Void = {}
     /// Called with each new image once Core Animation has committed it (the `Navigate` signpost ends here).
     var onCommit: @MainActor (CGImage) -> Void = { _ in }
+    /// False in compare: two panes animating apart would drift, so zoom steps are cuts there.
+    var animatesZoom = true
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = CanvasScrollView()
@@ -143,7 +145,7 @@ struct ImageCanvas: NSViewRepresentable {
         }
         let zoomChanged = view.zoom != nil && view.zoom != zoom && !insetsChanged
         let panelRefit = panelMoved && view.zoom == zoom
-        let animate = view.shows(image) && (zoomChanged || panelRefit) && pinch == nil
+        let animate = animatesZoom && view.shows(image) && (zoomChanged || panelRefit) && pinch == nil
             && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         view.zoom = zoom
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion

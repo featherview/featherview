@@ -61,6 +61,10 @@ final class ViewerModel {
         var hasPages = false
         /// T: the window has a list to show as thumbnails (also while the grid shows, to leave it).
         var canShowGrid = false
+        /// File › Compare With…: an image shows (not the grid).
+        var canCompare = false
+        /// X: comparing, and pane 2's file opened.
+        var canSwap = false
     }
     /// Stored, and set only when a value flips: buttons reading `list` would all re-evaluate on every image.
     private(set) var availability = Availability()
@@ -75,7 +79,10 @@ final class ViewerModel {
                                // In the grid these act on one viewed image (Decision 13).
                                canChangeFile: list.current != nil && !list.isHolding && !isGrid,
                                hasPages: (pageCount > 1 || player.frameCount > 1) && !list.isHolding && !isGrid,
-                               canShowGrid: isGrid || (!list.isEmpty && !isOpening))
+                               canShowGrid: isGrid || (!list.isEmpty && !isOpening),
+                               canCompare: list.current != nil && !list.isHolding && !isGrid,
+                               canSwap: compareSession != nil && compareSession?.errorMessage == nil
+                                   && list.current != nil && !list.isHolding)
         if new != availability { availability = new }
         if isAnimation != (player.frameCount > 1) { isAnimation.toggle() }
     }
@@ -179,9 +186,13 @@ final class ViewerModel {
     /// The window's title: the file name, then the counter.
     var title: String { titleCounter.map { "\(titleName) \($0)" } ?? titleName }
 
-    /// The file (or empty folder) name, the folder's in the grid; the toolbar title shows it in the title font.
+    /// The file (or empty folder) name, the folder's in the grid, both names in compare; the toolbar title shows it
+    /// in the title font.
     var titleName: String {
         if isGrid, let folder { return folder.lastPathComponent }
+        if let compareSession, let current = list.current {
+            return CompareText.title(first: current.lastPathComponent, second: compareSession.url.lastPathComponent)
+        }
         return list.current?.lastPathComponent ?? emptyFolder?.lastPathComponent
             ?? (isOpening ? openingFile?.lastPathComponent ?? "" : "Featherview")
     }
@@ -210,9 +221,11 @@ final class ViewerModel {
 
     /// A file shows at once; its folder is scanned off the main thread meanwhile, because a big
     /// folder takes longer to list and sort than the image takes to decode.
-    func open(_ url: URL) {
+    /// `keepingCompare`: pane 1 changes folder (a swap or a compare start), pane 2 stays.
+    func open(_ url: URL, keepingCompare: Bool = false) {
         openTask?.cancel()
         closeGrid()
+        if !keepingCompare { leaveCompare() }
         // Its decode may be dropped by the refocus below; cancelled, it ends quietly instead of showing an error.
         loadTask?.cancel()
         isOpening = true
@@ -227,9 +240,11 @@ final class ViewerModel {
         ready = [:]
         knownInfo = [:]
         // The old folder's waiting decodes go; a folder's first image is known only after its scan, which refocuses.
+        // Pane 2's file stays in the window: dropped, its decode (a swap asks for it next) would never be asked again.
+        let kept = keepingCompare ? compareSession.map { [$0.url] } ?? [] : []
         let opening = openCount.withLock { count in
             count += 1
-            decodes.focus(isFolder ? [] : [url])
+            decodes.focus((isFolder ? [] : [url]) + kept)
             return count
         }
         // A folder's first image is known only after its scan, so the scan runs here too, alongside the
@@ -253,7 +268,7 @@ final class ViewerModel {
                // Not on the main actor: at launch it is busy building the window, and the decode would wait for it.
                openCount.withLock({ count in
                    guard count == opening else { return false }
-                   decodes.focus([first])
+                   decodes.focus([first] + kept)
                    return true
                }) {
                 await cache.prefetch([first], target: prefetch)
@@ -285,6 +300,7 @@ final class ViewerModel {
                 list = ImageList(urls: urls, current: url)
                 if isFolder {
                     emptyFolder = urls.isEmpty ? url : nil
+                    if urls.isEmpty { leaveCompare() }  // the chooser keeps comparing; an empty list ends it
                     show()
                 } else if zoom == .fit, prefetchesNeighbors {
                     // The folder is listed: the title's position and the status bar needn't wait for the neighbours.
@@ -350,7 +366,7 @@ final class ViewerModel {
     func chooserMove(_ delta: Int) { chooserSession.move(delta) }
     func chooserEnter() { chooserSession.enter() }
     func chooserUp() { chooserSession.up() }
-    func chooserOpen() { chooserSession.open { [weak self] in self?.open($0) } }
+    func chooserOpen() { chooserSession.open { [weak self] in self?.open($0, keepingCompare: true) } }
     func closeChooser() {
         countTask?.cancel()
         chooserSession.close()
@@ -543,7 +559,8 @@ final class ViewerModel {
             return []
         }
         let neighbors = list.neighbors(radius: !prefetchesNeighbors ? 0 : zoom == .fit ? 2 : 1, forward: forward)
-        decodes.focus([url] + neighbors)
+        // Pane 2's file right after the image shown: a held arrow key never drops its decode.
+        decodes.focus([url] + (compareSession.map { [$0.url] } ?? []) + neighbors)
         return neighbors
     }
 
@@ -674,6 +691,10 @@ final class ViewerModel {
     /// Called when this viewer's window becomes key: now its neighbours are worth decoding.
     func becameActive() {
         updateAvailability()  // "Past the end of a folder" may have changed in Preferences
+        // Pane 2's file may have been trashed or moved in Finder meanwhile.
+        if let compareSession, compareSession.errorMessage == nil, !FileManager.default.fileExists(atPath: compareSession.url.path) {
+            secondFailed(compareSession, url: compareSession.url)
+        }
         guard zoom == .fit, !list.isEmpty else { return }
         let neighbors = focusDecodes()
         Task { await cache.prefetch(neighbors, target: .fit(screens)) }
@@ -715,9 +736,13 @@ final class ViewerModel {
         let hold = wasCurrent && !wasLast && !AppSettings.showNextAfterRemoval.value()
         // Held, the removed file stays current, so ⌘⌫, F7 / F8, R / L and Info can't reach the unseen next one.
         list.remove(url, hold: hold)
+        if let compareSession, compareSession.url == url { secondFailed(compareSession, url: url) }
         guard wasCurrent, !hold else { return }
         // Keeps the folder known, so the view says it's empty and ← / → still reach the chooser.
-        if list.isEmpty { emptyFolder = openedFolder ?? url.deletingLastPathComponent() }
+        if list.isEmpty {
+            emptyFolder = openedFolder ?? url.deletingLastPathComponent()
+            leaveCompare()
+        }
         // The leaving picture fades out ("gone", not "replaced"); the next one appears hard.
         if image != nil, !isGrid {
             isLeaving = true
@@ -845,6 +870,13 @@ final class ViewerModel {
                 ready[url] = nil
                 fileRevision += 1
                 if list.current == url { show(page: self.page) }
+                if let compareSession, compareSession.url == url {
+                    // Pane 2 shows the same file: its picture and size turned too.
+                    await compareSession.zoomCache.remove(url)
+                    compareSession.change(to: url)
+                    compareSession.info = nil
+                    showSecond()
+                }
             } catch RotateError.notFirstPage {
                 dropFailed(url)
                 errorMessage = isRotation
@@ -972,6 +1004,7 @@ final class ViewerModel {
     func toggleGrid() {
         if isGrid { return viewFromGrid(gridFocus) }
         guard availability.canShowGrid else { return }
+        leaveCompare()
         gridShow = Signposts.poster.beginInterval("GridShow", id: Signposts.poster.makeSignpostID())
         if thumbnails == nil {
             let queue = DecodeQueue(width: max(2, min(6, ProcessInfo.processInfo.activeProcessorCount - 2)))
@@ -1067,6 +1100,168 @@ final class ViewerModel {
             let info = await Task.detached { FileInfo.read(url: url, page: 0) }.value
             if !Task.isCancelled, gridFocus == url { gridInfo = info }
         }
+    }
+
+    // MARK: Compare
+
+    /// The second pane while comparing; none exists until compare starts.
+    private(set) var compareSession: CompareSession? { didSet { updateAvailability() } }
+    /// The running `CompareShow` signpost: from showSecond() until pane 2's canvas commits `image`.
+    @ObservationIgnored private var compareShow: (state: OSSignpostIntervalState, image: CGImage?)?
+
+    /// Shows `first` in pane 1 (selected in the list, or its folder opened) and `second` in pane 2. Leaves the grid.
+    func compare(_ first: URL, with second: URL) {
+        if isGrid {
+            viewFromGrid(first)
+        } else if list.current != first {
+            if list.select(first) { show() } else { open(first, keepingCompare: true) }
+        }
+        showInfo = false
+        if let compareSession {
+            compareSession.change(to: second)
+            updateAvailability()
+        } else {
+            compareSession = CompareSession(url: second, zoomCache: ImageCache(
+                capacity: 1, hdr: ImageDecoder.supportsHDR, colorSpace: Self.screenSpace, queue: decodes))
+        }
+        focusDecodes()
+        showSecond()
+    }
+
+    /// File › Compare With…: the second image, chosen beside the current one.
+    func showCompareOpenPanel() {
+        guard availability.canCompare, let current = list.current else { return }
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        panel.directoryURL = current.deletingLastPathComponent()
+        panel.message = CompareText.choose(current.lastPathComponent)
+        guard panel.runModal() == .OK, let url = panel.url, list.current == current else { return }
+        compare(current, with: url)
+    }
+
+    /// Esc, Stop Comparing, opening a file, T, an empty list: pane 1 stays at its zoom, pane 2's decodes go.
+    func leaveCompare() {
+        guard let compareSession else { return }
+        compareSession.task?.cancel()
+        endCompareShow("superseded")
+        self.compareSession = nil
+        focusDecodes()
+    }
+
+    /// X: the two files change panes; pane 1's opens its folder when it isn't in the list. Zoom stays.
+    func swapCompared() {
+        guard availability.canSwap, let compareSession, let first = list.current else { return }
+        let second = compareSession.url
+        // shortcut: a file gone in Finder shows until a swap or the app is reactivated; watch it if users ask.
+        guard FileManager.default.fileExists(atPath: second.path) else { return secondFailed(compareSession, url: second) }
+        compareSession.change(to: first)
+        if list.select(second) { show() } else { open(second, keepingCompare: true) }
+        showSecond()
+    }
+
+    /// Pane 2's zoom: in step, pane 1's factor matched to the second picture's size (`CompareSync`); else its own.
+    /// Fit until both pictures' sizes are known.
+    var secondZoom: Zoom {
+        guard let compareSession else { return .fit }
+        guard AppSettings.compareInStep.value() else { return compareSession.ownZoom }
+        guard let info = compareSession.info, info.url == compareSession.url, let second = info.pixelSize,
+              let fileInfo, fileInfo.isFor(list.current, page: page), let first = fileInfo.pixelSize else {
+            // Pane 1's details are the previous file's until its decode lands: pane 2 keeps its zoom meanwhile.
+            return compareSession.info?.url == compareSession.url ? compareSession.lastMatched.map { .factor($0) } ?? .fit : .fit
+        }
+        let factor = switch zoom {
+        case .factor(let factor): factor
+        case .fit: ZoomSteps.fitFactor(image: first, view: viewSize, displayScale: displayScale)
+        }
+        let matched = CompareSync.matchedFactor(factor, first: first, second: second)
+        compareSession.lastMatched = matched
+        return .factor(matched)
+    }
+
+    /// The scale pane 2's picture is shown at, from its full pixel size.
+    var secondZoomPercent: Int? {
+        switch secondZoom {
+        case .factor(let factor): return Int((factor * 100).rounded())
+        case .fit:
+            guard let size = compareSession?.info?.pixelSize else { return nil }
+            return Int((ZoomSteps.fitFactor(image: size, view: viewSize, displayScale: displayScale) * 100).rounded())
+        }
+    }
+
+    /// Decodes pane 2's file for `secondZoom`, off the main thread: at fit size into the viewer's cache (a swap or a
+    /// step onto it reuses it), beyond fit into the session's own. Asking again for the decode on its way does nothing.
+    func showSecond() {
+        guard let compareSession else { return }
+        let url = compareSession.url
+        var target = DecodeTarget.fit(screens)
+        var decodeCache = cache
+        if case .factor(let factor) = secondZoom, let info = compareSession.info, info.url == url, let size = info.pixelSize {
+            let decision = ImageDecoder.zoomDecode(size: PixelSize(width: Int(size.width), height: Int(size.height)),
+                                                   factor: factor, screens: screens,
+                                                   exactFit: ImageDecoder.decodesAtExactFit(url))
+            if !decision.withinFit {
+                target = .step(decision.step)
+                decodeCache = compareSession.zoomCache
+            }
+        }
+        if let wanted = compareSession.wanted, wanted.url == url, wanted.target == target { return }
+        compareSession.wanted = (url, target)
+        compareSession.task?.cancel()
+        endCompareShow("superseded")
+        compareShow = (Signposts.poster.beginInterval("CompareShow", id: Signposts.poster.makeSignpostID(),
+                                                      "\(url.lastPathComponent, privacy: .public)"), nil)
+        let started = ContinuousClock.now
+        let known = knownInfo[url]
+        compareSession.task = Task {
+            do {
+                let decoded = try await decodeCache.image(for: url, target: target)
+                guard !Task.isCancelled else { return }
+                var info = compareSession.info?.url == url ? compareSession.info : known
+                if info == nil { info = await Task.detached { FileInfo.read(url: url, page: 0) }.value }
+                guard !Task.isCancelled else { return }
+                // Already on screen: the canvas commits nothing new.
+                if compareSession.image === decoded { endCompareShow("shown") } else { compareShow?.image = decoded }
+                compareSession.image = decoded
+                compareSession.info = info
+                compareSession.errorMessage = nil
+                updateAvailability()
+                let elapsed = started.duration(to: .now).components
+                let ms = elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000
+                Self.log.debug("compare \(url.lastPathComponent, privacy: .public): \(ms) ms")
+            } catch is CancellationError {
+                // The queue dropped it, not a newer ask: the next one decodes again.
+                if !Task.isCancelled {
+                    compareSession.wanted = nil
+                    endCompareShow("dropped")
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+                secondFailed(compareSession, url: url)
+            }
+        }
+    }
+
+    /// Pane 2's file can't be read (or is gone): it says so, compare stays.
+    private func secondFailed(_ session: CompareSession, url: URL) {
+        // A decode still on its way would bring the gone file back; `wanted` stays so it isn't asked for again.
+        session.task?.cancel()
+        endCompareShow("failed")
+        session.image = nil
+        session.info = nil
+        session.difference = nil
+        session.errorMessage = String(localized: "Can't open \(url.lastPathComponent)")
+        updateAvailability()
+    }
+
+    /// Pane 2's canvas committed `committed` to the screen.
+    func secondCommitted(_ committed: CGImage) {
+        if let compareShow, compareShow.image === committed { endCompareShow("shown") }
+    }
+
+    private func endCompareShow(_ outcome: String) {
+        guard let compareShow else { return }
+        Signposts.poster.endInterval("CompareShow", compareShow.state, "\(outcome, privacy: .public)")
+        self.compareShow = nil
     }
 
     func showOpenPanel() {

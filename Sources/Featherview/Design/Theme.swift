@@ -315,6 +315,8 @@ enum Theme {
     static let gridPictureInset = 6.0
     static let gridNamePadding = 6.0
     static let gridSliderWidth = 96.0
+    /// Compare: the divider between the two panes.
+    static let compareDivider = 1.0
     @MainActor static let gridName = NSFont.systemFont(ofSize: 11)
     /// The grid's AppKit colours: the same tokens as the SwiftUI ones above.
     static let gridSelected = NSColor(toggledPill)
