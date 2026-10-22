@@ -6,18 +6,26 @@ import UniformTypeIdentifiers
 public enum BatchConverter {
     /// One file's work before its commit.
     struct Prepared: Sendable {
-        /// The encoded output; nil when the input's bytes are copied at commit (`copiesUnchanged`).
+        /// The encoded output; nil when the input's bytes are copied at commit (`copiesUnchanged`) or it has `parts`.
         var data: Data?
+        /// An input with several outputs: each already written to a hidden temp file in its output folder,
+        /// with its `{part}` label, so only one part is in memory at a time.
+        var parts: [(file: URL, label: String)]
         /// For `{date}` in the rename pattern.
         var date: Date?
+        /// The Date Taken step's new date ("yyyy:MM:dd HH:mm:ss") and the input's EXIF offset: the outputs' file dates.
+        var dateTaken: String?
+        var offset: String?
         /// "page 1 of 3".
         var note: String?
         var error: String?
         /// Trashed with the input; found here, in parallel, so the serial commit never lists a folder.
         var sidecars: [URL]
 
-        init(data: Data? = nil, date: Date? = nil, note: String? = nil, error: String? = nil, sidecars: [URL] = []) {
-            self.data = data; self.date = date; self.note = note; self.error = error; self.sidecars = sidecars
+        init(data: Data? = nil, parts: [(file: URL, label: String)] = [], date: Date? = nil, dateTaken: String? = nil,
+             offset: String? = nil, note: String? = nil, error: String? = nil, sidecars: [URL] = []) {
+            self.data = data; self.parts = parts; self.date = date; self.dateTaken = dateTaken; self.offset = offset
+            self.note = note; self.error = error; self.sidecars = sidecars
         }
     }
 
@@ -113,12 +121,26 @@ public enum BatchConverter {
         }
     }
 
-    /// Decode (all pages the format needs), the pipeline per page, encode. A copy only reads the date.
+    /// Decode (all pages the format needs, or each frame or page as its own output), the pipeline per
+    /// page, tiles, encode. A copy only reads the date, or rewrites it losslessly.
     static func prepare(_ input: BatchInput, index: Int, settings: BatchSettings,
                         watermark: Result<CIImage?, WatermarkError>) -> Prepared {
         let url = input.url, name = url.lastPathComponent
+        var newDate: String?, offset: String?
+        if settings.dateTaken.isOn {
+            switch settings.dateTaken.mode {
+            case .set:
+                guard !settings.dateTaken.setTo.isEmpty
+                else { return Prepared(error: String(localized: "Choose a date for the Date Taken step")) }
+                newDate = settings.dateTaken.setTo
+            case .shift:
+                newDate = DateTaken.current(of: url).flatMap { DateTaken.shifted($0, by: settings.dateTaken.shiftSeconds) }
+            }
+            offset = CGImageSourceCreateWithURL(url as CFURL, nil)
+                .flatMap { DateTaken.exifValue($0, kCGImagePropertyExifOffsetTimeOriginal) }
+        }
         let usesDate = settings.renamePattern.contains("{date}") || (settings.text.isOn && settings.text.text.contains("{date}"))
-        let date = usesDate ? MetadataReader.dateTaken(of: url) : nil
+        let date = newDate.flatMap(MetadataReader.exifDate) ?? (usesDate ? MetadataReader.dateTaken(of: url) : nil)
         if settings.copiesUnchanged {
             // The commit copies the bytes; a dangling link or a folder would copy as a link or fail as "Can't save".
             var isFolder: ObjCBool = false
@@ -126,7 +148,10 @@ public enum BatchConverter {
             guard FileManager.default.fileExists(atPath: target, isDirectory: &isFolder), !isFolder.boolValue,
                   FileManager.default.isReadableFile(atPath: target)
             else { return Prepared(error: String(localized: "Can't open \(name)")) }
-            return Prepared(date: date)
+            guard settings.dateTaken.isOn else { return Prepared(date: date) }
+            guard let newDate, let data = try? DateTaken.rewritten(url, date: newDate)
+            else { return Prepared(error: String(localized: "Can't change the date taken of \(name)")) }
+            return Prepared(data: data, date: date, dateTaken: newDate, offset: offset)
         }
 
         let watermarkImage: CIImage?
@@ -146,7 +171,9 @@ public enum BatchConverter {
             ext = ["jfif": "jpg", "jif": "jpg", "jfi": "jpg", "heif": "heic", "hif": "heic", "apng": "png"][ext] ?? ext
             let type = UTType(filenameExtension: ext)
             guard let own = FormatRegistry.format(id: ext) ?? FormatRegistry.writable.first(where: { type != nil && $0.type == type }),
-                  own.writer == .pdf || own.optionFields.contains(.keepAllPages) || ImageDecoder.pageCount(of: url) <= 1
+                  // With Frames and Pages each output is one page.
+                  own.writer == .pdf || own.optionFields.contains(.keepAllPages) || settings.frames.isOn
+                    || ImageDecoder.pageCount(of: url) <= 1
             else { return Prepared(error: String(localized: "Can't save \(name) in its own format")) }
             format = own
             options = FormatSettings.options(for: own)
@@ -157,71 +184,136 @@ public enum BatchConverter {
             limit = l
             originalSize = size
         }
-        // HDR is kept only for HEIC and AVIF (spec "Formats"), and reducing colours is 8-bit.
-        let wantsHDR = ImageDecoder.supportsHDR && ["heic", "avif"].contains(format.id)
-            && !(settings.colour.isOn && settings.colour.reduceColours != nil)
-        var pages: [CGImage]
-        do {
-            // HEIC and AVIF write one page.
-            pages = wantsHDR ? [try ImageDecoder.decode(url, maxPixelSize: limit, hdr: true)]
-                : try ImageSaver.pages(of: url, for: format, options: options, maxPixelSize: limit)
-        } catch { return Prepared(error: String(localized: "Can't open \(name)")) }
-        let hdr = wantsHDR && ImageDecoder.isHDR(pages[0].colorSpace,
-                                                 type: CGImageSourceCreateWithURL(url as CFURL, nil).flatMap(CGImageSourceGetType))
-
-        if settings.hasOperations {
-            // The same day format as the rename pattern's {date}.
-            let day = date.map { RenamePattern("{date}").baseName(original: "", index: 1, date: $0) } ?? ""
-            let values = TextValues(name: url.deletingPathExtension().lastPathComponent,
-                                    folder: url.deletingLastPathComponent().lastPathComponent, date: day, index: index + 1)
-            do {
-                pages = try pages.enumerated().map { page, image in
-                    // Only page 1's original size is known; other pages resize from their decoded size.
-                    let context = PipelineContext(values: values, originalSize: page == 0 ? originalSize : nil,
-                                                  watermark: watermarkImage)
-                    return try ImagePipeline.apply(image, settings, context: context, hdr: hdr)
-                }
-            } catch CanvasError.nothingLeft {
-                return Prepared(error: String(localized: "\(name): the canvas settings leave no image"))
-            } catch {
-                return Prepared(error: String(localized: "Can't write \(name) as \(format.name)"))
+        let pageCount = ImageDecoder.pageCount(of: url)
+        // Frames and Pages: every frame of an animation (from one kept source) or every page is its own output.
+        var reader: FrameReader?, units = 1
+        if settings.frames.isOn {
+            if let animation = Animation.read(url) {
+                do { reader = try FrameReader(url: url, target: .full, colorSpace: nil) }
+                catch { return Prepared(error: String(localized: "Can't open \(name)")) }
+                units = animation.frameCount
+            } else if pageCount > 1 {
+                units = pageCount
             }
         }
+        // HDR is kept only for HEIC and AVIF (spec "Formats"), for one decode per input, and reducing colours is 8-bit.
+        let wantsHDR = units == 1 && ImageDecoder.supportsHDR && ["heic", "avif"].contains(format.id)
+            && !(settings.colour.isOn && settings.colour.reduceColours != nil)
+        let tiles = settings.tiles
+        let labels = PartLabels.combined(frames: units, rows: tiles.isOn ? tiles.rows : 1, columns: tiles.isOn ? tiles.columns : 1)
+        let folder = BatchNamer.folder(for: input, settings: settings)
+        // The same day format as the rename pattern's {date}.
+        let day = date.map { RenamePattern("{date}").baseName(original: "", index: 1, date: $0) } ?? ""
+        let values = TextValues(name: url.deletingPathExtension().lastPathComponent,
+                                folder: url.deletingLastPathComponent().lastPathComponent, date: day, index: index + 1)
         let dpi = settings.resize.isOn ? settings.resize.dpi : nil
-        let data: Data
-        do { data = try ImageEncoder.encode(pages, as: format, options: options, metadataFrom: url, dpi: dpi, hdr: hdr) }
-        catch { return Prepared(error: String(localized: "Can't write \(name) as \(format.name)")) }
-        let count = pages.count == 1 ? ImageDecoder.pageCount(of: url) : 1
-        let note = count > 1 ? String(localized: "page 1 of \(count)", comment: "Batch log note: only the first page of a multi-page file was converted") : nil
-        return Prepared(data: data, date: date, note: note)
+        var single: Data?, parts: [(file: URL, label: String)] = [], note: String?
+        func failed(_ message: String) -> Prepared {
+            for part in parts { try? FileManager.default.removeItem(at: part.file) }
+            return Prepared(error: message)
+        }
+        for unit in 0..<units {
+            var pages: [CGImage]
+            do {
+                if let reader {
+                    pages = [try reader.frame(unit)]
+                } else if units > 1 {
+                    pages = [try ImageDecoder.decode(url, maxPixelSize: limit, page: unit)]
+                } else if wantsHDR {  // HEIC and AVIF write one page
+                    pages = [try ImageDecoder.decode(url, maxPixelSize: limit, hdr: true)]
+                } else if tiles.isOn {  // tiles of page 1 only
+                    pages = [try ImageDecoder.decode(url, maxPixelSize: limit)]
+                } else {
+                    pages = try ImageSaver.pages(of: url, for: format, options: options, maxPixelSize: limit)
+                }
+            } catch { return failed(String(localized: "Can't open \(name)")) }
+            let hdr = wantsHDR && ImageDecoder.isHDR(pages[0].colorSpace,
+                                                     type: CGImageSourceCreateWithURL(url as CFURL, nil).flatMap(CGImageSourceGetType))
+            if units == 1, pages.count == 1, pageCount > 1 {
+                note = String(localized: "page 1 of \(pageCount)", comment: "Batch log note: only the first page of a multi-page file was converted")
+            }
+
+            if settings.hasOperations {
+                do {
+                    pages = try pages.enumerated().map { page, image in
+                        // Only page 1's original size is known; other pages resize from their decoded size.
+                        let context = PipelineContext(values: values, originalSize: unit == 0 && page == 0 ? originalSize : nil,
+                                                      watermark: watermarkImage)
+                        return try ImagePipeline.apply(image, settings, context: context, hdr: hdr)
+                    }
+                } catch CanvasError.nothingLeft {
+                    return failed(String(localized: "\(name): the canvas settings leave no image"))
+                } catch {
+                    return failed(String(localized: "Can't write \(name) as \(format.name)"))
+                }
+            }
+            var outputs = [pages]
+            if tiles.isOn {
+                do { outputs = try TileStep.cut(pages[0], columns: tiles.columns, rows: tiles.rows, overlap: tiles.overlap).map { [$0] } }
+                catch { return failed(String(localized: "\(name): the tile settings leave no image")) }
+            }
+            for output in outputs {
+                let data: Data
+                do {
+                    data = try ImageEncoder.encode(output, as: format, options: options, metadataFrom: url, dpi: dpi, hdr: hdr,
+                                                   dateTaken: newDate)
+                } catch { return failed(String(localized: "Can't write \(name) as \(format.name)")) }
+                guard !labels.isEmpty else { single = data; continue }
+                // On disk as soon as it is made, so a 500-frame GIF holds one frame in memory.
+                let temp = folder.appendingPathComponent(".featherview-\(UUID().uuidString).tmp")
+                do {
+                    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                    try data.write(to: temp)
+                } catch {
+                    try? FileManager.default.removeItem(at: temp)
+                    return failed(String(localized: "Can't save \(name)"))
+                }
+                parts.append((temp, labels[parts.count]))
+            }
+        }
+        return Prepared(data: single, parts: parts, date: date, dateTaken: newDate, offset: offset, note: note)
     }
 
     /// Names, writes and finishes one file, in list order: the counter only advances for files that succeeded.
+    /// An input with parts is one unit: if one part can't be moved in, the parts moved before it are removed.
+    /// `move` is a seam for tests.
     static func commit(_ prepared: Prepared, input: BatchInput, settings: BatchSettings,
-                       namer: inout BatchNamer, trash: (URL) throws -> Void) -> BatchResult {
-        let url = input.url
+                       namer: inout BatchNamer, trash: (URL) throws -> Void,
+                       move: (String, String) -> Int32 = { moveExclusive($0, $1) }) -> BatchResult {
+        let url = input.url, fm = FileManager.default
         func failed(_ message: String) -> BatchResult { BatchResult(input: url, output: nil, status: .failed, message: message) }
         if let error = prepared.error { return failed(error) }
         let cantSave = String(localized: "Can't save \(url.lastPathComponent)")
         let unnamed = namer
-        let planned = namer.next(for: input, date: prepared.date)
-        let output: URL
+        let planned = namer.names(for: input, date: prepared.date, parts: prepared.parts.map(\.label))
+        var outputs: [URL] = []
         do {
-            let fm = FileManager.default
-            try fm.createDirectory(at: planned.deletingLastPathComponent(), withIntermediateDirectories: true)
-            // The namer never returns an input or a folder; with "Replace existing files" it may return an existing file.
-            if settings.safety.replaceExisting, let attributes = try? fm.attributesOfItem(atPath: planned.path),
-               attributes[.type] as? FileAttributeType != .typeDirectory {
-                try trash(planned)
+            try fm.createDirectory(at: planned[0].deletingLastPathComponent(), withIntermediateDirectories: true)
+            for (n, name) in planned.enumerated() {
+                // The namer never returns an input or a folder; with "Replace existing files" it may return an existing file.
+                if settings.safety.replaceExisting, let attributes = try? fm.attributesOfItem(atPath: name.path),
+                   attributes[.type] as? FileAttributeType != .typeDirectory {
+                    try trash(name)
+                }
+                if !prepared.parts.isEmpty {
+                    outputs.append(try moveIn(prepared.parts[n].file, to: name, move: move))
+                } else if let data = prepared.data {
+                    outputs.append(try write(data, to: name, move: move))
+                } else {
+                    outputs.append(try BatchCopy.copy(url, to: name))
+                }
             }
-            output = try prepared.data.map { try write($0, to: planned) } ?? BatchCopy.copy(url, to: planned)
         } catch {
-            namer = unnamed  // the name (and its number) goes to the next file that succeeds
+            // This run's own new files, and the temps not moved in yet.
+            for file in outputs + prepared.parts.map(\.file) { try? fm.removeItem(at: file) }
+            namer = unnamed  // the names (and their number) go to the next file that succeeds
             return failed(cantSave)
         }
-        if settings.safety.keepDates,
-           let date = (try? FileManager.default.attributesOfItem(atPath: url.resolvingSymlinksInPath().path))?[.modificationDate] as? Date {
-            try? FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: output.path)
+        if let dateTaken = prepared.dateTaken {
+            for output in outputs { DateTaken.setFileDates(output, date: dateTaken, offset: prepared.offset) }
+        } else if settings.safety.keepDates,
+           let date = (try? fm.attributesOfItem(atPath: url.resolvingSymlinksInPath().path))?[.modificationDate] as? Date {
+            for output in outputs { try? fm.setAttributes([.modificationDate: date], ofItemAtPath: output.path) }
         }
         var message = prepared.note
         if settings.safety.trashOriginals {
@@ -239,19 +331,25 @@ public enum BatchConverter {
                 message = message.map { String(localized: "\($0); \(kept)") } ?? kept
             }
         }
-        return BatchResult(input: url, output: output, status: .converted, message: message)
+        return BatchResult(input: url, outputs: outputs, status: .converted, message: message)
     }
 
     /// Writes a hidden temp file, then moves it in without replacing: a kill mid-write never leaves a
     /// partial file under the real name, and a file that appeared there is never touched (" 2" appended).
-    static func write(_ data: Data, to output: URL) throws -> URL {
+    static func write(_ data: Data, to output: URL,
+                      move: (String, String) -> Int32 = { moveExclusive($0, $1) }) throws -> URL {
         let temp = output.deletingLastPathComponent().appendingPathComponent(".featherview-\(UUID().uuidString).tmp")
         defer { try? FileManager.default.removeItem(at: temp) }
         try data.write(to: temp)
+        return try moveIn(temp, to: output, move: move)
+    }
+
+    /// Moves the temp file `temp` to `output` without replacing anything (" 2", " 3" when the name was taken meanwhile).
+    static func moveIn(_ temp: URL, to output: URL, move: (String, String) -> Int32) throws -> URL {
         let base = output.deletingPathExtension().lastPathComponent
         var target = output
         for counter in 2...10_000 {
-            let err = moveExclusive(temp.path, target.path)
+            let err = move(temp.path, target.path)
             if err == 0 { return target }
             guard err == EEXIST else { throw POSIXError(POSIXErrorCode(rawValue: err) ?? .EIO) }
             target = BatchNamer.fitted(base, suffix: " \(counter)", ext: output.pathExtension,

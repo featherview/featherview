@@ -7,6 +7,20 @@ import ImageIO
 /// The file is opened once and kept: ImageIO composites delta frames from the frames before, so asking
 /// in order from one source is fast (0.8 ms per 400×300 frame) where a fresh source pays for every earlier frame.
 public actor FrameSource {
+    private let reader: FrameReader
+
+    /// Throws `DecodeError.unreadable` if the file isn't a readable image.
+    public init(url: URL, target: DecodeTarget, colorSpace: CGColorSpace?) throws {
+        reader = try FrameReader(url: url, target: target, colorSpace: colorSpace)
+    }
+
+    /// Frame `index`, decoded now. Throws `DecodeError.unreadable` for a frame past the end or one the
+    /// file doesn't fully hold (a truncated download).
+    public func frame(_ index: Int) throws -> CGImage { try reader.frame(index) }
+}
+
+/// `FrameSource`'s work on the caller's thread, for code already off the main thread (the batch). One thread at a time.
+public final class FrameReader {
     private enum File {
         case imageIO(CGImageSource, count: Int)
         case own(OwnFormat, Data)

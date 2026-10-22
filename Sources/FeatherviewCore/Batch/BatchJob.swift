@@ -15,22 +15,38 @@ public enum BatchStatus: Sendable, Equatable { case converted, failed, notStarte
 
 public struct BatchResult: Sendable, Equatable {
     public let input: URL
-    /// nil when failed or not started.
-    public let output: URL?
+    /// Every file written for the input, in order (frames, pages, tiles); empty when failed or not started.
+    public let outputs: [URL]
+    /// The first output; nil when failed or not started.
+    public var output: URL? { outputs.first }
     public let status: BatchStatus
     /// The error sentence, or a note such as "page 1 of 3".
     public let message: String?
 
-    public init(input: URL, output: URL?, status: BatchStatus, message: String?) {
-        self.input = input; self.output = output; self.status = status; self.message = message
+    public init(input: URL, outputs: [URL], status: BatchStatus, message: String?) {
+        self.input = input; self.outputs = outputs; self.status = status; self.message = message
     }
 
-    /// "IMG_1.jpg → Holiday 001.heic", "Can't open broken.jpg", "… · page 1 of 3".
+    public init(input: URL, output: URL?, status: BatchStatus, message: String?) {
+        self.init(input: input, outputs: output.map { [$0] } ?? [], status: status, message: message)
+    }
+
+    /// "IMG_1.jpg → Holiday 001.heic", "Can't open broken.jpg", "… · page 1 of 3",
+    /// "loop.gif → loop-01.png … loop-12.png (12 files)".
     public var logLine: String {
         let name = input.lastPathComponent
         switch status {
         case .failed: return message ?? String(localized: "Can't convert \(name)")
         case .notStarted: return String(localized: "\(name) wasn't converted")
+        case .converted where outputs.count > 1:
+            let first = outputs[0].lastPathComponent, last = outputs[outputs.count - 1].lastPathComponent
+            let count = outputs.count
+            if let message {
+                return String(localized: "\(name) → \(first) … \(last) (\(count) files) · \(message)",
+                              comment: "Batch log line: input, first and last output, output count, note")
+            }
+            return String(localized: "\(name) → \(first) … \(last) (\(count) files)",
+                          comment: "Batch log line: input, first and last output, output count")
         case .converted:
             let target = output?.lastPathComponent ?? ""
             if let message { return String(localized: "\(name) → \(target) · \(message)") }
