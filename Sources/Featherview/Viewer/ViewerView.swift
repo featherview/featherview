@@ -73,7 +73,8 @@ struct ViewerView: View {
         ZStack {
             background.ignoresSafeArea()
             if model.isGrid {
-                ThumbnailGrid(model: model, urls: model.list.urls, cellSize: thumbnailSize, insets: canvasInsets, onKey: gridKey)
+                ThumbnailGrid(model: model, urls: model.list.urls, cellSize: thumbnailSize, insets: canvasInsets,
+                              hasKeyboard: model.destinationPanel == nil, onKey: gridKey)
                     .ignoresSafeArea()
             } else if let session = model.compareSession {
                 ComparePanes(model: model, session: session, first: firstPane, insets: Self.paneInsets(canvasInsets),
@@ -277,6 +278,8 @@ struct ViewerView: View {
         }
         // The grid's collection view had the keyboard.
         .onChange(of: model.isGrid) { if !$1 { focused = true } }
+        // The F7 / F8 panel's keys go through `handle`, not the grid's collection view.
+        .onChange(of: model.destinationPanel != nil) { if $1, model.isGrid { focused = true } }
         .onChange(of: barsVisible) { fadeBars(visible: $1) }
         .task(id: hideArm) { await hideBarsAtRest() }
         // On a new image and on entering full screen (double-click, F or Return leave the image as is).
@@ -575,8 +578,15 @@ struct ViewerView: View {
         case .larger: model.stepThumbnails(larger: true)
         case .smaller: model.stepThumbnails(larger: false)
         case .passOn(let action): return perform(action)
-        // shortcut: Space, ⌦ / ⌘⌫, F7, F8 and B do nothing in the grid yet, wire them when the selection's actions land.
-        case .quickLook, .trash, .move, .copy, .batch, .first, .last: return false
+        case .trash: model.moveCurrentToTrash()
+        case .move: model.showDestinations(.move)
+        case .copy: model.showDestinations(.copy)
+        case .batch:
+            guard !model.gridSelection.isEmpty else { return true }
+            model.batchSelection()
+            openWindow(id: "batch")
+        // The collection view's own (ThumbnailGrid): Quick Look needs it as first responder.
+        case .quickLook, .first, .last: return false
         }
         return true
     }
@@ -943,7 +953,8 @@ struct ViewerCommands: Commands {
                 Button("Copy to Folder…  (F8)") { model?.showDestinations(.copy) }
                 Button("Move to Trash  (⌘⌫ or ⌦)") { model?.moveCurrentToTrash() }
             }
-            .disabled(model?.availability.canChangeFile != true)
+            // The viewed image, or the grid's selection.
+            .disabled(model?.operationTargets.isEmpty != false)
             // In the grid these would act on the image viewed before T, not the cells (Decision 13).
             Button("Show in Finder") { model?.showInFinder() }
                 .disabled(model?.availability.hasCurrent != true || model?.isGrid == true)
@@ -968,8 +979,13 @@ struct ViewerCommands: Commands {
                 .disabled(model?.gridSelection.count != 2)
             }
             Divider()
-            Button("Batch Convert…  (B)") { openWindow(id: "batch") }
-                .keyboardShortcut("b")
+            Button("Batch Convert…  (B)") {
+                // In the grid the selection joins the batch's list.
+                if model?.isGrid == true { model?.batchSelection() }
+                openWindow(id: "batch")
+            }
+            .keyboardShortcut("b")
+            .disabled(model?.isGrid == true && model?.gridSelection.isEmpty == true)
         }
         // Not ToolbarCommands: SwiftUI shows its toolbar at every launch, so whether it's hidden is kept here.
         CommandGroup(replacing: .toolbar) {

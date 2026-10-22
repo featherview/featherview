@@ -808,29 +808,61 @@ final class ViewerModel {
         Task { await cache.prefetch(neighbors, target: .fit(screens)) }
     }
 
-    /// Queued behind rotations: one still running would write the file back after it was trashed.
-    func moveCurrentToTrash() {
-        guard let url = list.current, !list.isHolding else { return }
+    /// What Trash, F7 / F8 and B act on: the grid's selection, else the viewed image (not a held one, already gone).
+    var operationTargets: [URL] {
+        if isGrid { return gridSelection }
+        guard let url = list.current, !list.isHolding else { return [] }
+        return [url]
+    }
+
+    /// ⌘⌫ / ⌦: the viewed image, or the grid's selection.
+    func moveCurrentToTrash() { trash(operationTargets) }
+
+    /// Queued behind rotations: one still running would write a file back after it was trashed. Each file on its own:
+    /// one that can't be trashed doesn't stop the rest.
+    func trash(_ urls: [URL]) {
+        guard !urls.isEmpty else { return }
         let previous = rotateTask
         let scan = openTask
         rotateTask = Task {
             await previous?.value
-            await scan?.value  // the scan's list would bring the file back
-            guard list.urls.contains(url) else { return }  // ⌘⌫ pressed twice before this ran
+            await scan?.value  // the scan's list would bring the files back
+            let listed = Set(list.urls)
+            let urls = urls.filter(listed.contains)  // ⌘⌫ pressed twice before this ran
+            guard !urls.isEmpty else { return }
             let withSidecars = AppSettings.moveSidecars.value()
-            do {
-                // Off the main thread: on a network or slow disk, trashing can take seconds.
-                try await Task.detached(priority: .userInitiated) {
-                    let sidecars = withSidecars ? Sidecars.files(for: url) : []
-                    try FileManager.default.trashItem(at: url, resultingItemURL: nil)
-                    // shortcut: a sidecar that can't be trashed stays behind silently; report it if users ask.
-                    for sidecar in sidecars { try? FileManager.default.trashItem(at: sidecar, resultingItemURL: nil) }
-                }.value
-                await removeFromList(url)
-            } catch {
-                errorMessage = String(localized: "Couldn't move \(url.lastPathComponent) to the Trash")
-            }
+            // Off the main thread: on a network or slow disk, trashing can take seconds.
+            let (trashed, failed) = await Task.detached(priority: .userInitiated) {
+                var trashed: [URL] = [], failed: [URL] = []
+                for url in urls {
+                    do {
+                        let sidecars = withSidecars ? Sidecars.files(for: url) : []
+                        try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                        // shortcut: a sidecar that can't be trashed stays behind silently; report it if users ask.
+                        for sidecar in sidecars { try? FileManager.default.trashItem(at: sidecar, resultingItemURL: nil) }
+                        trashed.append(url)
+                    } catch {
+                        failed.append(url)
+                    }
+                }
+                return (trashed, failed)
+            }.value
+            await removeFromList(trashed)
+            if !failed.isEmpty { errorMessage = GridText.trashFailed(failed) }
         }
+    }
+
+    /// Several files leave the list; in the grid the cell after the last of them is selected (the one before it at
+    /// the end), and the grid leaves when none are left.
+    private func removeFromList(_ urls: [URL]) async {
+        guard !urls.isEmpty else { return }
+        if isGrid {
+            let focus = GridSelection.focusAfterRemoval(urls: list.urls, removed: Set(urls))
+            gridSelection = focus.map { [$0] } ?? []
+            gridFocus = focus
+        }
+        for url in urls { await removeFromList(url) }
+        if isGrid, list.isEmpty { viewFromGrid(nil) }
     }
 
     /// After Trash or a move: the image leaves the list. With "show the next image" on (default) the
@@ -840,12 +872,14 @@ final class ViewerModel {
         ready[url] = nil
         await cache.remove(url)
         await fullSizeCache.remove(url)
+        await thumbnails?.cache.remove(url)
         let wasCurrent = list.current == url
         let wasLast = list.index == list.urls.count - 1
         // A slideshow decides what shows: the next in play order, never held.
         var slideshowNext: URL?
         if slideshow != nil { slideshowNext = slideshow?.remove(url) }
-        let hold = slideshow == nil && wasCurrent && !wasLast && !AppSettings.showNextAfterRemoval.value()
+        // The grid has no image to hold: its selection moves on instead.
+        let hold = slideshow == nil && !isGrid && wasCurrent && !wasLast && !AppSettings.showNextAfterRemoval.value()
         // Held, the removed file stays current, so ⌘⌫, F7 / F8, R / L and Info can't reach the unseen next one.
         list.remove(url, hold: hold)
         if let slideshowNext {
@@ -870,38 +904,45 @@ final class ViewerModel {
     }
 
     func showDestinations(_ operation: FileOperation) {
-        guard list.current != nil, !list.isHolding else { return }
+        guard !operationTargets.isEmpty else { return }
         slots = DestinationSlots(defaults: .standard)  // Settings or another window may have changed them
         destinationPanel = operation
     }
 
-    /// F7 / F8 with a slot picked: moves or copies the current file (and sidecars) there.
-    /// A copy leaves the viewer as it is; a move removes the file from the list.
+    /// F7 / F8 with a slot picked: moves or copies the viewed file, or the grid's selection (and sidecars) there,
+    /// each on its own. A copy leaves the viewer as it is; a move removes the files from the list.
     func transfer(to slot: Int) {
-        guard let operation = destinationPanel, let url = list.current, !list.isHolding else { return }
+        let urls = operationTargets
+        guard let operation = destinationPanel, !urls.isEmpty else { return }
         slots = DestinationSlots.update(in: .standard) { $0.lastUsed = slot }
         guard let folder = slots[slot] else { return }
         destinationPanel = nil
-        if AppSettings.askBeforeMoveCopy.value(), !confirm(operation, url, folder) { return }
+        if AppSettings.askBeforeMoveCopy.value(), !confirm(operation, urls, folder) { return }
         let withSidecars = AppSettings.moveSidecars.value()
         let previous = rotateTask
         let scan = openTask
         rotateTask = Task {
             await previous?.value
-            await scan?.value  // the scan's list would bring the file back
-            guard list.urls.contains(url) else { return }
-            do {
-                let target = try await Task.detached(priority: .userInitiated) {
-                    try FileMover.transfer(url, to: folder, operation: operation,
-                                           sidecars: withSidecars ? Sidecars.files(for: url) : [])
-                }.value
-                // A move into the file's own folder leaves it where it is, so it stays in the list.
-                if operation == .move, target != url { await removeFromList(url) }
-            } catch {
-                errorMessage = operation == .move
-                    ? String(localized: "Couldn't move \(url.lastPathComponent) to \(folder.lastPathComponent)")
-                    : String(localized: "Couldn't copy \(url.lastPathComponent) to \(folder.lastPathComponent)")
-            }
+            await scan?.value  // the scan's list would bring the files back
+            let listed = Set(list.urls)
+            let urls = urls.filter(listed.contains)
+            guard !urls.isEmpty else { return }
+            let (moved, failed) = await Task.detached(priority: .userInitiated) {
+                var moved: [URL] = [], failed: [URL] = []
+                for url in urls {
+                    do {
+                        let target = try FileMover.transfer(url, to: folder, operation: operation,
+                                                            sidecars: withSidecars ? Sidecars.files(for: url) : [])
+                        // A move into the file's own folder leaves it where it is, so it stays in the list.
+                        if target != url { moved.append(url) }
+                    } catch {
+                        failed.append(url)
+                    }
+                }
+                return (moved, failed)
+            }.value
+            if operation == .move { await removeFromList(moved) }
+            if !failed.isEmpty { errorMessage = GridText.transferFailed(failed, operation: operation, folder: folder) }
         }
     }
 
@@ -959,11 +1000,9 @@ final class ViewerModel {
         return true
     }
 
-    private func confirm(_ operation: FileOperation, _ url: URL, _ folder: URL) -> Bool {
+    private func confirm(_ operation: FileOperation, _ urls: [URL], _ folder: URL) -> Bool {
         let alert = NSAlert()
-        alert.messageText = operation == .move
-            ? String(localized: "Move \(url.lastPathComponent) to \(folder.lastPathComponent)?")
-            : String(localized: "Copy \(url.lastPathComponent) to \(folder.lastPathComponent)?")
+        alert.messageText = GridText.confirm(urls, operation: operation, folder: folder)
         alert.addButton(withTitle: operation == .move ? String(localized: "Move") : String(localized: "Copy"))
         alert.addButton(withTitle: String(localized: "Cancel"))
         return alert.runModal() == .alertFirstButtonReturn
@@ -1228,6 +1267,11 @@ final class ViewerModel {
     func prefetchThumbnails(_ urls: [URL], side: Int) {
         guard let cache = thumbnails?.cache, !urls.isEmpty else { return }
         Task { await cache.prefetch(urls, target: .thumbnail(side)) }
+    }
+
+    /// B in the grid: the selection joins the Batch window's list; the caller opens the window.
+    func batchSelection() {
+        BatchModel.shared.add(files: gridSelection)
     }
 
     /// + / −, and the View menu's retitled zoom items, in the grid.
