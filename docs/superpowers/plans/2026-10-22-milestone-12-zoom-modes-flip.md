@@ -22,7 +22,7 @@ parity), `docs/parity.md` "Zoom modes and flip" and "Display", `docs/spec.md` "K
 "Menu commands", "Rotate", "Languages", "Look". The spec has no section for these yet; Task 5 writes
 it from the Decisions below. Rules: `AGENTS.md`.
 
-## Decisions (the roadmap leaves these to the plan)
+## Decisions (the roadmap leaves these to the plan; accepted by the maintainer)
 
 1. **Zoom to Width / Zoom to Height fill that side of the fit area, small images enlarged** (as the
    reference does), within the zoom range 5 %–1600 %. Why: the mode is for reading a tall screenshot

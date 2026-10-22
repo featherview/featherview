@@ -21,13 +21,13 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 8 | Finder previews | `docs/superpowers/plans/2026-10-19-milestone-8-finder-previews.md` | done |
 | 9 | Animation (v2) | `docs/superpowers/plans/2026-10-22-milestone-9-animation.md` | done |
 | 10 | Document icon (v2) | `docs/superpowers/plans/2026-10-22-document-icon.md` | done |
-| 11 | Viewer conveniences (v2) | `docs/superpowers/plans/2026-10-22-milestone-11-viewer-conveniences.md` | planned |
-| 12 | Zoom modes and flip (v2) | `docs/superpowers/plans/2026-10-22-milestone-12-zoom-modes-flip.md` | planned |
+| 11 | Viewer conveniences (v2) | `docs/superpowers/plans/2026-10-22-milestone-11-viewer-conveniences.md` | ready |
+| 12 | Zoom modes and flip (v2) | `docs/superpowers/plans/2026-10-22-milestone-12-zoom-modes-flip.md` | ready |
 | 13 | Thumbnail grid (v2) | `docs/superpowers/plans/2026-10-22-milestone-13-thumbnails.md` | ready |
-| 14 | Slideshow (v2) | `docs/superpowers/plans/2026-10-22-milestone-14-slideshow.md` | planned |
-| 15 | Compare images (v2) | `docs/superpowers/plans/2026-10-22-milestone-15-compare.md` | planned |
-| 16 | Batch extras (v2) | `docs/superpowers/plans/2026-10-22-milestone-16-batch-extras.md` | planned |
-| 17 | JPEG XL writing (v2) | `docs/superpowers/plans/2026-10-22-milestone-17-jpeg-xl-writing.md` | planned |
+| 14 | Slideshow (v2) | `docs/superpowers/plans/2026-10-22-milestone-14-slideshow.md` | ready |
+| 15 | Compare images (v2) | `docs/superpowers/plans/2026-10-22-milestone-15-compare.md` | ready |
+| 16 | Batch extras (v2) | `docs/superpowers/plans/2026-10-22-milestone-16-batch-extras.md` | ready |
+| 17 | JPEG XL writing (v2) | `docs/superpowers/plans/2026-10-22-milestone-17-jpeg-xl-writing.md` | ready |
 
 ## 1. Core viewer and batch
 

@@ -21,7 +21,7 @@ ImageIO's lossless `CGImageDestinationCopyImageSource` with `kCGImageDestination
 "Menu commands"; `docs/roadmap.md` "Batch extras (v2)"; `docs/parity.md` "Batch extras" and
 "Batch" (Multi-page input). Rules: `AGENTS.md`. Task 7 writes the decisions below into the spec.
 
-## Decisions (the spec leaves these to the plan)
+## Decisions (the spec leaves these to the plan; accepted by the maintainer)
 
 1. **Where the features live.** Frames, pages and tiles are **batch only**; the viewer gets only
    **Image › Adjust Date Taken…** (an in-place metadata change, like lossless rotate). One file

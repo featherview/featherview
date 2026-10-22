@@ -21,7 +21,7 @@ tests), Swift Testing.
 "Format options" (Task 4 adds the JPEG XL row), `docs/roadmap.md` "JPEG XL writing (v2)". Rules:
 `AGENTS.md` (Dependencies row; "Imaging: … JPEG XL encoding in v2").
 
-## Decisions (the spec leaves these to the plan)
+## Decisions (the spec leaves these to the plan; accepted by the maintainer)
 
 1. **libjxl everywhere, never ImageIO.** ImageIO writes no JPEG XL on macOS 27 (nor on 14, which
    added JXL *reading* only). Should a later macOS add a writer, `public.jpeg-xl` is hidden in

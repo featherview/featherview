@@ -24,7 +24,7 @@ parity), `docs/parity.md` "Viewer conveniences" (the reference's behaviour), `do
 "Keys", "Toolbar", "Menu commands", "Mouse and trackpad", "Look", `docs/DESIGN.md`. The spec has no
 section for these yet; Task 10 writes one from the Decisions below. Rules: `AGENTS.md`.
 
-## Decisions (the roadmap leaves these to the plan)
+## Decisions (the roadmap leaves these to the plan; accepted by the maintainer)
 
 1. **Open Recent** — File › Open Recent below Open…, the system's recent documents
    (`NSDocumentController.shared`), newest first, as many as System Settings › Desktop & Dock ›

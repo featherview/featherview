@@ -27,7 +27,7 @@ from parity), `docs/parity.md` "Slideshow" (the reference's behaviour), `docs/sp
 `docs/superpowers/plans/2026-10-22-milestone-9-animation.md` (an animated image during a slideshow).
 The spec has no slideshow section yet; Task 4 writes one from the Decisions below. Rules: `AGENTS.md`.
 
-## Decisions (the roadmap leaves these to the plan)
+## Decisions (the roadmap leaves these to the plan; accepted by the maintainer)
 
 1. **Commands.** View menu, after the zoom items: "Start Slideshow  (W)" with ⇧⌘F (Preview's
    shortcut), and "Play in Window  (⇧A)" (the reference's keys: W starts its slideshow, Shift+A its

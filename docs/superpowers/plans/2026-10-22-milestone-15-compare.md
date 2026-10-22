@@ -22,7 +22,7 @@ parity), `docs/parity.md` "Compare images" (the reference's behaviour), `docs/sp
 "Mouse and trackpad", "Look", `docs/DESIGN.md`. The spec has no compare section yet; Task 7 writes one
 from the Decisions below. Rules: `AGENTS.md`.
 
-## Decisions (the roadmap leaves these to the plan)
+## Decisions (the roadmap leaves these to the plan; accepted by the maintainer)
 
 1. **A mode of the viewer window, not its own window.** Mac users compare in a mode of the same
    window (Photos' and Lightroom's compare views, Preview's side-by-side pages); "in step" needs both
