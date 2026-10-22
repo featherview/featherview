@@ -533,9 +533,9 @@ final class ViewerModel {
             } catch {
                 guard !Task.isCancelled else { return }
                 endNavigation("failed")
-                // A slideshow skips an unreadable file without a message, unless every one failed. A later page, or a
-                // zoomed decode of a file already shown, failing leaves a readable file: its error shows, as outside one.
-                if page == 0, !(zoomed && fileInfo?.isFor(url, page: 0) == true), var slideshow {
+                // A slideshow skips a file it couldn't show without a message, unless every one failed. Once shown, a
+                // failed page or zoom leaves a readable file: its error shows, as outside one, and the interval runs on.
+                if var slideshow, !(slideshow.shownCurrent && slideshow.current == url) {
                     let next = slideshow.failed(url)
                     self.slideshow = slideshow
                     slideshowChanged()

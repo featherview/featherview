@@ -45,7 +45,7 @@ public struct Slideshow: Equatable, Sendable {
     /// The images that couldn't be shown since the last one that could.
     private var failedRun: Set<URL> = []
     /// `current` has been on screen, so resuming may start its interval.
-    private var shownCurrent = false
+    public private(set) var shownCurrent = false
 
     /// The first round plays from `current` (or the first image when it isn't listed).
     public init(urls: [URL], from current: URL, options: Options, seed: UInt64) {
