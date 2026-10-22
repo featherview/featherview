@@ -788,6 +788,8 @@ struct ViewerCommands: Commands {
                 }
             }
             .keyboardShortcut("c")
+            // The grid has no image to copy and no text field (Decision 13).
+            .disabled(model?.isGrid == true)
             Button("Cut") { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }
                 .keyboardShortcut("x")
             Button("Paste") { NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil) }
