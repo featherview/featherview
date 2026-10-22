@@ -168,4 +168,45 @@ import Testing
         #expect(!selected)
         #expect(list == ImageList(urls: urls, current: urls[1]))
     }
+
+    @Test func reorderKeepsCurrent() {
+        let (a, b, c) = (urls[0], urls[1], urls[2])
+        var list = ImageList(urls: [a, b, c], current: c)
+        list.reorder([c, a, b])
+        #expect(list.index == 0)
+        #expect(list.current == c)
+        #expect(!list.isHolding)
+    }
+
+    @Test func reorderKeepsHeldAndItsNext() {
+        let (a, b, c) = (urls[0], urls[1], urls[2])
+        var list = ImageList(urls: [a, b, c], current: b)
+        list.remove(b, hold: true)
+        list.reorder([c, a])
+        #expect(list.isHolding)
+        #expect(list.current == b)
+        let moved = list.next()
+        #expect(moved)
+        #expect(list.current == c)
+    }
+
+    @Test func reorderMakesMissingCurrentHeld() {
+        let (a, b, c) = (urls[0], urls[1], urls[2])
+        var list = ImageList(urls: [a, b, c], current: b)
+        list.reorder([a, c])
+        #expect(list.isHolding)
+        #expect(list.current == b)
+        list.next()
+        #expect(list.current == c)
+    }
+
+    @Test func reorderToEmpty() {
+        var list = ImageList(urls: urls, current: urls[1])
+        list.reorder([])
+        #expect(list.urls.isEmpty)
+        #expect(list.position == "0 / 0")
+        #expect(list.current == urls[1])  // held on screen until the next key
+        list.next()
+        #expect(list.current == nil)
+    }
 }

@@ -57,6 +57,22 @@ public struct ImageList: Equatable, Sendable {
         return true
     }
 
+    /// Takes `urls` as the list (a new sort order, a rename). The current image stays current; a held
+    /// one stays held, `index` on the image that followed it; a current image no longer listed becomes
+    /// held, on screen until the next key.
+    public mutating func reorder(_ urls: [URL]) {
+        let following = held == nil ? index + 1 : index
+        if held == nil, let current, urls.contains(current) {
+            self.urls = urls
+            index = urls.firstIndex(of: current)!
+            return
+        }
+        held = current
+        let next = self.urls.indices.contains(following) ? self.urls[following] : nil
+        self.urls = urls
+        index = next.flatMap(urls.firstIndex(of:)) ?? min(index, max(urls.count - 1, 0))
+    }
+
     /// Drops the current entry (after Trash); the following image becomes current.
     public mutating func removeCurrent() {
         if let current { remove(current) }

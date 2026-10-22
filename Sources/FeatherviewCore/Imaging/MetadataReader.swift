@@ -102,7 +102,7 @@ public enum MetadataReader {
            let date = (exif[kCGImagePropertyExifDateTimeOriginal] as? String).flatMap(exifDate) {
             return date
         }
-        return (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+        return (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
     }
 
     /// 1/N for fast shutters and exact unit fractions (1/2, 1/3); decimal seconds otherwise (0.8 s, 2 s).

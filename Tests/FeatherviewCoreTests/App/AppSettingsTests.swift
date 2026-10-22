@@ -35,6 +35,8 @@ import Testing
         #expect(defaults.double(forKey: AppSettings.thumbnailSize.key) == 128)
         #expect(defaults.string(forKey: AppSettings.fitMode.key) == "fit")
         #expect(defaults.object(forKey: AppSettings.keepZoom.key) as? Bool == false)
+        #expect(defaults.string(forKey: AppSettings.sortKey.key) == "name")
+        #expect(defaults.bool(forKey: AppSettings.sortAscending.key) == true)
     }
 
     @Test func compareInStepDefaultsOn() {
