@@ -14,11 +14,12 @@ final class ViewerModel {
 
     private(set) var list = ImageList(urls: []) { didSet { updateAvailability() } }
     private(set) var image: CGImage? { didSet { isLeaving = false } }
-    /// Quarter turns asked for with R / L (R +1) that the picture on screen doesn't show yet: the canvas turns
-    /// it by these while the file is rotated and decoded again.
-    private(set) var pendingTurns = 0
-    /// The file being rotated and the turns already written to it, which the next decode of it shows.
-    @ObservationIgnored private var writtenTurns: (url: URL, turns: Int)?
+    /// Rotations and flips asked for (R, L, H, V) that the picture on screen doesn't show yet: the canvas shows
+    /// them while the file is rewritten and decoded again.
+    private(set) var pendingChanges: [OrientationChange] = []
+    var pendingTransform: PictureTransform { PictureTransform(pendingChanges) }
+    /// The file being rewritten and how many of `pendingChanges` are written to it, which the next decode of it shows.
+    @ObservationIgnored private var writtenChanges: (url: URL, count: Int)?
     /// True while a trashed or moved picture fades out before the next one shows.
     private(set) var isLeaving = false
     var errorMessage: String?
@@ -617,13 +618,13 @@ final class ViewerModel {
             if image === decoded { endCommittedNavigation() } else { self.navigation?.image = decoded }
         }
         if image !== decoded {
-            // The rotated file shows the turns written to it; another file shows none.
-            if let written = writtenTurns, written.url == url {
-                pendingTurns -= written.turns
+            // The rewritten file shows the changes written to it; the rest stay pending. Another file shows none.
+            if let written = writtenChanges, written.url == url {
+                pendingChanges.removeFirst(min(written.count, pendingChanges.count))
             } else {
-                pendingTurns = 0
+                pendingChanges = []
             }
-            writtenTurns = nil
+            writtenChanges = nil
         }
         image = decoded
         errorMessage = nil
@@ -812,24 +813,29 @@ final class ViewerModel {
         return alert.runModal() == .alertFirstButtonReturn
     }
 
-    /// Rewrites the file off the main thread. Rotations and trashing run one at a time so none is lost.
-    func rotate(_ rotation: Rotation) {
+    func rotate(_ rotation: Rotation) { change(.rotate(rotation)) }
+
+    func flip(_ flip: Flip) { change(.flip(flip)) }
+
+    /// Rewrites the file off the main thread. Rotations, flips and trashing run one at a time so none is lost.
+    func change(_ change: OrientationChange) {
         guard let url = list.current, !list.isHolding else { return }  // a held image is already gone
         let page = page
-        let turn = rotation == .clockwise ? 1 : -1
-        pendingTurns += turn
+        let isRotation = if case .rotate = change { true } else { false }
+        pendingChanges.append(change)
         rotations += 1
-        // The rotated file shows once the canvas has finished turning the picture, not part-way.
-        let turned = ContinuousClock.now + .seconds(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : Theme.Motion.rotation)
+        // A rotated file shows once the canvas has finished turning the picture, not part-way; a flip shows at once.
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        let turned = ContinuousClock.now + .seconds(isRotation && !reduceMotion ? Theme.Motion.rotation : 0)
         let previous = rotateTask
         rotateTask = Task {
             defer { rotations -= 1 }
             await previous?.value
             do {
-                try await Task.detached(priority: .userInitiated) { try OrientationRotator.rotate(url, rotation, page: page) }.value
-                // Only for the file on screen: another one shown meanwhile reset the turns.
+                try await Task.detached(priority: .userInitiated) { try OrientationRotator.apply(url, change, page: page) }.value
+                // Only for the file on screen: another one shown meanwhile cleared the changes.
                 if list.current == url {
-                    writtenTurns = (url, (writtenTurns?.url == url ? writtenTurns?.turns ?? 0 : 0) + turn)
+                    writtenChanges = (url, (writtenChanges?.url == url ? writtenChanges?.count ?? 0 : 0) + 1)
                 }
                 await cache.remove(url)
                 await fullSizeCache.remove(url)
@@ -840,16 +846,29 @@ final class ViewerModel {
                 fileRevision += 1
                 if list.current == url { show(page: self.page) }
             } catch RotateError.notFirstPage {
-                if list.current == url { pendingTurns -= turn }
-                errorMessage = String(localized: "Only page 1 of \(url.lastPathComponent) can be rotated losslessly")
+                dropFailed(url)
+                errorMessage = isRotation
+                    ? String(localized: "Only page 1 of \(url.lastPathComponent) can be rotated losslessly")
+                    : String(localized: "Only page 1 of \(url.lastPathComponent) can be flipped losslessly")
             } catch RotateError.unsupportedFormat {
-                if list.current == url { pendingTurns -= turn }
-                errorMessage = String(localized: "Lossless rotation works with JPEG, HEIC and TIFF only")
+                dropFailed(url)
+                errorMessage = isRotation
+                    ? String(localized: "Lossless rotation works with JPEG, HEIC and TIFF only")
+                    : String(localized: "Lossless flipping works with JPEG, HEIC and TIFF only")
             } catch {
-                if list.current == url { pendingTurns -= turn }
-                errorMessage = String(localized: "Couldn't rotate \(url.lastPathComponent)")
+                dropFailed(url)
+                errorMessage = isRotation
+                    ? String(localized: "Couldn't rotate \(url.lastPathComponent)")
+                    : String(localized: "Couldn't flip \(url.lastPathComponent)")
             }
         }
+    }
+
+    /// Takes back the change that failed: the first not yet written (the ones before it in the chain were).
+    private func dropFailed(_ url: URL) {
+        guard list.current == url else { return }
+        let written = writtenChanges?.url == url ? writtenChanges?.count ?? 0 : 0
+        if pendingChanges.indices.contains(written) { pendingChanges.remove(at: written) }
     }
 
     // MARK: Thumbnail grid
