@@ -12,11 +12,11 @@ final class ViewerModel {
         case factor(Double)
     }
 
-    private(set) var list = ImageList(urls: []) { didSet { updateAvailability() } }
-    private(set) var image: CGImage? { didSet { isLeaving = false } }
+    var list = ImageList(urls: []) { didSet { updateAvailability() } }
+    var image: CGImage? { didSet { isLeaving = false } }
     /// Rotations and flips asked for (R, L, H, V) that the picture on screen doesn't show yet: the canvas shows
     /// them while the file is rewritten and decoded again.
-    private(set) var pendingChanges: [OrientationChange] = []
+    var pendingChanges: [OrientationChange] = []
     var pendingTransform: PictureTransform { PictureTransform(pendingChanges) }
     /// The file being rewritten and how many of `pendingChanges` are written to it, which the next decode of it shows.
     @ObservationIgnored private var writtenChanges: (url: URL, count: Int)?
@@ -31,7 +31,7 @@ final class ViewerModel {
     private(set) var fileRevision = 0
     /// For the image on screen, read off the main thread: the previous image's until the next one is shown,
     /// then the new one's if it was read ahead, else none until its read lands (never another file's).
-    private(set) var fileInfo: FileInfo?
+    var fileInfo: FileInfo?
     /// Page-0 reads for the image shown and its prefetched neighbours, so a swap sets the info with the image.
     @ObservationIgnored private var knownInfo: [URL: FileInfo] = [:]
     /// Fit-size decodes of the image shown and its neighbours, also in `cache`: one swaps in with the
@@ -44,7 +44,7 @@ final class ViewerModel {
         switch zoom {
         case .factor(let factor): return Int((factor * 100).rounded())
         case .fit:
-            guard let size = fileInfo?.pixelSize else { return nil }
+            guard let size = fileInfo?.pixelSize ?? unsavedSize else { return nil }
             return Int((ZoomSteps.fitFactor(image: size, view: viewSize, displayScale: displayScale) * 100).rounded())
         }
     }
@@ -56,6 +56,8 @@ final class ViewerModel {
         var canGoBack = false
         var canGoForward = false
         var hasCurrent = false
+        /// Zoom: a file's image or an unsaved one.
+        var hasPicture = false
         /// Rotate, Trash, F7 / F8: not on a held (already removed) image.
         var canChangeFile = false
         var hasPages = false
@@ -76,6 +78,7 @@ final class ViewerModel {
         let new = Availability(canGoBack: canBrowse && pastEnd.canStep(forward: false, index: list.index, count: list.urls.count),
                                canGoForward: canBrowse && pastEnd.canStep(forward: true, index: list.index, count: list.urls.count),
                                hasCurrent: list.current != nil,
+                               hasPicture: list.current != nil || unsaved != nil,
                                // In the grid these act on one viewed image (Decision 13).
                                canChangeFile: list.current != nil && !list.isHolding && !isGrid,
                                hasPages: (pageCount > 1 || player.frameCount > 1) && !list.isHolding && !isGrid,
@@ -125,6 +128,11 @@ final class ViewerModel {
     /// F7 / F8: which panel is open, if any.
     var destinationPanel: FileOperation?
     var slots = DestinationSlots(defaults: .standard)
+    /// ⌘N's image from the clipboard, not saved yet; it covers `coveredList`, which shows again once it's left.
+    var unsaved: CGImage? { didSet { updateAvailability() } }
+    var coveredList: ImageList?
+    /// Every viewer, so quitting can ask about each unsaved image.
+    static let all = NSHashTable<ViewerModel>.weakObjects()
 
     /// Fit mode decodes to fit every screen, per axis (rounded up to a halving step): enough for any window,
     /// less memory than full size.
@@ -156,8 +164,8 @@ final class ViewerModel {
     private var loadTask: Task<Void, Never>?
     /// The page decode running, if any: ImageIO can't stop one, so the next waits for it (see show).
     private var pageDecode: Task<CGImage, Error>?
-    private var openTask: Task<Void, Never>?
-    private var rotateTask: Task<Void, Never>?
+    var openTask: Task<Void, Never>?
+    var rotateTask: Task<Void, Never>?
     /// Rotations not yet done: the grid waits for them, a file being rewritten would give its old picture.
     @ObservationIgnored private var rotations = 0
     /// ⌘C's full-size decodes: ImageIO can't stop one, so they run one at a time and held ⌘C skips the ones in between.
@@ -181,6 +189,7 @@ final class ViewerModel {
         cache = ImageCache(capacity: 8, hdr: ImageDecoder.supportsHDR, colorSpace: Self.screenSpace, queue: decodes)
         fullSizeCache = ImageCache(capacity: 1, hdr: ImageDecoder.supportsHDR, colorSpace: Self.screenSpace, queue: decodes)
         chooserSession.onListed = { [weak self] in self?.countImages() }
+        Self.all.add(self)
     }
 
     /// The window's title: the file name, then the counter.
@@ -189,6 +198,7 @@ final class ViewerModel {
     /// The file (or empty folder) name, the folder's in the grid, both names in compare; the toolbar title shows it
     /// in the title font.
     var titleName: String {
+        if unsaved != nil { return String(localized: "Untitled") }
         if isGrid, let folder { return folder.lastPathComponent }
         if let compareSession, let current = list.current {
             return CompareText.title(first: current.lastPathComponent, second: compareSession.url.lastPathComponent)
@@ -223,6 +233,7 @@ final class ViewerModel {
     /// folder takes longer to list and sort than the image takes to decode.
     /// `keepingCompare`: pane 1 changes folder (a swap or a compare start), pane 2 stays.
     func open(_ url: URL, keepingCompare: Bool = false) {
+        if unsaved != nil { return leaveUnsaved { [weak self] in self?.open(url, keepingCompare: keepingCompare) } }
         openTask?.cancel()
         closeGrid()
         if !keepingCompare { leaveCompare() }
@@ -321,18 +332,26 @@ final class ViewerModel {
     }
 
     func next() {
+        if unsaved != nil { return leaveUnsaved { [weak self] in self?.show() } }
         guard !isGrid else { return }
         forward = true
         if list.next() { show() } else { pastEnd(forward: true) }
     }
 
     func previous() {
+        if unsaved != nil { return leaveUnsaved { [weak self] in self?.show() } }
         guard !isGrid else { return }
         forward = false
         if list.previous() { show() } else { pastEnd(forward: false) }
     }
-    func first() { list.first(); show() }
-    func last() { list.last(); show() }
+    func first() {
+        if unsaved != nil { return leaveUnsaved { [weak self] in self?.first() } }
+        list.first(); show()
+    }
+    func last() {
+        if unsaved != nil { return leaveUnsaved { [weak self] in self?.last() } }
+        list.last(); show()
+    }
 
     func setZoom(_ zoom: Zoom) {
         var needsReload = (zoom == .fit) != (self.zoom == .fit)
@@ -342,7 +361,8 @@ final class ViewerModel {
         }
         self.zoom = zoom
         // A held image is gone from disk: show() would release it and decode the next file at the held page.
-        if needsReload, !list.isHolding { show(page: page, keepsPlayer: true) }
+        // The unsaved image is full size: no decode.
+        if needsReload, !list.isHolding, unsaved == nil { show(page: page, keepsPlayer: true) }
     }
 
     private func pastEnd(forward: Bool) {
@@ -417,6 +437,10 @@ final class ViewerModel {
         if case .factor(let factor) = zoom {
             setZoom(.factor(ZoomSteps.step(factor, by: multiplier)))
             return
+        }
+        if let unsavedSize {
+            let fit = ZoomSteps.fitFactor(image: unsavedSize, view: viewSize, displayScale: displayScale)
+            return setZoom(.factor(ZoomSteps.step(fit, by: multiplier)))
         }
         guard let url = list.current else { return }
         Task {
@@ -790,6 +814,10 @@ final class ViewerModel {
     /// S / ⇧⌘S: writes the shown image (its page, upright) in any writable format, then shows the
     /// saved file in its folder if Featherview can read it; otherwise the original stays.
     func saveAs() {
+        if unsaved != nil {
+            Task { await saveUnsaved(thenOpen: true) }
+            return
+        }
         guard let url = list.current, !list.isHolding else { return }
         let page = page
         Task {
@@ -1211,6 +1239,18 @@ final class ViewerModel {
 
     /// ⌘C: the current image at full resolution, upright, decoded off the main thread.
     func copyImage() {
+        if let unsaved {
+            copies.submit {
+                guard let data = await Task.detached(priority: .userInitiated, operation: { ClipboardImage.pngData(unsaved) }).value,
+                      !Task.isCancelled else { return }
+                NSPasteboard.general.clearContents()
+                if !NSPasteboard.general.setData(data, forType: .png) {
+                    self.errorMessage = String(localized: "Couldn't copy \(String(localized: "Untitled"))")
+                }
+                ClipboardWatch.shared.recheck()
+            }
+            return
+        }
         guard let url = list.current, !isGrid else { return }
         let page = page
         let pending = rotateTask  // a rotation still rewriting the file would give the old image
@@ -1228,6 +1268,7 @@ final class ViewerModel {
                 if !pasteboard.setData(data, forType: .png) {
                     self.errorMessage = String(localized: "Couldn't copy \(url.lastPathComponent)")
                 }
+                ClipboardWatch.shared.recheck()
             } catch {
                 if !Task.isCancelled { self.errorMessage = String(localized: "Couldn't copy \(url.lastPathComponent)") }
             }

@@ -197,6 +197,7 @@ struct ViewerView: View {
         .modifier(RemovesWindowTitle(removed: !toolbarHidden))
         .modifier(ToolbarHiddenInFullScreen())
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
+        .onChange(of: model.unsaved != nil) { model.window?.isDocumentEdited = $1 }
         // Not set on the window directly: SwiftUI puts the scene's title back on its next update.
         .navigationTitle(model.title)
         .overlay(alignment: .topTrailing) { infoPanel }
@@ -213,6 +214,7 @@ struct ViewerView: View {
         .background(FirstImageGate(holds: !toolbarMayBuild))
         .background(WindowAccessor { window in
             model.window = window
+            CloseGuard.install(on: window, model: model)
             matchTitle()
             // A restored or reopened window may already be in full screen; no didEnter notification follows.
             model.isFullScreen = window.styleMask.contains(.fullScreen)
@@ -830,6 +832,7 @@ struct ViewerCommands: Commands {
             Button("Settings…") { SettingsWindow.show() }.keyboardShortcut(",")
         }
         CommandGroup(replacing: .newItem) {
+            ClipboardCommand(model: model)
             Button("Open…  (O)") { (model ?? ViewerModel.lastActive.current).showOpenPanel() }
                 .keyboardShortcut("o")
             Button("Compare With…") { model?.showCompareOpenPanel() }
@@ -843,7 +846,7 @@ struct ViewerCommands: Commands {
         CommandGroup(after: .newItem) {
             Button("Save As…  (S)") { model?.saveAs() }
                 .keyboardShortcut("s", modifiers: [.command, .shift])
-                .disabled(model?.availability.canChangeFile != true)
+                .disabled(model?.availability.canChangeFile != true && model?.unsaved == nil)
         }
         CommandGroup(replacing: .pasteboard) {
             // Text fields and selected text (batch window, Info panel) keep their own Copy and Paste.
@@ -943,7 +946,7 @@ struct ViewerCommands: Commands {
                 Button("Zoom to Fit  (0)") { model?.setZoom(.fit) }
                 Button("Actual Size  (1)") { model?.setZoom(.factor(1)) }
             }
-            .disabled(model?.availability.hasCurrent != true || model?.isGrid == true)
+            .disabled(model?.availability.hasPicture != true || model?.isGrid == true)
             // In the grid + and − size the thumbnails (Decision 5).
             if model?.isGrid == true {
                 Button("Larger Thumbnails  (+)") { model?.stepThumbnails(larger: true) }
@@ -953,7 +956,7 @@ struct ViewerCommands: Commands {
                     Button("Zoom In  (+)") { model?.zoomIn() }
                     Button("Zoom Out  (−)") { model?.zoomOut() }
                 }
-                .disabled(model?.availability.hasCurrent != true)
+                .disabled(model?.availability.hasPicture != true)
             }
         }
     }
