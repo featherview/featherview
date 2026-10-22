@@ -1203,8 +1203,8 @@ final class ViewerModel {
         if panel.runModal() == .OK, let url = panel.url { open(url) }
     }
 
-    /// The window showing this model; set by the view.
-    weak var window: NSWindow?
+    /// The window showing this model; set by the view. A reopened main window takes the model's Float on Top.
+    weak var window: NSWindow? { didSet { window?.level = isFloating ? .floating : .normal } }
     /// Kept up to date by the view from the window's full-screen notifications.
     var isFullScreen = false
     /// Window › Float on Top, per window, not remembered.
