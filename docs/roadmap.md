@@ -174,3 +174,10 @@ ImageIO's frames and delays; Windows animated cursors (ANI) play from their own 
 rates. Batch and Save As keep writing the first frame. Memory stays bounded (frames decoded at fit
 size, a window of frames instead of all of them for long animations) and browsing budgets hold:
 the first frame shows as fast as a still image.
+
+### Document icon (v2)
+
+Files in the formats only Featherview reads show the feather (without the app icon's tile) on the
+system's document page, with the extension under it, through `UTTypeIcons` in our type
+declarations; a default app's own document icon still wins. Plan:
+`docs/superpowers/plans/2026-10-22-document-icon.md`.
