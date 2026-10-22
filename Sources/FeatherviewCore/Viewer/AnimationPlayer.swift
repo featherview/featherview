@@ -94,13 +94,17 @@ public final class AnimationPlayer {
     @discardableResult public func step(forward: Bool) -> Bool {
         guard frameCount > 1 else { return false }
         task?.cancel()
+        guard playback.step(forward: forward) else {
+            // At either end: the frame on its way from the step before still shows.
+            if pausedFrame != playback.frame { pausedFrame = playback.frame }
+            return false
+        }
         generation += 1
-        let moved = playback.step(forward: forward)
         // A held key steps faster than frames decode: the decodes left behind would never be taken.
         dropUnwanted()
         if pausedFrame != playback.frame { pausedFrame = playback.frame }
-        if moved { showFrame(playback.frame) }
-        return moved
+        showFrame(playback.frame)
+        return true
     }
 
     /// Playback waits while the window is hidden (occluded or minimized) and goes on from the same frame.
