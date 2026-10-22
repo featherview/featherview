@@ -94,6 +94,19 @@ public final class AnimationPlayer {
         }
     }
 
+    /// Pauses on frame 0 and puts `first`, the model's image, back on the canvas.
+    public func pauseOnFirst(showing first: CGImage) {
+        guard frameCount > 1 else { return }
+        task?.cancel()
+        // A frame still decoding would show over frame 0.
+        generation += 1
+        playback = Playback(frameCount: frameCount, playing: false)
+        if pausedFrame != 0 { pausedFrame = 0 }
+        if current != nil { onFrame(first) }
+        current = nil
+        dropUnwanted()
+    }
+
     /// ⌥→ / ⌥←: one frame on or back, pausing; false at either end.
     @discardableResult public func step(forward: Bool) -> Bool {
         guard frameCount > 1 else { return false }

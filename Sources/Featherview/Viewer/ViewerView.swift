@@ -83,6 +83,7 @@ struct ViewerView: View {
                 ComparePanes(model: model, session: session, first: firstPane, insets: Self.paneInsets(canvasInsets),
                              fitArea: fitArea, displayScale: displayScale, checkerboard: checkerboard,
                              showsStrips: showsStatusBar, stripsVisible: barsVisible, secondPan: secondPan,
+                             firstLayout: { (drawSize($0), pixelSize($0).width) },
                              onSwipe: swiped, onClick: clickedImage)
             } else if let image = model.image {
                 imageCanvas(image, insets: canvasInsets)
@@ -623,7 +624,9 @@ struct ViewerView: View {
         case .swapImages:
             guard model.compareSession != nil else { return false }
             model.swapCompared()
-        case .toggleDifference: return false  // compare mode only
+        case .toggleDifference:
+            guard model.compareSession != nil else { return false }
+            model.toggleDifference()
         case .slideshow:
             if model.slideshowState != nil { model.endSlideshowLeavingFullScreen() } else { model.startSlideshow(fullScreen: true) }
         case .playInWindow:
@@ -1076,6 +1079,9 @@ struct ViewerCommands: Commands {
                     .disabled(model?.availability.canSwap != true)
                 Toggle("Zoom and Pan in Step", isOn: Binding(get: { model?.compareInStep == true },
                                                               set: { model?.setCompareInStep($0) }))
+                Toggle("Show Difference  (D)", isOn: Binding(get: { model?.compareSession?.showsDifference == true },
+                                                             set: { _ in model?.toggleDifference() }))
+                    .disabled(model?.availability.canShowDifference != true && model?.compareSession?.showsDifference != true)
             }
             Group {
                 Button("Zoom to Fit  (0)") { model?.setFitMode(.fit) }
