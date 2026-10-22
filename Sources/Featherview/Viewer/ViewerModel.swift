@@ -832,15 +832,24 @@ final class ViewerModel {
                         Result { try ImageSaver.save(url, page: page, to: target, as: choice.format, options: choice.options) }
                     }.get()
                     guard ImageFormats.isDecodable(target) else { return }
-                    await cache.remove(target)  // it may have replaced a listed file
-                    await fullSizeCache.remove(target)
-                    fileRevision += 1  // the Info panel reloads even when the path stays the same
+                    await forgetDecodes(of: target)
                     open(target)
                 } catch {
                     errorMessage = String(localized: "Couldn't save \(target.lastPathComponent)")
                 }
             }
         }
+    }
+
+    /// After a save that may have replaced a listed file: its old decodes and details go, and the Info panel
+    /// reloads even when the path stays the same.
+    func forgetDecodes(of url: URL) async {
+        knownInfo[url] = nil
+        ready[url] = nil
+        await cache.remove(url)
+        await fullSizeCache.remove(url)
+        await thumbnails?.cache.remove(url)
+        fileRevision += 1
     }
 
     /// Lets the user pick a slot's folder; returns false if they cancelled.

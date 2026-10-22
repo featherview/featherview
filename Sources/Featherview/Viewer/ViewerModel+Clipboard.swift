@@ -109,6 +109,8 @@ extension ViewerModel {
             errorMessage = String(localized: "Couldn't save \(target.lastPathComponent)")
             return false
         }
+        // It may have replaced a file in the covered list, which comes back below.
+        await forgetDecodes(of: target)
         // Another ⌘N or a leave may have come in while the panel was up.
         guard unsaved === picture else { return true }
         discardUnsaved()
