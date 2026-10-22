@@ -11,6 +11,8 @@ struct ViewerView: View {
     @Environment(\.layoutDirection) private var layoutDirection
     @AppStorage(AppSettings.rememberWindowFrame.key) private var rememberFrame = AppSettings.rememberWindowFrame.defaultValue
     @State private var panController = PanController()
+    /// Compare's pane 2; arrow keys pan the leading pane's.
+    @State private var secondPan = PanController()
     /// The trailing toolbar buttons are built only after the first image (or message) is on screen: building them takes
     /// ~130 ms of the main thread, and in the same update they'd hold back that frame at launch (budget 350 ms).
     @State private var toolbarReady = false
@@ -44,9 +46,22 @@ struct ViewerView: View {
     }
 
     private func setViewSize(window: CGSize, toolbarHeight: Double) {
-        let size = CanvasInsets.make(toolbarHeight: toolbarHeight, statusBarShown: showsStatusBar,
-                                     fullScreen: model.isFullScreen, infoPanelShown: model.showInfo).fitArea(in: window)
+        let insets = CanvasInsets.make(toolbarHeight: toolbarHeight, statusBarShown: showsStatusBar,
+                                       fullScreen: model.isFullScreen, infoPanelShown: model.showInfo)
+        // While comparing, one pane's: fit and zooming from fit work per pane.
+        let size = model.compareSession == nil ? insets.fitArea(in: window)
+            : Self.paneInsets(insets).fitArea(in: Self.paneWindow(window))
         if model.viewSize != size { model.viewSize = size }
+    }
+
+    /// A compare pane's insets: the window's top and bottom, `CanvasInsets.side` at both sides.
+    private static func paneInsets(_ insets: CanvasInsets) -> CanvasInsets {
+        CanvasInsets(top: insets.top, bottom: insets.bottom, leading: CanvasInsets.side, trailing: CanvasInsets.side)
+    }
+
+    /// One compare pane's share of the window: half of it beside the divider.
+    private static func paneWindow(_ window: CGSize) -> CGSize {
+        CGSize(width: max(0, (window.width - Theme.compareDivider) / 2), height: window.height)
     }
 
     private var background: Color { Color(nsColor: Theme.background) }
@@ -58,18 +73,13 @@ struct ViewerView: View {
             if model.isGrid {
                 ThumbnailGrid(model: model, urls: model.list.urls, cellSize: thumbnailSize, insets: canvasInsets, onKey: gridKey)
                     .ignoresSafeArea()
+            } else if let session = model.compareSession {
+                ComparePanes(model: model, session: session, first: firstPane, insets: Self.paneInsets(canvasInsets),
+                             fitArea: fitArea, displayScale: displayScale, checkerboard: checkerboard,
+                             showsStrips: showsStatusBar, stripsVisible: barsVisible, secondPan: secondPan,
+                             onSwipe: swiped, onClick: clickedImage)
             } else if let image = model.image {
-                ImageCanvas(image: image, player: model.player, size: drawSize(image), pixelWidth: pixelSize(image).width,
-                            displayScale: displayScale, background: Theme.background, insets: canvasInsets, zoom: model.zoom,
-                            checkerboard: checkerboard, transform: model.pendingTransform, leaving: model.isLeaving,
-                            panController: panController,
-                            onDoubleClick: model.toggleFullScreen, onPinch: model.zoom(by:), onSwipe: swiped,
-                            onClick: clickedImage,
-                            onFirstDraw: { toolbarReady = true; model.firstImageDrawn() },
-                            onCommit: model.imageCommitted)
-                    .contextMenu { ImageContextMenu(model: model) }
-                    // Under the glass toolbar and the status strip; `insets` keeps a fit image clear of them.
-                    .ignoresSafeArea()
+                imageCanvas(image, insets: canvasInsets)
             } else if let message = model.errorMessage {
                 Text(message).messageBox()
             } else if let folder = model.emptyFolder {
@@ -101,6 +111,31 @@ struct ViewerView: View {
         }
     }
 
+    private func imageCanvas(_ image: CGImage, insets: CanvasInsets, animatesZoom: Bool = true) -> some View {
+        ImageCanvas(image: image, player: model.player, size: drawSize(image), pixelWidth: pixelSize(image).width,
+                    displayScale: displayScale, background: Theme.background, insets: insets, zoom: model.zoom,
+                    checkerboard: checkerboard, transform: model.pendingTransform, leaving: model.isLeaving,
+                    panController: panController,
+                    onDoubleClick: model.toggleFullScreen, onPinch: model.zoom(by:), onSwipe: swiped,
+                    onClick: clickedImage,
+                    onFirstDraw: { toolbarReady = true; model.firstImageDrawn() },
+                    onCommit: model.imageCommitted, animatesZoom: animatesZoom)
+            .contextMenu { ImageContextMenu(model: model) }
+            // Under the glass toolbar and the status strip; `insets` keeps a fit image clear of them.
+            .ignoresSafeArea()
+    }
+
+    /// Compare's pane 1: the viewer's picture, or why it can't show.
+    @ViewBuilder private var firstPane: some View {
+        if let image = model.image {
+            imageCanvas(image, insets: Self.paneInsets(canvasInsets), animatesZoom: false)
+        } else if let message = model.errorMessage {
+            Text(message).messageBox()
+        } else {
+            background
+        }
+    }
+
     var body: some View {
         canvas
         // Not onGeometryChange: it misses the restored window frame at launch, leaving fit at the 100×48 placeholder.
@@ -117,9 +152,11 @@ struct ViewerView: View {
         })
         // Hiding the status bar or entering full screen changes the insets without changing the geometry.
         .onChange(of: canvasInsets) { setViewSize(window: windowSize, toolbarHeight: toolbarHeight) }
+        .onChange(of: model.compareSession != nil) { setViewSize(window: windowSize, toolbarHeight: toolbarHeight) }
         .overlay(alignment: .bottom) {
             // Nothing to report without a picture: an empty strip is just a grey bar.
-            if showsStatusBar, model.image != nil || model.isGrid {
+            // While comparing, each pane has its own (ComparePanes).
+            if showsStatusBar, model.compareSession == nil, model.image != nil || model.isGrid {
                 StatusBar(model: model)
                     .padding(.trailing, stripTrailing)
                     .opacity(barsVisible ? 1 : 0)
@@ -273,7 +310,9 @@ struct ViewerView: View {
     /// The fit area for the current insets. `model.viewSize` is set in onChange, one render later; the picture
     /// takes its new size in the same render as the new insets, so it refits together with the info panel.
     private var fitArea: CGSize {
-        windowSize == .zero ? model.viewSize : canvasInsets.fitArea(in: windowSize)
+        if windowSize == .zero { return model.viewSize }
+        if model.compareSession != nil { return Self.paneInsets(canvasInsets).fitArea(in: Self.paneWindow(windowSize)) }
+        return canvasInsets.fitArea(in: windowSize)
     }
 
     /// The file's pixel size, for the current file and page only (never another file's size).
@@ -432,6 +471,7 @@ struct ViewerView: View {
             model.moveCurrentToTrash()
             return .handled
         }
+        let panController = model.compareSession?.leader == .second ? secondPan : self.panController
         if modifiers.isEmpty {
             switch press.key {
             case .rightArrow, .leftArrow:
@@ -452,6 +492,8 @@ struct ViewerView: View {
             case Self.f8: model.showDestinations(.copy); return .handled
             case .return: model.toggleFullScreen(); return .handled
             case .escape:
+                // Compare first, then full screen.
+                if model.compareSession != nil { model.leaveCompare(); return .handled }
                 guard model.isFullScreen else { return .ignored }
                 model.toggleFullScreen()
                 return .handled
@@ -472,7 +514,7 @@ struct ViewerView: View {
         case .rotateLeft: model.rotate(.counterClockwise)
         case .flipHorizontal: model.flip(.horizontal)
         case .flipVertical: model.flip(.vertical)
-        case .toggleInfo: model.showInfo.toggle()
+        case .toggleInfo: if model.compareSession == nil { model.showInfo.toggle() }
         case .toggleFullScreen: model.toggleFullScreen()
         case .fit: model.setZoom(.fit)
         case .actualSize: model.setZoom(.factor(1))
@@ -487,7 +529,10 @@ struct ViewerView: View {
         case .toggleAnimation: model.toggleAnimation()
         case .toggleThumbnails: model.toggleGrid()
         case .zoomToWidth, .zoomToHeight, .toggleKeepZoom: return false
-        case .swapImages, .toggleDifference: return false  // compare mode only
+        case .swapImages:
+            guard model.compareSession != nil else { return false }
+            model.swapCompared()
+        case .toggleDifference: return false  // compare mode only
         case .slideshow, .playInWindow: break
         }
         return true
@@ -787,6 +832,12 @@ struct ViewerCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button("Open…  (O)") { (model ?? ViewerModel.lastActive.current).showOpenPanel() }
                 .keyboardShortcut("o")
+            Button("Compare With…") { model?.showCompareOpenPanel() }
+                .keyboardShortcut("o", modifiers: [.command, .option])
+                .disabled(model?.availability.canCompare != true)
+            if model?.compareSession != nil {
+                Button("Stop Comparing") { model?.leaveCompare() }
+            }
         }
         // Not replacing .saveItem: SwiftUI shows nothing in that group for an app without documents.
         CommandGroup(after: .newItem) {
@@ -858,7 +909,7 @@ struct ViewerCommands: Commands {
                 Button("Always Open with Featherview") {}.disabled(true)
             }
             Button("Show Info  (I)") { model?.showInfo.toggle() }
-                .disabled(model?.availability.hasCurrent != true || model?.isGrid == true)
+                .disabled(model?.availability.hasCurrent != true || model?.isGrid == true || model?.compareSession != nil)
             Divider()
             Button("Batch Convert…  (B)") { openWindow(id: "batch") }
                 .keyboardShortcut("b")
@@ -877,6 +928,10 @@ struct ViewerCommands: Commands {
             Button(model?.isGrid == true ? "Show Image  (T)" : "Show Thumbnails  (T)") { model?.toggleGrid() }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
                 .disabled(model?.availability.canShowGrid != true)
+            if model?.compareSession != nil {
+                Button("Swap Images  (X)") { model?.swapCompared() }
+                    .disabled(model?.availability.canSwap != true)
+            }
             Group {
                 Button("Zoom to Fit  (0)") { model?.setZoom(.fit) }
                 Button("Actual Size  (1)") { model?.setZoom(.factor(1)) }
@@ -919,7 +974,7 @@ private struct EmptyHint: View {
     }
 }
 
-private extension View {
+extension View {
     /// Readable over the background and over the picture.
     func messageBox() -> some View {
         padding(Theme.messagePadding).glass(.card, cornerRadius: Theme.Radius.message)
