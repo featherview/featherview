@@ -75,4 +75,16 @@ import Testing
         player.stop(showing: first)
         #expect(shown.last === first)
     }
+
+    @Test func hiddenPlayerKeepsOnlyTheFrameShown() async throws {
+        let url = try Self.gif(frames: 30, delay: 0.04)
+        let player = AnimationPlayer(colorSpace: nil)
+        let first = try ImageDecoder.decode(url)
+        player.start(url: url, animation: try #require(Animation.read(url)), target: .full, first: first, playing: true)
+        // Small frames: all are kept, and playing asks for every one.
+        for _ in 0..<50 where player.decodes.count < 2 { try await Task.sleep(for: .milliseconds(5)) }
+        player.setVisible(false)
+        #expect(player.frames.count + player.decodes.count <= 1)
+        player.stop()
+    }
 }

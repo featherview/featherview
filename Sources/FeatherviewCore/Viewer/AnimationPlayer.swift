@@ -25,7 +25,7 @@ public final class AnimationPlayer {
     @ObservationIgnored private var playback = Playback(frameCount: 1, playing: false)
     @ObservationIgnored private var source: Task<FrameSource, Error>?
     /// Decoded frames kept (`FrameStore.wanted`), and decodes running or done but not yet taken.
-    @ObservationIgnored private var frames: [Int: CGImage] = [:]
+    @ObservationIgnored private(set) var frames: [Int: CGImage] = [:]
     @ObservationIgnored private(set) var decodes: [Int: Task<CGImage, Error>] = [:]
     /// The decode asked for last: each waits for the one before, so `FrameSource` goes through the file in order.
     @ObservationIgnored private var lastDecode: Task<CGImage, Error>?
@@ -110,10 +110,16 @@ public final class AnimationPlayer {
     }
 
     /// Playback waits while the window is hidden (occluded or minimized) and goes on from the same frame.
+    /// A hidden window keeps only the frame it shows: many covered windows would each hold up to the budget.
     public func setVisible(_ visible: Bool) {
         guard visible != self.visible else { return }
         self.visible = visible
-        if visible { play() } else { task?.cancel() }
+        if visible {
+            play()
+        } else {
+            task?.cancel()
+            drop(keeping: [playback.frame])
+        }
     }
 
     private func open(_ target: DecodeTarget) {
@@ -216,7 +222,10 @@ public final class AnimationPlayer {
 
     /// Keeps only the frames and decodes `FrameStore.wanted` for the frame shown.
     private func dropUnwanted() {
-        let wanted = Set(FrameStore.wanted(shown: playback.frame, count: frameCount, keepsAll: keepsAll ?? false))
+        drop(keeping: Set(FrameStore.wanted(shown: playback.frame, count: frameCount, keepsAll: keepsAll ?? false)))
+    }
+
+    private func drop(keeping wanted: Set<Int>) {
         frames = frames.filter { wanted.contains($0.key) }
         for (index, decode) in decodes where !wanted.contains(index) { decode.cancel() }
         decodes = decodes.filter { wanted.contains($0.key) }
