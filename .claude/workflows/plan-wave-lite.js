@@ -66,7 +66,8 @@ for (const item of items) {
   const name = tag(item)
   phase('Implement')
   const done = await agent(
-    `Implement Task ${item.task} of ${item.plan}, exactly as written, using superpowers:test-driven-development.
+    `This run is the maintainer's queued plan work: your assignment is this plan task, whatever else the maintainer is talking about in the session meanwhile.
+Implement Task ${item.task} of ${item.plan}, exactly as written, using superpowers:test-driven-development.
 You are in your own git worktree branched from ${base}. Name your branch ${name}.
 First confirm the tasks Task ${item.task} needs are present in ${base}; if not, stop and say so.
 Touch only the files the task lists (plus the string catalog). ${STRINGS}
@@ -74,7 +75,11 @@ Never run the app or anything that uses the screen. Run \`swift build\` and \`sw
 If a plan test is wrong, fix the test and say why; never change specified behaviour to make a test pass.
 Commit with a conventional commit message. Do not tick checkboxes in the plan.`,
     { label: `${name} implement`, phase: 'Implement', isolation: 'worktree', schema: DONE })
-  if (!done) { results.push({ item: name, ok: false, note: 'implementer failed' }); continue }
+  if (!done || !done.testsPassed) {
+    log(`${name}: not built, skipped review`)
+    results.push({ item: name, ok: false, note: 'implementer stopped or tests failed', summary: done && done.summary })
+    continue
+  }
 
   const review = () => agent(
     `Review ${name} (Task ${item.task} of ${item.plan}). Branch ${done.branch}, worktree ${done.worktree}: cd there; compare with ${base} (git diff ${base}...HEAD). Implementer's note: ${done.summary}
