@@ -21,12 +21,12 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 8 | Finder previews | `docs/superpowers/plans/2026-10-19-milestone-8-finder-previews.md` | done |
 | 9 | Animation (v2) | `docs/superpowers/plans/2026-10-22-milestone-9-animation.md` | in progress |
 | 10 | Document icon (v2) | `docs/superpowers/plans/2026-10-22-document-icon.md` | ready |
-| 11 | Viewer conveniences (v2) | | observe first |
-| 12 | Zoom modes and flip (v2) | | observe first |
+| 11 | Viewer conveniences (v2) | | planning |
+| 12 | Zoom modes and flip (v2) | | planning |
 | 13 | Thumbnail grid (v2) | `docs/superpowers/plans/2026-10-22-milestone-13-thumbnails.md` | planned |
-| 14 | Slideshow (v2) | | observe first |
-| 15 | Compare images (v2) | | observe first |
-| 16 | Batch extras (v2) | | observe first |
+| 14 | Slideshow (v2) | | planning |
+| 15 | Compare images (v2) | | planning |
+| 16 | Batch extras (v2) | | planning |
 | 17 | JPEG XL writing (v2) | | planning |
 
 ## 1. Core viewer and batch
@@ -182,23 +182,27 @@ Each milestone takes the reference viewer's feature in the Mac's form: Mac menu 
 places, the system's own panels and services, no separate tool windows where Mac apps use a mode
 of the same window.
 
-### Viewer conveniences (v2, observe first)
+### Viewer conveniences (v2)
 
-File › Open Recent (also in the Dock menu); Rename… (F2 as the single key) by editing the name in
-the window's title, as Preview does; View › Sort By (name, date, size, kind) for the viewer's list,
-as in Finder; Share (toolbar button and File › Share, the system's share menu, which also covers
-e-mail); Set as Desktop Picture; Window › Float on Top, as QuickTime Player has it; File › New from
-Clipboard (⌘N), an unsaved image that Save As writes, as in Preview. Not taken: a random image
-command (shuffle belongs to the slideshow).
+Parity "Viewer conveniences". File › Open Recent (opened files only, also in the Dock menu);
+Rename… (F2 as the single key) by editing the name in the window's title, as Preview does; View ›
+Sort By (name, date, date taken, size, kind; ascending or descending) for the viewer's list, as in
+Finder, keeping the current image; Share (toolbar button and File › Share, the system's share menu,
+which also covers e-mail); Set as Desktop Picture; Window › Float on Top, as QuickTime Player has
+it; File › New from Clipboard (⌘N), an unsaved image that Save As writes, as in Preview, asking
+before it is discarded; View › Follow New Files, which shows each file arriving in the folder (all
+the reference's watched folder does). Not taken: a random image command (shuffle belongs to the
+slideshow).
 
-### Zoom modes and flip (v2, observe first)
+### Zoom modes and flip (v2)
 
-View › Zoom to Width / Zoom to Height next to Zoom to Fit (0) and Actual Size (1), for tall or wide
-images; View › Keep Zoom, which keeps the zoom and scroll position from image to image (for checking
-the same detail across a series). Flip Horizontal / Vertical (H / V) in the Image menu, as in
-Preview's Tools menu, lossless through the orientation like rotate.
+Parity "Zoom modes and flip". View › Zoom to Width / Zoom to Height next to Zoom to Fit (0) and
+Actual Size (1), for tall or wide images, starting at the top or leading edge; View › Keep Zoom,
+which keeps the zoom and scroll position from image to image (for checking the same detail across a
+series). Flip Horizontal / Vertical (H / V) in the Image menu, as in Preview's Tools menu, saved
+losslessly through the orientation like Featherview's rotate (the reference only flips the view).
 
-### Thumbnail window (v2)
+### Thumbnail grid (v2)
 
 Parity "Thumbnails", in the Mac form: a grid mode of the viewer window itself (as Photos and
 Finder's icon view), not a second window. T or ⌘-shortcut toggles it, opening on the current image;
@@ -207,24 +211,27 @@ View › Sort By shared with the viewer; a size slider; Quick Look on Space. No 
 and the Go menu choose folders). Decoded off the main thread at cell size; a 10,000-file folder stays
 responsive.
 
-### Slideshow (v2, observe first)
+### Slideshow (v2)
 
-View › Slideshow, as in Preview: full screen through the system's full-screen mode, the viewer's
-list at an interval, with shuffle and repeat, no transition effects. Playing in the window as well
-(automatic viewing in the reference).
+Parity "Slideshow". View › Slideshow, as in Preview: full screen through the system's full-screen
+mode, the viewer's list from the current image at an interval, with shuffle (each image once per
+round) and repeat, Space to pause as in Photos, arrows to step, Esc back to the window on the image
+shown. Playing in the window as well (automatic viewing in the reference). No setup dialog with its
+own file list, no transition effects or exports.
 
-### Compare images (v2, observe first)
+### Compare images (v2)
 
-Two to four images in one window, side by side, zoom and pan in step; started from the thumbnail
-grid's selection. If observation shows macOS window tiling with Keep Zoom covers it, the milestone
-shrinks to that.
+Parity "Compare images". Two images in one window, side by side, zoom and pan in step (on by
+default; two windows tiled by macOS can't keep them in step), next / previous stepping the first
+pane, swap, and a difference view; started from two selected thumbnails or with a second image
+chosen in an open panel.
 
-### Batch extras (v2, observe first)
+### Batch extras (v2)
 
-Extract all frames or pages to files; split an image into tiles; set the date taken (as Photos'
-Adjust Date and Time). Instead of the reference's watched folder, which needs the app running: a
-Shortcuts action (App Intents) that runs a batch preset on files, and a Finder Quick Action with it,
-so folder actions and automations can use it the Mac way.
+Parity "Batch extras". Extract all frames or pages to files; split an image into tiles; set or
+shift the date taken (as Photos' Adjust Date and Time) for every format whose metadata ImageIO
+writes, with the file date following. Outputs never overwrite existing files (`AGENTS.md`), unlike
+the reference.
 
 ### JPEG XL writing (v2)
 
