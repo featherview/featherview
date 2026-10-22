@@ -21,9 +21,8 @@ public enum ImageDifference {
     public static func make(_ first: CGImage, _ second: CGImage, colorSpace: CGColorSpace?) throws -> CGImage {
         let box = CGRect(x: 0, y: 0, width: first.width, height: first.height)
         let black = CIImage(color: .black).cropped(to: box)
-        // CompareSync.scale's formula (1 when either size is empty).
         let w2 = CGFloat(second.width), h2 = CGFloat(second.height)
-        let s = w2 > 0 && h2 > 0 && box.width > 0 && box.height > 0 ? min(box.width / w2, box.height / h2) : 1
+        let s = CompareSync.scale(first: box.size, second: CGSize(width: w2, height: h2))
         let placed = CIImage(cgImage: second)
             .transformed(by: CGAffineTransform(scaleX: s, y: s))
             .transformed(by: CGAffineTransform(translationX: (box.width - w2 * s) / 2, y: (box.height - h2 * s) / 2))
