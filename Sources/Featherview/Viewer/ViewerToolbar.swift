@@ -78,6 +78,9 @@ struct ViewerToolbar: CustomizableToolbarContent {
                               enabled: { $0.availability.canChangeFile }, model) { $0.flip(.vertical) }
             }
             .defaultCustomization(.hidden)
+        }
+        // Two blocks: Swift 6.3 (CI) takes at most 10 items in one.
+        if ready {
             ToolbarItem(id: "zoomOut", placement: .primaryAction) {
                 ToolbarButton("Zoom Out", "minus.magnifyingglass", "Zoom out (−)", enabled: { $0.availability.hasCurrent && !$0.isGrid }, model) { $0.zoomOut() }
             }

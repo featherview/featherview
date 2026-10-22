@@ -138,58 +138,7 @@ struct ViewerView: View {
     }
 
     var body: some View {
-        canvas
-        // Not onGeometryChange: it misses the restored window frame at launch, leaving fit at the 100×48 placeholder.
-        // The whole window and the toolbar's height (top safe area), so fit and its zoom % use the clear area.
-        .background(GeometryReader { geo in
-            let window = CGSize(width: geo.size.width,
-                                height: geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom)
-            Color.clear.onChange(of: [window.width, window.height, geo.safeAreaInsets.top], initial: true) {
-                windowSize = window
-                toolbarHeight = geo.safeAreaInsets.top
-                // Now, not a pass later through the onChange below: the first image waits for it.
-                setViewSize(window: window, toolbarHeight: geo.safeAreaInsets.top)
-            }
-        })
-        // Hiding the status bar or entering full screen changes the insets without changing the geometry.
-        .onChange(of: canvasInsets) { setViewSize(window: windowSize, toolbarHeight: toolbarHeight) }
-        .onChange(of: model.compareSession != nil) { setViewSize(window: windowSize, toolbarHeight: toolbarHeight) }
-        .overlay(alignment: .bottom) {
-            // Nothing to report without a picture: an empty strip is just a grey bar.
-            // While comparing, each pane has its own (ComparePanes).
-            if showsStatusBar, model.compareSession == nil, model.image != nil || model.isGrid {
-                StatusBar(model: model)
-                    .padding(.trailing, stripTrailing)
-                    .opacity(barsVisible ? 1 : 0)
-                    // Opacity only, so Reduce Motion keeps it.
-                    .animation(Theme.Motion.fade(barsVisible ? Theme.Motion.barsIn : Theme.Motion.barsOut), value: barsVisible)
-            }
-        }
-        .onContinuousHover(coordinateSpace: .global) { phase in
-            switch phase {
-            case .active(let point):
-                let overStrip = showsStatusBar && point.y > windowSize.height - canvasInsets.bottom
-                feedAutoHide(.pointerOverBars(point.y < toolbarHeight || overStrip))
-                feedAutoHide(point.y < 4 ? .pointerAtTopEdge : .pointerMoved)
-            case .ended:
-                // Onto the toolbar, which takes the hover, or out of the window: off the picture either way.
-                feedAutoHide(.pointerOverBars(true))
-            }
-        }
-        .onChange(of: hideBars, initial: true) { feedAutoHide(.enabled($1)) }
-        .onChange(of: model.isFullScreen, initial: true) { feedAutoHide(.fullScreen($1)) }
-        .onChange(of: model.image != nil, initial: true) { feedAutoHide(.pictureShown($1)) }
-        // The grid keeps its bars like a panel does: the strip holds its slider.
-        .onChange(of: model.chooser != nil || model.destinationPanel != nil || model.showInfo || model.isGrid, initial: true) {
-            feedAutoHide(.panelOpen($1))
-        }
-        // The grid's collection view had the keyboard.
-        .onChange(of: model.isGrid) { if !$1 { focused = true } }
-        .onChange(of: barsVisible) { fadeBars(visible: $1) }
-        .task(id: hideArm) { await hideBarsAtRest() }
-        // On a new image and on entering full screen (double-click, F or Return leave the image as is).
-        .onChange(of: model.image) { hidePointerInFullScreen() }
-        .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
+        canvasWithBars
         .modifier(ViewerToolbarPlacement(model: model, ready: toolbarReady))
         .onChange(of: toolbarMayBuild, initial: true) { if $1, model.image == nil { ViewerModel.afterFrame { toolbarReady = true } } }
         .toolbar(toolbarHidden || hidesToolbarForFullScreen ? .hidden : .visible, for: .windowToolbar)
@@ -262,6 +211,63 @@ struct ViewerView: View {
         }
         .onKeyPress(action: handle)
         .frame(minWidth: 480, minHeight: 320)
+    }
+
+    /// The canvas with its strip, sizes and bar hiding; `body` adds the window's part. Two chains: as one, Swift 6.3
+    /// (CI) can't type-check it in time.
+    private var canvasWithBars: some View {
+        canvas
+        // Not onGeometryChange: it misses the restored window frame at launch, leaving fit at the 100×48 placeholder.
+        // The whole window and the toolbar's height (top safe area), so fit and its zoom % use the clear area.
+        .background(GeometryReader { geo in
+            let window = CGSize(width: geo.size.width,
+                                height: geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom)
+            Color.clear.onChange(of: [window.width, window.height, geo.safeAreaInsets.top], initial: true) {
+                windowSize = window
+                toolbarHeight = geo.safeAreaInsets.top
+                // Now, not a pass later through the onChange below: the first image waits for it.
+                setViewSize(window: window, toolbarHeight: geo.safeAreaInsets.top)
+            }
+        })
+        // Hiding the status bar or entering full screen changes the insets without changing the geometry.
+        .onChange(of: canvasInsets) { setViewSize(window: windowSize, toolbarHeight: toolbarHeight) }
+        .onChange(of: model.compareSession != nil) { setViewSize(window: windowSize, toolbarHeight: toolbarHeight) }
+        .overlay(alignment: .bottom) {
+            // Nothing to report without a picture: an empty strip is just a grey bar.
+            // While comparing, each pane has its own (ComparePanes).
+            if showsStatusBar, model.compareSession == nil, model.image != nil || model.isGrid {
+                StatusBar(model: model)
+                    .padding(.trailing, stripTrailing)
+                    .opacity(barsVisible ? 1 : 0)
+                    // Opacity only, so Reduce Motion keeps it.
+                    .animation(Theme.Motion.fade(barsVisible ? Theme.Motion.barsIn : Theme.Motion.barsOut), value: barsVisible)
+            }
+        }
+        .onContinuousHover(coordinateSpace: .global) { phase in
+            switch phase {
+            case .active(let point):
+                let overStrip = showsStatusBar && point.y > windowSize.height - canvasInsets.bottom
+                feedAutoHide(.pointerOverBars(point.y < toolbarHeight || overStrip))
+                feedAutoHide(point.y < 4 ? .pointerAtTopEdge : .pointerMoved)
+            case .ended:
+                // Onto the toolbar, which takes the hover, or out of the window: off the picture either way.
+                feedAutoHide(.pointerOverBars(true))
+            }
+        }
+        .onChange(of: hideBars, initial: true) { feedAutoHide(.enabled($1)) }
+        .onChange(of: model.isFullScreen, initial: true) { feedAutoHide(.fullScreen($1)) }
+        .onChange(of: model.image != nil, initial: true) { feedAutoHide(.pictureShown($1)) }
+        // The grid keeps its bars like a panel does: the strip holds its slider.
+        .onChange(of: model.chooser != nil || model.destinationPanel != nil || model.showInfo || model.isGrid, initial: true) {
+            feedAutoHide(.panelOpen($1))
+        }
+        // The grid's collection view had the keyboard.
+        .onChange(of: model.isGrid) { if !$1 { focused = true } }
+        .onChange(of: barsVisible) { fadeBars(visible: $1) }
+        .task(id: hideArm) { await hideBarsAtRest() }
+        // On a new image and on entering full screen (double-click, F or Return leave the image as is).
+        .onChange(of: model.image) { hidePointerInFullScreen() }
+        .onChange(of: model.isFullScreen) { hidePointerInFullScreen() }
     }
 
     /// Fit shrinks large images to the view; a zoom factor scales the file's full pixel size, so a smaller
