@@ -171,6 +171,63 @@ text file, an EXIF-rotated JPEG and a subfolder; default settings.
 | Selection | Click selects, Shift-click a range, Ctrl-click adds or removes one; select all exists. | Click, ⇧-click, ⌘-click, ⌘A. | open |
 | Actions | On the selection: move, copy, delete (to the bin), batch conversion with the selected files (B), and many export and print commands. Also: drop selected thumbs from the list, refresh, sort (by name and other keys), views other than the grid (tiles, details, list), load all subfolders. | Move/copy/Trash and B (batch with the selection); sort by name, date, size, type. Other views and exports later, if ever. | open |
 
+## Viewer conveniences
+
+Own folder of 1600 × 900 JPEGs (c1 … c6) plus a 900 × 3000 and a 4000 × 700 one, default settings.
+
+| Area | Observed behaviour | Featherview | Status |
+|---|---|---|---|
+| Recent files | A submenu of the last 15 files with full paths, newest first, plus a command that clears it. Every image shown goes in, not only opened ones: browsing with the arrow keys, a slideshow and automatic viewing all add their images. A renamed file keeps its old entry; choosing an entry whose file is gone shows a modal warning and drops that entry. A second submenu lists recently saved files (empty here). | File › Open Recent through the system's recent documents (opened files only, not every browsed image; also in the Dock menu); macOS greys out or drops missing ones itself. | open |
+| Rename | F2 opens a small dialog: the name without extension, preselected, a separate extension field, and an off-by-default option to rename same-named sidecar files too. A name that exists already gives a modal error naming the target path; nothing is overwritten. After a rename the title shows the new name and the list re-sorts: the file moved from 3/6 to 6/6 and → then hit the end of the folder. | Rename in the window title as Preview does (F2 starts it); a clash says so inline and keeps the old name; the list re-sorts and the image keeps its place on screen. | open |
+| Sort | A submenu sorts the viewer's list by name (plain or natural, natural ticked by default), date, date taken (marked as slower), size, extension or not at all, with a separate descending toggle. Changing it keeps the current image on screen and updates its position (20/63 became 33/63 for date). Date sorts oldest first. | View › Sort By: name (Finder order), date, date taken, size, kind, with ascending / descending; the current image stays. | open |
+| Paste | Ctrl+V shows the clipboard image as an unsaved image named after the date with a counter, marked unsaved in the title; the status bar shows no position, file size or date. → leaves it with no prompt and the paste is gone; the list continues from where it was before the paste. | File › New from Clipboard (⌘N) opens it as an unsaved image that Save As writes; leaving it asks before discarding, as Preview does. | open |
+| Desktop picture | A submenu sets the current image as the desktop picture: centred, fill, tiled, stretched, stretched in proportion, or spanned over all screens, plus a command to go back to the previous one (Ctrl+Shift+letter shortcuts). Not tried, only the menu read. | Set as Desktop Picture, one command, the system's fill mode (System Settings does the rest). | open |
+| On top | A toggle keeps the window above other windows. | Window › Float on Top. | open |
+| Share / e-mail | No share command; only e-mailing the file through a plugin (not tried). | Share button and File › Share (system share menu, covers Mail). | open |
+
+## Zoom modes and flip
+
+Same folder, window maximised.
+
+| Area | Observed behaviour | Featherview | Status |
+|---|---|---|---|
+| Fit modes | A submenu lists 12 mutually exclusive fit modes: window to image, image to window (all or only big ones), to window width, to window height, small side to window, the same five against the desktop, and none; the default is only big images to the desktop. A fit mode applies to every image after it until changed. | Zoom to Fit (0), Actual Size (1), Zoom to Width, Zoom to Height; the window stays put, so "desktop" variants aren't needed. | open |
+| Fit width / height | Fit to width fills the window's width, small images enlarged too (a 900-wide image at 277 %); a tall image starts at its top with a vertical scroll bar. Fit to height does the same for a wide image, starting at its left edge. | Same: fill the side, start at the top (width) or the leading edge (height); whether to enlarge small images follows Zoom to Fit's rule (never enlarge). | open |
+| Lock zoom | A toggle (Shift+L) keeps the zoom from image to image. It keeps the zoom it had when switched on: zooming further and moving on went back to that earlier value. Alone it doesn't keep the scroll position; each new image starts at its top-left corner. | View › Keep Zoom, following the current zoom (not a snapshot taken when switched on). | open |
+| Lock scroll | A second toggle (Ctrl+Shift+K) keeps the scroll position too: with both on, an image scrolled to its bottom-right showed the next one at its bottom-right. | Keep Zoom keeps the scroll position as well, one command (roadmap). | open |
+| Flip | H mirrors left–right, V upside down, instantly. The title shows no unsaved mark, moving on asks nothing and discards the flip; coming back shows the file unchanged. Same as rotate. | H / V in the Image menu, written to the file through the orientation tag, losslessly, like R / L. | open |
+
+## Slideshow
+
+Own 8 images, default settings unless named.
+
+| Area | Observed behaviour | Featherview | Status |
+|---|---|---|---|
+| Start | W opens a large setup dialog with its own file list (empty, with a file browser starting at the drive root) instead of using the viewer's list; Ctrl+W starts at once with the viewer's list from the current image. The setup's list is kept between runs in the same session. | View › Slideshow plays the viewer's list from the current image; no separate list or setup dialog. | open |
+| Options | Advance after an interval (default 5 s) or on a key / click, in order or at random; start index; loop (off by default); remember the last index; hide errors (on); hide the cursor (off); a text overlay template (folder, name, index by default); full screen (default) or a window of a set size; close the app after the last image; export as video, a self-running program or a disc; load / save the list as text. | Interval, shuffle and repeat; nothing else. | open |
+| Playing | Full screen, black, each image fitted, with the overlay text (full path and "[n/m]") in green at the top-left. → / ← step at once and the timer carries on; Space steps forward too. No pause key was found. | System full screen; → / ← step, Space pauses and resumes; Esc ends. | open |
+| Random | Random order picks at random each time: in about a dozen picks some images came twice while others hadn't shown yet. The overlay shows the picked image's list position. | Shuffle plays every image once in a random order before repeating. | open |
+| End | Without loop it stops on the last image and stays in full screen; → does nothing there. Esc ends it and leaves the window empty (no image loaded) and restored to a smaller size, not on the image that was showing. | When it ends (repeat off) stay on the last image; leaving shows the image that was on screen in the window. | open |
+| Automatic viewing | Shift+A steps the window through the viewer's list at the slideshow interval, without full screen; after the last image it wraps to the first. → steps at once and it keeps going; Shift+A again stops it. | Playing in the window: same toggle, stops at the end unless repeat is on. | open |
+
+## Compare images
+
+| Area | Observed behaviour | Featherview | Status |
+|---|---|---|---|
+| Opening | A command in the File menu opens a separate resizable window with two panes: the current image on the left, the right one empty until a file is chosen through an open panel. Exactly two images, no more. | Two to four images side by side in one window, started from the thumbnail grid's selection (roadmap). | open |
+| Zoom and scroll | Each pane has its own zoom list (fit, 10 – 500 %); Ctrl+wheel zooms, the wheel scrolls, right-drag pans. Zoom lock and scroll lock are separate toggles, both off by default; with both on, the two panes zoom (checked at 10 % and 200 %) and scroll in step. | Zoom and pan always in step; no toggles. A two-window tile (macOS window tiling) with Keep Zoom doesn't cover it: the two windows would zoom and pan separately. | open |
+| Stepping | Buttons step the left pane through its folder (next / previous); the zoom stays and the main window follows the left pane's image (it showed c7 after closing). Another button swaps the panes. | ← / → step the focused pane through the viewer's list; the window follows the image last focused. | open |
+| Difference | A toggle shows the per-pixel difference of the two images in the right pane, with per-channel (R, G, B) switches. | Later, if asked. | open |
+
+## Batch extras
+
+| Area | Observed behaviour | Featherview | Status |
+|---|---|---|---|
+| Extract frames | For an animated or multi-page file (greyed out otherwise): all frames or a range, a suffix with a counter (default "_page_" plus four digits, appended to the file's name: loop6_page_0001 …), a destination (default the user's temp folder) and an output format with its options (default JPEG). Each frame is written at the full canvas size. No message when done. Running it again overwrites the earlier files without asking. | Extract Frames…: a save panel for the folder, format from Save As's list, names `name 1`, `name 2` …; never overwrite (" 2" suffix rule), as batch does. | open |
+| Split into tiles | Columns × rows (default 2 × 2, more than one tile), an overlap in pixels (may be negative), destination (temp folder by default), format, all pages of a multi-page file, a right-to-left order switch. A note says existing tiles get overwritten. A 1600 × 900 image gave four 800 × 450 tiles named by row and column (c1_1x1, c1_1x2 …); a modal confirms success. | Split into Tiles…: columns, rows, overlap; save panel for the folder; names with row and column; never overwrite. | open |
+| Date taken | A plugin dialog for JPEG only: set the date taken to a date and time, or shift it by days, hours, minutes and seconds; for several files (from the thumbnail window's selection) add a number of seconds per file; copy the new date to the file's date (on by default). A JPEG without EXIF can't be changed (start greyed out); a separate command creates EXIF data first. | Adjust Date Taken as Photos does: set or shift, for the viewer's image or the grid's selection, any format with EXIF that ImageIO writes losslessly. | open |
+| Watched folder | Not a batch: it watches one folder (C:\TEMP by default, optionally its subfolders) and shows each new file in the viewer as it arrives, optionally clearing the display after some seconds or inverting the image. Starting it clears the window and minimises it; a new file loads without raising the window and joins the list (1/1, then 2/2). Opening the dialog again and cancelling stops the watching. | Not this: a Shortcuts action (and Finder Quick Action) that runs a batch preset on files covers automation (roadmap). Showing arriving files isn't planned; refreshing the viewer's own folder is covered under Browsing. | open |
+
 ## Not checked yet
 
 the meaning of X, options of
