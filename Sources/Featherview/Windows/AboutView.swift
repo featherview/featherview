@@ -118,16 +118,17 @@ struct AboutView: View {
             VStack(alignment: .trailing) {
                 ScrollView {
                     Text(sheet.text ?? "")
-                        .font(.system(.body, design: .monospaced))
+                        .font(Font(Theme.aboutTextFont))
                         .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(width: Theme.aboutTextWidth, alignment: .leading)
+                        .padding(.trailing)  // clear of the scroller
                 }
                 Button { sheet.text = nil } label: { Text("Done").foregroundStyle(Theme.onAccent) }
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
             }
             .padding()
-            .frame(width: 520, height: 420)
+            .frame(height: Theme.aboutTextHeight)
         }
     }
 

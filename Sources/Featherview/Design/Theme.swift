@@ -143,6 +143,10 @@ enum Theme {
     static let aboutWidth = 320.0
     static let aboutPadding = EdgeInsets(top: 56, leading: 28, bottom: 24, trailing: 28)
     static let aboutTileSize = 128.0
+    /// The licence and acknowledgements sheet: 80 columns (their line length) fit without wrapping.
+    @MainActor static let aboutTextFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+    @MainActor static let aboutTextWidth = 80 * ("0" as NSString).size(withAttributes: [.font: aboutTextFont]).width
+    static let aboutTextHeight = 460.0
     static let aboutNameGap = 22.0
     static let aboutTaglineGap = 4.0
     static let aboutVersionGap = 14.0
