@@ -58,6 +58,8 @@ final class ViewerModel {
         /// Rotate, Trash, F7 / F8: not on a held (already removed) image.
         var canChangeFile = false
         var hasPages = false
+        /// T: the window has a list to show as thumbnails (also while the grid shows, to leave it).
+        var canShowGrid = false
     }
     /// Stored, and set only when a value flips: buttons reading `list` would all re-evaluate on every image.
     private(set) var availability = Availability()
@@ -68,8 +70,10 @@ final class ViewerModel {
         let new = Availability(canGoBack: canBrowse && pastEnd.canStep(forward: false, index: list.index, count: list.urls.count),
                                canGoForward: canBrowse && pastEnd.canStep(forward: true, index: list.index, count: list.urls.count),
                                hasCurrent: list.current != nil,
-                               canChangeFile: list.current != nil && !list.isHolding,
-                               hasPages: (pageCount > 1 || player.frameCount > 1) && !list.isHolding)
+                               // In the grid these act on one viewed image (Decision 13).
+                               canChangeFile: list.current != nil && !list.isHolding && !isGrid,
+                               hasPages: (pageCount > 1 || player.frameCount > 1) && !list.isHolding && !isGrid,
+                               canShowGrid: !list.isEmpty && !isOpening)
         if new != availability { availability = new }
         if isAnimation != (player.frameCount > 1) { isAnimation.toggle() }
     }
@@ -171,9 +175,10 @@ final class ViewerModel {
     /// The window's title: the file name, then the counter.
     var title: String { titleCounter.map { "\(titleName) \($0)" } ?? titleName }
 
-    /// The file (or empty folder) name; the toolbar title shows it in the title font.
+    /// The file (or empty folder) name, the folder's in the grid; the toolbar title shows it in the title font.
     var titleName: String {
-        list.current?.lastPathComponent ?? emptyFolder?.lastPathComponent
+        if isGrid, let folder { return folder.lastPathComponent }
+        return list.current?.lastPathComponent ?? emptyFolder?.lastPathComponent
             ?? (isOpening ? openingFile?.lastPathComponent ?? "" : "Featherview")
     }
 
@@ -183,6 +188,7 @@ final class ViewerModel {
 
     /// "— 1 / 4" (with the page for multi-page files), shown quieter after the name; nil without a position.
     var titleCounter: String? {
+        if isGrid { return "— \(GridText.counter(list.urls.count))" }
         // While the folder is listed the position isn't known yet; "1 / 1" would be wrong.
         guard list.current != nil, !isOpening else { return nil }
         if pageCount > 1 { return String(localized: "— page \(page + 1) / \(pageCount) — \(list.position)") }
@@ -202,6 +208,7 @@ final class ViewerModel {
     /// folder takes longer to list and sort than the image takes to decode.
     func open(_ url: URL) {
         openTask?.cancel()
+        closeGrid()
         // Its decode may be dropped by the refocus below; cancelled, it ends quietly instead of showing an error.
         loadTask?.cancel()
         isOpening = true
@@ -835,6 +842,132 @@ final class ViewerModel {
         }
     }
 
+    // MARK: Thumbnail grid
+
+    /// T: the grid of the list's thumbnails in place of the image (on), or the focused cell's image (off).
+    private(set) var isGrid = false { didSet { updateAvailability() } }
+    /// The last cell clicked or moved to: T, Return and double-click view it; the strip shows its details.
+    var gridFocus: URL? { didSet { if gridFocus != oldValue { readGridInfo() } } }
+    /// The selected cells' files, in list order; set by the grid.
+    var gridSelection: [URL] = []
+    /// The focused cell's details for the strip, read off the main thread.
+    private(set) var gridInfo: FileInfo?
+    @ObservationIgnored private var gridInfoTask: Task<Void, Never>?
+    /// Esc's target: the image shown before T.
+    @ObservationIgnored private var gridReturn: URL?
+    /// Created at the first T, never at launch; dropped when another folder opens or the window closes.
+    @ObservationIgnored private var thumbnails: Thumbnails?
+    /// The running `GridShow` signpost: from T until the grid's first frame is committed.
+    @ObservationIgnored private var gridShow: OSSignpostIntervalState?
+
+    /// The grid's own decodes: a queue wider than the viewer's and a cache of 3 screens of pixels (Decisions 8, 9).
+    /// `shown` keeps what cells were given, so a cell scrolled back to shows its picture in the same frame (the
+    /// actor cache answers a frame later).
+    /// shortcut: `shown` may keep pictures `cache` dropped (up to the same budget again), share one store if memory matters.
+    private struct Thumbnails {
+        let queue: DecodeQueue
+        let cache: ImageCache
+        let shown = NSCache<NSURL, ShownThumbnail>()
+    }
+
+    private final class ShownThumbnail {
+        let image: CGImage
+        /// The decode side it was asked for: it serves that side and smaller.
+        let side: Int
+        init(_ image: CGImage, side: Int) { self.image = image; self.side = side }
+    }
+
+    func toggleGrid() {
+        if isGrid { return viewFromGrid(gridFocus) }
+        guard availability.canShowGrid else { return }
+        gridShow = Signposts.poster.beginInterval("GridShow", id: Signposts.poster.makeSignpostID())
+        if thumbnails == nil {
+            let queue = DecodeQueue(width: max(2, min(6, ProcessInfo.processInfo.activeProcessorCount - 2)))
+            let budget = ThumbnailSize.cacheBudget(screens: screens)
+            let made = Thumbnails(queue: queue, cache: ImageCache(capacity: .max, colorSpace: Self.screenSpace,
+                                                                  queue: queue, byteBudget: budget))
+            made.shown.totalCostLimit = budget
+            thumbnails = made
+        }
+        loadTask?.cancel()
+        endNavigation("superseded")
+        player.stop()
+        gridReturn = list.current
+        gridFocus = list.current
+        gridSelection = list.current.map { [$0] } ?? []
+        showInfo = false
+        isGrid = true
+    }
+
+    /// Return, double-click, T: leaves the grid and shows `url` (the focused cell).
+    func viewFromGrid(_ url: URL?) {
+        guard isGrid else { return }
+        if let url, url != list.current, list.select(url), ready[url] == nil {
+            // The image viewed before T would show until this one decodes: another file's picture.
+            image = nil
+        }
+        isGrid = false
+        show()
+    }
+
+    /// Esc: back to the image shown before T.
+    func leaveGridCancelling() { viewFromGrid(gridReturn) }
+
+    /// Another file or folder opens, or the window closes: the grid goes, with its thumbnails.
+    func closeGrid() {
+        isGrid = false
+        thumbnails = nil
+        gridFocus = nil
+        gridSelection = []
+    }
+
+    /// The grid's first frame is on screen.
+    func gridDrawn() {
+        guard let gridShow else { return }
+        Signposts.poster.endInterval("GridShow", gridShow)
+        self.gridShow = nil
+    }
+
+    /// A picture the grid already showed for `url` at `side` or larger, at once (no actor hop).
+    func shownThumbnail(_ url: URL, side: Int) -> CGImage? {
+        thumbnails?.shown.object(forKey: url as NSURL).flatMap { $0.side >= side ? $0.image : nil }
+    }
+
+    /// A cell's picture, decoded on the grid's queue, longest side at most `side`.
+    func thumbnail(_ url: URL, side: Int) async throws -> CGImage {
+        if let shown = shownThumbnail(url, side: side) { return shown }
+        guard let thumbnails else { throw CancellationError() }
+        let image = try await thumbnails.cache.image(for: url, target: .thumbnail(side))
+        thumbnails.shown.setObject(ShownThumbnail(image, side: side), forKey: url as NSURL,
+                                   cost: image.bytesPerRow * image.height)
+        return image
+    }
+
+    /// The cells wanted now, visible first, then ahead (`GridWindow.wanted`): waiting decodes of others are dropped.
+    func focusThumbnails(_ urls: [URL]) { thumbnails?.queue.focus(urls) }
+
+    /// Decodes cells ahead of the scroll before they show.
+    func prefetchThumbnails(_ urls: [URL], side: Int) {
+        guard let cache = thumbnails?.cache, !urls.isEmpty else { return }
+        Task { await cache.prefetch(urls, target: .thumbnail(side)) }
+    }
+
+    /// + / −, and the View menu's retitled zoom items, in the grid.
+    func stepThumbnails(larger: Bool) {
+        let size = ThumbnailSize.stepped(AppSettings.thumbnailSize.value(), larger: larger)
+        UserDefaults.standard.set(size, forKey: AppSettings.thumbnailSize.key)
+    }
+
+    private func readGridInfo() {
+        gridInfoTask?.cancel()
+        // The previous cell's details stay until these are read, as the viewer's do: the strip doesn't blink.
+        guard let url = gridFocus else { gridInfo = nil; return }
+        gridInfoTask = Task {
+            let info = await Task.detached { FileInfo.read(url: url, page: 0) }.value
+            if !Task.isCancelled, gridFocus == url { gridInfo = info }
+        }
+    }
+
     func showOpenPanel() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image, .folder]
@@ -856,7 +989,7 @@ final class ViewerModel {
 
     /// ⌘C: the current image at full resolution, upright, decoded off the main thread.
     func copyImage() {
-        guard let url = list.current else { return }
+        guard let url = list.current, !isGrid else { return }
         let page = page
         let pending = rotateTask  // a rotation still rewriting the file would give the old image
         copies.submit {
