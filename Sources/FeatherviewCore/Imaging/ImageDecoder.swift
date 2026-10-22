@@ -168,12 +168,16 @@ public enum ImageDecoder {
     }
 
     /// Whether an embedded thumbnail of `thumb` may stand in for an image of `image` (both upright) at
-    /// `side`: it covers the side and has the image's aspect within 2 % (no letterbox bars).
+    /// `side`: it covers the side and its short side is the image's aspect within 2 % or 1 px (no letterbox
+    /// bars; ImageIO's own decode rounds the short side to a whole pixel).
     static func acceptsEmbedded(_ thumb: PixelSize, image: PixelSize, side: Int) -> Bool {
-        guard thumb.height > 0, image.height > 0 else { return false }
-        let aspect = Double(image.width) / Double(image.height)
-        return max(thumb.width, thumb.height) >= min(side, max(image.width, image.height))
-            && abs(Double(thumb.width) / Double(thumb.height) - aspect) <= 0.02 * aspect
+        guard thumb.width > 0, thumb.height > 0, image.width > 0, image.height > 0 else { return false }
+        let landscape = thumb.width >= thumb.height
+        let (long, short) = landscape ? (thumb.width, thumb.height) : (thumb.height, thumb.width)
+        let expectedShort = landscape ? Double(long) * Double(image.height) / Double(image.width)
+                                      : Double(long) * Double(image.width) / Double(image.height)
+        return long >= min(side, max(image.width, image.height))
+            && abs(Double(short) - expectedShort) <= max(1, 0.02 * expectedShort)
     }
 
     /// An 8-bit display decode drawn into `colorSpace` (see `decode`); anything else unchanged.

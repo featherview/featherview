@@ -33,6 +33,16 @@ import UniformTypeIdentifiers
         #expect(ImageDecoder.acceptsEmbedded(size(120, 160), image: size(3000, 4000), side: 100))
     }
 
+    @Test func panoramaDecodeRoundedToWholePixelAccepted() {
+        func size(_ w: Int, _ h: Int) -> PixelSize { PixelSize(width: w, height: h) }
+        // ImageIO's own decodes at 128: the short side rounds to a whole pixel.
+        #expect(ImageDecoder.acceptsEmbedded(size(128, 19), image: size(660, 100), side: 128))
+        #expect(ImageDecoder.acceptsEmbedded(size(128, 16), image: size(780, 100), side: 128))
+        #expect(ImageDecoder.acceptsEmbedded(size(128, 12), image: size(1040, 100), side: 128))
+        #expect(ImageDecoder.acceptsEmbedded(size(20, 128), image: size(2000, 13200), side: 128))
+        #expect(!ImageDecoder.acceptsEmbedded(size(128, 24), image: size(660, 100), side: 128))
+    }
+
     @Test func smallImageNotEnlarged() throws {
         let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("a.png"),
                                           width: 50, height: 40, type: .png)
