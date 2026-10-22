@@ -4,9 +4,9 @@ import ObjectiveC
 /// Asks before a window with an unsaved clipboard image closes. Wraps the window's own (SwiftUI's) delegate, like
 /// `MenuKeys`'s menu proxy, and forwards everything else to it.
 final class CloseGuard: NSObject, NSWindowDelegate {
-    private let original: NSWindowDelegate?
+    private weak var original: NSWindowDelegate?  // SwiftUI keeps it alive; strong would cycle via the window
     private weak var model: ViewerModel?
-    nonisolated(unsafe) private static var key = 0
+    nonisolated(unsafe) private static var key = 0  // only its address is used, as the associated-object key; never read or written
 
     private init(_ original: NSWindowDelegate?, model: ViewerModel) {
         self.original = original
