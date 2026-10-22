@@ -43,6 +43,8 @@ struct FeatherviewApp: App {
                 .modifier(OpensViewerWindows())
         }
         .defaultSize(width: 1100, height: 700)
+        // Batch Convert… (B) and Featherview › About open these: no second item in the Window menu.
+        .commandsRemoved()
 
         Window("About Featherview", id: "about") {
             AboutView()
@@ -50,6 +52,7 @@ struct FeatherviewApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
+        .commandsRemoved()
     }
 }
 
