@@ -22,20 +22,17 @@ public enum BatchPreviewNames {
         let usesDate = s.renamePattern.contains("{date}")
         var total = 0
         for input in inputs {
+            // A large folder takes seconds: stop for a newer job.
+            guard !Task.isCancelled else { result.cancelled = true; return result }
             var frames = 1
             if s.frames.isOn {
-                // Opening every file of a large folder takes seconds: stop for a newer job.
-                guard !Task.isCancelled else { result.cancelled = true; return result }
                 frames = result.frameCounts[input.url] ?? Self.frames(of: input.url)
                 result.frameCounts[input.url] = frames
             }
-            let labels = labels(s, frames: frames)
-            total += max(labels.count, 1)
+            total += parts(s, frames: frames)
             guard result.names.count < 5 else { continue }
-            let date = usesDate
-                ? s.dateTaken.newDate(for: input.url).flatMap(MetadataReader.exifDate) ?? MetadataReader.dateTaken(of: input.url)
-                : nil
-            let urls = namer.names(for: input, date: date, parts: labels)
+            let date = usesDate ? Self.date(s, url: input.url) : nil
+            let urls = namer.names(for: input, date: date, parts: labels(s, frames: frames, limit: 5 - result.names.count))
             result.names += urls.prefix(5 - result.names.count).map(\.lastPathComponent)
         }
         result.more = total - result.names.count
@@ -48,7 +45,19 @@ public enum BatchPreviewNames {
         Animation.read(url)?.frameCount ?? ImageDecoder.pageCount(of: url)
     }
 
-    public static func labels(_ s: BatchSettings, frames: Int) -> [String] {
-        PartLabels.combined(frames: frames, rows: s.tiles.isOn ? s.tiles.rows : 1, columns: s.tiles.isOn ? s.tiles.columns : 1)
+    /// `{date}` as the converter fills it: the Date Taken step's new date, else the file's own.
+    public static func date(_ s: BatchSettings, url: URL) -> Date? {
+        s.dateTaken.newDate(for: url).flatMap(MetadataReader.exifDate) ?? MetadataReader.dateTaken(of: url)
+    }
+
+    /// How many outputs one input gives, as `PartLabels.combined` counts them (at least one).
+    public static func parts(_ s: BatchSettings, frames: Int) -> Int {
+        let tiles = s.tiles.isOn ? TileStep.clamped(s.tiles.rows) * TileStep.clamped(s.tiles.columns) : 1
+        return max(frames, 1) * tiles
+    }
+
+    static func labels(_ s: BatchSettings, frames: Int, limit: Int) -> [String] {
+        PartLabels.combined(frames: frames, rows: s.tiles.isOn ? s.tiles.rows : 1, columns: s.tiles.isOn ? s.tiles.columns : 1,
+                            limit: limit)
     }
 }

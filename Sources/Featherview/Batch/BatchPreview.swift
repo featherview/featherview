@@ -278,7 +278,7 @@ final class BatchPreviewModel {
         var rendered = rendered
         guard s.splits, let size = rendered.outputSize else { return rendered }
         if s.frames.isOn && rendered.cache.frames == nil { rendered.cache.frames = BatchPreviewNames.frames(of: url) }
-        rendered.parts = max(BatchPreviewNames.labels(s, frames: s.frames.isOn ? rendered.cache.frames ?? 1 : 1).count, 1)
+        rendered.parts = BatchPreviewNames.parts(s, frames: s.frames.isOn ? rendered.cache.frames ?? 1 : 1)
         guard s.tiles.isOn else { return rendered }
         do {
             rendered.tiles = try TileStep.rects(width: Int(size.width), height: Int(size.height),
@@ -320,7 +320,7 @@ final class BatchPreviewModel {
             watermark = loaded
         }
         // Same values as the converter, so the preview shows the text the output gets.
-        let date = s.text.isOn && s.text.text.contains("{date}") ? MetadataReader.dateTaken(of: url) : nil
+        let date = s.text.isOn && s.text.text.contains("{date}") ? BatchPreviewNames.date(s, url: url) : nil
         let day = date.map { RenamePattern("{date}").baseName(original: "", index: 1, date: $0) } ?? ""
         let values = TextValues(name: url.deletingPathExtension().lastPathComponent,
                                 folder: url.deletingLastPathComponent().lastPathComponent, date: day, index: key.index + 1)

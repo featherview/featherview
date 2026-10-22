@@ -76,10 +76,42 @@ import Testing
         #expect(all.names.count == 5 && all.more == 4 && all.frameCounts[gif.url] == 3)
         #expect(all.cancelled == false)
 
-        let cancelled = await Task {
+        let cancelled = await Task { [s] in
             withUnsafeCurrentTask { $0?.cancel() }
             return BatchPreviewNames.compute(s, inputs: [gif, jpeg])
         }.value
         #expect(cancelled.cancelled && cancelled.frameCounts.isEmpty)
+
+        s.frames.isOn = false
+        s.tiles.isOn = true
+        let tiles = await Task { [s] in
+            withUnsafeCurrentTask { $0?.cancel() }
+            return BatchPreviewNames.compute(s, inputs: [jpeg])
+        }.value
+        #expect(tiles.cancelled)
+    }
+
+    @Test func textDateUsesTheNewDateTaken() throws {
+        let dir = try Fixtures.makeTempDir()
+        let input = try photo(dir, "a.jpg", taken: "2024:03:10 09:00:00")
+        var s = BatchSettings()
+        #expect(BatchPreviewNames.date(s, url: input.url) == MetadataReader.exifDate("2024:03:10 09:00:00"))
+        s.dateTaken.isOn = true
+        s.dateTaken.mode = .set
+        s.dateTaken.setTo = "2019:05:01 12:00:00"
+        #expect(BatchPreviewNames.date(s, url: input.url) == MetadataReader.exifDate("2019:05:01 12:00:00"))
+    }
+
+    @Test func countsPartsWithoutListingThem() {
+        var s = BatchSettings()
+        #expect(BatchPreviewNames.parts(s, frames: 0) == 1)
+        #expect(BatchPreviewNames.parts(s, frames: 300) == 300)
+        s.tiles.isOn = true
+        s.tiles.rows = 100
+        s.tiles.columns = 100
+        #expect(BatchPreviewNames.parts(s, frames: 300) == 3_000_000)
+        #expect(BatchPreviewNames.parts(s, frames: 1) == 10_000)
+        #expect(PartLabels.combined(frames: 300, rows: 100, columns: 100, limit: 2) == ["001-001-001", "001-001-002"])
+        #expect(PartLabels.combined(frames: 3, rows: 1, columns: 1, limit: 5) == ["1", "2", "3"])
     }
 }
