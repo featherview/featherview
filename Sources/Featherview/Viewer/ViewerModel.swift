@@ -1076,12 +1076,17 @@ final class ViewerModel {
         guard let compareSession else { return .fit }
         guard AppSettings.compareInStep.value() else { return compareSession.ownZoom }
         guard let info = compareSession.info, info.url == compareSession.url, let second = info.pixelSize,
-              let fileInfo, fileInfo.isFor(list.current, page: page), let first = fileInfo.pixelSize else { return .fit }
+              let fileInfo, fileInfo.isFor(list.current, page: page), let first = fileInfo.pixelSize else {
+            // Pane 1's details are the previous file's until its decode lands: pane 2 keeps its zoom meanwhile.
+            return compareSession.info?.url == compareSession.url ? compareSession.lastMatched.map { .factor($0) } ?? .fit : .fit
+        }
         let factor = switch zoom {
         case .factor(let factor): factor
         case .fit: ZoomSteps.fitFactor(image: first, view: viewSize, displayScale: displayScale)
         }
-        return .factor(CompareSync.matchedFactor(factor, first: first, second: second))
+        let matched = CompareSync.matchedFactor(factor, first: first, second: second)
+        compareSession.lastMatched = matched
+        return .factor(matched)
     }
 
     /// The scale pane 2's picture is shown at, from its full pixel size.

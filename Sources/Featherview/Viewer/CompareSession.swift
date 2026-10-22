@@ -25,6 +25,8 @@ final class CompareSession {
     /// The decode asked for last, so asking again for the same one decodes nothing.
     @ObservationIgnored var wanted: (url: URL, target: DecodeTarget)?
     @ObservationIgnored var task: Task<Void, Never>?
+    /// Pane 2's last in-step factor, kept while pane 1's next file has no details yet.
+    @ObservationIgnored var lastMatched: Double?
 
     init(url: URL, zoomCache: ImageCache) {
         self.url = url
@@ -36,5 +38,6 @@ final class CompareSession {
         self.url = url
         errorMessage = nil
         wanted = nil
+        lastMatched = nil
     }
 }
