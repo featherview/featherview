@@ -516,7 +516,7 @@ struct ViewerView: View {
         case .rotateLeft: model.rotate(.counterClockwise)
         case .flipHorizontal: model.flip(.horizontal)
         case .flipVertical: model.flip(.vertical)
-        case .toggleInfo: if model.compareSession == nil { model.showInfo.toggle() }
+        case .toggleInfo: if model.compareSession == nil, model.availability.hasCurrent { model.showInfo.toggle() }
         case .toggleFullScreen: model.toggleFullScreen()
         case .fit: model.setZoom(.fit)
         case .actualSize: model.setZoom(.factor(1))
