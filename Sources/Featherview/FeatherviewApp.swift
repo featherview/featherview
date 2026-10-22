@@ -187,8 +187,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let unsaved = ViewerModel.all.allObjects.filter { $0.unsaved != nil }
         if !unsaved.isEmpty {
             Task {
-                for model in unsaved where await !model.confirmDiscard() {
-                    return sender.reply(toApplicationShouldTerminate: false)
+                for model in unsaved {
+                    guard await model.confirmDiscard() else { return sender.reply(toApplicationShouldTerminate: false) }
+                    model.show()  // the covered image, should the quit be cancelled after all
                 }
                 // Asked about every image: the batch check comes next.
                 switch applicationShouldTerminate(sender) {
