@@ -21,8 +21,17 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+      # The C libraries (libjxl, jxrlib, libwebp) take most of a cold build and never change between pushes: the
+      # build folder is cached, keyed on their sources and the toolchain. Checkout stamps every file with the time
+      # it ran, so their sources get a fixed old date back: the key guarantees they equal the cached build's.
       - name: Toolchain
-        run: xcodebuild -version && swift --version
+        run: (xcodebuild -version && swift --version) | tee toolchain.txt
+      - uses: actions/cache@v6
+        with:
+          path: .build
+          key: build-test-${{ hashFiles('toolchain.txt', 'Package.swift', 'Package.resolved', 'Sources/CJPEGXL/**', 'Sources/CJPEGXR/**') }}
+      - name: C sources as old as the cached build
+        run: find Sources/CJPEGXL Sources/CJPEGXR -type f -exec touch -t 200001010000 {} +
       - name: Build tests
         run: swift build --product FeatherviewPackageTests
       - name: Test
@@ -35,5 +44,16 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+      # The C libraries (libjxl, jxrlib, libwebp) take most of a cold build and never change between pushes: the
+      # build folder is cached, keyed on their sources and the toolchain. Checkout stamps every file with the time
+      # it ran, so their sources get a fixed old date back: the key guarantees they equal the cached build's.
+      - name: Toolchain
+        run: (xcodebuild -version && swift --version) | tee toolchain.txt
+      - uses: actions/cache@v6
+        with:
+          path: .build
+          key: build-app-${{ hashFiles('toolchain.txt', 'Package.swift', 'Package.resolved', 'Sources/CJPEGXL/**', 'Sources/CJPEGXR/**') }}
+      - name: C sources as old as the cached build
+        run: find Sources/CJPEGXL Sources/CJPEGXR -type f -exec touch -t 200001010000 {} +
       - name: Build app, extensions and tools
         run: swift build

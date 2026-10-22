@@ -6,3 +6,4 @@ research/
 .claude/settings.local.json
 .claude/worktrees/
 .superpowers/
+toolchain.txt

@@ -1,7 +1,7 @@
 # Milestone 19: Simplify Implementation Plan
 
 > **For agentic workers:** Run with the `plan-wave-lite` workflow, tasks in order (they share `ViewerModel.swift`).
-> Task 8 is a review sweep; Task 9 runs in the main session. Steps use checkbox (`- [ ]`) syntax for tracking.
+> Tasks 8 and 9 run in the main session. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Move the decisions the app target makes into FeatherviewCore, where they get unit tests, and remove the
 friction that cost the most review rounds in milestones 11–17: the string catalog's format and duplicated code.
@@ -158,12 +158,26 @@ modifier-flag mapping (`ThumbnailGrid.swift` `keyDown`, `ViewerView.swift` grid 
   owns it. List each in the commit message.
 - [ ] **Step 3: Commit:** `refactor: one copy each of the modifier mapping and <list>`
 
-### Task 8: Review sweep (workflow review step, no plan code)
+### Task 8: Simplify over the whole project (main session)
 
-- [ ] Run the `simplify` skill over `Sources/Featherview` and `Sources/FeatherviewCore` against `main` at the
-  start of this milestone: dead code, `shortcut:` comments whose condition has passed (`ponytail-debt` lists them),
-  unused settings keys, unused strings in the catalog (`extractionState: stale`), helpers used once. Apply what is
-  clearly dead; list the rest for the maintainer.
+The `simplify` skill reviews changed code by default; here it gets the whole project as its scope, because the
+duplication and dead code this milestone is after sit between milestones, not inside one diff.
+
+- [ ] **Step 1: Invoke** `Skill(simplify, args: "Scope: the whole repository at main, not a diff. Context:
+  docs/spec.md (requirements), AGENTS.md (rules: layering — logic that needs no window lives in FeatherviewCore;
+  Theme tokens; translatable text; no history in comments), docs/roadmap.md (milestones 1–19), and this plan
+  (Tasks 1–7 already moved the viewer's decisions into Core). Cover Sources/FeatherviewCore, Sources/Featherview,
+  Sources/FeatherviewThumbnail, Sources/FeatherviewPreview, Sources/FeatherviewBench, Sources/FeatherviewDMG,
+  Tests/, scripts/, .github/workflows/ and .claude/workflows/. Not Sources/CJPEGXL, Sources/CJPEGXR (vendored).
+  Look for: code that duplicates a Core helper; helpers used once; dead code and unused settings keys; stale
+  catalog keys (extractionState stale); `shortcut:` comments whose condition has passed (run ponytail-debt
+  first); decisions still made in app files that Tasks 2–6 missed; test fixtures that duplicate Fixtures.
+  No behaviour changes.")`.
+- [ ] **Step 2:** Apply what is clearly dead or duplicated, one commit per area (`refactor:` / `chore:`), each with
+  `swift build` and `swift test` green. Anything that would change behaviour or needs a decision goes to a list
+  for the maintainer instead.
+- [ ] **Step 3:** One review agent over the whole milestone's diff against its starting commit (no behaviour
+  change, budgets unaffected); fix what it confirms.
 
 ### Task 9 (main session): measure, docs
 
