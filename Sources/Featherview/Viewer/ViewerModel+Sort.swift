@@ -23,14 +23,35 @@ extension ViewerModel {
                 sortValues = values
                 sortValuesKey = order.key
                 guard list.urls == urls else { continue }  // a file came or went meanwhile: sort the list as it is now
-                relist(sorted)
+                takeOrder(sorted)
                 return
             }
         }
     }
 
-    /// Takes `sorted` as the list. The current image stays on screen; only its neighbours change.
-    func relist(_ sorted: [URL]) {
+    /// Takes `urls` as the list in the stored order (sorted here, with `sortValues`). The current image stays on
+    /// screen; only its neighbours change.
+    func relist(_ urls: [URL]) {
+        takeOrder(ImageSort.sorted(urls, by: .stored(), values: sortValues))
+    }
+
+    /// Reads and keeps the stored key's values for `urls` (new or renamed files), off the main thread.
+    func readSortValues(for urls: [URL]) async {
+        let key = SortOrder.stored().key
+        if key != sortValuesKey {
+            sortValues = [:]
+            sortValuesKey = key
+        }
+        guard key != .name, !urls.isEmpty else { return }
+        let read = await Task.detached(priority: key == .dateTaken ? .utility : .userInitiated) {
+            ImageSort.values(of: urls, key: key)
+        }.value
+        guard key == sortValuesKey else { return }  // the order changed while reading
+        sortValues.merge(read) { $1 }
+    }
+
+    /// Takes `sorted`, already in the stored order, as the list (a re-sort sorted it off the main thread).
+    private func takeOrder(_ sorted: [URL]) {
         list.reorder(sorted)
         let neighbors = focusDecodes()
         guard zoom == .fit, !neighbors.isEmpty else { return }
