@@ -22,7 +22,6 @@ extension ViewerModel {
                 errorMessage = String(localized: "Can't open the image on the clipboard")
                 return
             }
-            if unsaved != nil, !(await confirmDiscard()) { return }
             let previous = rotateTask
             // Queued like Trash: a rotation or scan still running would change the list it covers.
             rotateTask = Task {
@@ -34,6 +33,9 @@ extension ViewerModel {
                     waited = scan
                     await scan.value
                 }
+                // Asked here, not before queuing: a cover still queued has no `unsaved` yet, so a ⌘N after it
+                // would replace its image unasked.
+                if unsaved != nil, !(await confirmDiscard()) { return }
                 cover(with: image)
             }
         }
@@ -103,7 +105,8 @@ extension ViewerModel {
     }
 
     /// Save As for the unsaved image: "Untitled" in the list's folder, else Pictures. `thenOpen` (S, ⇧⌘S) shows the
-    /// saved file in its folder; from the sheet, the covered list comes back instead. False if cancelled or failed.
+    /// saved file in its folder; from the sheet, the covered list comes back, with the file if saved into its folder.
+    /// False if cancelled or failed.
     @discardableResult
     func saveUnsaved(thenOpen: Bool) async -> Bool {
         guard let picture = unsaved else { return true }
@@ -127,6 +130,8 @@ extension ViewerModel {
         discardUnsaved()
         if thenOpen {
             if ImageFormats.isDecodable(target) { open(target) } else { show() }
+        } else {
+            await addToList(saved: target)
         }
         return true
     }

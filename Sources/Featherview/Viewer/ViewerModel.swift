@@ -331,6 +331,22 @@ final class ViewerModel {
         revealWindow()
     }
 
+    /// A file just saved into the folder joins the list, which keeps its current image (an empty folder gets the file).
+    func addToList(saved: URL) async {
+        guard let folder, ImageFormats.isDecodable(saved),
+              saved.deletingLastPathComponent().resolvingSymlinksInPath().path == folder.resolvingSymlinksInPath().path
+        else { return }
+        let scan = openTask
+        let includeHidden = AppSettings.showHiddenFiles.value()
+        guard let urls = try? await Task.detached(priority: .userInitiated, operation: {
+            try FolderScanner.images(around: folder, includeHidden: includeHidden)
+        }).value else { return }
+        // An open or a folder change while it was listed has the newer list.
+        guard openTask == scan, self.folder == folder, !urls.isEmpty else { return }
+        list = ImageList(urls: urls, current: list.current ?? saved)
+        emptyFolder = nil
+    }
+
     func next() {
         if unsaved != nil { return leaveUnsaved { [weak self] in self?.show() } }
         guard !isGrid else { return }
