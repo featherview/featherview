@@ -45,6 +45,11 @@ public enum AppSettings {
     public static let fitMode = Setting(key: "fitMode", defaultValue: FitMode.fit.rawValue)
     /// View › Keep Zoom: a new image keeps the zoom and scroll position of the one before.
     public static let keepZoom = Setting(key: "keepZoom", defaultValue: false)
+    // Slideshow (View › Slideshow Options)
+    /// Seconds each image shows, one of `Slideshow.intervals`.
+    public static let slideshowSeconds = Setting(key: "slideshowSeconds", defaultValue: 5)
+    public static let slideshowShuffle = Setting(key: "slideshowShuffle", defaultValue: false)
+    public static let slideshowRepeat = Setting(key: "slideshowRepeat", defaultValue: false)
     // Full screen
     public static let showOverlay = Setting(key: "showOverlay", defaultValue: true)
     public static let overlayTemplate = Setting(key: "overlayTemplate", defaultValue: "{path} — {index} / {count}")
@@ -65,6 +70,17 @@ public enum AppSettings {
         PastEndBehavior(rawValue: pastEnd.value()) ?? .folderChooser
     }
 
+    public static var slideshowOptions: Slideshow.Options { slideshowOptions(in: .standard) }
+
+    /// The slideshow settings; seconds that aren't a menu choice fall back to 5.
+    public static func slideshowOptions(in defaults: UserDefaults) -> Slideshow.Options {
+        let seconds = slideshowSeconds.value(in: defaults)
+        return Slideshow.Options(
+            interval: .seconds(Slideshow.intervals.contains(seconds) ? seconds : slideshowSeconds.defaultValue),
+            shuffle: slideshowShuffle.value(in: defaults),
+            repeats: slideshowRepeat.value(in: defaults))
+    }
+
     /// Registers every default, so `UserDefaults.bool(forKey:)` and friends agree with the spec.
     public static func registerDefaults(in defaults: UserDefaults = .standard) {
         var values: [String: Any] = [
@@ -81,6 +97,9 @@ public enum AppSettings {
             thumbnailSize.key: thumbnailSize.defaultValue,
             fitMode.key: fitMode.defaultValue,
             keepZoom.key: keepZoom.defaultValue,
+            slideshowSeconds.key: slideshowSeconds.defaultValue,
+            slideshowShuffle.key: slideshowShuffle.defaultValue,
+            slideshowRepeat.key: slideshowRepeat.defaultValue,
             showOverlay.key: showOverlay.defaultValue,
             overlayTemplate.key: overlayTemplate.defaultValue,
             hidePointer.key: hidePointer.defaultValue,

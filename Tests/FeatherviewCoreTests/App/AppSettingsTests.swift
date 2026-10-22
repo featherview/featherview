@@ -35,6 +35,19 @@ import Testing
         #expect(defaults.double(forKey: AppSettings.thumbnailSize.key) == 128)
         #expect(defaults.string(forKey: AppSettings.fitMode.key) == "fit")
         #expect(defaults.object(forKey: AppSettings.keepZoom.key) as? Bool == false)
+        #expect(defaults.object(forKey: AppSettings.slideshowSeconds.key) as? Int == 5)
+        #expect(defaults.object(forKey: AppSettings.slideshowShuffle.key) as? Bool == false)
+        #expect(defaults.object(forKey: AppSettings.slideshowRepeat.key) as? Bool == false)
+    }
+
+    @Test func slideshowOptionsFromSettings() {
+        let defaults = freshDefaults()
+        defaults.set(10, forKey: AppSettings.slideshowSeconds.key)
+        defaults.set(true, forKey: AppSettings.slideshowShuffle.key)
+        #expect(AppSettings.slideshowOptions(in: defaults)
+                == Slideshow.Options(interval: .seconds(10), shuffle: true, repeats: false))
+        defaults.set(7, forKey: AppSettings.slideshowSeconds.key)  // not a menu choice
+        #expect(AppSettings.slideshowOptions(in: defaults).interval == .seconds(5))
     }
 
     @Test func storedValueWinsAndWrongTypeFallsBack() {

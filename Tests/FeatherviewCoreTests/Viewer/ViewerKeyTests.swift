@@ -67,4 +67,21 @@ import Testing
         #expect(ViewerKey.action(characters: "T", shift: false) == .toggleThumbnails)  // Caps Lock
         #expect(ViewerKey.action(characters: "T", shift: true) == nil)
     }
+
+    @Test func wStartsSlideshow() {
+        #expect(ViewerKey.action(characters: "w", shift: false) == .slideshow)
+        #expect(ViewerKey.action(characters: "W", shift: false) == .slideshow)  // Caps Lock
+    }
+
+    @Test func shiftAPlaysInWindow() {
+        #expect(ViewerKey.action(characters: "A", shift: true) == .playInWindow)
+    }
+
+    @Test func plainAIsStillAbout() {
+        #expect(ViewerKey.action(characters: "a", shift: false) == .about)
+    }
+
+    @Test func shiftWIsNothing() {
+        #expect(ViewerKey.action(characters: "W", shift: true) == nil)
+    }
 }
