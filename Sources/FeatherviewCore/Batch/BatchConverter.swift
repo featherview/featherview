@@ -130,11 +130,12 @@ public enum BatchConverter {
         if settings.dateTaken.isOn {
             switch settings.dateTaken.mode {
             case .set:
-                guard !settings.dateTaken.setTo.isEmpty
+                guard DateTaken.wallTime(settings.dateTaken.setTo) != nil
                 else { return Prepared(error: String(localized: "Choose a date for the Date Taken step")) }
                 newDate = settings.dateTaken.setTo
             case .shift:
                 newDate = DateTaken.current(of: url).flatMap { DateTaken.shifted($0, by: settings.dateTaken.shiftSeconds) }
+                guard newDate != nil else { return Prepared(error: String(localized: "Can't change the date taken of \(name)")) }
             }
             offset = CGImageSourceCreateWithURL(url as CFURL, nil)
                 .flatMap { DateTaken.exifValue($0, kCGImagePropertyExifOffsetTimeOriginal) }

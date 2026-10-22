@@ -60,7 +60,10 @@ public enum DateTaken {
 
     /// Plain wall-time arithmetic: no time zone, so no daylight-saving jumps.
     public static func shifted(_ exif: String, by seconds: Int) -> String? {
-        wallTime(exif).map { Self.exif($0.addingTimeInterval(TimeInterval(seconds))) }
+        guard let date = wallTime(exif)?.addingTimeInterval(TimeInterval(seconds)) else { return nil }
+        let result = Self.exif(date)
+        // EXIF holds years 0001–9999; a year past that, or a BC year printed without its era, doesn't read back.
+        return result.count == 19 && wallTime(result) == date ? result : nil
     }
 
     /// The moment the wall time means, at EXIF `OffsetTimeOriginal` ("+02:00") or else in the Mac's time zone.

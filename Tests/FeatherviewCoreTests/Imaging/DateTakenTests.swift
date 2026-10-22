@@ -97,6 +97,13 @@ import UniformTypeIdentifiers
         #expect(DateTaken.shifted("garbage", by: 1) == nil)
     }
 
+    @Test func shiftRefusesDatesOutOfRange() {
+        #expect(DateTaken.shifted("2024:05:01 12:00:00", by: .max) == nil)
+        #expect(DateTaken.shifted("2024:05:01 12:00:00", by: .min) == nil)
+        #expect(DateTaken.shifted("0001:01:01 00:00:00", by: -1) == nil)
+        #expect(DateTaken.shifted("9999:12:31 23:59:59", by: 1) == nil)
+    }
+
     @Test func wallTimeRoundTrips() throws {
         for s in ["2024:02:29 23:59:59", "1999:01:01 00:00:00", "2026:03:29 02:30:00"] {
             #expect(DateTaken.exif(try #require(DateTaken.wallTime(s))) == s)

@@ -1042,6 +1042,32 @@ import Testing
         #expect(result.message == "Choose a date for the Date Taken step")
     }
 
+    @Test func dateSetToAnUnreadableDateFails() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let result = try #require(await BatchConverter.run(job([input], out: out, format: "jpg") {
+            $0.dateTaken.isOn = true
+            $0.dateTaken.mode = .set
+            $0.dateTaken.setTo = "not a date"
+        }).first)
+        #expect(result.status == .failed)
+        #expect(result.message == "Choose a date for the Date Taken step")
+        #expect(try names(out).isEmpty)
+    }
+
+    @Test func dateShiftOutOfRangeFails() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8, properties: [
+            kCGImagePropertyExifDictionary: [kCGImagePropertyExifDateTimeOriginal: "2024:05:01 12:00:00"]])
+        let result = try #require(await BatchConverter.run(job([input], out: out, format: "jpg") {
+            $0.dateTaken.isOn = true
+            $0.dateTaken.shiftSeconds = .max
+        }).first)
+        #expect(result.status == .failed)
+        #expect(result.message == "Can't change the date taken of a.jpg")
+        #expect(try names(out).isEmpty)
+    }
+
     @Test func dateRenamesByNewDate() async throws {
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
