@@ -36,6 +36,7 @@ struct ThumbnailGrid: NSViewRepresentable {
         grid.onOpen = { [weak model] in model?.viewFromGrid($0) }
         grid.onClick = { [weak coordinator] in coordinator?.clicked($0, $1) }
         grid.onLayout = { [weak coordinator] in coordinator?.laidOut() }
+        grid.onScaleChange = { [weak coordinator] in coordinator?.scaleChanged() }
         let scroll = NSScrollView()
         scroll.documentView = grid
         scroll.hasVerticalScroller = true
@@ -135,6 +136,9 @@ struct ThumbnailGrid: NSViewRepresentable {
         }
 
         // MARK: Decode order
+
+        /// Another screen's scale: another decode side.
+        func scaleChanged() { refocus(force: true) }
 
         @objc func visibleRangeMayHaveChanged() { refocus(force: false) }
 
@@ -260,6 +264,7 @@ final class GridCollectionView: NSCollectionView {
     var onOpen: (URL) -> Void = { _ in }
     var onClick: (Int, NSEvent.ModifierFlags) -> Void = { _, _ in }
     var onLayout: () -> Void = {}
+    var onScaleChange: () -> Void = {}
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -269,6 +274,11 @@ final class GridCollectionView: NSCollectionView {
     override func layout() {
         super.layout()
         onLayout()
+    }
+
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        onScaleChange()
     }
 
     override func keyDown(with event: NSEvent) {
@@ -431,6 +441,12 @@ private final class CellView: NSView {
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         applyColours()
+    }
+
+    /// The picture's frame depends on the screen's scale.
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        needsLayout = true
     }
 
     private func updateTooltip() {
