@@ -263,53 +263,22 @@ final class BatchPreviewModel {
             try? await Task.sleep(for: .milliseconds(150))
             guard !Task.isCancelled else { return }
             let counts = frameCounts
-            let result = await Task.detached(priority: .userInitiated) { Self.names(key, frameCounts: counts) }.value
+            let job = Task.detached(priority: .userInitiated) {
+                BatchPreviewNames.compute(key.settings, inputs: key.inputs, frameCounts: counts)
+            }
+            let result = await withTaskCancellationHandler { await job.value } onCancel: { job.cancel() }
             frameCounts = result.frameCounts
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, !result.cancelled else { return }
             (names, more, folder) = (result.names, result.more, result.folder)
         }
-    }
-
-    /// The first five names (each input's parts in order) as if every file succeeds, how many names
-    /// follow, and the first file's folder.
-    private nonisolated static func names(_ key: NamesKey, frameCounts: [URL: Int])
-        -> (names: [String], more: Int, folder: String, frameCounts: [URL: Int]) {
-        guard let first = key.inputs.first else { return ([], 0, "", frameCounts) }
-        let s = key.settings
-        var counts = frameCounts
-        var namer = BatchNamer(settings: s, inputs: key.inputs)
-        let usesDate = s.renamePattern.contains("{date}")
-        var names: [String] = [], total = 0
-        for input in key.inputs {
-            var frames = 1
-            if s.frames.isOn {
-                frames = counts[input.url] ?? Self.frames(of: input.url)
-                counts[input.url] = frames
-            }
-            let labels = labels(s, frames: frames)
-            total += max(labels.count, 1)
-            guard names.count < 5 else { continue }
-            let urls = namer.names(for: input, date: usesDate ? MetadataReader.dateTaken(of: input.url) : nil, parts: labels)
-            names += urls.prefix(5 - names.count).map(\.lastPathComponent)
-        }
-        return (names, total - names.count, namer.folder(for: first).path, counts)
-    }
-
-    /// As the converter counts them: an animation's frames, else a document's pages.
-    private nonisolated static func frames(of url: URL) -> Int {
-        Animation.read(url)?.frameCount ?? ImageDecoder.pageCount(of: url)
-    }
-
-    private nonisolated static func labels(_ s: BatchSettings, frames: Int) -> [String] {
-        PartLabels.combined(frames: frames, rows: s.tiles.isOn ? s.tiles.rows : 1, columns: s.tiles.isOn ? s.tiles.columns : 1)
     }
 
     /// The shown input's file count and, with Tiles, its tiles of the output.
     private nonisolated static func split(_ rendered: Rendered, _ s: BatchSettings, url: URL) -> Rendered {
         var rendered = rendered
         guard s.splits, let size = rendered.outputSize else { return rendered }
-        if s.frames.isOn && rendered.cache.frames == nil { rendered.cache.frames = frames(of: url) }
-        rendered.parts = max(labels(s, frames: s.frames.isOn ? rendered.cache.frames ?? 1 : 1).count, 1)
+        if s.frames.isOn && rendered.cache.frames == nil { rendered.cache.frames = BatchPreviewNames.frames(of: url) }
+        rendered.parts = max(BatchPreviewNames.labels(s, frames: s.frames.isOn ? rendered.cache.frames ?? 1 : 1).count, 1)
         guard s.tiles.isOn else { return rendered }
         do {
             rendered.tiles = try TileStep.rects(width: Int(size.width), height: Int(size.height),
