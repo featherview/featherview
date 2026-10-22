@@ -515,7 +515,7 @@ struct ViewerView: View {
         case .rotateLeft: model.rotate(.counterClockwise)
         case .flipHorizontal: model.flip(.horizontal)
         case .flipVertical: model.flip(.vertical)
-        case .toggleInfo: if model.compareSession == nil { model.showInfo.toggle() }
+        case .toggleInfo: if model.canShowInfo { model.showInfo.toggle() }
         case .toggleFullScreen: model.toggleFullScreen()
         case .fit: model.setZoom(.fit)
         case .actualSize: model.setZoom(.factor(1))
@@ -917,7 +917,7 @@ struct ViewerCommands: Commands {
                 Button("Always Open with Featherview") {}.disabled(true)
             }
             Button("Show Info  (I)") { model?.showInfo.toggle() }
-                .disabled(model?.availability.hasCurrent != true || model?.isGrid == true || model?.compareSession != nil)
+                .disabled(model?.canShowInfo != true)
             if model?.isGrid == true {
                 // The two selected cells, in list order.
                 Button("Compare") {

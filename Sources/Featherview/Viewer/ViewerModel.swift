@@ -26,6 +26,8 @@ final class ViewerModel {
     /// True while a folder is being scanned, so the view shows nothing instead of the open hint.
     private(set) var isOpening = false { didSet { updateAvailability() } }
     var showInfo = false
+    /// I, the menu item and the toolbar button: an image is shown, not the grid or two compared.
+    var canShowInfo: Bool { availability.hasCurrent && !isGrid && compareSession == nil }
     private(set) var zoom = Zoom.fit
     /// Bumped when the current file changes on disk (rotation), so views reading it refresh.
     private(set) var fileRevision = 0
