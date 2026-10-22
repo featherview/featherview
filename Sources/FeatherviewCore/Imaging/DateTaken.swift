@@ -18,7 +18,7 @@ public enum DateTaken {
         return calendar
     }
 
-    /// EXIF `DateTimeOriginal` as stored; nil when missing or a placeholder.
+    /// EXIF `DateTimeOriginal` as stored; nil when missing, a placeholder or a time out of range (what `shifted` can't read).
     public static func original(of url: URL) -> String? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
         return original(source)
@@ -26,7 +26,7 @@ public enum DateTaken {
 
     static func original(_ source: CGImageSource) -> String? {
         guard let date = exifValue(source, kCGImagePropertyExifDateTimeOriginal),
-              MetadataReader.exifDate(date) != nil else { return nil }
+              MetadataReader.exifDate(date) != nil, wallTime(date) != nil else { return nil }
         return date
     }
 
