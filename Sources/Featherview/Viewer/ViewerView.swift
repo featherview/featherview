@@ -91,6 +91,7 @@ struct ViewerView: View {
             }
         }
         .overlay { sheets }
+        .sheet(item: Binding { model.dateSheet } set: { model.dateSheet = $0 }) { AdjustDateSheet(model: model, sheet: $0) }
         .overlay(alignment: .bottom) {
             if let message = model.errorMessage, model.image != nil || model.isGrid {
                 Text(message)
@@ -608,6 +609,7 @@ struct ImageContextMenu: View {
         Button("Rotate Right") { model.rotate(.clockwise) }
         Button("Flip Horizontal") { model.flip(.horizontal) }
         Button("Flip Vertical") { model.flip(.vertical) }
+        Button("Adjust Date Taken…") { model.showAdjustDate() }
         Divider()
         Button("Move to Folder…") { model.showDestinations(.move) }
         Button("Copy to Folder…") { model.showDestinations(.copy) }
@@ -889,7 +891,13 @@ struct ViewerCommands: Commands {
                 Button("Rotate Left  (L)") { model?.rotate(.counterClockwise) }
                 Button("Flip Horizontal  (H)") { model?.flip(.horizontal) }
                 Button("Flip Vertical  (V)") { model?.flip(.vertical) }
-                Divider()
+            }
+            .disabled(model?.availability.canChangeFile != true)
+            // Also on the grid's selection, as Photos does (Decision 8).
+            Button("Adjust Date Taken…") { model?.showAdjustDate() }
+                .disabled(model?.canAdjustDate != true)
+            Divider()
+            Group {
                 // ⌘⌫ is handled by the viewer, not as a menu shortcut (see ViewerView.handle).
                 Button("Move to Folder…  (F7)") { model?.showDestinations(.move) }
                 Button("Copy to Folder…  (F8)") { model?.showDestinations(.copy) }

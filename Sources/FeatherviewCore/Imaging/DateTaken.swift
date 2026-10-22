@@ -37,7 +37,11 @@ public enum DateTaken {
 
     /// The date taken, else the file's modification date as a wall time in the Mac's time zone.
     public static func current(of url: URL) -> String? {
-        if let date = original(of: url) { return date }
+        original(of: url) ?? fileDate(of: url)
+    }
+
+    /// The file's modification date as a wall time in the Mac's time zone.
+    public static func fileDate(of url: URL) -> String? {
         guard let modified = (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
         else { return nil }
         let local = Calendar(identifier: .gregorian)
@@ -118,6 +122,12 @@ public enum DateTaken {
             _ = try FileManager.default.replaceItemAt(url, withItemAt: temp)
         } catch { throw DateTakenError.writeFailed }
         setFileDates(url, date: date, offset: offset)
+    }
+
+    /// One URL per file on disk, in order: `apply` changes a symlink's target, so a second link to it would shift it twice.
+    public static func distinctFiles(_ urls: [URL]) -> [URL] {
+        var seen = Set<String>()
+        return urls.filter { seen.insert($0.resolvingSymlinksInPath().path).inserted }
     }
 
     /// Modified and created dates follow the date taken.

@@ -141,6 +141,16 @@ import UniformTypeIdentifiers
         #expect(DateTaken.current(of: dated) == "2020:01:02 03:04:05")
     }
 
+    @Test func originalKeepsTimesOutOfRange() throws {
+        let dir = try Fixtures.makeTempDir()
+        var props = Self.exifDate
+        props[kCGImagePropertyExifDictionary] = [kCGImagePropertyExifDateTimeOriginal: "2020:01:01 24:00:00"]
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8, properties: props)
+        // Stored as it is (a batch Shift fails the file); the file date stays at hand for Adjust Date Taken.
+        #expect(DateTaken.original(of: url) == "2020:01:01 24:00:00")
+        #expect(DateTaken.fileDate(of: url).flatMap(DateTaken.wallTime) != nil)
+    }
+
     @Test func applyChangesInPlaceAndFileDates() throws {
         let dir = try Fixtures.makeTempDir()
         let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8,
@@ -199,5 +209,18 @@ import UniformTypeIdentifiers
         try DateTaken.apply(link, date: "2024:07:01 12:00:00")
         #expect(DateTaken.original(of: target) == "2024:07:01 12:00:00")
         #expect((try? FileManager.default.destinationOfSymbolicLink(atPath: link.path)) != nil)
+    }
+
+    @Test func distinctFilesDropsLinksToTheSameFile() throws {
+        let dir = try Fixtures.makeTempDir()
+        let a = dir.appendingPathComponent("a.jpg"), c = dir.appendingPathComponent("c.jpg")
+        try Data().write(to: a)
+        try Data().write(to: c)
+        let b = dir.appendingPathComponent("b.jpg"), d = dir.appendingPathComponent("d.jpg"), e = dir.appendingPathComponent("e.jpg")
+        try FileManager.default.createSymbolicLink(at: b, withDestinationURL: a)
+        try FileManager.default.createSymbolicLink(at: d, withDestinationURL: c)
+        try FileManager.default.createSymbolicLink(at: e, withDestinationURL: c)
+        #expect(DateTaken.distinctFiles([a, b, d, c, e]) == [a, d])
+        #expect(DateTaken.distinctFiles([b, a]) == [b])
     }
 }
