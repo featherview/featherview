@@ -413,7 +413,7 @@ struct ViewerView: View {
             if modifiers.contains(.shift) { gridModifiers.insert(.shift) }
             if modifiers.contains(.option) { gridModifiers.insert(.option) }
             if modifiers.contains(.control) { gridModifiers.insert(.control) }
-            guard let key = GridKey.action(characters: press.characters, modifiers: gridModifiers), gridKey(key) else { return .ignored }
+            if let key = GridKey.action(characters: press.characters, modifiers: gridModifiers) { _ = gridKey(key) }
             return .handled
         }
         if modifiers == .option {

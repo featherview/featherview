@@ -944,12 +944,15 @@ final class ViewerModel {
     /// A cell's picture, decoded on the grid's queue, longest side at most `side`.
     func thumbnail(_ url: URL, side: Int) async throws -> CGImage {
         if rotations > 0 { await rotateTask?.value }
-        guard let thumbnails else { throw CancellationError() }
+        guard isGrid, let thumbnails else { throw CancellationError() }
         return try await thumbnails.cache.image(for: url, target: .thumbnail(side))
     }
 
     /// The cells wanted now, visible first, then ahead (`GridWindow.wanted`): waiting decodes of others are dropped.
-    func focusThumbnails(_ urls: [URL]) { thumbnails?.queue.focus(urls) }
+    func focusThumbnails(_ urls: [URL]) {
+        guard isGrid else { return }  // a cell's late load after leaving would bring its decodes back
+        thumbnails?.queue.focus(urls)
+    }
 
     /// Decodes cells ahead of the scroll before they show.
     func prefetchThumbnails(_ urls: [URL], side: Int) {
