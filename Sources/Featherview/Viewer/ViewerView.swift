@@ -55,7 +55,7 @@ struct ViewerView: View {
         ZStack {
             background.ignoresSafeArea()
             if let image = model.image {
-                ImageCanvas(image: image, size: drawSize(image), pixelWidth: pixelSize(image).width,
+                ImageCanvas(image: image, player: model.player, size: drawSize(image), pixelWidth: pixelSize(image).width,
                             displayScale: displayScale, background: Theme.background, insets: canvasInsets, zoom: model.zoom,
                             checkerboard: checkerboard, turns: model.pendingTurns, leaving: model.isLeaving,
                             panController: panController,
@@ -180,6 +180,13 @@ struct ViewerView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willExitFullScreenNotification)) { note in
             if note.object as? NSWindow === model.window { model.isFullScreen = false }
         }
+        // Animations wait while nobody can see them (spec "Animation").
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didChangeOcclusionStateNotification)) { windowShown($0) }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didMiniaturizeNotification)) { windowShown($0) }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didDeminiaturizeNotification)) { windowShown($0) }
+        .onReceive(NotificationCenter.default.publisher(for: .AXAnimatedImagesEnabledDidChange)) { _ in
+            model.animatedImagesSettingChanged()
+        }
         .dropDestination(for: URL.self) { urls, _ in
             guard let url = urls.first else { return false }
             model.open(url)
@@ -273,6 +280,11 @@ struct ViewerView: View {
     /// (the content can stay at the window's old size), drop when macOS 15 is the minimum.
     private var hidesToolbarForFullScreen: Bool {
         if #available(macOS 15, *) { false } else { model.isFullScreen }
+    }
+
+    private func windowShown(_ note: Notification) {
+        guard let window = model.window, note.object as? NSWindow === window else { return }
+        model.player.setVisible(window.occlusionState.contains(.visible) && !window.isMiniaturized)
     }
 
     private func hidePointerInFullScreen() {
@@ -443,6 +455,7 @@ struct ViewerView: View {
         case .settings: SettingsWindow.show()
         case .about: openWindow(id: "about")
         case .saveAs: model.saveAs()
+        case .toggleAnimation: model.toggleAnimation()
         }
         return .handled
     }
@@ -756,10 +769,17 @@ struct ViewerCommands: Commands {
             Button("Previous  (← or ⌫)") { model?.previous() }
                 .disabled(model?.availability.canGoBack != true)
             Group {
-                Button("Next Page  (⌥→)") { model?.nextPage() }
-                Button("Previous Page  (⌥←)") { model?.previousPage() }
+                if model?.isAnimation == true {
+                    Button("Next Frame  (⌥→)") { model?.nextPage() }
+                    Button("Previous Frame  (⌥←)") { model?.previousPage() }
+                } else {
+                    Button("Next Page  (⌥→)") { model?.nextPage() }
+                    Button("Previous Page  (⌥←)") { model?.previousPage() }
+                }
             }
             .disabled(model?.availability.hasPages != true)
+            Button(model?.player.isPlaying == true ? "Pause Animation  (G)" : "Play Animation  (G)") { model?.toggleAnimation() }
+                .disabled(model?.isAnimation != true)
             Divider()
             Group {
                 Button("Rotate Right  (R)") { model?.rotate(.clockwise) }

@@ -1,6 +1,6 @@
 /// The viewer's single-character shortcuts. Arrows, ⌘⌫ and ⌦ are matched by the view itself.
 public enum ViewerKey: Equatable, Sendable {
-    case rotateRight, rotateLeft, toggleInfo, toggleFullScreen, fit, actualSize, zoomIn, zoomOut
+    case rotateRight, rotateLeft, toggleInfo, toggleFullScreen, fit, actualSize, zoomIn, zoomOut, toggleAnimation
     /// Commands that also have a ⌘ shortcut; the single key is for people switching over.
     case open, batch, minimize, settings, saveAs, about
 
@@ -24,6 +24,7 @@ public enum ViewerKey: Equatable, Sendable {
         case "p": return .settings
         case "s": return .saveAs
         case "a": return .about
+        case "g": return .toggleAnimation
         default: return nil
         }
     }

@@ -30,6 +30,12 @@ import Testing
         #expect(ViewerKey.action(characters: "S", shift: true) == nil)
     }
 
+    @Test func gTogglesAnimation() {
+        #expect(ViewerKey.action(characters: "g", shift: false) == .toggleAnimation)
+        #expect(ViewerKey.action(characters: "G", shift: false) == .toggleAnimation)  // Caps Lock
+        #expect(ViewerKey.action(characters: "G", shift: true) == nil)
+    }
+
     @Test func arrowStepsFollowLayoutDirection() {
         #expect(ViewerKey.arrowGoesForward(isRightArrow: true, rightToLeft: false))
         #expect(!ViewerKey.arrowGoesForward(isRightArrow: false, rightToLeft: false))

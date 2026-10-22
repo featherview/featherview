@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The standard Mac toolbar (spec "Toolbar"): each button does what its key does; the tooltip names the key.
 /// Customizable, so View › Customize Toolbar… and Hide Toolbar work as in any Mac app.
-/// The content reads only `pageCount` (which changes only between single- and multi-page files): reading
+/// The content reads only `pageCount` and `isAnimation` (which change only between kinds of files): reading
 /// anything that changes per image would rebuild every item on each swap (budget 16 ms).
 struct ViewerToolbar: CustomizableToolbarContent {
     let model: ViewerModel
@@ -48,12 +48,15 @@ struct ViewerToolbar: CustomizableToolbarContent {
             ToolbarSpacer(.flexible)
         }
         if ready {
-            if model.pageCount > 1 {
+            if model.pageCount > 1 || model.isAnimation {
                 ToolbarItem(id: "previousPage", placement: .primaryAction) {
-                    ToolbarButton("Previous Page", "arrow.up.doc", "Previous page (⌥←)", enabled: { $0.availability.hasPages }, model) { $0.previousPage() }
+                    ToolbarButton("Previous Page", "arrow.up.doc",
+                                  model.isAnimation ? "Previous frame (⌥←)" : "Previous page (⌥←)",
+                                  enabled: { $0.availability.hasPages }, model) { $0.previousPage() }
                 }
                 ToolbarItem(id: "nextPage", placement: .primaryAction) {
-                    ToolbarButton("Next Page", "arrow.down.doc", "Next page (⌥→)", enabled: { $0.availability.hasPages }, model) { $0.nextPage() }
+                    ToolbarButton("Next Page", "arrow.down.doc", model.isAnimation ? "Next frame (⌥→)" : "Next page (⌥→)",
+                                  enabled: { $0.availability.hasPages }, model) { $0.nextPage() }
                 }
             }
             ToolbarItem(id: "rotateLeft", placement: .primaryAction) {

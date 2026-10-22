@@ -55,6 +55,8 @@ private extension NSScrollView {
 /// double-click toggles full screen. SwiftUI's ScrollView can't pan by dragging.
 struct ImageCanvas: NSViewRepresentable {
     let image: CGImage
+    /// Its frames show in place of `image` (frame 0) once playback moves.
+    var player: AnimationPlayer?
     /// Size in points the image is drawn at.
     let size: CGSize
     /// The file's pixel width the image stands for (wider than `image` while a smaller decode shows).
@@ -105,6 +107,8 @@ struct ImageCanvas: NSViewRepresentable {
         panController.scrollView = scrollView
         scrollView.backgroundColor = background
         guard let view = scrollView.documentView as? ImageLayerView else { return }
+        player?.onFrame = { [weak view] in view?.showFrame($0) }
+        let image = player?.current ?? image
         view.onDoubleClick = onDoubleClick
         view.onClick = onClick
         view.onFirstDraw = onFirstDraw
@@ -386,6 +390,15 @@ private final class ImageLayerView: NSView {
     }
 
     func shows(_ image: CGImage) -> Bool { (imageLayer.contents as AnyObject?) === image }
+
+    /// An animation's next frame: same size and look as the one before, no update of the rest, not a commit
+    /// the `Navigate` signpost waits for.
+    func showFrame(_ image: CGImage) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        imageLayer.contents = image
+        CATransaction.commit()
+    }
 
     func show(_ image: CGImage, checkerboard: Bool, smooth: Bool) {
         CATransaction.begin()

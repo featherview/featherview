@@ -1,3 +1,4 @@
+import Accessibility
 import AppKit
 import FeatherviewCore
 import Observation
@@ -68,9 +69,14 @@ final class ViewerModel {
                                canGoForward: canBrowse && pastEnd.canStep(forward: true, index: list.index, count: list.urls.count),
                                hasCurrent: list.current != nil,
                                canChangeFile: list.current != nil && !list.isHolding,
-                               hasPages: pageCount > 1 && !list.isHolding)
+                               hasPages: (pageCount > 1 || player.frameCount > 1) && !list.isHolding)
         if new != availability { availability = new }
+        if isAnimation != (player.frameCount > 1) { isAnimation.toggle() }
     }
+    /// An animation shows: ⌥→ / ⌥← step its frames, the page items and buttons say "frame". Set only when it flips.
+    private(set) var isAnimation = false
+    /// Plays the animation on screen; the canvas shows its frames after the model's image (frame 0).
+    let player = AnimationPlayer(colorSpace: ViewerModel.screenSpace)
     /// The viewer area, kept up to date by the view; fit-mode zoom steps start from it.
     var viewSize = CGSize.zero
     var displayScale = 2.0
@@ -307,7 +313,7 @@ final class ViewerModel {
         }
         self.zoom = zoom
         // A held image is gone from disk: show() would release it and decode the next file at the held page.
-        if needsReload, !list.isHolding { show(page: page) }
+        if needsReload, !list.isHolding { show(page: page, keepsPlayer: true) }
     }
 
     private func pastEnd(forward: Bool) {
@@ -354,9 +360,23 @@ final class ViewerModel {
         }
     }
 
-    /// ⌥→ / ⌥←: pages of a multi-page TIFF; nothing past either end, nor on a held (removed) image.
-    func nextPage() { if !list.isHolding, page + 1 < pageCount { page += 1; show(page: page) } }
-    func previousPage() { if !list.isHolding, page > 0 { page -= 1; show(page: page) } }
+    /// ⌥→ / ⌥←: pages of a multi-page TIFF, frames of an animation; nothing past either end, nor on a held (removed) image.
+    func nextPage() {
+        guard !list.isHolding else { return }
+        if player.frameCount > 1 { player.step(forward: true) } else if page + 1 < pageCount { page += 1; show(page: page) }
+    }
+    func previousPage() {
+        guard !list.isHolding else { return }
+        if player.frameCount > 1 { player.step(forward: false) } else if page > 0 { page -= 1; show(page: page) }
+    }
+
+    /// G: pauses or plays the animation shown.
+    func toggleAnimation() { player.togglePlaying() }
+
+    /// The system's "Play animated images" changed: the animation shown follows it.
+    func animatedImagesSettingChanged() {
+        if player.frameCount > 1, player.isPlaying != AXAnimatedImagesEnabled() { player.togglePlaying() }
+    }
 
     /// Settings › Viewer › zoom step, 10 % by default (×1.1).
     private var zoomMultiplier: Double { 1 + Double(max(AppSettings.zoomStepPercent.value(), 1)) / 100 }
@@ -380,8 +400,13 @@ final class ViewerModel {
     }
 
     /// Shows `list.current` (page 0 unless `page` is given), then prefetches its neighbours so
-    /// arrow keys feel instant.
-    func show(page: Int = 0) {
+    /// arrow keys feel instant. `keepsPlayer`: a zoom change, whose animation goes on at the new decode target.
+    func show(page: Int = 0, keepsPlayer: Bool = false) {
+        // First: no frame of the file shown so far may land on the next one's canvas.
+        if !keepsPlayer || player.url != list.current {
+            player.stop()
+            updateAvailability()
+        }
         loadTask?.cancel()
         endNavigation("superseded")
         list.release()
@@ -408,6 +433,7 @@ final class ViewerModel {
         loadTask = Task {
             // Set while zoomed (page 0): its neighbours are prefetched.
             var zoomed = false
+            var target = DecodeTarget.fit(screens)
             do {
                 let decoded: CGImage
                 if let prefetched {
@@ -436,10 +462,12 @@ final class ViewerModel {
                     guard !Task.isCancelled else { return }
                     if case .step(let step) = decode.target, let full = decode.full { shownStep = (step, full) }
                     zoomed = true
+                    target = decode.target
                     decoded = try await decode.cache.image(for: url, target: decode.target)
                 }
                 guard !Task.isCancelled else { return }
                 if prefetched == nil { shown(decoded, url: url, page: page, started: started) }
+                if page == 0 { play(url, target: target, first: decoded) }
                 // Read again on every show: a rotation changes both size and date. Not awaited, so the
                 // prefetch below doesn't wait for another file read (slow on network or USB disks).
                 Task {
@@ -527,6 +555,24 @@ final class ViewerModel {
         // A rotation while we read makes it stale; it doesn't cancel the caller.
         if fileRevision == revision { knownInfo[url] = info }
         return info
+    }
+
+    /// Starts the animation in `url` once its frame 0 (`first`) shows, or moves the running one to `target`.
+    private func play(_ url: URL, target: DecodeTarget, first: CGImage) {
+        guard ImageFormats.mayAnimate(url) else { return }
+        if player.url == url {
+            player.retarget(target)
+            // The canvas goes on showing the player's frame, so it never commits `first`.
+            if player.current != nil { endCommittedNavigation() }
+            return
+        }
+        Task {
+            let animation = await Task.detached(priority: .userInitiated) { Animation.read(url) }.value
+            // Another file, page or zoom took its place meanwhile.
+            guard let animation, list.current == url, page == 0, image === first, player.url == nil else { return }
+            player.start(url: url, animation: animation, target: target, first: first, playing: AXAnimatedImagesEnabled())
+            updateAvailability()
+        }
     }
 
     /// Decodes and reads `neighbors` ahead, so a swap to one is synchronous and its status bar complete.

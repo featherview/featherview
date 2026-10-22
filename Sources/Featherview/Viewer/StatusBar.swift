@@ -35,6 +35,8 @@ struct StatusBar: View {
         let info = model.fileInfo
         return StatusLine.make(pixelSize: info?.pixelSize, zoomPercent: model.zoomPercent, fileBytes: info?.bytes,
                                index: model.list.index, count: model.list.urls.count,
-                               page: model.page, pageCount: model.pageCount, modified: info?.modified).fields
+                               page: model.page, pageCount: model.pageCount,
+                               frame: model.player.pausedFrame, frameCount: model.player.frameCount,
+                               modified: info?.modified).fields
     }
 }
