@@ -43,7 +43,7 @@ section for these yet; Task 10 writes one from the Decisions below. Rules: `AGEN
    full screen, F2 / Rename… show the same field in a small sheet ("Rename", Cancel / Rename) instead.
    - Unchanged or empty after trimming spaces: nothing happens.
    - Refused, message in the window's message box, field stays open while it has focus: a "/" or ":"
-     or a control character; a leading "."; more than 255 UTF-8 bytes; a name taken by another file
+     or a control character; a leading "."; more than 255 characters (UTF-16 units); a name taken by another file
      ("“B.jpg” is already taken. Choose a different name."). Nothing is ever overwritten (the rename
      is `renamex_np(…, RENAME_EXCL)`); a name differing only in case renames.
    - A changed extension asks first, as Finder does ("Keep .jpg" default / "Use .png").
@@ -284,7 +284,7 @@ section for these yet; Task 10 writes one from the Decisions below. Rules: `AGEN
     different name."
   - `public enum FileRenamer`:
     - `static func check(_ name: String) -> RenameProblem?` — on the name trimmed of whitespace and
-      newlines: empty; contains "/", ":" or a control character; starts with "."; > 255 UTF-8 bytes.
+      newlines: empty; contains "/", ":" or a control character; starts with "."; > 255 UTF-16 units.
     - `static func trimmed(_ name: String) -> String`
     - `static func stemRange(of name: String) -> NSRange` — UTF-16 range of the part before the last
       "."; the whole name when there is no "." after the first character.

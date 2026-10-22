@@ -97,6 +97,18 @@ import Testing
         #expect(FileRenamer.check("a b.jpg") == nil)
     }
 
+    /// The disk counts a name's length in characters, not UTF-8 bytes: long non-ASCII names fit.
+    @Test func lengthCountsCharactersNotBytes() throws {
+        #expect(FileRenamer.check(String(repeating: "é", count: 130) + ".jpg") == nil)
+        #expect(FileRenamer.check(String(repeating: "日", count: 100)) == nil)
+        #expect(FileRenamer.check(String(repeating: "é", count: 252) + ".jpg") == .tooLong)
+        let dir = try Fixtures.makeTempDir()
+        try touch(dir, "a.jpg")
+        let name = String(repeating: "é", count: 251) + ".jpg"
+        let renamed = try FileRenamer.rename(dir.appendingPathComponent("a.jpg"), to: name, sidecars: [])
+        #expect(FileManager.default.fileExists(atPath: renamed.path))
+    }
+
     @Test func checkAcceptsFormatCharacters() {
         #expect(FileRenamer.check("👨\u{200D}👩\u{200D}👧.jpg") == nil)
         #expect(FileRenamer.check("می\u{200C}خواهم.jpg") == nil)

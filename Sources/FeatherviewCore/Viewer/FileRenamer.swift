@@ -27,7 +27,8 @@ public enum FileRenamer {
         if name.contains("/") || name.contains(":")
             || name.unicodeScalars.contains { $0.properties.generalCategory == .control } { return .invalidCharacter }
         if name.hasPrefix(".") { return .hidden }
-        if name.utf8.count > 255 { return .tooLong }
+        // APFS and HFS+ cap a name at 255 characters (UTF-16 units on HFS+), not UTF-8 bytes.
+        if name.utf16.count > 255 { return .tooLong }
         return nil
     }
 
@@ -50,41 +51,42 @@ public enum FileRenamer {
         if let problem = check(name) { throw problem }
         let name = trimmed(name)
         if name == file.lastPathComponent { return file }
-        let folder = file.deletingLastPathComponent()
+        // Target paths stay strings: URL decomposes "é" into two characters, which can push a name past 255.
+        let folder = file.deletingLastPathComponent().path
         let stem = (name as NSString).deletingPathExtension
-        let moves = [(file, folder.appendingPathComponent(name))] + sidecars.map { sidecar in
+        let moves = [(file.path, "\(folder)/\(name)")] + sidecars.map { sidecar in
             let ext = sidecar.pathExtension
-            return (sidecar, folder.appendingPathComponent(ext.isEmpty ? stem : "\(stem).\(ext)"))
+            return (sidecar.path, "\(folder)/\(ext.isEmpty ? stem : "\(stem).\(ext)")")
         }
         for (source, target) in moves where isAnotherItem(target, than: source) {
-            throw RenameProblem.taken(target.lastPathComponent)
+            throw RenameProblem.taken((target as NSString).lastPathComponent)
         }
-        try move(file, to: moves[0].1)
+        try move(moves[0].0, to: moves[0].1)
         for (sidecar, target) in moves.dropFirst() {
             // shortcut: a sidecar that fails to rename stays behind silently; surface it if users report lost edits.
             try? move(sidecar, to: target)
         }
-        return moves[0].1
+        return URL(filePath: moves[0].1)
     }
 
     /// RENAME_EXCL: an existing target fails atomically (no check-then-rename race). A case-only change
     /// on a case-insensitive volume is the same item, which the volume allows. Renames a link, not its target.
-    private static func move(_ source: URL, to target: URL) throws {
-        if source.lastPathComponent == target.lastPathComponent { return }
-        guard renamex_np(source.path, target.path, UInt32(RENAME_EXCL)) == 0 else {
+    private static func move(_ source: String, to target: String) throws {
+        if source == target { return }
+        guard renamex_np(source, target, UInt32(RENAME_EXCL)) == 0 else {
             let code = errno
-            if code == EEXIST { throw RenameProblem.taken(target.lastPathComponent) }
+            if code == EEXIST { throw RenameProblem.taken((target as NSString).lastPathComponent) }
             throw POSIXError(POSIXErrorCode(rawValue: code) ?? .EIO)
         }
     }
 
     /// Whether `target` exists and isn't `source` itself (the same file under another case).
     /// Neither path is resolved: a link is its own item, and a dangling one still takes its name.
-    private static func isAnotherItem(_ target: URL, than source: URL) -> Bool {
-        guard (try? FileManager.default.attributesOfItem(atPath: target.path)) != nil else { return false }
+    private static func isAnotherItem(_ target: String, than source: String) -> Bool {
+        guard (try? FileManager.default.attributesOfItem(atPath: target)) != nil else { return false }
         let key: Set<URLResourceKey> = [.fileResourceIdentifierKey]
-        guard let x = try? URL(filePath: source.path).resourceValues(forKeys: key).fileResourceIdentifier,
-              let y = try? URL(filePath: target.path).resourceValues(forKeys: key).fileResourceIdentifier
+        guard let x = try? URL(filePath: source).resourceValues(forKeys: key).fileResourceIdentifier,
+              let y = try? URL(filePath: target).resourceValues(forKeys: key).fileResourceIdentifier
         else { return true }
         return !x.isEqual(y)
     }
