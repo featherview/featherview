@@ -76,6 +76,24 @@ import Testing
         #expect(shown.last === first)
     }
 
+    @Test func pauseOnFirstPutsFrameZeroBackAndStays() async throws {
+        let url = try Self.gif(frames: 5, delay: 0.02)
+        let player = AnimationPlayer(colorSpace: nil)
+        var shown: [CGImage] = []
+        player.onFrame = { shown.append($0) }
+        let first = Self.bigFirst()
+        player.start(url: url, animation: try #require(Animation.read(url)), target: .full, first: first, playing: true)
+        for _ in 0..<50 where player.current == nil { try await Task.sleep(for: .milliseconds(20)) }
+        player.pauseOnFirst(showing: first)
+        #expect(player.pausedFrame == 0)
+        #expect(!player.isPlaying)
+        #expect(player.current == nil)
+        #expect(shown.last === first)
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(shown.last === first)
+        player.stop()
+    }
+
     @Test func hiddenPlayerKeepsOnlyTheFrameShown() async throws {
         let url = try Self.gif(frames: 30, delay: 0.04)
         let player = AnimationPlayer(colorSpace: nil)

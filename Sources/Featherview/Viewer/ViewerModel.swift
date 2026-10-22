@@ -535,16 +535,21 @@ final class ViewerModel {
 
     /// ⌥→ / ⌥←: pages of a multi-page TIFF, frames of an animation; nothing past either end, nor on a held (removed) image.
     func nextPage() {
-        guard !list.isHolding else { return }
+        guard !list.isHolding, !framesHeldForDifference else { return }
         if player.frameCount > 1 { player.step(forward: true) } else if page + 1 < pageCount { page += 1; show(page: page) }
     }
     func previousPage() {
-        guard !list.isHolding else { return }
+        guard !list.isHolding, !framesHeldForDifference else { return }
         if player.frameCount > 1 { player.step(forward: false) } else if page > 0 { page -= 1; show(page: page) }
     }
 
     /// G: pauses or plays the animation shown.
-    func toggleAnimation() { player.togglePlaying() }
+    func toggleAnimation() {
+        guard !framesHeldForDifference else { return }
+        player.togglePlaying()
+    }
+    /// The difference is made from frame 0: pane 1 stays on it while the difference shows.
+    private var framesHeldForDifference: Bool { player.frameCount > 1 && compareSession?.showsDifference == true }
 
     /// The system's "Play animated images" changed: the animation shown follows it.
     func animatedImagesSettingChanged() {
@@ -1550,10 +1555,9 @@ final class ViewerModel {
         if compareSession.showsDifference { return endDifference(compareSession) }
         guard availability.canShowDifference else { return }
         compareSession.showsDifference = true
-        if player.isPlaying {
-            player.togglePlaying()
-            pausedForDifference = true
-        }
+        pausedForDifference = player.isPlaying
+        // The difference is made from frame 0 (the model's image), so pane 1 shows that frame.
+        if let image { player.pauseOnFirst(showing: image) }
         updateDifference()
     }
 
