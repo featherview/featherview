@@ -6,7 +6,7 @@ import Testing
         #expect(ViewerKey.action(characters: "r", shift: false) == .rotateRight)
         #expect(ViewerKey.action(characters: "R", shift: false) == .rotateRight)  // Caps Lock
         #expect(ViewerKey.action(characters: "=", shift: false) == .zoomIn)
-        #expect(ViewerKey.action(characters: "x", shift: false) == nil)
+        #expect(ViewerKey.action(characters: "q", shift: false) == nil)
     }
 
     // US '+' is Shift+=; AZERTY digits need Shift.
@@ -34,6 +34,17 @@ import Testing
         #expect(ViewerKey.action(characters: "g", shift: false) == .toggleAnimation)
         #expect(ViewerKey.action(characters: "G", shift: false) == .toggleAnimation)  // Caps Lock
         #expect(ViewerKey.action(characters: "G", shift: true) == nil)
+    }
+
+    @Test func xSwapsDTogglesDifference() {
+        #expect(ViewerKey.action(characters: "x", shift: false) == .swapImages)
+        #expect(ViewerKey.action(characters: "d", shift: false) == .toggleDifference)
+        #expect(ViewerKey.action(characters: "D", shift: false) == .toggleDifference)  // Caps Lock
+    }
+
+    @Test func shiftXIsNothing() {
+        #expect(ViewerKey.action(characters: "X", shift: true) == nil)
+        #expect(ViewerKey.action(characters: "D", shift: true) == nil)
     }
 
     @Test func arrowStepsFollowLayoutDirection() {
