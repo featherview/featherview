@@ -20,6 +20,7 @@ plutil -replace NSHumanReadableCopyright -string "© $(date +%Y) Joachim Rütter
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp Resources/Feather.svg "$APP/Contents/Resources/Feather.svg"
 # The accent colour (Info.plist NSAccentColorName): feather coral in dark, a darker brown in light.
+# DocumentBadge.iconset (UTTypeIconBadgeName of our types) is rendered from Feather.svg (rsvg-convert per size).
 xcrun actool Resources/Assets.xcassets --compile "$APP/Contents/Resources" --platform macosx \
   --minimum-deployment-target 14.0 --output-format human-readable-text --notices --warnings \
   --output-partial-info-plist build/assets-info.plist >/dev/null
