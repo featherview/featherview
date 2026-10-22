@@ -866,6 +866,13 @@ final class ViewerModel {
                 ready[url] = nil
                 fileRevision += 1
                 if list.current == url { show(page: self.page) }
+                if let compareSession, compareSession.url == url {
+                    // Pane 2 shows the same file: its picture and size turned too.
+                    await compareSession.zoomCache.remove(url)
+                    compareSession.change(to: url)
+                    compareSession.info = nil
+                    showSecond()
+                }
             } catch RotateError.notFirstPage {
                 dropFailed(url)
                 errorMessage = isRotation
