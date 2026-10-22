@@ -117,7 +117,7 @@ struct ViewerView: View {
 
     private func imageCanvas(_ image: CGImage, insets: CanvasInsets, animatesZoom: Bool = true) -> some View {
         ImageCanvas(image: image, player: model.player, size: drawSize(image), pixelWidth: pixelSize(image).width,
-                    displayScale: displayScale, background: Theme.background, insets: insets, zoom: model.zoom,
+                    displayScale: displayScale, background: Theme.background, insets: insets, zoom: model.shownZoom,
                     arrival: model.arrival.id, start: model.arrival.start,
                     checkerboard: checkerboard, transform: model.pendingTransform, leaving: model.isLeaving,
                     panController: panController,
@@ -292,7 +292,7 @@ struct ViewerView: View {
     /// full pixel size, so a smaller decode shown while the full one loads already has its final size (never
     /// another file's size).
     private func drawSize(_ image: CGImage) -> CGSize {
-        let factor: Double? = switch model.zoom {
+        let factor: Double? = switch model.shownZoom {
         case .fit: nil
         case .factor(let factor): factor
         case .fillWidth: ZoomSteps.fillFactor(image: pixelSize(image), view: fitArea, displayScale: displayScale, mode: .width)

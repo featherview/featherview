@@ -53,6 +53,9 @@ final class ViewerModel {
     /// I, the menu item and the toolbar button: an image is shown, not the grid or two compared.
     var canShowInfo: Bool { availability.hasCurrent && !isGrid && compareSession == nil }
     private(set) var zoom = Zoom(ViewerModel.fitMode)
+    /// The zoom the canvas draws `image` at: a new file's reset to the fit mode reaches it with that file's image,
+    /// so the picture being left doesn't zoom (or animate) on its way out.
+    private(set) var shownZoom = Zoom(ViewerModel.fitMode)
     /// Bumped when a picture arrives (another file or page, or a fit mode chosen): the canvas then places it at
     /// `start` instead of keeping the relative scroll position.
     private(set) var arrival: (id: Int, start: ZoomStart) = (0, .keep)
@@ -460,6 +463,7 @@ final class ViewerModel {
     func setZoom(_ zoom: Zoom) {
         var needsReload = (zoom == .fit) != (self.zoom == .fit)
         self.zoom = zoom
+        shownZoom = zoom
         // Past the decoded step the image shows enlarged (drawn at its full size) until the next step lands.
         if !needsReload, page == 0, let shownStep, let factor = self.factor(for: shownStep.size) {
             let full = Int(max(shownStep.size.width, shownStep.size.height))
@@ -807,6 +811,7 @@ final class ViewerModel {
             arrival = (arrival.id + 1, AppSettings.keepZoom.value() ? .keep : zoom.start)
         }
         onScreen = (url, page)
+        if shownZoom != zoom { shownZoom = zoom }
         image = decoded
         errorMessage = nil
         // Starting from a window, the first interval waits for full screen (fullScreenTransitionEnded).
