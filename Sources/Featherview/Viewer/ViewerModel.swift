@@ -902,7 +902,8 @@ final class ViewerModel {
     func adjustDateTaken(to date: String) {
         guard let sheet = dateSheet else { return }
         dateSheet = nil
-        let urls = [sheet.url] + sheet.others
+        let selected = [sheet.url] + sheet.others
+        let urls = DateTaken.distinctFiles(selected)
         // Without a start date for the first file, the others get the same date.
         let delta = sheet.current.flatMap(DateTaken.wallTime).flatMap { from in
             DateTaken.wallTime(date).map { Int($0.timeIntervalSince(from)) }
@@ -925,15 +926,15 @@ final class ViewerModel {
                 }
                 return failures
             }.value
-            for url in urls { knownInfo[url] = nil }
+            for url in selected { knownInfo[url] = nil }
             fileRevision += 1  // the Info panel reloads
             // The status bar's date: the pixels didn't change, so no decode.
-            if !isGrid, let url = list.current, urls.contains(url) {
+            if !isGrid, let url = list.current, selected.contains(url) {
                 let page = page
                 let info = await Task.detached { FileInfo.read(url: url, page: page) }.value
                 if info.isFor(list.current, page: self.page) { fileInfo = info }
             }
-            if let focus = gridFocus, urls.contains(focus) { readGridInfo() }
+            if let focus = gridFocus, selected.contains(focus) { readGridInfo() }
             if failures.count > 1 {
                 errorMessage = String(localized: "\(failures.count) files couldn't be changed")
             } else if let failure = failures.first {

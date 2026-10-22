@@ -200,4 +200,17 @@ import UniformTypeIdentifiers
         #expect(DateTaken.original(of: target) == "2024:07:01 12:00:00")
         #expect((try? FileManager.default.destinationOfSymbolicLink(atPath: link.path)) != nil)
     }
+
+    @Test func distinctFilesDropsLinksToTheSameFile() throws {
+        let dir = try Fixtures.makeTempDir()
+        let a = dir.appendingPathComponent("a.jpg"), c = dir.appendingPathComponent("c.jpg")
+        try Data().write(to: a)
+        try Data().write(to: c)
+        let b = dir.appendingPathComponent("b.jpg"), d = dir.appendingPathComponent("d.jpg"), e = dir.appendingPathComponent("e.jpg")
+        try FileManager.default.createSymbolicLink(at: b, withDestinationURL: a)
+        try FileManager.default.createSymbolicLink(at: d, withDestinationURL: c)
+        try FileManager.default.createSymbolicLink(at: e, withDestinationURL: c)
+        #expect(DateTaken.distinctFiles([a, b, d, c, e]) == [a, d])
+        #expect(DateTaken.distinctFiles([b, a]) == [b])
+    }
 }

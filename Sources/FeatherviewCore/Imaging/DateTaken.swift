@@ -120,6 +120,12 @@ public enum DateTaken {
         setFileDates(url, date: date, offset: offset)
     }
 
+    /// One URL per file on disk, in order: `apply` changes a symlink's target, so a second link to it would shift it twice.
+    public static func distinctFiles(_ urls: [URL]) -> [URL] {
+        var seen = Set<String>()
+        return urls.filter { seen.insert($0.resolvingSymlinksInPath().path).inserted }
+    }
+
     /// Modified and created dates follow the date taken.
     public static func setFileDates(_ url: URL, date: String, offset: String?) {
         guard let instant = instant(date, offset: offset) else { return }
