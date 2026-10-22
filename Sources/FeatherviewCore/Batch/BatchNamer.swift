@@ -71,16 +71,17 @@ public struct BatchNamer: Sendable {
         let explicit = settings.renamePattern.contains("{part}")
         return parts.map { part in
             let base = pattern.baseName(original: original, index: index, date: date, part: part)
-            return name(explicit ? base : base + "-" + part, ext: ext, in: folder)
+            return name(base, label: explicit ? "" : "-" + part, ext: ext, in: folder)
         }
     }
 
-    private mutating func name(_ base: String, ext: String, in folder: URL) -> URL {
-        let suffixKey = folderKey(folder) + "/" + Self.normalized(base + "." + ext)
-        var url = Self.fitted(base, suffix: "", ext: ext, in: folder)
+    /// `label` (an appended part) is kept whole when the name is shortened; only `base` gives way.
+    private mutating func name(_ base: String, label: String = "", ext: String, in folder: URL) -> URL {
+        let suffixKey = folderKey(folder) + "/" + Self.normalized(base + label + "." + ext)
+        var url = Self.fitted(base, suffix: label, ext: ext, in: folder)
         var n = nextSuffix[suffixKey] ?? 2
         while taken.contains(key(url)) || ((!settings.safety.replaceExisting || Self.isFolder(url)) && fileExists(url)) {
-            url = Self.fitted(base, suffix: " \(n)", ext: ext, in: folder)
+            url = Self.fitted(base, suffix: label + " \(n)", ext: ext, in: folder)
             n += 1
         }
         nextSuffix[suffixKey] = n

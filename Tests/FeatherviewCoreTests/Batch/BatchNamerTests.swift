@@ -228,6 +228,17 @@ extension BatchNamerTests {
         #expect(names(&run, two[1], ["01", "02"]) == ["a-01 2.jpg", "a-02 2.jpg"])
     }
 
+    @Test func longNamesKeepTheirPartLabel() {
+        let long = String(repeating: "x", count: 252)
+        let inputs = [input("/a/\(long).gif"), input("/b/\(long).png")]
+        var namer = BatchNamer(settings: settings(), inputs: inputs) { _ in false }
+        let parts = names(&namer, inputs[0], ["01", "02", "03"])
+        let base = String(repeating: "x", count: 255 - "-01.jpg".utf8.count)
+        #expect(parts == ["01", "02", "03"].map { base + "-\($0).jpg" })
+        // A single output with the same long name doesn't clash with part 1.
+        #expect(names(&namer, inputs[1], []) == [String(repeating: "x", count: 251) + ".jpg"])
+    }
+
     @Test func staticFolderMatchesInstance() {
         var s = settings()
         s.outputFolder = "/out/{folder}"
