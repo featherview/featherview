@@ -364,7 +364,7 @@ final class ViewerModel {
     func chooserMove(_ delta: Int) { chooserSession.move(delta) }
     func chooserEnter() { chooserSession.enter() }
     func chooserUp() { chooserSession.up() }
-    func chooserOpen() { chooserSession.open { [weak self] in self?.open($0) } }
+    func chooserOpen() { chooserSession.open { [weak self] in self?.open($0, keepingCompare: true) } }
     func closeChooser() {
         countTask?.cancel()
         chooserSession.close()
