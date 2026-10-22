@@ -3,7 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
+    # Docs and notes never change the build.
+    paths-ignore: ['docs/**', '**.md', 'research/**', '.claude/**', '.github/ISSUE_TEMPLATE/**']
   pull_request:
+    paths-ignore: ['docs/**', '**.md', 'research/**', '.claude/**', '.github/ISSUE_TEMPLATE/**']
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -19,10 +22,10 @@ jobs:
       - name: Toolchain
         run: xcodebuild -version && swift --version
       - name: Build
-        run: swift build
+        # Everything, the app and tests included, in one debug build. The release bundle is built by the
+        # release itself (disk image), not here.
+        run: swift build --build-tests
       - name: Test
-        # shortcut: serial (~2 min); in parallel the run hangs on the 3-core runner, never locally,
+        # shortcut: serial (~3 min); in parallel the run hangs on the 3-core runner, never locally,
         # find the blocking test when CI needs to be faster.
-        run: swift test --no-parallel
-      - name: Bundle
-        run: scripts/bundle.sh release
+        run: swift test --skip-build --no-parallel
