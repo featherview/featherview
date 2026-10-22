@@ -82,6 +82,30 @@ import UniformTypeIdentifiers
         #expect(ImageSort.values(of: [link], key: .dateTaken)[link] == .date(date))
     }
 
+    @Test func sizeAndDateResolveOnlySymlinks() throws {
+        // Resolving every path walks each component with lstat: ~20x the size lookup, over the folder-open budget.
+        var dir = try Fixtures.makeTempDir()
+        for i in 0..<20 { dir.appendPathComponent("d\(i)") }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let names = (0..<2_000).map { "\($0).jpg" }
+        for name in names { FileManager.default.createFile(atPath: dir.appendingPathComponent(name).path, contents: Data(count: 1)) }
+        let fresh = { names.map { URL(fileURLWithPath: dir.appendingPathComponent($0).path) } }
+        // Fastest of five, fresh URLs each time (a URL caches its resource values).
+        func fastest(_ body: ([URL]) throws -> Void) rethrows -> Duration {
+            try (0..<5).map { _ in
+                let urls = fresh()
+                let start = ContinuousClock.now
+                try body(urls)
+                return ContinuousClock.now - start
+            }.min()!
+        }
+        let plain = try fastest { for url in $0 { _ = try url.resourceValues(forKeys: [.fileSizeKey, .isSymbolicLinkKey]) } }
+        var values: [URL: SortValue] = [:]
+        let sorted = fastest { values = ImageSort.values(of: $0, key: .size) }
+        #expect(values.count == 2_000)
+        #expect(sorted < plain * 2, "\(sorted) vs \(plain)")
+    }
+
     @Test func kindIsPerExtensionIgnoringCase() {
         let (a, b, c) = (url("a.jpg"), url("b.JPG"), url("c.zzzq"))
         let values = ImageSort.values(of: [a, b, c], key: .kind)

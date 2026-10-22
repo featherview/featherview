@@ -59,7 +59,12 @@ public enum ImageSort {
             let resourceKey: URLResourceKey = key == .size ? .fileSizeKey : .contentModificationDateKey
             for url in urls {
                 // The scanner lists symlinked images: read the image's size and date, not the link's.
-                guard let resources = try? url.resolvingSymlinksInPath().resourceValues(forKeys: [resourceKey]) else { continue }
+                // Resolving only links: a realpath walk on every file cost ~20x the lookup itself.
+                guard var resources = try? url.resourceValues(forKeys: [resourceKey, .isSymbolicLinkKey]) else { continue }
+                if resources.isSymbolicLink == true {
+                    guard let target = try? url.resolvingSymlinksInPath().resourceValues(forKeys: [resourceKey]) else { continue }
+                    resources = target
+                }
                 if key == .size {
                     values[url] = resources.fileSize.map(SortValue.bytes)
                 } else {
