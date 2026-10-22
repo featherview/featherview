@@ -414,6 +414,8 @@ final class ViewerModel {
     /// Shows `list.current` (page 0 unless `page` is given), then prefetches its neighbours so
     /// arrow keys feel instant. `keepsPlayer`: a zoom change, whose animation goes on at the new decode target.
     func show(page: Int = 0, keepsPlayer: Bool = false) {
+        // Work queued before T (a Trash, a move, a rotation) lands behind the grid; leaving it shows the image.
+        guard !isGrid else { return }
         // First: no frame of the file shown so far may land on the next one's canvas.
         if !keepsPlayer || player.url != list.current {
             player.stop(showing: player.url == list.current ? image : nil)
@@ -581,7 +583,7 @@ final class ViewerModel {
         Task {
             let animation = await Task.detached(priority: .userInitiated) { Animation.read(url) }.value
             // Another file, page or zoom took its place meanwhile.
-            guard let animation, list.current == url, page == 0, image === first, player.url == nil else { return }
+            guard let animation, list.current == url, page == 0, image === first, player.url == nil, !isGrid else { return }
             player.start(url: url, animation: animation, target: target, first: first, playing: AXAnimatedImagesEnabled())
             updateAvailability()
         }
@@ -716,7 +718,7 @@ final class ViewerModel {
         // Keeps the folder known, so the view says it's empty and ← / → still reach the chooser.
         if list.isEmpty { emptyFolder = openedFolder ?? url.deletingLastPathComponent() }
         // The leaving picture fades out ("gone", not "replaced"); the next one appears hard.
-        if image != nil {
+        if image != nil, !isGrid {
             isLeaving = true
             try? await Task.sleep(for: .seconds(Theme.Motion.leave))
         }
