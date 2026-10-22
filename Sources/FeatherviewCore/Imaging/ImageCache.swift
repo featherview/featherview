@@ -28,7 +28,9 @@ public actor ImageCache {
     private let colorSpace: CGColorSpace?
     private var images: [URL: (target: DecodeTarget, image: CGImage)] = [:]
     private var order: [URL] = []  // least recently used first
-    private var inFlight: [URL: (target: DecodeTarget, task: Task<CGImage, Error>, waiters: Int)] = [:]
+    private var inFlight: [URL: (target: DecodeTarget, task: Task<CGImage, Error>)] = [:]
+    // Per task, not per URL: a decode a newer request took over from must still be cancellable by its waiters.
+    private var waiters: [Task<CGImage, Error>: Int] = [:]
     private let queue: DecodeQueue
 
     /// `colorSpace`: the screen's, see `ImageDecoder.decode`. `queue` runs the decodes; caches that share one
@@ -53,7 +55,6 @@ public actor ImageCache {
         let task: Task<CGImage, Error>
         if let running = inFlight[url], running.target.serves(target), !running.task.isCancelled {
             task = running.task
-            inFlight[url]?.waiters += 1
         } else {
             let hdr = hdr, colorSpace = colorSpace, queue = queue
             let screens: [PixelSize]? = if case .fit(let screens) = target { screens } else { nil }
@@ -71,15 +72,19 @@ public actor ImageCache {
                     }
                 }
             }
-            inFlight[url] = (target, task, 1)
+            inFlight[url] = (target, task)
         }
+        waiters[task, default: 0] += 1
         // Only the current decode may store: a remove or a newer request supersedes this one.
-        defer { if inFlight[url]?.task == task { inFlight[url] = nil } }
+        defer {
+            if inFlight[url]?.task == task { inFlight[url] = nil }
+            waiters[task] = nil
+        }
         // A decode already running is not interrupted (ImageIO can't be), only waiting ones are skipped.
         let image = try await withTaskCancellationHandler {
             try await task.value
         } onCancel: {
-            Task { await self.leave(url, task) }
+            Task { await self.leave(task) }
         }
         // Outside the queue's window (the user moved on while it ran) it would push out an image still wanted.
         // Stored for the decode's own target: a joined smaller thumbnail must not hide that it is larger.
@@ -87,10 +92,10 @@ public actor ImageCache {
         return image
     }
 
-    private func leave(_ url: URL, _ task: Task<CGImage, Error>) {
-        guard inFlight[url]?.task == task else { return }
-        inFlight[url]?.waiters -= 1
-        if inFlight[url]?.waiters == 0 { task.cancel() }
+    private func leave(_ task: Task<CGImage, Error>) {
+        guard let count = waiters[task] else { return }
+        waiters[task] = count - 1
+        if count == 1 { task.cancel() }
     }
 
     /// Warms the cache in the background. Failures are ignored here; they surface when shown.

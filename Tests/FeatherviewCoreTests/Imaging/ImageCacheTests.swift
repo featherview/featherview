@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import Testing
+import os
 @testable import FeatherviewCore
 
 @Suite struct ImageCacheTests {
@@ -190,6 +191,28 @@ import Testing
         #expect(try await large.value === small)
         // Kept as the 256 decode it is, so it still serves 256.
         #expect(try await cache.image(for: url, target: .thumbnail(256)) === small)
+    }
+
+    @Test func largerThumbnailTakingOverStillLetsTheSmallerBeCancelled() async throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("a.jpg"), width: 400, height: 300)
+        let queue = DecodeQueue(width: 1)
+        let cache = ImageCache(queue: queue)
+        // Holds the only thread, so both thumbnail decodes wait.
+        let started = OSAllocatedUnfairLock(initialState: false), release = DispatchSemaphore(value: 0)
+        let blocker = Task { try await queue.run(url) { started.withLock { $0 = true }; release.wait() } }
+        while !started.withLock({ $0 }) { await Task.yield() }
+        let small = Task { try await cache.image(for: url, target: .thumbnail(128)) }
+        while queue.waitingCount < 1 { await Task.yield() }
+        let large = Task { try await cache.image(for: url, target: .thumbnail(256)) }
+        while queue.waitingCount < 2 { await Task.yield() }
+        small.cancel()
+        let deadline = ContinuousClock.now + .seconds(2)
+        while queue.waitingCount > 1, ContinuousClock.now < deadline { await Task.yield() }
+        release.signal()
+        _ = await blocker.result
+        // Its waiting decode is dropped, not run and thrown away ahead of the 256 one.
+        await #expect(throws: CancellationError.self) { try await small.value }
+        #expect(try await large.value.width == 256)
     }
 
     @Test func smallerThumbnailDoesNotServeLarger() async throws {
