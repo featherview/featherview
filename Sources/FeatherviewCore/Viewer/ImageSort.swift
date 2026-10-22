@@ -58,12 +58,17 @@ public enum ImageSort {
         case .dateModified, .size:
             let resourceKey: URLResourceKey = key == .size ? .fileSizeKey : .contentModificationDateKey
             for url in urls {
+                // A URL keeps the values it read once: drop them, or a file saved since keeps its old size and date.
+                var fresh = url
+                fresh.removeAllCachedResourceValues()
                 // The scanner lists symlinked images: read the image's size and date, not the link's.
                 // Resolving only links: a realpath walk on every file cost ~20x the lookup itself.
-                guard var resources = try? url.resourceValues(forKeys: [resourceKey, .isSymbolicLinkKey]) else { continue }
+                guard var resources = try? fresh.resourceValues(forKeys: [resourceKey, .isSymbolicLinkKey]) else { continue }
                 if resources.isSymbolicLink == true {
-                    guard let target = try? url.resolvingSymlinksInPath().resourceValues(forKeys: [resourceKey]) else { continue }
-                    resources = target
+                    var target = url.resolvingSymlinksInPath()
+                    target.removeAllCachedResourceValues()
+                    guard let targetResources = try? target.resourceValues(forKeys: [resourceKey]) else { continue }
+                    resources = targetResources
                 }
                 if key == .size {
                     values[url] = resources.fileSize.map(SortValue.bytes)

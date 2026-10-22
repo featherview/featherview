@@ -69,6 +69,23 @@ import UniformTypeIdentifiers
         #expect(ImageSort.values(of: [dir.appendingPathComponent("gone.jpg")], key: .size).isEmpty)
     }
 
+    @Test func valuesRereadFilesChangedOnDisk() throws {
+        // The same URL values are read again after a save or Follow New Files: their cached values must not win.
+        let dir = try Fixtures.makeTempDir()
+        let file = dir.appendingPathComponent("a.jpg")
+        let link = dir.appendingPathComponent("link.jpg")
+        try Data(count: 10).write(to: file)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: file)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 0)], ofItemAtPath: file.path)
+        #expect(ImageSort.values(of: [file, link], key: .size) == [file: .bytes(10), link: .bytes(10)])
+        #expect(ImageSort.values(of: [file], key: .dateModified)[file] == .date(Date(timeIntervalSince1970: 0)))
+        try Data(count: 1_000).write(to: file)
+        let later = Date(timeIntervalSince1970: 1_000_000_000)
+        try FileManager.default.setAttributes([.modificationDate: later], ofItemAtPath: file.path)
+        #expect(ImageSort.values(of: [file, link], key: .size) == [file: .bytes(1_000), link: .bytes(1_000)])
+        #expect(ImageSort.values(of: [file], key: .dateModified)[file] == .date(later))
+    }
+
     @Test func valuesFollowSymlinksToTheImage() throws {
         let dir = try Fixtures.makeTempDir()
         let png = try Fixtures.writeImage(to: dir.appendingPathComponent("big.png"), width: 4, height: 4, type: .png)
