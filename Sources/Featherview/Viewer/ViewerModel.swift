@@ -299,6 +299,7 @@ final class ViewerModel {
                 list = ImageList(urls: urls, current: url)
                 if isFolder {
                     emptyFolder = urls.isEmpty ? url : nil
+                    if urls.isEmpty { leaveCompare() }  // the chooser keeps comparing; an empty list ends it
                     show()
                 } else if zoom == .fit, prefetchesNeighbors {
                     // The folder is listed: the title's position and the status bar needn't wait for the neighbours.
