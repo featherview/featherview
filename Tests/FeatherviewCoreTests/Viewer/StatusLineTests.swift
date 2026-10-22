@@ -23,4 +23,22 @@ import Testing
         #expect(line.fields.contains(ByteCountFormatter.string(fromByteCount: 333_509, countStyle: .file)))
         #expect(line.fields.contains(date.formatted(date: .abbreviated, time: .shortened)))
     }
+
+    @Test func framesWhilePlaying() {
+        let line = StatusLine.make(pixelSize: nil, zoomPercent: nil, fileBytes: nil, index: 0, count: 1,
+                                   page: 0, pageCount: 1, frame: nil, frameCount: 6, modified: nil)
+        #expect(line.fields == ["1 / 1", "6 frames"])
+    }
+
+    @Test func frameWhilePaused() {
+        let line = StatusLine.make(pixelSize: nil, zoomPercent: nil, fileBytes: nil, index: 0, count: 1,
+                                   page: 0, pageCount: 1, frame: 2, frameCount: 6, modified: nil)
+        #expect(line.fields == ["1 / 1", "frame 3 / 6"])
+    }
+
+    @Test func stillHasNoFrameField() {
+        let line = StatusLine.make(pixelSize: nil, zoomPercent: nil, fileBytes: nil, index: 0, count: 1,
+                                   page: 0, pageCount: 1, frame: 0, frameCount: 1, modified: nil)
+        #expect(line.fields == ["1 / 1"])
+    }
 }
