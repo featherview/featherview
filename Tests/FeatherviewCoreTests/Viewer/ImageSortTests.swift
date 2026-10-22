@@ -171,6 +171,31 @@ import UniformTypeIdentifiers
         #expect(ImageSort.first([], by: .finder, values: [:]) == nil)
     }
 
+    @Test func resortedRereadsDatesAndSizes() throws {
+        // A lossless rotate rewrites the file while the folder is open: its old date must not keep its place.
+        let dir = try Fixtures.makeTempDir()
+        let (a, b) = (dir.appendingPathComponent("a.jpg"), dir.appendingPathComponent("b.jpg"))
+        try Data(count: 10).write(to: a)
+        try Data(count: 20).write(to: b)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 2_000)], ofItemAtPath: a.path)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_000)], ofItemAtPath: b.path)
+        let stale: [URL: SortValue] = [a: .date(Date(timeIntervalSince1970: 0)), b: .date(Date(timeIntervalSince1970: 1_000))]
+        let byDate = ImageSort.resorted([a, b], by: SortOrder(key: .dateModified, ascending: false), cached: stale)
+        #expect(byDate.urls == [a, b])
+        #expect(byDate.values[a] == .date(Date(timeIntervalSince1970: 2_000)))
+        let bySize = ImageSort.resorted([a, b], by: SortOrder(key: .size, ascending: true), cached: [a: .bytes(99), b: .bytes(1)])
+        #expect(bySize.urls == [a, b])
+    }
+
+    @Test func resortedKeepsCachedDateTaken() {
+        // Date Taken reads every header: a new direction reuses what the last sort read, and reads only new files.
+        let (a, b) = (url("a.jpg"), url("b.jpg"))
+        let cached: [URL: SortValue] = [a: .date(Date(timeIntervalSince1970: 200)), b: .date(Date(timeIntervalSince1970: 100))]
+        let result = ImageSort.resorted([a, b], by: SortOrder(key: .dateTaken, ascending: true), cached: cached)
+        #expect(result.urls == [b, a])
+        #expect(result.values == cached)
+    }
+
     @Test func readsFileHeadersOnlyForDateTaken() {
         for key in SortKey.allCases {
             #expect(SortOrder(key: key, ascending: true).readsFileHeaders == (key == .dateTaken))

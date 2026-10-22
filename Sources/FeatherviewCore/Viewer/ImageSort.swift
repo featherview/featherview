@@ -102,6 +102,18 @@ public enum ImageSort {
         return entries(urls, values: values).sorted { precedes($0, $1, ascending: order.ascending) }.map(\.url)
     }
 
+    /// A re-sort of the open list (a new order, Date Taken after an open): reads the values and sorts. Reads the
+    /// disk: call off the main thread. Dates and sizes are read again (a save or lossless rotate rewrites a file);
+    /// only Date Taken keeps `cached`, reading files it lacks, since it reads every header.
+    /// shortcut: a file without EXIF whose date taken falls back to its modification date keeps the date read
+    /// first, re-read Date Taken for files changed since if that shows.
+    public static func resorted(_ urls: [URL], by order: SortOrder,
+                                cached: [URL: SortValue]) -> (urls: [URL], values: [URL: SortValue]) {
+        var values = order.readsFileHeaders ? cached : [:]
+        values.merge(self.values(of: urls.filter { values[$0] == nil }, key: order.key)) { $1 }
+        return (sorted(urls, by: order, values: values), values)
+    }
+
     /// The first of `sorted`, in one pass.
     public static func first(_ urls: [URL], by order: SortOrder, values: [URL: SortValue]) -> URL? {
         if order == .finder { return FolderScanner.firstInFinderOrder(urls) }
