@@ -131,7 +131,7 @@ private struct InfoToggle: View {
     var body: some View {
         Toggle("Info", systemImage: "info.circle", isOn: $model.showInfo)
             .help("Show info (I)")
-            .disabled(!model.availability.hasCurrent || model.isGrid)
+            .disabled(!model.availability.hasCurrent || model.isGrid || model.compareSession != nil)
     }
 }
 
