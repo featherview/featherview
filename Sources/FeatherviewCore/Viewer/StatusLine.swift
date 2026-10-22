@@ -10,14 +10,7 @@ public struct StatusLine: Equatable, Sendable {
     public static func make(pixelSize: CGSize?, zoomPercent: Int?, fileBytes: Int?, index: Int, count: Int,
                             page: Int, pageCount: Int, frame: Int? = nil, frameCount: Int = 1,
                             modified: Date?) -> StatusLine {
-        var fields: [String] = []
-        if let pixelSize {
-            let width = Int(pixelSize.width).formatted(), height = Int(pixelSize.height).formatted()
-            fields.append(String(localized: "\(width) × \(height)"))
-        }
-        if let zoomPercent {
-            fields.append((Double(zoomPercent) / 100).formatted(.percent))
-        }
+        var fields = unsaved(pixelSize: pixelSize, zoomPercent: zoomPercent).fields
         if let fileBytes {
             fields.append(ByteCountFormatter.string(fromByteCount: Int64(fileBytes), countStyle: .file))
         }
@@ -34,6 +27,19 @@ public struct StatusLine: Equatable, Sendable {
         }
         if let modified {
             fields.append(modified.formatted(date: .abbreviated, time: .shortened))
+        }
+        return StatusLine(fields: fields)
+    }
+
+    /// An image without a file (pasted from the clipboard): size and zoom only.
+    public static func unsaved(pixelSize: CGSize?, zoomPercent: Int?) -> StatusLine {
+        var fields: [String] = []
+        if let pixelSize {
+            let width = Int(pixelSize.width).formatted(), height = Int(pixelSize.height).formatted()
+            fields.append(String(localized: "\(width) × \(height)"))
+        }
+        if let zoomPercent {
+            fields.append((Double(zoomPercent) / 100).formatted(.percent))
         }
         return StatusLine(fields: fields)
     }
