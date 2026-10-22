@@ -26,7 +26,9 @@ public struct BatchNamer: Sendable {
 
     /// The folder `input`'s output goes to: `outputFolder` with `{folder}` = the input's parent
     /// folder name, plus the input's subfolder path below its `root` when `recreateSubfolders`.
-    public func folder(for input: BatchInput) -> URL {
+    public func folder(for input: BatchInput) -> URL { Self.folder(for: input, settings: settings) }
+
+    public static func folder(for input: BatchInput, settings: BatchSettings) -> URL {
         let parent = input.url.deletingLastPathComponent().standardizedFileURL
         guard !settings.outputFolder.isEmpty else { return parent }
         let name = parent.path == "/" ? "-" : parent.lastPathComponent
@@ -50,11 +52,30 @@ public struct BatchNamer: Sendable {
     /// may be returned (the caller trashes it first), never a folder; inputs and names given in this run still
     /// get suffixes.
     public mutating func next(for input: BatchInput, date: Date?) -> URL {
+        names(for: input, date: date, parts: [])[0]
+    }
+
+    /// The output URLs for a file that succeeded with several outputs, one per `parts` label (one URL,
+    /// as `next` gives, when `parts` is empty). Advances the counter once: every part shares `{n}`.
+    /// A pattern without `{part}` gets `-{part}` appended. Each name follows `next`'s clash rules.
+    public mutating func names(for input: BatchInput, date: Date?, parts: [String]) -> [URL] {
         let original = input.url.deletingPathExtension().lastPathComponent
-        let base = RenamePattern(settings.renamePattern).baseName(original: original, index: counter, date: date)
+        let pattern = RenamePattern(settings.renamePattern)
+        let index = counter
         counter += 1
         let ext = settings.changeFormat ? settings.format.fileExtension : input.url.pathExtension
         let folder = folder(for: input)
+        guard !parts.isEmpty else {
+            return [name(pattern.baseName(original: original, index: index, date: date), ext: ext, in: folder)]
+        }
+        let explicit = settings.renamePattern.contains("{part}")
+        return parts.map { part in
+            let base = pattern.baseName(original: original, index: index, date: date, part: part)
+            return name(explicit ? base : base + "-" + part, ext: ext, in: folder)
+        }
+    }
+
+    private mutating func name(_ base: String, ext: String, in folder: URL) -> URL {
         let suffixKey = folderKey(folder) + "/" + Self.normalized(base + "." + ext)
         var url = Self.fitted(base, suffix: "", ext: ext, in: folder)
         var n = nextSuffix[suffixKey] ?? 2

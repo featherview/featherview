@@ -184,6 +184,62 @@ import Testing
     }
 }
 
+// Several outputs per input (frames, pages, tiles).
+extension BatchNamerTests {
+    func names(_ namer: inout BatchNamer, _ input: BatchInput, _ parts: [String]) -> [String] {
+        namer.names(for: input, date: nil, parts: parts).map(\.lastPathComponent)
+    }
+
+    @Test func partsAppendedWhenPatternLacksPart() {
+        let inputs = [input("/a/a.gif")]
+        var namer = BatchNamer(settings: settings(), inputs: inputs) { _ in false }
+        #expect(names(&namer, inputs[0], ["01", "02"]) == ["a-01.jpg", "a-02.jpg"])
+    }
+
+    @Test func explicitPartPlaceholder() {
+        let inputs = [input("/a/a.gif")]
+        var namer = BatchNamer(settings: settings(pattern: "{part}_{name}"), inputs: inputs) { _ in false }
+        #expect(names(&namer, inputs[0], ["01", "02"]) == ["01_a.jpg", "02_a.jpg"])
+    }
+
+    @Test func singleOutputHasNoSuffix() {
+        let inputs = [input("/a/a.gif")]
+        var namer = BatchNamer(settings: settings(), inputs: inputs) { _ in false }
+        #expect(names(&namer, inputs[0], []) == ["a.jpg"])
+        var explicit = BatchNamer(settings: settings(pattern: "{name}_{part}"), inputs: inputs) { _ in false }
+        #expect(names(&explicit, inputs[0], []) == ["a_1.jpg"])
+    }
+
+    @Test func counterCountsInputs() {
+        let inputs = [input("/a/a.gif"), input("/a/b.png")]
+        var namer = BatchNamer(settings: settings(pattern: "{n}"), inputs: inputs) { _ in false }
+        #expect(names(&namer, inputs[0], ["01", "02"]) == ["1-01.jpg", "1-02.jpg"])
+        #expect(names(&namer, inputs[1], []) == ["2.jpg"])
+    }
+
+    @Test(arguments: [false, true]) func partsClashGetSuffixes(replace: Bool) {
+        let one = [input("/a/a.gif")]
+        var namer = BatchNamer(settings: settings(), inputs: one) { $0.lastPathComponent == "a-01.jpg" }
+        #expect(names(&namer, one[0], ["01", "02"]) == ["a-01 2.jpg", "a-02.jpg"])
+        // Names given earlier in this run are never handed out again, even with Replace existing.
+        let two = [input("/a/a.gif"), input("/b/a.tif")]
+        var run = BatchNamer(settings: settings(safety: SafetySettings(replaceExisting: replace)), inputs: two) { _ in false }
+        #expect(names(&run, two[0], ["01", "02"]) == ["a-01.jpg", "a-02.jpg"])
+        #expect(names(&run, two[1], ["01", "02"]) == ["a-01 2.jpg", "a-02 2.jpg"])
+    }
+
+    @Test func staticFolderMatchesInstance() {
+        var s = settings()
+        s.outputFolder = "/out/{folder}"
+        s.safety = SafetySettings(recreateSubfolders: true)
+        let namer = BatchNamer(settings: s, inputs: []) { _ in false }
+        for i in [input("/photos/Holiday/x.jpg"),
+                  BatchInput(url: URL(fileURLWithPath: "/photos/2024/May/x.jpg"), root: URL(fileURLWithPath: "/photos"))] {
+            #expect(BatchNamer.folder(for: i, settings: s) == namer.folder(for: i))
+        }
+    }
+}
+
 @Suite struct BatchCopyTests {
     @Test func copyKeepsBytes() throws {
         let dir = try Fixtures.makeTempDir()
