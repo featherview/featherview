@@ -11,6 +11,19 @@ import Testing
         Slideshow.Options(interval: .seconds(seconds), shuffle: shuffle, repeats: repeats)
     }
 
+    @Test func startsOnlyOnceTheFolderIsListed() {
+        #expect(Slideshow.mayStart(hasCurrent: true, isOpening: false))
+        #expect(!Slideshow.mayStart(hasCurrent: true, isOpening: true))  // the list holds only the opened file
+        #expect(!Slideshow.mayStart(hasCurrent: false, isOpening: false))
+    }
+
+    @Test func waitsForFullScreenOnlyWhenAWindowEntersIt() {
+        #expect(Slideshow.waitsForFullScreen(requested: true, isFullScreen: false, hasWindow: true))
+        #expect(!Slideshow.waitsForFullScreen(requested: true, isFullScreen: true, hasWindow: true))
+        #expect(!Slideshow.waitsForFullScreen(requested: false, isFullScreen: false, hasWindow: true))
+        #expect(!Slideshow.waitsForFullScreen(requested: true, isFullScreen: false, hasWindow: false))
+    }
+
     /// Shows the current image at `at` and ticks once its interval is over.
     private func advance(_ show: inout Slideshow, at: ContinuousClock.Instant) -> URL? {
         if let current = show.current { show.shown(current, at: at) }
@@ -174,6 +187,14 @@ import Testing
         show.shown(u(1), at: t0)
         show.hold(at: t0 + .seconds(5))
         #expect(show.due == t0 + .seconds(10))
+    }
+
+    @Test func holdWhilePausedStaysPaused() {
+        var show = Slideshow(urls: urls(3), from: u(1), options: options(), seed: 1)
+        show.shown(u(1), at: t0)
+        _ = show.togglePause(at: t0 + .seconds(1))
+        show.hold(at: t0 + .seconds(2))  // a zoom while paused
+        #expect(show.due == nil)
     }
 
     @Test func failedSkipsInDirection() {

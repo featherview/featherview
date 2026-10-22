@@ -58,6 +58,8 @@ final class ViewerModel {
         var canGoBack = false
         var canGoForward = false
         var hasCurrent = false
+        /// W, ⇧A: an image shows and its folder is listed.
+        var canStartSlideshow = false
         /// Rotate, Trash, F7 / F8: not on a held (already removed) image.
         var canChangeFile = false
         var hasPages = false
@@ -75,9 +77,11 @@ final class ViewerModel {
         let pastEnd = isOpening ? .loop : AppSettings.pastEndBehavior
         // In the grid → moves between cells, not images (Decision 8).
         let canBrowse = folder != nil && !isGrid
-        let new = Availability(canGoBack: canBrowse && pastEnd.canStep(forward: false, index: list.index, count: list.urls.count),
-                               canGoForward: canBrowse && pastEnd.canStep(forward: true, index: list.index, count: list.urls.count),
+        // A slideshow steps in its play order, which has no Finder ends.
+        let new = Availability(canGoBack: canBrowse && (slideshow != nil || pastEnd.canStep(forward: false, index: list.index, count: list.urls.count)),
+                               canGoForward: canBrowse && (slideshow != nil || pastEnd.canStep(forward: true, index: list.index, count: list.urls.count)),
                                hasCurrent: list.current != nil,
+                               canStartSlideshow: Slideshow.mayStart(hasCurrent: list.current != nil, isOpening: isOpening),
                                // In the grid these act on one viewed image (Decision 13).
                                canChangeFile: list.current != nil && !list.isHolding && !isGrid,
                                hasPages: (pageCount > 1 || player.frameCount > 1) && !list.isHolding && !isGrid,
@@ -225,6 +229,7 @@ final class ViewerModel {
     /// folder takes longer to list and sort than the image takes to decode.
     /// `keepingCompare`: pane 1 changes folder (a swap or a compare start), pane 2 stays.
     func open(_ url: URL, keepingCompare: Bool = false) {
+        endSlideshow()
         openTask?.cancel()
         closeGrid()
         if !keepingCompare { leaveCompare() }
@@ -325,16 +330,19 @@ final class ViewerModel {
     func next() {
         guard !isGrid else { return }
         forward = true
+        if slideshow != nil { return slideshowStep(forward: true) }
         if list.next() { show() } else { pastEnd(forward: true) }
     }
 
     func previous() {
         guard !isGrid else { return }
         forward = false
+        if slideshow != nil { return slideshowStep(forward: false) }
         if list.previous() { show() } else { pastEnd(forward: false) }
     }
-    func first() { list.first(); show() }
-    func last() { list.last(); show() }
+    /// Home / End: nothing during a slideshow, a shuffled round has no first or last.
+    func first() { guard slideshow == nil else { return }; list.first(); show() }
+    func last() { guard slideshow == nil else { return }; list.last(); show() }
 
     func setZoom(_ zoom: Zoom) {
         var needsReload = (zoom == .fit) != (self.zoom == .fit)
@@ -344,7 +352,13 @@ final class ViewerModel {
         }
         self.zoom = zoom
         // A held image is gone from disk: show() would release it and decode the next file at the held page.
-        if needsReload, !list.isHolding { show(page: page, keepsPlayer: true) }
+        if needsReload, !list.isHolding {
+            show(page: page, keepsPlayer: true)
+        } else if slideshow != nil {
+            // No re-decode, so no `shown`: the zoomed image still gets a full interval.
+            slideshow?.hold(at: .now)
+            slideshowChanged()
+        }
     }
 
     private func pastEnd(forward: Bool) {
@@ -521,6 +535,14 @@ final class ViewerModel {
             } catch {
                 guard !Task.isCancelled else { return }
                 endNavigation("failed")
+                // A slideshow skips a file it couldn't show without a message, unless every one failed. Once shown, a
+                // failed page or zoom leaves a readable file: its error shows, as outside one, and the interval runs on.
+                if var slideshow, !(slideshow.shownCurrent && slideshow.current == url) {
+                    let next = slideshow.failed(url)
+                    self.slideshow = slideshow
+                    slideshowChanged()
+                    if let next { return go(to: next) }
+                }
                 fileInfo = nil
                 image = nil  // pageCount stays: one bad page mustn't hide the file's other pages
                 errorMessage = String(localized: "Can't open \(url.lastPathComponent)")
@@ -560,7 +582,9 @@ final class ViewerModel {
             decodes.focus([])
             return []
         }
-        let neighbors = list.neighbors(radius: !prefetchesNeighbors ? 0 : zoom == .fit ? 2 : 1, forward: forward)
+        let neighbors = !prefetchesNeighbors ? []
+            : slideshow?.neighbors(ahead: zoom == .fit ? 2 : 1)
+            ?? list.neighbors(radius: zoom == .fit ? 2 : 1, forward: forward)
         // Pane 2's file right after the image shown: a held arrow key never drops its decode.
         decodes.focus([url] + (compareSession.map { [$0.url] } ?? []) + neighbors)
         return neighbors
@@ -647,6 +671,11 @@ final class ViewerModel {
         }
         image = decoded
         errorMessage = nil
+        // Starting from a window, the first interval waits for full screen (fullScreenTransitionEnded).
+        if slideshow != nil, !waitingForFullScreen {
+            slideshow?.shown(url, at: .now)
+            slideshowChanged()
+        }
         // Measures until the model has the image, not until it is on screen: the `Navigate` signpost covers that.
         let elapsed = started.duration(to: .now).components
         let ms = elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000
@@ -735,9 +764,18 @@ final class ViewerModel {
         await fullSizeCache.remove(url)
         let wasCurrent = list.current == url
         let wasLast = list.index == list.urls.count - 1
-        let hold = wasCurrent && !wasLast && !AppSettings.showNextAfterRemoval.value()
+        // A slideshow decides what shows: the next in play order, never held.
+        var slideshowNext: URL?
+        if slideshow != nil { slideshowNext = slideshow?.remove(url) }
+        let hold = slideshow == nil && wasCurrent && !wasLast && !AppSettings.showNextAfterRemoval.value()
         // Held, the removed file stays current, so ⌘⌫, F7 / F8, R / L and Info can't reach the unseen next one.
         list.remove(url, hold: hold)
+        if let slideshowNext {
+            _ = list.select(slideshowNext)
+            slideshowChanged()
+        } else if wasCurrent {
+            endSlideshow()  // none left in the play order
+        }
         if let compareSession, compareSession.url == url { secondFailed(compareSession, url: url) }
         guard wasCurrent, !hold else { return }
         // Keeps the folder known, so the view says it's empty and ← / → still reach the chooser.
@@ -1018,6 +1056,7 @@ final class ViewerModel {
     func toggleGrid() {
         if isGrid { return viewFromGrid(gridFocus) }
         guard availability.canShowGrid else { return }
+        endSlideshow()
         leaveCompare()
         gridShow = Signposts.poster.beginInterval("GridShow", id: Signposts.poster.makeSignpostID())
         if thumbnails == nil {
@@ -1125,6 +1164,7 @@ final class ViewerModel {
 
     /// Shows `first` in pane 1 (selected in the list, or its folder opened) and `second` in pane 2. Leaves the grid.
     func compare(_ first: URL, with second: URL) {
+        endSlideshow()
         if isGrid {
             viewFromGrid(first)
         } else if list.current != first {
@@ -1276,6 +1316,155 @@ final class ViewerModel {
         guard let compareShow else { return }
         Signposts.poster.endInterval("CompareShow", compareShow.state, "\(outcome, privacy: .public)")
         self.compareShow = nil
+    }
+
+    // MARK: Slideshow
+
+    enum SlideshowState: Equatable { case playing, paused, finished }
+    /// Nil without a slideshow; set only when it changes.
+    private(set) var slideshowState: SlideshowState?
+    /// The play order and timing; views observe `slideshowState`.
+    @ObservationIgnored var slideshow: Slideshow?
+    /// Sleeps until the slideshow's `due`, then shows the next image.
+    @ObservationIgnored private var slideshowTask: Task<Void, Never>?
+    /// Keeps the display awake while the slideshow plays in a visible window.
+    @ObservationIgnored private var slideshowActivity: NSObjectProtocol?
+    @ObservationIgnored private var windowVisible = true
+    /// Started from a window: the first interval counts once full screen is entered.
+    @ObservationIgnored private var waitingForFullScreen = false
+
+    /// W (full screen) and ⇧A (in the window): plays the list from the current image; in the grid, from its focused cell.
+    func startSlideshow(fullScreen: Bool) {
+        if isGrid { viewFromGrid(gridFocus) }
+        leaveCompare()
+        guard slideshow == nil, Slideshow.mayStart(hasCurrent: list.current != nil, isOpening: isOpening),
+              let current = list.listedCurrent else { return }
+        slideshow = Slideshow(urls: list.urls, from: current, options: AppSettings.slideshowOptions,
+                              seed: .random(in: .min ... .max))
+        if Slideshow.waitsForFullScreen(requested: fullScreen, isFullScreen: isFullScreen, hasWindow: window != nil) {
+            waitingForFullScreen = true
+            toggleFullScreen()
+        }
+        slideshowChanged()
+        // Shown again: its interval starts, and the neighbours prefetched are the play order's.
+        guard let first = slideshow?.current else { return }
+        if first == list.current { show(page: page, keepsPlayer: true) } else { go(to: first) }  // go(to:) drops a held image
+    }
+
+    /// Stops the timer and lets the display sleep again, at once.
+    func endSlideshow() {
+        guard slideshow != nil else { return }
+        slideshow = nil
+        waitingForFullScreen = false
+        slideshowChanged()
+    }
+
+    /// Esc, W, ⇧⌘F during a slideshow: back to the window on the image shown.
+    func endSlideshowLeavingFullScreen() {
+        endSlideshow()
+        if isFullScreen { toggleFullScreen() }
+    }
+
+    /// Space: pauses, resumes, or once finished plays a new round from the start.
+    func toggleSlideshowPause() {
+        guard var slideshow else { return }
+        let url = slideshow.togglePause(at: .now)
+        self.slideshow = slideshow
+        slideshowChanged()
+        if let url {
+            forward = true
+            go(to: url)
+        }
+    }
+
+    /// View › Slideshow Options changed: applies to the image on screen.
+    func slideshowOptionsChanged() {
+        guard var slideshow else { return }
+        let before = slideshow.neighbors(ahead: 2)
+        slideshow.setOptions(AppSettings.slideshowOptions)
+        self.slideshow = slideshow
+        slideshowChanged()
+        // A reshuffle changes what comes next.
+        guard zoom == .fit, prefetchesNeighbors, slideshow.neighbors(ahead: 2) != before else { return }
+        let neighbors = focusDecodes()
+        Task { await cache.prefetch(neighbors, target: .fit(screens)) }
+    }
+
+    /// The window finished entering or leaving full screen: a slideshow started from the window starts its first
+    /// interval, also when AppKit dropped the toggle (sent while leaving full screen).
+    func fullScreenTransitionEnded() {
+        guard waitingForFullScreen else { return }
+        waitingForFullScreen = false
+        // Not on screen yet: `shown` starts it when it is.
+        if let url = slideshow?.current, url == list.current, image != nil, errorMessage == nil {
+            slideshow?.shown(url, at: .now)
+        }
+        slideshowChanged()
+    }
+
+    /// Minimized, covered or on another Space: animations and the slideshow wait; visible again, the image gets a
+    /// full interval.
+    func setWindowVisible(_ visible: Bool) {
+        player.setVisible(visible)
+        guard visible != windowVisible else { return }
+        windowVisible = visible
+        if visible { slideshow?.hold(at: .now) }
+        if slideshow != nil { slideshowChanged() }
+    }
+
+    private func go(to url: URL) {
+        guard list.select(url) else { return endSlideshow() }  // gone from the list meanwhile
+        show()
+    }
+
+    private func slideshowStep(forward: Bool) {
+        guard var slideshow else { return }
+        let url = slideshow.step(forward: forward)
+        self.slideshow = slideshow
+        slideshowChanged()
+        if let url { go(to: url) }
+    }
+
+    /// After every change to the slideshow or the window's visibility: state, display sleep, timer.
+    private func slideshowChanged() {
+        let state: SlideshowState? = slideshow.map { $0.isFinished ? .finished : $0.isPaused ? .paused : .playing }
+        if state != slideshowState { slideshowState = state }
+        updateAvailability()
+        updateActivity()
+        slideshowTask?.cancel()
+        slideshowTask = nil
+        guard windowVisible, let due = slideshow?.due else { return }
+        slideshowTask = Task { [weak self] in
+            try? await Task.sleep(until: due, clock: .continuous)
+            guard !Task.isCancelled else { return }
+            self?.slideshowDue()
+        }
+    }
+
+    /// Holds the display awake exactly while the slideshow plays in a visible window.
+    private func updateActivity() {
+        let wanted = slideshowState == .playing && windowVisible
+        if wanted, slideshowActivity == nil {
+            slideshowActivity = ProcessInfo.processInfo.beginActivity(options: .idleDisplaySleepDisabled, reason: "Slideshow")
+        } else if !wanted, let slideshowActivity {
+            ProcessInfo.processInfo.endActivity(slideshowActivity)
+            self.slideshowActivity = nil
+        }
+    }
+
+    private func slideshowDue() {
+        guard var slideshow else { return }
+        let now = ContinuousClock.now
+        // A panel, sheet or alert is open: the image stays a full interval more.
+        let busy = destinationPanel != nil || window?.attachedSheet != nil || NSApp.modalWindow != nil
+        if busy { slideshow.hold(at: now) }
+        let next = busy ? nil : slideshow.tick(at: now)
+        self.slideshow = slideshow
+        slideshowChanged()
+        if let next {
+            forward = true
+            go(to: next)
+        }
     }
 
     func showOpenPanel() {

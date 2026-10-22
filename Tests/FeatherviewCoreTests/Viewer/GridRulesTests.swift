@@ -100,6 +100,7 @@ import Testing
         ("b", [], .batch), ("+", [], .larger), ("+", .shift, .larger), ("=", [], .larger), ("-", [], .smaller),
         ("t", [], .toggle), ("o", [], .passOn(.open)), ("p", [], .passOn(.settings)),
         ("a", [], .passOn(.about)), ("m", [], .passOn(.minimize)), ("f", [], .passOn(.toggleFullScreen)),
+        ("w", [], .passOn(.slideshow)), ("A", .shift, .passOn(.playInWindow)),
     ] as [(String, MenuKey.Modifiers, GridKey)])
     func gridKeys(_ characters: String, _ modifiers: MenuKey.Modifiers, _ key: GridKey) {
         #expect(GridKey.action(characters: characters, modifiers: modifiers) == key)

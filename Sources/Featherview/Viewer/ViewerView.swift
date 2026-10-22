@@ -171,10 +171,16 @@ struct ViewerView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willEnterFullScreenNotification)) { note in
             if note.object as? NSWindow === model.window { model.isFullScreen = true }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { note in
+            if note.object as? NSWindow === model.window { model.fullScreenTransitionEnded() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { note in
+            if note.object as? NSWindow === model.window { model.fullScreenTransitionEnded() }
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willExitFullScreenNotification)) { note in
             if note.object as? NSWindow === model.window { model.isFullScreen = false }
         }
-        // Animations wait while nobody can see them (spec "Animation").
+        // Animations and the slideshow wait while nobody can see them (spec "Animation").
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didChangeOcclusionStateNotification)) { windowShown($0) }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didMiniaturizeNotification)) { windowShown($0) }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didDeminiaturizeNotification)) { windowShown($0) }
@@ -193,7 +199,7 @@ struct ViewerView: View {
         .onAppear {
             focused = true
             ViewerModel.windows.viewerOpened()
-            model.player.setVisible(true)
+            model.setWindowVisible(true)
             // Menu key equivalents (⌘C, ⌥1…) never reach onKeyPress; none of them is a browsing key.
             autoHide.keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
                 if event.window === model.window, !event.modifierFlags.isDisjoint(with: [.command, .control, .option]) {
@@ -204,8 +210,10 @@ struct ViewerView: View {
         }
         .onDisappear {
             ViewerModel.windows.viewerClosed()
-            // The main window's model outlives it; a reopened window plays on.
-            model.player.setVisible(false)
+            // The main window's model outlives it: the slideshow ends (and lets the display sleep), a reopened
+            // window's animation plays on.
+            model.endSlideshow()
+            model.setWindowVisible(false)
             model.closeWindow()
             if let monitor = autoHide.keyMonitor { NSEvent.removeMonitor(monitor) }
         }
@@ -341,7 +349,7 @@ struct ViewerView: View {
 
     private func windowShown(_ note: Notification) {
         guard let window = model.window, note.object as? NSWindow === window else { return }
-        model.player.setVisible(window.occlusionState.contains(.visible) && !window.isMiniaturized)
+        model.setWindowVisible(window.occlusionState.contains(.visible) && !window.isMiniaturized)
     }
 
     private func hidePointerInFullScreen() {
@@ -490,7 +498,10 @@ struct ViewerView: View {
                 return .handled
             case .downArrow: if !panController.pan(dx: 0, dy: 1) { model.next() }; return .handled
             case .upArrow: if !panController.pan(dx: 0, dy: -1) { model.previous() }; return .handled
-            case .space, .pageDown: model.next(); return .handled
+            case .space:
+                if model.slideshowState != nil { model.toggleSlideshowPause() } else { model.next() }
+                return .handled
+            case .pageDown: model.next(); return .handled
             case Self.backspace, .pageUp: model.previous(); return .handled
             case .home: model.first(); return .handled
             case .end: model.last(); return .handled
@@ -499,7 +510,8 @@ struct ViewerView: View {
             case Self.f8: model.showDestinations(.copy); return .handled
             case .return: model.toggleFullScreen(); return .handled
             case .escape:
-                // Compare first, then full screen.
+                // A slideshow first (it leaves full screen too), then compare, then full screen.
+                if model.slideshowState != nil { model.endSlideshowLeavingFullScreen(); return .handled }
                 if model.compareSession != nil { model.leaveCompare(); return .handled }
                 guard model.isFullScreen else { return .ignored }
                 model.toggleFullScreen()
@@ -540,7 +552,10 @@ struct ViewerView: View {
             guard model.compareSession != nil else { return false }
             model.swapCompared()
         case .toggleDifference: return false  // compare mode only
-        case .slideshow, .playInWindow: break
+        case .slideshow:
+            if model.slideshowState != nil { model.endSlideshowLeavingFullScreen() } else { model.startSlideshow(fullScreen: true) }
+        case .playInWindow:
+            if model.slideshowState != nil { model.endSlideshow() } else { model.startSlideshow(fullScreen: false) }
         }
         return true
     }
@@ -609,6 +624,11 @@ struct ImageContextMenu: View {
     let model: ViewerModel
 
     var body: some View {
+        if let state = model.slideshowState {
+            Button(state == .playing ? "Pause Slideshow" : "Resume Slideshow") { model.toggleSlideshowPause() }
+            Button("End Slideshow") { model.endSlideshowLeavingFullScreen() }
+            Divider()
+        }
         Button("Copy") { model.copyImage() }
         Divider()
         Button("Rotate Left") { model.rotate(.counterClockwise) }
@@ -969,6 +989,49 @@ struct ViewerCommands: Commands {
                 }
                 .disabled(model?.availability.hasCurrent != true)
             }
+            Divider()
+            let playing = model?.slideshowState != nil
+            Group {
+                Button(playing ? "End Slideshow  (W)" : "Start Slideshow  (W)") {
+                    if playing { model?.endSlideshowLeavingFullScreen() } else { model?.startSlideshow(fullScreen: true) }
+                }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+                Button(playing ? "Stop Playing  (⇧A)" : "Play in Window  (⇧A)") {
+                    if playing { model?.endSlideshow() } else { model?.startSlideshow(fullScreen: false) }
+                }
+            }
+            .disabled(!playing && model?.availability.canStartSlideshow != true)
+            if let state = model?.slideshowState {
+                Button(state == .playing ? "Pause Slideshow  (Space)" : "Resume Slideshow  (Space)") {
+                    model?.toggleSlideshowPause()
+                }
+            }
+            SlideshowOptionsMenu(model: model)
+        }
+    }
+}
+
+/// View › Slideshow Options: a submenu, so it can be changed mid-show from the menu bar.
+private struct SlideshowOptionsMenu: View {
+    let model: ViewerModel?
+    @AppStorage(AppSettings.slideshowSeconds.key) private var seconds = AppSettings.slideshowSeconds.defaultValue
+    @AppStorage(AppSettings.slideshowShuffle.key) private var shuffle = AppSettings.slideshowShuffle.defaultValue
+    @AppStorage(AppSettings.slideshowRepeat.key) private var repeats = AppSettings.slideshowRepeat.defaultValue
+
+    /// Stores the choice, then tells the running slideshow, which reads it back from the settings.
+    private func binding<Value>(_ value: Binding<Value>) -> Binding<Value> {
+        Binding(get: { value.wrappedValue }, set: { value.wrappedValue = $0; model?.slideshowOptionsChanged() })
+    }
+
+    var body: some View {
+        Menu("Slideshow Options") {
+            Picker("Show Each Image For", selection: binding($seconds)) {
+                ForEach(Slideshow.intervals, id: \.self) { seconds in
+                    Text(Duration.seconds(seconds).formatted(.units(allowed: [.seconds], width: .wide))).tag(seconds)
+                }
+            }
+            Toggle("Shuffle", isOn: binding($shuffle))
+            Toggle("Repeat", isOn: binding($repeats))
         }
     }
 }

@@ -99,7 +99,7 @@ public enum GridKey: Equatable, Sendable {
         case .zoomIn: return .larger
         case .zoomOut: return .smaller
         case .toggleThumbnails: return .toggle
-        case .open, .settings, .about, .minimize, .toggleFullScreen: return .passOn(key)
+        case .open, .settings, .about, .minimize, .toggleFullScreen, .slideshow, .playInWindow: return .passOn(key)
         default: return nil
         }
     }

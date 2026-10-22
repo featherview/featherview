@@ -19,6 +19,14 @@ public struct Slideshow: Equatable, Sendable {
     /// The choices of View › Slideshow Options › Show Each Image For, in seconds.
     public static let intervals: [Int] = [1, 2, 3, 5, 10, 20, 30, 60]
 
+    /// W and ⇧A: not while the folder is still listed, when the play order would hold only the opened file.
+    public static func mayStart(hasCurrent: Bool, isOpening: Bool) -> Bool { hasCurrent && !isOpening }
+
+    /// The first interval waits for full screen only when a window is about to enter it.
+    public static func waitsForFullScreen(requested: Bool, isFullScreen: Bool, hasWindow: Bool) -> Bool {
+        requested && !isFullScreen && hasWindow
+    }
+
     public private(set) var options: Options
     public private(set) var isPaused = false
     public private(set) var isFinished = false
@@ -37,7 +45,7 @@ public struct Slideshow: Equatable, Sendable {
     /// The images that couldn't be shown since the last one that could.
     private var failedRun: Set<URL> = []
     /// `current` has been on screen, so resuming may start its interval.
-    private var shownCurrent = false
+    public private(set) var shownCurrent = false
 
     /// The first round plays from `current` (or the first image when it isn't listed).
     public init(urls: [URL], from current: URL, options: Options, seed: UInt64) {
@@ -98,7 +106,7 @@ public struct Slideshow: Equatable, Sendable {
         return nil
     }
 
-    /// A panel was open when the image was due: it stays a full interval more.
+    /// A panel was open when the image was due, or it was zoomed without a new decode: it stays a full interval more.
     public mutating func hold(at now: ContinuousClock.Instant) {
         if due != nil { due = now + options.interval }
     }
