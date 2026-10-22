@@ -20,7 +20,10 @@ let package = Package(
     ],
     targets: [
         // Everything testable without a window: scanning, decoding, caching, metadata, rotation, batch.
-        .target(name: "FeatherviewCore", dependencies: [.product(name: "libwebp", package: "libwebp-Xcode"), "CJPEGXR", "CJPEGXL"]),
+        .target(name: "FeatherviewCore", dependencies: [.product(name: "libwebp", package: "libwebp-Xcode"), "CJPEGXR"]),
+        // JPEG XL writing (libjxl). Only the app links it, so the Finder and Quick Look extensions stay without libjxl:
+        // every public and async symbol of FeatherviewCore survives dead-stripping. The app hands it to ImageEncoder.jxlEncoder.
+        .target(name: "FeatherviewJXL", dependencies: ["FeatherviewCore", "CJPEGXL"]),
         // jxrlib (BSD-2-Clause, Microsoft), vendored from github.com/Tom94/jxrlib at 0e1337d (Debian's
         // patches applied); only JPEGXRDecoder uses it. The encoder sources are there because the glue links them.
         .target(name: "CJPEGXR", exclude: ["jxrlib/LICENSE"],
@@ -42,7 +45,7 @@ let package = Package(
                 cxxSettings: cjpegxlDefines.map { .define($0.0, to: $0.1) } + cjpegxlHeaderPaths.map { .headerSearchPath($0) }
                     + [.unsafeFlags(["-w"])]),
         // The SwiftUI app. Thin: wires FeatherviewCore to windows, menus and keys.
-        .executableTarget(name: "Featherview", dependencies: ["FeatherviewCore"]),
+        .executableTarget(name: "Featherview", dependencies: ["FeatherviewCore", "FeatherviewJXL"]),
         // Finder thumbnails. SwiftPM can't make app extensions: scripts/bundle.sh wraps this binary in an .appex.
         .executableTarget(name: "FeatherviewThumbnail", dependencies: ["FeatherviewCore"],
                           linkerSettings: [.unsafeFlags(["-Xlinker", "-e", "-Xlinker", "_NSExtensionMain"])]),
@@ -51,7 +54,7 @@ let package = Package(
                           linkerSettings: [.unsafeFlags(["-Xlinker", "-e", "-Xlinker", "_NSExtensionMain"])]),
         .executableTarget(name: "FeatherviewBench", dependencies: ["FeatherviewCore"]),
         .executableTarget(name: "FeatherviewDMG", dependencies: ["FeatherviewCore"]),
-        .testTarget(name: "FeatherviewCoreTests", dependencies: ["FeatherviewCore"]),
+        .testTarget(name: "FeatherviewCoreTests", dependencies: ["FeatherviewCore", "FeatherviewJXL"]),
         .testTarget(name: "FeatherviewBenchTests", dependencies: ["FeatherviewBench"]),
     ],
     cxxLanguageStandard: .cxx17

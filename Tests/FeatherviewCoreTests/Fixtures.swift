@@ -3,11 +3,16 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 import libwebp
+@testable import FeatherviewCore
+import FeatherviewJXL
 
 /// Test images are generated, never committed: tiny, exact, and no licensing questions.
 enum Fixtures {
     /// The repository's root folder, for tests that read files shipped with the app.
     static let repo = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+
+    /// Gives `ImageEncoder` its JPEG XL encoder, as the app does at launch: `_ = Fixtures.jxl` before writing JPEG XL.
+    static let jxl: Void = { ImageEncoder.jxlEncoder = JXLEncoder.encode }()
 
     static func makeTempDir() throws -> URL {
         let url = FileManager.default.temporaryDirectory

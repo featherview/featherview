@@ -8,6 +8,10 @@ public enum EncodeError: Error, Equatable {
 
 /// Turns upright pixels into a file's bytes in any `OutputFormat`, with its options (spec "Format options").
 public enum ImageEncoder {
+    /// `FeatherviewJXL.JXLEncoder.encode`, set by the app at launch (not linked here, see Package.swift); nil: JPEG XL fails.
+    nonisolated(unsafe) public static var jxlEncoder: (@Sendable (CGImage, _ quality: Int, _ lossless: Bool, _ effort: Int,
+                                                                 _ xmp: Data?) throws -> Data)?
+
     /// `pages` are upright (orientation applied); only TIFF with "keep all pages" and PDF write more
     /// than the first. Metadata of `source` (camera, EXIF, GPS, IPTC) is kept where the format and
     /// "keep metadata" allow; the orientation tag is always 1. `dpi` is written for ImageIO formats.
@@ -28,8 +32,9 @@ public enum ImageEncoder {
             return try WebPEncoder.encode(try rgba(first), quality: options.quality, lossless: options.lossless,
                                           effort: options.effort, kind: options.webpKind)
         case .jxl:
-            return try JXLEncoder.encode(first, quality: options.quality, lossless: options.lossless, effort: options.effort,
-                                         xmp: metadataXMP(of: options.keepMetadata ? source : nil, dateTaken: dateTaken))
+            guard let jxlEncoder else { throw EncodeError.failed }
+            return try jxlEncoder(first, options.quality, options.lossless, options.effort,
+                                  metadataXMP(of: options.keepMetadata ? source : nil, dateTaken: dateTaken))
         case .pcx:  // PCX's header can't hold every size
             guard let data = try? PCXCodec.encode(try rgba(first)) else { throw EncodeError.failed }
             return data

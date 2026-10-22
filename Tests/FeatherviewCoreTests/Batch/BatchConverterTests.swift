@@ -3,6 +3,7 @@ import Foundation
 import ImageIO
 import Testing
 @testable import FeatherviewCore
+import FeatherviewJXL
 
 @Suite struct BatchConverterTests {
     final class Box<T: Sendable>: @unchecked Sendable {
@@ -308,6 +309,7 @@ import Testing
     }
 
     @Test func jxlInputsKeepTheirFormat() async throws {
+        _ = Fixtures.jxl
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let inputs = try ["a.jxl", "b.jxl"].map { name in
             let source = try ImageDecoder.decode(
@@ -332,6 +334,7 @@ import Testing
     }
 
     @Test func convertsToJXL() async throws {
+        _ = Fixtures.jxl
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let jpeg = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 40, height: 20)
         let context = try #require(CGContext(data: nil, width: 20, height: 20, bitsPerComponent: 8, bytesPerRow: 0,
@@ -1041,6 +1044,7 @@ import Testing
     }
 
     @Test(arguments: [true, false]) func dateSetInJXL(keepMetadata: Bool) async throws {
+        _ = Fixtures.jxl
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8, properties: [
             kCGImagePropertyExifDictionary: [kCGImagePropertyExifDateTimeOriginal: "2026:05:01 12:00:00",

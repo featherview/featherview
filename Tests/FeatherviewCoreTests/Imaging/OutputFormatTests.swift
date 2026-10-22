@@ -102,6 +102,7 @@ import Testing
     }
 
     @Test func jxlUsesItsOptions() throws {
+        _ = Fixtures.jxl
         let jxl = try #require(FormatRegistry.format(id: "jxl"))
         let lossless = try ImageEncoder.encode([image(200, 150)], as: jxl, options: jxl.defaultOptions.with { $0.lossless = true })
         let source = try #require(CGImageSourceCreateWithData(lossless as CFData, nil))
@@ -114,6 +115,7 @@ import Testing
     }
 
     @Test func rotatedPhotoKeepsMetadataUpright() throws {
+        _ = Fixtures.jxl
         let jxl = try #require(FormatRegistry.format(id: "jxl"))
         let dir = try Fixtures.makeTempDir()
         let input = try Fixtures.writeImage(

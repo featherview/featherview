@@ -40,6 +40,8 @@ appex() {
   dir="$APP/Contents/PlugIns/$1.appex/Contents"
   mkdir -p "$dir/MacOS"
   cp "$(swift build -c "$CONFIG" --show-bin-path $LINK)/$1" "$dir/MacOS/$1"
+  # They never encode: libjxl (several MB) belongs to FeatherviewJXL, which only the app links.
+  if nm "$dir/MacOS/$1" | grep -q _JxlEncoderCreate; then echo "error: $1 links libjxl's encoder" >&2; exit 1; fi
   cp "$2" "$dir/Info.plist"
   for key in CFBundleShortVersionString CFBundleVersion; do
     plutil -replace "$key" -string "$(plutil -extract "$key" raw Resources/Info.plist)" "$dir/Info.plist"
