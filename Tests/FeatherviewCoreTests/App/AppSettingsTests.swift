@@ -33,6 +33,8 @@ import Testing
         #expect(AppSettings.lastUpdateCheck.value(in: defaults) == .distantPast)
         #expect(AppSettings.skippedVersion.value(in: defaults) == "")
         #expect(defaults.double(forKey: AppSettings.thumbnailSize.key) == 128)
+        #expect(defaults.string(forKey: AppSettings.fitMode.key) == "fit")
+        #expect(defaults.object(forKey: AppSettings.keepZoom.key) as? Bool == false)
     }
 
     @Test func storedValueWinsAndWrongTypeFallsBack() {

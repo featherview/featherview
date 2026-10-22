@@ -460,6 +460,7 @@ struct ViewerView: View {
         case .saveAs: model.saveAs()
         case .toggleAnimation: model.toggleAnimation()
         case .toggleThumbnails: return .ignored
+        case .flipHorizontal, .flipVertical, .zoomToWidth, .zoomToHeight, .toggleKeepZoom: return .ignored
         }
         return .handled
     }

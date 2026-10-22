@@ -36,6 +36,25 @@ import Testing
         #expect(ViewerKey.action(characters: "G", shift: true) == nil)
     }
 
+    @Test func flipKeys() {
+        #expect(ViewerKey.action(characters: "h", shift: false) == .flipHorizontal)
+        #expect(ViewerKey.action(characters: "v", shift: false) == .flipVertical)
+        #expect(ViewerKey.action(characters: "H", shift: true) == nil)
+    }
+
+    @Test func fillKeys() {
+        #expect(ViewerKey.action(characters: "2", shift: false) == .zoomToWidth)
+        #expect(ViewerKey.action(characters: "3", shift: false) == .zoomToHeight)
+        #expect(ViewerKey.action(characters: "2", shift: true) == .zoomToWidth)  // AZERTY
+    }
+
+    @Test func shiftLTogglesKeepZoom() {
+        #expect(ViewerKey.action(characters: "L", shift: true) == .toggleKeepZoom)
+        #expect(ViewerKey.action(characters: "l", shift: false) == .rotateLeft)
+        #expect(ViewerKey.action(characters: "L", shift: false) == .rotateLeft)  // Caps Lock
+        #expect(ViewerKey.action(characters: "R", shift: true) == nil)
+    }
+
     @Test func arrowStepsFollowLayoutDirection() {
         #expect(ViewerKey.arrowGoesForward(isRightArrow: true, rightToLeft: false))
         #expect(!ViewerKey.arrowGoesForward(isRightArrow: false, rightToLeft: false))

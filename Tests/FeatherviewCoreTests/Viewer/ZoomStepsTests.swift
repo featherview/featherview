@@ -78,4 +78,53 @@ import Testing
         #expect(ZoomSteps.pixelSize(decoded: CGSize(width: 543, height: 362), full: CGSize(width: 4345, height: 2897))
                 == CGSize(width: 4345, height: 2897))
     }
+
+    private let view = CGSize(width: 1400, height: 800)
+
+    @Test func fillWidthEnlarges() {
+        let factor = ZoomSteps.fillFactor(image: CGSize(width: 900, height: 3000), view: view, displayScale: 2, mode: .width)
+        #expect(abs(factor - 2800.0 / 900) < 1e-9)
+    }
+
+    @Test func fillHeightShrinks() {
+        let factor = ZoomSteps.fillFactor(image: CGSize(width: 4000, height: 700), view: CGSize(width: 1400, height: 300),
+                                          displayScale: 2, mode: .height)
+        #expect(abs(factor - 600.0 / 700) < 1e-9)
+    }
+
+    @Test func fillFactorClamps() {
+        #expect(ZoomSteps.fillFactor(image: CGSize(width: 10, height: 20_000), view: view, displayScale: 2, mode: .width) == 16)
+        #expect(ZoomSteps.fillFactor(image: CGSize(width: 100_000, height: 10), view: view, displayScale: 2, mode: .width) == 0.05)
+        #expect(ZoomSteps.fillFactor(image: CGSize(width: 1, height: 1), view: view, displayScale: 2, mode: .height) == 16)
+        #expect(ZoomSteps.fillFactor(image: .zero, view: view, displayScale: 2, mode: .width) == 1)
+    }
+
+    @Test func fitModeFitIsFitFactor() {
+        let image = CGSize(width: 8688, height: 5792)
+        #expect(ZoomSteps.fillFactor(image: image, view: view, displayScale: 2, mode: .fit)
+                == ZoomSteps.fitFactor(image: image, view: view, displayScale: 2))
+    }
+
+    @Test func startOriginTop() {
+        let clear = CGSize(width: 2800, height: 1600)
+        #expect(ZoomSteps.startOrigin(.top, document: CGSize(width: 2800, height: 9000), clear: clear, rightToLeft: false)
+                == CGPoint(x: 0, y: 0))
+        #expect(ZoomSteps.startOrigin(.top, document: CGSize(width: 1000, height: 9000), clear: clear, rightToLeft: false)
+                == CGPoint(x: -900, y: 0))
+    }
+
+    @Test func startOriginLeading() {
+        #expect(ZoomSteps.startOrigin(.leading, document: CGSize(width: 9000, height: 1600),
+                                      clear: CGSize(width: 2800, height: 1600), rightToLeft: false) == CGPoint(x: 0, y: 0))
+    }
+
+    @Test func leadingStartIsRightInRightToLeft() {
+        #expect(ZoomSteps.startOrigin(.leading, document: CGSize(width: 9000, height: 1600),
+                                      clear: CGSize(width: 2800, height: 1600), rightToLeft: true) == CGPoint(x: 6200, y: 0))
+    }
+
+    @Test func keepHasNoOrigin() {
+        #expect(ZoomSteps.startOrigin(.keep, document: CGSize(width: 9000, height: 1600),
+                                      clear: CGSize(width: 2800, height: 1600), rightToLeft: false) == nil)
+    }
 }

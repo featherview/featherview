@@ -41,6 +41,10 @@ public enum AppSettings {
     public static let zoomStepPercent = Setting(key: "zoomStepPercent", defaultValue: 10)
     /// The thumbnail grid's cell side in points (`ThumbnailSize.range`).
     public static let thumbnailSize = Setting(key: "thumbnailSize", defaultValue: ThumbnailSize.standard)
+    /// Where every new image starts: a `FitMode` raw value, set by Zoom to Fit / Width / Height.
+    public static let fitMode = Setting(key: "fitMode", defaultValue: FitMode.fit.rawValue)
+    /// View › Keep Zoom: a new image keeps the zoom and scroll position of the one before.
+    public static let keepZoom = Setting(key: "keepZoom", defaultValue: false)
     // Full screen
     public static let showOverlay = Setting(key: "showOverlay", defaultValue: true)
     public static let overlayTemplate = Setting(key: "overlayTemplate", defaultValue: "{path} — {index} / {count}")
@@ -75,6 +79,8 @@ public enum AppSettings {
             rememberWindowFrame.key: rememberWindowFrame.defaultValue,
             zoomStepPercent.key: zoomStepPercent.defaultValue,
             thumbnailSize.key: thumbnailSize.defaultValue,
+            fitMode.key: fitMode.defaultValue,
+            keepZoom.key: keepZoom.defaultValue,
             showOverlay.key: showOverlay.defaultValue,
             overlayTemplate.key: overlayTemplate.defaultValue,
             hidePointer.key: hidePointer.defaultValue,

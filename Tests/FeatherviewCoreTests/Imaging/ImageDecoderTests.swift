@@ -144,6 +144,21 @@ import UniformTypeIdentifiers
         #expect(decision.withinFit == withinFit)
     }
 
+    /// Zoom to Width of a landscape photo on a landscape screen stays within its fit decode.
+    @Test func widthFillOfLandscapeStaysInCache() {
+        let decision = ImageDecoder.zoomDecode(size: PixelSize(width: 4000, height: 3000), factor: 0.7,
+                                               screens: [PixelSize(width: 3024, height: 1964)])
+        #expect(decision.withinFit)
+    }
+
+    /// Zoom to Width of a portrait needs full size, above its fit decode: the one-image fullSizeCache.
+    @Test func widthFillOfPortraitGoesToFullSizeCache() {
+        let decision = ImageDecoder.zoomDecode(size: PixelSize(width: 3024, height: 4032), factor: 0.93,
+                                               screens: [PixelSize(width: 3024, height: 1964)])
+        #expect(decision.step == 0)
+        #expect(!decision.withinFit)
+    }
+
     @Test func decodesAtAHalvingStep() throws {
         let dir = try Fixtures.makeTempDir()
         let url = try Fixtures.writeImage(to: dir.appendingPathComponent("z.jpg"), width: 4000, height: 2000, orientation: 6)
