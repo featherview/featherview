@@ -2,7 +2,7 @@ import Foundation
 
 /// Output file names for batch conversion.
 /// `{name}` = original base name, `{n}` = 1-based counter, `{n:3}` = counter zero-padded to 3 digits (at most 10),
-/// `{date}` = date taken as YYYY-MM-DD.
+/// `{date}` = date taken as YYYY-MM-DD, `{part}` = the frame, page or tile of an input with several outputs.
 /// Any other text is kept as typed.
 public struct RenamePattern: Equatable, Sendable {
     public let template: String
@@ -17,7 +17,8 @@ public struct RenamePattern: Equatable, Sendable {
     }
 
     /// `{date}` = `date` as YYYY-MM-DD (UTC-independent: the date as shot, local calendar); empty when nil.
-    public func baseName(original: String, index: Int, date: Date?) -> String {
+    /// `{part}` = `part`, or `1` when nil (an input with a single output).
+    public func baseName(original: String, index: Int, date: Date?, part: String? = nil) -> String {
         // Counter first: an original name that happens to contain "{n}" must stay literal.
         let numbered = template.replacing(/\{n(?::(\d+))?\}/) { match in
             let digits = String(index)
@@ -29,6 +30,7 @@ public struct RenamePattern: Equatable, Sendable {
             return String(format: "%04d-%02d-%02d", c.year!, c.month!, c.day!)
         } ?? ""
         let name = numbered
+            .replacingOccurrences(of: "{part}", with: part ?? "1")
             .replacingOccurrences(of: "{date}", with: day)
             .replacingOccurrences(of: "{name}", with: original)
             .replacingOccurrences(of: "/", with: "-")
