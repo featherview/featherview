@@ -12,6 +12,16 @@ public enum BatchReport {
         let bytes = ByteCountFormatStyle(style: .file, spellsOutZero: false)
         let sizeIn = Int64(bytesIn).formatted(bytes)
         let sizeOut = Int64(bytesOut).formatted(bytes)
+        let files = results.filter { $0.status == .converted }.reduce(0) { $0 + $1.outputs.count }
+        if files > converted {
+            guard !folder.isEmpty else {
+                return String(localized: "\(converted) of \(total) images converted into \(files) files in \(duration). \(sizeIn) in, \(sizeOut) out. Saved next to the originals.",
+                              comment: "Batch done summary: converted count, list count, files written, run time, bytes read, bytes written")
+            }
+            let place = (folder as NSString).abbreviatingWithTildeInPath
+            return String(localized: "\(converted) of \(total) images converted into \(files) files in \(duration). \(sizeIn) in, \(sizeOut) out. Saved to \(place).",
+                          comment: "Batch done summary: converted count, list count, files written, run time, bytes read, bytes written, output folder")
+        }
         guard !folder.isEmpty else {
             return String(localized: "\(converted) of \(total) images converted in \(duration). \(sizeIn) in, \(sizeOut) out. Saved next to the originals.",
                           comment: "Batch done summary: converted count, list count, run time, bytes read, bytes written")

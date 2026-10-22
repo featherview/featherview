@@ -707,6 +707,380 @@ import Testing
         ]
         #expect(BatchLog.text(results) == "a.jpg → a.png\nCan't open b.jpg\n1 converted, 1 failed")
     }
+
+    // MARK: Frames, pages, tiles and the date taken
+
+    func names(_ folder: URL) throws -> [String] {
+        try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted()
+    }
+
+    /// Red of the top-leading pixel.
+    func red(_ url: URL) throws -> Int {
+        Int(FrameSourceTests.pixel(try ImageDecoder.decode(url), x: 0, y: 0)[0])
+    }
+
+    /// A PNG whose top-leading quarter is red and the rest blue.
+    func writeQuarterRed(to url: URL, width: Int, height: Int) throws -> URL {
+        let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        context.setFillColor(CGColor(red: 0, green: 0, blue: 1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
+        context.fill(CGRect(x: 0, y: height / 2, width: width / 2, height: height / 2))  // y counts from the bottom
+        let png = try #require(FormatRegistry.format(id: "png"))
+        try ImageEncoder.encode([context.makeImage()!], as: png, options: FormatOptions()).write(to: url)
+        return url
+    }
+
+    func writePDF(to url: URL, pages: Int) throws -> URL {
+        let context = try #require(CGContext(url as CFURL, mediaBox: nil, nil))
+        for _ in 0..<pages {
+            var box = CGRect(x: 0, y: 0, width: 20, height: 10)
+            context.beginPDFPage([kCGPDFContextMediaBox: Data(bytes: &box, count: MemoryLayout<CGRect>.size)] as CFDictionary)
+            context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
+            context.fill(box)
+            context.endPDFPage()
+        }
+        context.closePDF()
+        return url
+    }
+
+    func exifDate(_ url: URL) -> String? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        return DateTaken.exifValue(source, kCGImagePropertyExifDateTimeOriginal)
+    }
+
+    @Test func framesOfGIF() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let gif = try Fixtures.writeAnimatedGIF(to: dir.appendingPathComponent("a.gif"), delays: [0.1, 0.1, 0.1], width: 8, height: 6)
+
+        let result = try #require(await BatchConverter.run(job([gif], out: out) { $0.frames.isOn = true }).first)
+
+        #expect(result.status == .converted)
+        #expect(result.outputs.map(\.lastPathComponent) == ["a-1.png", "a-2.png", "a-3.png"])
+        #expect(try names(out) == ["a-1.png", "a-2.png", "a-3.png"])
+        #expect(result.outputs.allSatisfy { ImageDecoder.displaySize(of: $0) == CGSize(width: 8, height: 6) })
+        // Frame n is red 40·n (through the GIF palette and colour management): each its own frame, in order.
+        let reds = try result.outputs.map(red)
+        #expect(reds[0] < 10 && reds[0] + 20 < reds[1] && reds[1] + 20 < reds[2])
+    }
+
+    @Test func pagesOfTIFFToJPEG() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let tiff = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("scan.tiff"), pages: 3)
+
+        let result = try #require(await BatchConverter.run(job([tiff], out: out, format: "jpg") { $0.frames.isOn = true }).first)
+
+        #expect(result.status == .converted)
+        #expect(result.message == nil)
+        #expect(result.outputs.map(\.lastPathComponent) == ["scan-1.jpg", "scan-2.jpg", "scan-3.jpg"])
+        #expect(result.outputs.map { ImageDecoder.displaySize(of: $0)?.width } == [8, 9, 10])
+    }
+
+    @Test func pdfOutputGetsOnePagePerFile() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let tiff = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("scan.tiff"), pages: 3)
+
+        let result = try #require(await BatchConverter.run(job([tiff], out: out, format: "pdf") { $0.frames.isOn = true }).first)
+
+        #expect(result.outputs.count == 3)
+        #expect(result.outputs.map { ImageDecoder.pageCount(of: $0) } == [1, 1, 1])
+    }
+
+    @Test func stillWithFramesStepIsOneOutput() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let still = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+
+        let result = try #require(await BatchConverter.run(job([still], out: out, format: "jpg") { $0.frames.isOn = true }).first)
+
+        #expect(result.outputs.map(\.lastPathComponent) == ["a.jpg"])
+        #expect(try names(out) == ["a.jpg"])
+    }
+
+    @Test func stillWithFramesStepKeepingFormatIsCopied() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let still = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+
+        let output = try #require(await BatchConverter.run(job([still], out: out) {
+            $0.changeFormat = false
+            $0.frames.isOn = true
+        }).first?.output)
+
+        #expect(try Data(contentsOf: output) == Data(contentsOf: still))
+    }
+
+    @Test func stillWithFramesStepSetsDateLosslessly() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let still = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+
+        let output = try #require(await BatchConverter.run(job([still], out: out) {
+            $0.changeFormat = false
+            $0.frames.isOn = true
+            $0.dateTaken.isOn = true
+            $0.dateTaken.mode = .set
+            $0.dateTaken.setTo = "2020:02:03 04:05:06"
+        }).first?.output)
+
+        #expect(try Data(contentsOf: output) == DateTaken.rewritten(still, date: "2020:02:03 04:05:06"))
+    }
+
+    @Test func tilesOfStill() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try writeQuarterRed(to: dir.appendingPathComponent("a.png"), width: 1600, height: 900)
+
+        let result = try #require(await BatchConverter.run(job([input], out: out) { $0.tiles.isOn = true }).first)
+
+        #expect(result.outputs.map(\.lastPathComponent) == ["a-1-1.png", "a-1-2.png", "a-2-1.png", "a-2-2.png"])
+        #expect(result.outputs.allSatisfy { ImageDecoder.displaySize(of: $0) == CGSize(width: 800, height: 450) })
+        let reds = try result.outputs.map(red)
+        #expect(reds[0] > 240 && reds.dropFirst().allSatisfy { $0 < 16 })
+    }
+
+    @Test func tilesOfMultiPageKeepNote() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let tiff = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("scan.tiff"), pages: 3)
+
+        let result = try #require(await BatchConverter.run(job([tiff], out: out, format: "jpg") {
+            $0.tiles.isOn = true
+            $0.tiles.columns = 2
+            $0.tiles.rows = 1
+        }).first)
+
+        #expect(result.outputs.map(\.lastPathComponent) == ["scan-1-1.jpg", "scan-1-2.jpg"])
+        #expect(result.message == "page 1 of 3")
+        #expect(result.outputs.allSatisfy { ImageDecoder.displaySize(of: $0) == CGSize(width: 4, height: 4) })
+    }
+
+    @Test func framesAndTiles() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let gif = try Fixtures.writeAnimatedGIF(to: dir.appendingPathComponent("a.gif"), delays: [0.1, 0.1], width: 8, height: 6)
+
+        let result = try #require(await BatchConverter.run(job([gif], out: out) {
+            $0.frames.isOn = true
+            $0.tiles.isOn = true
+            $0.tiles.columns = 2
+            $0.tiles.rows = 1
+        }).first)
+
+        #expect(result.outputs.map(\.lastPathComponent) == ["a-1-1-1.png", "a-1-1-2.png", "a-2-1-1.png", "a-2-1-2.png"])
+        let reds = try result.outputs.map(red)
+        #expect(reds[0] == reds[1] && reds[2] == reds[3] && reds[0] + 20 < reds[2])  // frame-major
+    }
+
+    @Test func counterSharedByParts() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let gif = try Fixtures.writeAnimatedGIF(to: dir.appendingPathComponent("a.gif"), delays: [0.1, 0.1])
+        let still = try Fixtures.writeImage(to: dir.appendingPathComponent("b.jpg"), width: 8, height: 8)
+
+        let results = await BatchConverter.run(job([gif, still], out: out) {
+            $0.frames.isOn = true
+            $0.renamePattern = "img-{n}"
+        })
+
+        #expect(results.flatMap(\.outputs).map(\.lastPathComponent) == ["img-1-1.png", "img-1-2.png", "img-2.png"])
+    }
+
+    /// A toy own format: 4 frames listed, frame 3 (index 2) unreadable. A truncated GIF can't stand in:
+    /// ImageIO lists only its complete frames.
+    static let brokenAnimation = OwnFormat(
+        name: "TOYBROKEN", extensions: ["fvbroken"],
+        size: { _, _ in CGSize(width: 4, height: 2) },
+        pageCount: { _ in 1 },
+        decode: { _, index, _ in
+            guard index < 2 else { throw OwnDecodeError.corrupt }
+            return RGBAImage(width: 4, height: 2).makeCGImage()!
+        },
+        delays: { _ in [0.04, 0.04, 0.04, 0.04] })
+
+    @Test func failedPartLeavesNothing() async throws {
+        OwnDecoders.register(Self.brokenAnimation)
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let cut = dir.appendingPathComponent("cut.fvbroken")
+        try Data([0]).write(to: cut)
+        let still = try Fixtures.writeImage(to: dir.appendingPathComponent("b.jpg"), width: 8, height: 8)
+
+        let results = await BatchConverter.run(job([cut, still], out: out) {
+            $0.frames.isOn = true
+            $0.renamePattern = "{n}"
+        })
+
+        #expect(results.map(\.status) == [.failed, .converted])
+        #expect(results[0].outputs.isEmpty)
+        #expect(try names(out) == ["1.png"])
+    }
+
+    @Test func commitFailureRemovesMovedParts() throws {
+        let out = try Fixtures.makeTempDir()
+        let parts = try (1...3).map { n -> (file: URL, label: String) in
+            let temp = out.appendingPathComponent(".featherview-\(UUID().uuidString).tmp")
+            try Data("\(n)".utf8).write(to: temp)
+            return (temp, "\(n)")
+        }
+        var settings = BatchSettings()
+        settings.outputFolder = out.path
+        settings.formatID = "png"
+        let input = BatchInput(url: URL(fileURLWithPath: "/in/a.gif"), root: nil)
+        var namer = BatchNamer(settings: settings, inputs: [input])
+        var calls = 0
+
+        let result = BatchConverter.commit(BatchConverter.Prepared(parts: parts), input: input, settings: settings,
+                                           namer: &namer, trash: { _ in }, move: { from, to in
+            calls += 1
+            return calls == 2 ? EIO : BatchConverter.moveExclusive(from, to)
+        })
+
+        #expect(result.status == .failed)
+        #expect(result.outputs.isEmpty)
+        #expect(try names(out).isEmpty)  // the first part removed again, no temp left
+        #expect(namer.next(for: input, date: nil).lastPathComponent == "a.png")  // the name wasn't spent
+    }
+
+    @Test func secondRunNeverOverwritesParts() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let gif = try Fixtures.writeAnimatedGIF(to: dir.appendingPathComponent("a.gif"), delays: [0.1, 0.1])
+        let job = job([gif], out: out) { $0.frames.isOn = true }
+        _ = await BatchConverter.run(job)
+        let first = try Data(contentsOf: out.appendingPathComponent("a-1.png"))
+
+        let second = try #require(await BatchConverter.run(job).first)
+
+        #expect(second.outputs.map(\.lastPathComponent) == ["a-1 2.png", "a-2 2.png"])
+        #expect(try Data(contentsOf: out.appendingPathComponent("a-1.png")) == first)
+        #expect(try names(out) == ["a-1 2.png", "a-1.png", "a-2 2.png", "a-2.png"])
+    }
+
+    @Test func partsAreOnDiskBeforeCommit() throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let gif = try Fixtures.writeAnimatedGIF(to: dir.appendingPathComponent("a.gif"), delays: [0.1, 0.1, 0.1])
+        let job = job([gif], out: out) { $0.frames.isOn = true }
+
+        let prepared = BatchConverter.prepare(job.inputs[0], index: 0, settings: job.settings, watermark: .success(nil))
+
+        #expect(prepared.error == nil)
+        #expect(prepared.data == nil)
+        #expect(prepared.parts.map(\.label) == ["1", "2", "3"])
+        #expect(prepared.parts.allSatisfy { FileManager.default.fileExists(atPath: $0.file.path) })
+        #expect(prepared.parts.allSatisfy { $0.file.deletingLastPathComponent().standardizedFileURL == out.standardizedFileURL })
+        #expect(prepared.parts.allSatisfy { $0.file.lastPathComponent.hasPrefix(".featherview-") })
+    }
+
+    @Test func keepFormatSplitsPDF() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let pdf = try writePDF(to: dir.appendingPathComponent("a.pdf"), pages: 2)
+
+        let result = try #require(await BatchConverter.run(job([pdf], out: out) {
+            $0.changeFormat = false
+            $0.frames.isOn = true
+        }).first)
+
+        #expect(result.status == .converted)
+        #expect(result.outputs.map(\.lastPathComponent) == ["a-1.pdf", "a-2.pdf"])
+        #expect(result.outputs.map { ImageDecoder.pageCount(of: $0) } == [1, 1])
+    }
+
+    @Test func dateSetOnReencode() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8, properties: [
+            kCGImagePropertyExifDictionary: [kCGImagePropertyExifDateTimeOriginal: "2024:05:01 12:00:00"]])
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_000_000_000)], ofItemAtPath: input.path)
+
+        let output = try #require(await BatchConverter.run(job([input], out: out) {
+            $0.safety.keepDates = true
+            $0.dateTaken.isOn = true
+            $0.dateTaken.mode = .set
+            $0.dateTaken.setTo = "2020:02:03 04:05:06"
+        }).first?.output)
+
+        #expect(output.pathExtension == "png")
+        #expect(exifDate(output) == "2020:02:03 04:05:06")
+        let modified = try FileManager.default.attributesOfItem(atPath: output.path)[.modificationDate] as? Date
+        #expect(modified == DateTaken.instant("2020:02:03 04:05:06", offset: nil))
+    }
+
+    @Test func dateShiftLosslessCopy() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 16, height: 8, properties: [
+            kCGImagePropertyExifDictionary: [kCGImagePropertyExifDateTimeOriginal: "2024:05:01 12:00:00"]])
+        let before = try Data(contentsOf: input)
+
+        let output = try #require(await BatchConverter.run(job([input], out: out) {
+            $0.changeFormat = false
+            $0.dateTaken.isOn = true
+            $0.dateTaken.shiftSeconds = 3600
+        }).first?.output)
+
+        #expect(output.lastPathComponent == "a.jpg")
+        #expect(exifDate(output) == "2024:05:01 13:00:00")
+        #expect(RGBAImage(try ImageDecoder.decode(output)) == RGBAImage(try ImageDecoder.decode(input)))
+        #expect(try Data(contentsOf: input) == before)
+    }
+
+    @Test func dateOnGIFCopyFails() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let gif = try Fixtures.writeImage(to: dir.appendingPathComponent("a.gif"), width: 8, height: 8, type: .gif)
+        let jpeg = try Fixtures.writeImage(to: dir.appendingPathComponent("b.jpg"), width: 8, height: 8)
+
+        let results = await BatchConverter.run(job([gif, jpeg], out: out) {
+            $0.changeFormat = false
+            $0.dateTaken.isOn = true
+            $0.dateTaken.mode = .set
+            $0.dateTaken.setTo = "2020:02:03 04:05:06"
+        })
+
+        #expect(results.map(\.status) == [.failed, .converted])
+        #expect(results[0].message == "Can't change the date taken of a.gif")
+        #expect(try names(out) == ["b.jpg"])
+    }
+
+    @Test func dateSetWithoutADateFails() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let result = try #require(await BatchConverter.run(job([input], out: out) {
+            $0.dateTaken.isOn = true
+            $0.dateTaken.mode = .set
+        }).first)
+        #expect(result.message == "Choose a date for the Date Taken step")
+    }
+
+    @Test func dateSetToAnUnreadableDateFails() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let result = try #require(await BatchConverter.run(job([input], out: out, format: "jpg") {
+            $0.dateTaken.isOn = true
+            $0.dateTaken.mode = .set
+            $0.dateTaken.setTo = "not a date"
+        }).first)
+        #expect(result.status == .failed)
+        #expect(result.message == "Choose a date for the Date Taken step")
+        #expect(try names(out).isEmpty)
+    }
+
+    @Test func dateShiftOutOfRangeFails() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8, properties: [
+            kCGImagePropertyExifDictionary: [kCGImagePropertyExifDateTimeOriginal: "2024:05:01 12:00:00"]])
+        let result = try #require(await BatchConverter.run(job([input], out: out, format: "jpg") {
+            $0.dateTaken.isOn = true
+            $0.dateTaken.shiftSeconds = .max
+        }).first)
+        #expect(result.status == .failed)
+        #expect(result.message == "Can't change the date taken of a.jpg")
+        #expect(try names(out).isEmpty)
+    }
+
+    @Test func dateRenamesByNewDate() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+
+        let output = try #require(await BatchConverter.run(job([input], out: out, format: "jpg") {
+            $0.renamePattern = "{date}"
+            $0.dateTaken.isOn = true
+            $0.dateTaken.mode = .set
+            $0.dateTaken.setTo = "2020:02:03 04:05:06"
+        }).first?.output)
+
+        #expect(output.lastPathComponent == "2020-02-03.jpg")
+    }
 }
 
 // Moved from the old BatchPlannerTests: RenamePattern stays.
