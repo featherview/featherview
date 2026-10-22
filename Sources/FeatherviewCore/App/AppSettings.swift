@@ -41,6 +41,9 @@ public enum AppSettings {
     public static let zoomStepPercent = Setting(key: "zoomStepPercent", defaultValue: 10)
     /// The thumbnail grid's cell side in points (`ThumbnailSize.range`).
     public static let thumbnailSize = Setting(key: "thumbnailSize", defaultValue: ThumbnailSize.standard)
+    /// View › Sort By, for every window (`SortKey` raw value; `SortOrder.stored()`).
+    public static let sortKey = Setting(key: "sortKey", defaultValue: SortKey.name.rawValue)
+    public static let sortAscending = Setting(key: "sortAscending", defaultValue: true)
     // Full screen
     public static let showOverlay = Setting(key: "showOverlay", defaultValue: true)
     public static let overlayTemplate = Setting(key: "overlayTemplate", defaultValue: "{path} — {index} / {count}")
@@ -75,6 +78,8 @@ public enum AppSettings {
             rememberWindowFrame.key: rememberWindowFrame.defaultValue,
             zoomStepPercent.key: zoomStepPercent.defaultValue,
             thumbnailSize.key: thumbnailSize.defaultValue,
+            sortKey.key: sortKey.defaultValue,
+            sortAscending.key: sortAscending.defaultValue,
             showOverlay.key: showOverlay.defaultValue,
             overlayTemplate.key: overlayTemplate.defaultValue,
             hidePointer.key: hidePointer.defaultValue,
