@@ -7,6 +7,12 @@ import Testing
         #expect(options == ["--screen": ["1x1", "2x2"], "--runs": ["1"]])
     }
 
+    @Test func gridOptionsParse() throws {
+        let options = try parseOptions(["--points", "128", "--scale", "2", "--cells", "40", "--width", "6",
+                                        "--json", "a.json", "--baseline", "b.json"], mode: "grid")
+        #expect(options.count == 6)
+    }
+
     @Test func misspelledOptionFails() {
         #expect(throws: OptionError("Unknown option --sreen for decode.")) {
             try parseOptions(["--sreen", "1x1"], mode: "decode")
