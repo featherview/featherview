@@ -19,6 +19,7 @@ final class RecentFiles {
     /// On the open path: no reload, which stats every recent item. A gone file (a stale entry chosen) isn't
     /// noted again; the reload drops its entry.
     func note(_ url: URL) {
+        guard RecentList.isRememberable(url) else { return }
         guard loaded else { return waiting.append(url) }
         guard !RecentList.isGone(url) else { return reload() }
         NSDocumentController.shared.noteNewRecentDocumentURL(url)

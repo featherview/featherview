@@ -62,4 +62,15 @@ import Testing
         #expect(RecentList.isGone(trashed))
         #expect(RecentList.isGone(dir.appending(path: "missing.jpg")))
     }
+
+    /// A dropped notes.txt shows "Can't open" and isn't listed; images and folders are.
+    @Test func onlyImagesAndFoldersAreRemembered() throws {
+        let dir = try Fixtures.makeTempDir()
+        let text = dir.appending(path: "notes.txt")
+        try Data().write(to: text)
+        #expect(RecentList.isRememberable(dir))
+        #expect(RecentList.isRememberable(dir.appending(path: "a.jpg")))
+        #expect(!RecentList.isRememberable(text))
+        #expect(!RecentList.isRememberable(dir.appending(path: "archive.zip")))
+    }
 }

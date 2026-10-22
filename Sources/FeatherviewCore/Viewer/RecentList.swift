@@ -34,6 +34,12 @@ public struct RecentList: Sendable {
         return parts.contains(".Trash") || parts.contains(".Trashes") || !FileManager.default.fileExists(atPath: url.path)
     }
 
+    /// What Featherview opens: an image (by extension) or a folder. A dropped notes.txt isn't listed.
+    public static func isRememberable(_ url: URL) -> Bool {
+        ImageFormats.isDecodable(url)
+            || (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+    }
+
     private static func merge(_ first: [URL], _ rest: [URL], limit: Int) -> [URL] {
         var seen = Set<String>()
         return Array((first + rest).filter { seen.insert($0.standardizedFileURL.path).inserted }.prefix(limit))
