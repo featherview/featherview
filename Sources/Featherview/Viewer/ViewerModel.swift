@@ -12,7 +12,7 @@ final class ViewerModel {
         case factor(Double)
     }
 
-    private(set) var list = ImageList(urls: []) { didSet { updateAvailability() } }
+    var list = ImageList(urls: []) { didSet { updateAvailability() } }
     private(set) var image: CGImage? { didSet { isLeaving = false } }
     /// Rotations and flips asked for (R, L, H, V) that the picture on screen doesn't show yet: the canvas shows
     /// them while the file is rewritten and decoded again.
@@ -125,12 +125,17 @@ final class ViewerModel {
     /// F7 / F8: which panel is open, if any.
     var destinationPanel: FileOperation?
     var slots = DestinationSlots(defaults: .standard)
+    /// View › Sort By: each listed file's value for `sortValuesKey`, read off the main thread (ViewerModel+Sort).
+    @ObservationIgnored var sortValues: [URL: SortValue] = [:]
+    @ObservationIgnored var sortValuesKey = SortKey.name
+    /// The re-sort running (Date Taken after an open, a new sort order); the next open cancels it.
+    @ObservationIgnored var sortTask: Task<Void, Never>?
 
     /// Fit mode decodes to fit every screen, per axis (rounded up to a halving step): enough for any window,
     /// less memory than full size.
     /// shortcut: screens are read at launch; a display plugged in later decodes for the old set, re-read on
     /// `NSApplication.didChangeScreenParametersNotification` if that comes up.
-    private let screens: [PixelSize] = {
+    let screens: [PixelSize] = {
         let screens = NSScreen.screens.map {
             PixelSize(width: Int($0.frame.width * $0.backingScaleFactor), height: Int($0.frame.height * $0.backingScaleFactor))
         }
@@ -144,7 +149,7 @@ final class ViewerModel {
     private let decodes = DecodeQueue()
     /// Counts opens, so a superseded open's scan can't refocus the newer one's decodes (checked under the lock).
     private let openCount = OSAllocatedUnfairLock(initialState: 0)
-    private let cache: ImageCache
+    let cache: ImageCache
     /// Zoom decodes larger than the fit decode: one kept, and ones nobody waits for any more are skipped.
     /// Zoom steps at or below fit size go in `cache`, as large as fit decodes.
     private let fullSizeCache: ImageCache
@@ -156,7 +161,7 @@ final class ViewerModel {
     private var loadTask: Task<Void, Never>?
     /// The page decode running, if any: ImageIO can't stop one, so the next waits for it (see show).
     private var pageDecode: Task<CGImage, Error>?
-    private var openTask: Task<Void, Never>?
+    var openTask: Task<Void, Never>?
     private var rotateTask: Task<Void, Never>?
     /// Rotations not yet done: the grid waits for them, a file being rewritten would give its old picture.
     @ObservationIgnored private var rotations = 0
@@ -224,6 +229,11 @@ final class ViewerModel {
     /// `keepingCompare`: pane 1 changes folder (a swap or a compare start), pane 2 stays.
     func open(_ url: URL, keepingCompare: Bool = false) {
         openTask?.cancel()
+        sortTask?.cancel()
+        sortValues = [:]
+        let order = SortOrder.stored()
+        // Date Taken reads every file's header: the list starts in name order and re-sorts after the first image.
+        let listOrder = order.readsFileHeaders ? SortOrder.finder : order
         closeGrid()
         if !keepingCompare { leaveCompare() }
         // Its decode may be dropped by the refocus below; cancelled, it ends quietly instead of showing an error.
@@ -251,19 +261,21 @@ final class ViewerModel {
         // window build, and its first image starts decoding at once (it used to wait for both).
         // Also reads the first image's file details while it decodes, so the status bar is complete in the
         // frame that shows the image (read after it, they waited for the toolbar build at launch).
-        let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache, decodes, openCount] () -> (scan: Result<[URL], Error>?, info: FileInfo?) in
+        let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache, decodes, openCount] () -> (scan: Result<[URL], Error>?, info: FileInfo?, values: [URL: SortValue]) in
             await cache.removeAll()
             await fullSizeCache.removeAll()
             guard isFolder else {
                 if let prefetch { await cache.prefetch([url], target: prefetch) }
-                return (nil, FileInfo.read(url: url, page: 0))
+                return (nil, FileInfo.read(url: url, page: 0), [:])
             }
             let scan = Result {
                 try Signposts.poster.withIntervalSignpost("Scan") {
                     try FolderScanner.images(around: url, includeHidden: includeHidden, sorted: false)
                 }
             }
-            let first = FolderScanner.firstInFinderOrder((try? scan.get()) ?? [])
+            let scanned = (try? scan.get()) ?? []
+            let values = ImageSort.values(of: scanned, key: listOrder.key)
+            let first = ImageSort.first(scanned, by: listOrder, values: values)
             if let prefetch, let first,
                // Not on the main actor: at launch it is busy building the window, and the decode would wait for it.
                openCount.withLock({ count in
@@ -273,12 +285,12 @@ final class ViewerModel {
                }) {
                 await cache.prefetch([first], target: prefetch)
             }
-            return (scan.map(FolderScanner.inFinderOrder), first.map { FileInfo.read(url: $0, page: 0) })
+            return (scan.map { ImageSort.sorted($0, by: listOrder, values: values) }, first.map { FileInfo.read(url: $0, page: 0) }, values)
         }
         openTask = Task {
             defer { if !Task.isCancelled { isOpening = false } }
             // prepare is detached: cancelling this task must reach it.
-            let (folderScan, firstInfo) = await withTaskCancellationHandler { await prepare.value } onCancel: { prepare.cancel() }
+            let (folderScan, firstInfo, folderValues) = await withTaskCancellationHandler { await prepare.value } onCancel: { prepare.cancel() }
             guard !Task.isCancelled else { return }
             if let firstInfo { knownInfo[firstInfo.url] = firstInfo }
             if !isFolder {
@@ -287,17 +299,24 @@ final class ViewerModel {
             }
             do {
                 let urls: [URL]
+                let values: [URL: SortValue]
                 if let folderScan {
                     urls = try folderScan.get()
+                    values = folderValues
                 } else {
-                    urls = try await Task.detached(priority: .userInitiated) {
-                        try Signposts.poster.withIntervalSignpost("Scan") {
-                            try FolderScanner.images(around: url, includeHidden: includeHidden)
+                    (urls, values) = try await Task.detached(priority: .userInitiated) {
+                        let scanned = try Signposts.poster.withIntervalSignpost("Scan") {
+                            try FolderScanner.images(around: url, includeHidden: includeHidden, sorted: false)
                         }
+                        let values = ImageSort.values(of: scanned, key: listOrder.key)
+                        return (ImageSort.sorted(scanned, by: listOrder, values: values), values)
                     }.value
                 }
                 guard !Task.isCancelled else { return }
                 list = ImageList(urls: urls, current: url)
+                sortValues = values
+                sortValuesKey = listOrder.key
+                if order.readsFileHeaders { applySortOrder() }
                 if isFolder {
                     emptyFolder = urls.isEmpty ? url : nil
                     if urls.isEmpty { leaveCompare() }  // the chooser keeps comparing; an empty list ends it
@@ -553,7 +572,7 @@ final class ViewerModel {
     /// ±1 zoomed, none in a background window, those ahead of the browsing direction first. Waiting decodes of
     /// other files are dropped, so a held key doesn't leave stale prefetches in front of the image the user stops at.
     @discardableResult
-    private func focusDecodes() -> [URL] {
+    func focusDecodes() -> [URL] {
         guard let url = list.current else {
             decodes.focus([])
             return []
