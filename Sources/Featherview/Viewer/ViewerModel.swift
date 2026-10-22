@@ -150,6 +150,8 @@ final class ViewerModel {
     private var pageDecode: Task<CGImage, Error>?
     private var openTask: Task<Void, Never>?
     private var rotateTask: Task<Void, Never>?
+    /// Rotations not yet done: the grid waits for them, a file being rewritten would give its old picture.
+    @ObservationIgnored private var rotations = 0
     /// ⌘C's full-size decodes: ImageIO can't stop one, so they run one at a time and held ⌘C skips the ones in between.
     private let copies = LatestWins()
     /// Read timings with: log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'
@@ -814,10 +816,12 @@ final class ViewerModel {
         let page = page
         let turn = rotation == .clockwise ? 1 : -1
         pendingTurns += turn
+        rotations += 1
         // The rotated file shows once the canvas has finished turning the picture, not part-way.
         let turned = ContinuousClock.now + .seconds(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : Theme.Motion.rotation)
         let previous = rotateTask
         rotateTask = Task {
+            defer { rotations -= 1 }
             await previous?.value
             do {
                 try await Task.detached(priority: .userInitiated) { try OrientationRotator.rotate(url, rotation, page: page) }.value
@@ -827,7 +831,6 @@ final class ViewerModel {
                 }
                 await cache.remove(url)
                 await fullSizeCache.remove(url)
-                thumbnails?.shown.removeObject(forKey: url as NSURL)
                 await thumbnails?.cache.remove(url)
                 try? await Task.sleep(until: turned)
                 knownInfo[url] = nil
@@ -866,20 +869,9 @@ final class ViewerModel {
     @ObservationIgnored private var gridShow: OSSignpostIntervalState?
 
     /// The grid's own decodes: a queue wider than the viewer's and a cache of 3 screens of pixels (Decisions 8, 9).
-    /// `shown` keeps what cells were given, so a cell scrolled back to shows its picture in the same frame (the
-    /// actor cache answers a frame later).
-    /// shortcut: `shown` may keep pictures `cache` dropped (up to the same budget again), share one store if memory matters.
     private struct Thumbnails {
         let queue: DecodeQueue
         let cache: ImageCache
-        let shown = NSCache<NSURL, ShownThumbnail>()
-    }
-
-    private final class ShownThumbnail {
-        let image: CGImage
-        /// The decode side it was asked for: it serves that side and smaller.
-        let side: Int
-        init(_ image: CGImage, side: Int) { self.image = image; self.side = side }
     }
 
     func toggleGrid() {
@@ -889,15 +881,14 @@ final class ViewerModel {
         if thumbnails == nil {
             let queue = DecodeQueue(width: max(2, min(6, ProcessInfo.processInfo.activeProcessorCount - 2)))
             let budget = ThumbnailSize.cacheBudget(screens: screens)
-            let made = Thumbnails(queue: queue, cache: ImageCache(capacity: .max, colorSpace: Self.screenSpace,
-                                                                  queue: queue, byteBudget: budget))
-            made.shown.totalCostLimit = budget
-            thumbnails = made
+            thumbnails = Thumbnails(queue: queue, cache: ImageCache(capacity: .max, colorSpace: Self.screenSpace,
+                                                                    queue: queue, byteBudget: budget))
         }
         loadTask?.cancel()
         endNavigation("superseded")
         player.stop()
         gridReturn = list.current
+        errorMessage = nil  // the viewed image's error would sit over the cells
         gridFocus = list.current
         gridSelection = list.current.map { [$0] } ?? []
         showInfo = false
@@ -918,7 +909,13 @@ final class ViewerModel {
     /// Esc: back to the image shown before T.
     func leaveGridCancelling() { viewFromGrid(gridReturn) }
 
-    /// Another file or folder opens, or the window closes: the grid goes, with its thumbnails.
+    /// The window closes: the grid goes, and the image viewed restarts (its decode, its animation) for a reopened window.
+    func closeWindow() {
+        viewFromGrid(list.current)
+        closeGrid()
+    }
+
+    /// Another file or folder opens: the grid goes, with its thumbnails.
     func closeGrid() {
         isGrid = false
         thumbnails = nil
@@ -933,19 +930,18 @@ final class ViewerModel {
         self.gridShow = nil
     }
 
-    /// A picture the grid already showed for `url` at `side` or larger, at once (no actor hop).
+    /// A kept picture for `url` at `side` or larger, at once (no actor hop), so a cell scrolled back to shows it
+    /// in the same frame.
     func shownThumbnail(_ url: URL, side: Int) -> CGImage? {
-        thumbnails?.shown.object(forKey: url as NSURL).flatMap { $0.side >= side ? $0.image : nil }
+        guard rotations == 0 else { return nil }
+        return thumbnails?.cache.cached(url, target: .thumbnail(side))
     }
 
     /// A cell's picture, decoded on the grid's queue, longest side at most `side`.
     func thumbnail(_ url: URL, side: Int) async throws -> CGImage {
-        if let shown = shownThumbnail(url, side: side) { return shown }
+        if rotations > 0 { await rotateTask?.value }
         guard let thumbnails else { throw CancellationError() }
-        let image = try await thumbnails.cache.image(for: url, target: .thumbnail(side))
-        thumbnails.shown.setObject(ShownThumbnail(image, side: side), forKey: url as NSURL,
-                                   cost: image.bytesPerRow * image.height)
-        return image
+        return try await thumbnails.cache.image(for: url, target: .thumbnail(side))
     }
 
     /// The cells wanted now, visible first, then ahead (`GridWindow.wanted`): waiting decodes of others are dropped.
@@ -1017,10 +1013,10 @@ final class ViewerModel {
         }
     }
 
-    /// ⌥1–⌥3: opens the current file in the app set in Settings › Open With.
+    /// ⌥1–⌥3: opens the current file in the app set in Settings › Open With. Not in the grid (Decision 13).
     func openWith(_ index: Int) {
         let path = AppSettings.openWith[index].value()
-        guard let url = list.current, !path.isEmpty else { return }
+        guard let url = list.current, !path.isEmpty, !isGrid else { return }
         Task {
             do {
                 _ = try await NSWorkspace.shared.open([url], withApplicationAt: URL(fileURLWithPath: path),
@@ -1033,6 +1029,6 @@ final class ViewerModel {
     }
 
     func showInFinder() {
-        if let url = list.current { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+        if let url = list.current, !isGrid { NSWorkspace.shared.activateFileViewerSelecting([url]) }
     }
 }

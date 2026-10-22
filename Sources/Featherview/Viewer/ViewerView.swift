@@ -219,7 +219,7 @@ struct ViewerView: View {
             ViewerModel.windows.viewerClosed()
             // The main window's model outlives it; a reopened window plays on.
             model.player.setVisible(false)
-            model.closeGrid()
+            model.closeWindow()
             if let monitor = autoHide.keyMonitor { NSEvent.removeMonitor(monitor) }
         }
         .onKeyPress(action: handle)
@@ -572,7 +572,7 @@ struct OpenWithMenu: View {
                     model?.openWith(index)
                 }
                 .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .option)
-                .disabled(path.isEmpty || model?.availability.hasCurrent != true)
+                .disabled(path.isEmpty || model?.availability.hasCurrent != true || model?.isGrid == true)
             }
         }
     }
@@ -824,10 +824,11 @@ struct ViewerCommands: Commands {
                 Button("Move to Trash  (⌘⌫ or ⌦)") { model?.moveCurrentToTrash() }
             }
             .disabled(model?.availability.canChangeFile != true)
+            // In the grid these would act on the image viewed before T, not the cells (Decision 13).
             Button("Show in Finder") { model?.showInFinder() }
-                .disabled(model?.availability.hasCurrent != true)
+                .disabled(model?.availability.hasCurrent != true || model?.isGrid == true)
             OpenWithMenu(model: model)
-            if let url = model?.list.current, let type = DefaultViewer.claimableType(for: url) {
+            if let url = model?.list.current, model?.isGrid != true, let type = DefaultViewer.claimableType(for: url) {
                 Button("Always Open .\(url.pathExtension.lowercased()) Files with Featherview") {
                     Task { await DefaultViewerOffer.claim(type); claims += 1 }
                 }
