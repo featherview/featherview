@@ -910,6 +910,13 @@ struct ViewerCommands: Commands {
             }
             Button("Show Info  (I)") { model?.showInfo.toggle() }
                 .disabled(model?.availability.hasCurrent != true || model?.isGrid == true || model?.compareSession != nil)
+            if model?.isGrid == true {
+                // The two selected cells, in list order.
+                Button("Compare") {
+                    if let model, model.gridSelection.count == 2 { model.compare(model.gridSelection[0], with: model.gridSelection[1]) }
+                }
+                .disabled(model?.gridSelection.count != 2)
+            }
             Divider()
             Button("Batch Convert…  (B)") { openWindow(id: "batch") }
                 .keyboardShortcut("b")

@@ -915,6 +915,7 @@ final class ViewerModel {
     func toggleGrid() {
         if isGrid { return viewFromGrid(gridFocus) }
         guard availability.canShowGrid else { return }
+        leaveCompare()
         gridShow = Signposts.poster.beginInterval("GridShow", id: Signposts.poster.makeSignpostID())
         if thumbnails == nil {
             let queue = DecodeQueue(width: max(2, min(6, ProcessInfo.processInfo.activeProcessorCount - 2)))
