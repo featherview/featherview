@@ -1,6 +1,7 @@
 import AppKit
 import FeatherviewCore
 import os
+import Quartz
 import SwiftUI
 
 /// The thumbnail grid (T): the viewer's list as cells, in its order, in place of the canvas. Visible cells ask the
@@ -13,6 +14,8 @@ struct ThumbnailGrid: NSViewRepresentable {
     let cellSize: Double
     /// The toolbar's and strip's room, as the canvas has; the grid scrolls under both.
     let insets: CanvasInsets
+    /// False while the F7 / F8 panel takes the keys; the grid takes them back when it closes.
+    let hasKeyboard: Bool
     /// The viewer's grid keys; Home and End are the grid's own.
     let onKey: (GridKey) -> Bool
 
@@ -63,6 +66,7 @@ struct ThumbnailGrid: NSViewRepresentable {
         private var urls: [URL] = []
         private var cellSize = 0.0
         private var insets: CanvasInsets?
+        private var hasKeyboard = true
         /// The cell to scroll to the middle once the grid has its width (entering).
         private var pendingScroll: Int?
         /// ⇧-click selects from this file's cell; a file, so it follows its cell when the list changes.
@@ -103,13 +107,18 @@ struct ThumbnailGrid: NSViewRepresentable {
                 if side != oldSide { refocus(force: true) }
             }
             if urls != view.urls { reload(view.urls) }
+            if hasKeyboard != view.hasKeyboard {
+                hasKeyboard = view.hasKeyboard
+                if hasKeyboard { grid.window?.makeFirstResponder(grid) }
+            }
         }
 
         /// The list changed (or the grid opened): every cell again, the selection kept by URL.
         private func reload(_ new: [URL]) {
             guard let grid else { return }
             let entering = urls.isEmpty
-            let selected = entering ? Set(model.gridSelection) : Set(grid.selectionIndexPaths.map { urls[$0.item] })
+            // The model's: the grid's own, or the cell after a removal (`GridSelection.focusAfterRemoval`).
+            let selected = Set(model.gridSelection)
             urls = new
             grid.urls = new
             grid.reloadData()
@@ -210,6 +219,7 @@ struct ThumbnailGrid: NSViewRepresentable {
             switch key {
             case .first: select(0)
             case .last: select(urls.count - 1)
+            case .quickLook: grid?.toggleQuickLook()
             default: return onKey(key)
             }
             return true
@@ -230,6 +240,7 @@ struct ThumbnailGrid: NSViewRepresentable {
             let selection = grid.selectionIndexPaths.map(\.item).sorted().map { urls[$0] }
             if selection != model.gridSelection { model.gridSelection = selection }
             if let focus { model.gridFocus = urls[focus] }
+            grid.selectionChanged()
         }
 
         // MARK: Data source and delegate
@@ -256,8 +267,8 @@ struct ThumbnailGrid: NSViewRepresentable {
     }
 }
 
-/// The grid's collection view: its own clicks (no rubber band), double-click and keys.
-final class GridCollectionView: NSCollectionView {
+/// The grid's collection view: its own clicks (no rubber band), double-click, keys and Quick Look of the selection.
+final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanelDataSource, @preconcurrency QLPreviewPanelDelegate {
     var urls: [URL] = []
     /// Keys `GridKey` maps; false sends the key on up the responder chain.
     var onKey: (GridKey) -> Bool = { _ in false }
@@ -266,6 +277,14 @@ final class GridCollectionView: NSCollectionView {
     var onClick: (Int, NSEvent.ModifierFlags) -> Void = { _, _ in }
     var onLayout: () -> Void = {}
     var onScaleChange: () -> Void = {}
+
+    /// The selected files, in list order: what Quick Look shows.
+    private var previewed: [URL] = []
+
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        super.viewWillMove(toWindow: newWindow)
+        if newWindow == nil, controlsPreviewPanel { QLPreviewPanel.shared().orderOut(nil) }  // the grid leaves
+    }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -298,6 +317,83 @@ final class GridCollectionView: NSCollectionView {
         window?.makeFirstResponder(self)
         guard let index = indexPathForItem(at: convert(event.locationInWindow, from: nil))?.item, index < urls.count else { return }
         if event.clickCount == 2 { onOpen(urls[index]) } else { onClick(index, event.modifierFlags) }
+    }
+
+    // MARK: Quick Look (Space)
+
+    private var controlsPreviewPanel: Bool {
+        QLPreviewPanel.sharedPreviewPanelExists() && QLPreviewPanel.shared().dataSource === self
+    }
+
+    func toggleQuickLook() {
+        if controlsPreviewPanel, QLPreviewPanel.shared().isVisible { return QLPreviewPanel.shared().orderOut(nil) }
+        guard !selectionIndexPaths.isEmpty else { return }
+        window?.makeFirstResponder(self)  // the panel asks the responder chain for its controller
+        QLPreviewPanel.shared().makeKeyAndOrderFront(nil)
+    }
+
+    /// The panel follows the selection, at the focused cell.
+    func selectionChanged() {
+        guard controlsPreviewPanel else { return }
+        let panel = QLPreviewPanel.shared()!
+        updatePreviewed(panel)
+        if previewed.isEmpty { panel.orderOut(nil) } else { panel.reloadData() }
+    }
+
+    private func updatePreviewed(_ panel: QLPreviewPanel) {
+        let focus = (delegate as? ThumbnailGrid.Coordinator)?.model.gridFocus
+        previewed = selectionIndexPaths.map(\.item).sorted().compactMap { urls.indices.contains($0) ? urls[$0] : nil }
+        panel.currentPreviewItemIndex = focus.flatMap(previewed.firstIndex(of:)) ?? 0
+    }
+
+    override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel!) -> Bool { true }
+
+    // The panel calls these on the main thread; AppKit declares them nonisolated.
+    override func beginPreviewPanelControl(_ panel: QLPreviewPanel!) {
+        MainActor.assumeIsolated {
+            panel.dataSource = self
+            panel.delegate = self
+            updatePreviewed(panel)
+        }
+    }
+
+    override func endPreviewPanelControl(_ panel: QLPreviewPanel!) {
+        MainActor.assumeIsolated {
+            panel.dataSource = nil
+            panel.delegate = nil
+        }
+    }
+
+    func numberOfPreviewItems(in panel: QLPreviewPanel!) -> Int { previewed.count }
+
+    func previewPanel(_ panel: QLPreviewPanel!, previewItemAt index: Int) -> (any QLPreviewItem)! {
+        previewed[index] as NSURL
+    }
+
+    /// One cell selected: arrows move the selection, as in the grid. Several: the panel steps through them itself.
+    /// Space closes it.
+    func previewPanel(_ panel: QLPreviewPanel!, handle event: NSEvent!) -> Bool {
+        guard event.type == .keyDown else { return false }
+        if event.charactersIgnoringModifiers == " " {
+            panel.orderOut(nil)
+            return true
+        }
+        guard previewed.count <= 1, Self.arrows.contains(event.charactersIgnoringModifiers?.unicodeScalars.first?.value ?? 0)
+        else { return false }
+        keyDown(with: event)
+        return true
+    }
+
+    private static let arrows: Set<UInt32> = [UInt32(NSUpArrowFunctionKey), UInt32(NSDownArrowFunctionKey),
+                                              UInt32(NSLeftArrowFunctionKey), UInt32(NSRightArrowFunctionKey)]
+
+    /// The panel zooms from the cell's square.
+    func previewPanel(_ panel: QLPreviewPanel!, sourceFrameOnScreenFor item: (any QLPreviewItem)!) -> NSRect {
+        guard let url = (item as? NSURL) as URL?, let index = urls.firstIndex(of: url),
+              let view = self.item(at: IndexPath(item: index, section: 0))?.view, let window else { return .zero }
+        let square = NSRect(x: 0, y: 0, width: view.bounds.width, height: view.bounds.width)  // flipped: the top part
+        let frame = view.convert(square, to: nil)
+        return visibleRect.intersects(convert(frame, from: nil)) ? window.convertToScreen(frame) : .zero
     }
 }
 

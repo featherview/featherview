@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 @main
 struct FeatherviewApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var batch = BatchModel()
+    @State private var batch = BatchModel.shared
 
     init() {
         ImageEncoder.jxlEncoder = JXLEncoder.encode

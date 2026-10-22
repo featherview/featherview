@@ -90,6 +90,14 @@ public struct ImageList: Equatable, Sendable {
         if removed < index || index >= urls.count { index = max(index - 1, 0) }
     }
 
+    /// Drops several entries in one pass (Trash or a move of the grid's selection); if current goes, the next
+    /// one left becomes current (the last one left at the end).
+    public mutating func remove(_ removed: Set<URL>) {
+        let next = urls[index...].first { !removed.contains($0) } ?? urls[..<index].last { !removed.contains($0) }
+        urls.removeAll(where: removed.contains)
+        index = next.flatMap(urls.firstIndex(of:)) ?? 0
+    }
+
     /// Images up to `radius` steps either side of current, nearest first, for prefetching.
     public func neighbors(radius: Int) -> [URL] {
         guard urls.count > 1, radius > 0 else { return [] }

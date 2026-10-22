@@ -78,6 +78,9 @@ final class BatchModel {
     /// Reads the run's results; ends once every file in flight is committed.
     private var runTask: Task<Void, Never>?
 
+    /// The one Batch window's model: the grid's B adds its selection here.
+    static let shared = BatchModel()
+
     init() {
         settings = BatchPresets.current()
     }

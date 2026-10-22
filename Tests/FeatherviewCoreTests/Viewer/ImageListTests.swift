@@ -102,6 +102,23 @@ import Testing
         #expect(list.urls == [urls[1]])
     }
 
+    @Test func removeSeveralAtOnce() {
+        var list = ImageList(urls: urls, current: urls[2])
+        list.remove(Set([urls[0], urls[3]]))  // around current: same image stays current
+        #expect(list.urls == [urls[1], urls[2]])
+        #expect(list.current == urls[2])
+        var middle = ImageList(urls: urls, current: urls[1])
+        middle.remove(Set([urls[1], urls[2]]))  // current goes: the next one left takes over
+        #expect(middle.current == urls[3])
+        var end = ImageList(urls: urls, current: urls[2])
+        end.remove(Set([urls[2], urls[3], URL(fileURLWithPath: "/x/gone.jpg")]))  // none after: the last one left
+        #expect(end.current == urls[1])
+        var all = ImageList(urls: urls, current: urls[0])
+        all.remove(Set(urls))
+        #expect(all.isEmpty)
+        #expect(all.current == nil)
+    }
+
     @Test func emptyListIsSafe() {
         var list = ImageList(urls: [urls[0]])
         list.removeCurrent()
