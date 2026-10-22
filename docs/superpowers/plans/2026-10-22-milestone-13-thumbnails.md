@@ -23,7 +23,7 @@ parity), `docs/parity.md` "Thumbnails" (the reference's behaviour), `docs/spec.m
 "Look", `docs/DESIGN.md`. The spec has no thumbnail section yet; Task 7 writes one from the
 Decisions below. Rules: `AGENTS.md`.
 
-## Decisions (the roadmap leaves these to the plan)
+## Decisions (the roadmap leaves these to the plan; accepted by the maintainer)
 
 1. **One mode of the viewer window.** T (single key) and View › "Show Thumbnails  (T)" with ⇧⌘T
    toggle it; the item reads "Show Image  (T)" in the grid. A toolbar button (`square.grid.2x2`,
