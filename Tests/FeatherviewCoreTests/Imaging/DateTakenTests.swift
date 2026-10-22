@@ -124,6 +124,9 @@ import UniformTypeIdentifiers
             from: DateComponents(year: 2023, month: 5, day: 6, hour: 7, minute: 8, second: 9)))
         try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: url.path)
         #expect(DateTaken.current(of: url) == "2023:05:06 07:08:09")
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: url)
+        #expect(DateTaken.current(of: link) == "2023:05:06 07:08:09")  // the image's date, not the link's
 
         let dated = try Fixtures.writeImage(to: dir.appendingPathComponent("b.jpg"), width: 8, height: 8,
                                             properties: Self.exifDate)
