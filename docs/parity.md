@@ -156,6 +156,21 @@ zero-delay one), default settings.
 | Status bar | The last field shows the number of frames; it doesn't change while playing or stepping. The title shows no frame. | The frame count while playing; "frame 3 / 6" while paused; title unchanged. | open |
 | Next file | Moving on from a stopped animation to another one plays the new one; pause isn't remembered. | Same; coming back starts again at frame 1. | open |
 
+## Thumbnails
+
+Own folder of 60 generated JPEG/PNG/BMP images of random sizes and dates, plus a corrupt file, a
+text file, an EXIF-rotated JPEG and a subfolder; default settings.
+
+| Area | Observed behaviour | Featherview | Status |
+|---|---|---|---|
+| Opening | T opens a separate window on the current image's folder, with the current image selected and scrolled into view. T again later reopens it, selection following the image shown in the viewer. The title gives the number of files. | A thumbnail window (⌘-shortcut plus T), one per viewer window. | open |
+| Layout | Folder tree on the leading side (shortcuts for the user's folders, then drives), path field above, grid on the rest. Subfolders show only in the tree, not in the grid. Each cell is a square of fixed size (100 pixels by default, a setting) with the image scaled to fit inside, aspect kept, small images not enlarged, file name below. | Sidebar with the folder tree, grid of fitted thumbnails with names; size from a slider, not a fixed setting. | open |
+| Contents | Same files and natural order as the viewer's list: the text file and the corrupt file get cells too (corrupt one a "can't open" symbol), the EXIF-rotated image upright. | Same list as the viewer (FolderScanner), thumbnails decoded off the main thread at cell size, never blocking. | open |
+| Hover | Hovering a cell shows a tip with path, position in the list, pixel size, bit depth, file size and date. | A tooltip with the same facts. | open |
+| Keys | Arrow keys move the selection in the grid. Return opens the selected image in the viewer and brings it to front. Esc closes the thumbnail window, leaving the viewer on its image. | Same, Return / double-click open, Esc or ⌘W closes. | open |
+| Selection | Click selects, Shift-click a range, Ctrl-click adds or removes one; select all exists. | Click, ⇧-click, ⌘-click, ⌘A. | open |
+| Actions | On the selection: move, copy, delete (to the bin), batch conversion with the selected files (B), and many export and print commands. Also: drop selected thumbs from the list, refresh, sort (by name and other keys), views other than the grid (tiles, details, list), load all subfolders. | Move/copy/Trash and B (batch with the selection); sort by name, date, size, type. Other views and exports later, if ever. | open |
+
 ## Not checked yet
 
 the meaning of X, options of
