@@ -1162,7 +1162,6 @@ final class ViewerModel {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
-                endCompareShow("failed")
                 secondFailed(compareSession, url: url)
             }
         }
@@ -1170,6 +1169,9 @@ final class ViewerModel {
 
     /// Pane 2's file can't be read (or is gone): it says so, compare stays.
     private func secondFailed(_ session: CompareSession, url: URL) {
+        // A decode still on its way would bring the gone file back; `wanted` stays so it isn't asked for again.
+        session.task?.cancel()
+        endCompareShow("failed")
         session.image = nil
         session.info = nil
         session.difference = nil
