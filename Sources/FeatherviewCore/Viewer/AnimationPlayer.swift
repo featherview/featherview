@@ -1,5 +1,4 @@
 import CoreGraphics
-import FeatherviewCore
 import Foundation
 import Observation
 
@@ -7,19 +6,19 @@ import Observation
 /// following frames in order off the main thread and hands each to the canvas at its due time through
 /// `onFrame`, with no SwiftUI update per frame. Only pausing, stepping and a new file change what it observes.
 @MainActor @Observable
-final class AnimationPlayer {
+public final class AnimationPlayer {
     /// 0 without an animation.
-    private(set) var frameCount = 0
+    public private(set) var frameCount = 0
     /// The frame shown while paused (0-based); nil while playing or without an animation.
-    private(set) var pausedFrame: Int?
+    public private(set) var pausedFrame: Int?
     /// The frame on screen when it isn't the model's image; nil until playback first moves.
-    @ObservationIgnored private(set) var current: CGImage?
+    @ObservationIgnored public private(set) var current: CGImage?
     /// Puts a frame on the canvas; set by the canvas.
-    @ObservationIgnored var onFrame: (CGImage) -> Void = { _ in }
+    @ObservationIgnored public var onFrame: (CGImage) -> Void = { _ in }
     /// The file playing, nil when stopped.
-    @ObservationIgnored private(set) var url: URL?
+    @ObservationIgnored public private(set) var url: URL?
 
-    var isPlaying: Bool { frameCount > 1 && pausedFrame == nil }
+    public var isPlaying: Bool { frameCount > 1 && pausedFrame == nil }
 
     @ObservationIgnored private let colorSpace: CGColorSpace?
     @ObservationIgnored private var delays: [Duration] = []
@@ -27,7 +26,7 @@ final class AnimationPlayer {
     @ObservationIgnored private var source: Task<FrameSource, Error>?
     /// Decoded frames kept (`FrameStore.wanted`), and decodes running or done but not yet taken.
     @ObservationIgnored private var frames: [Int: CGImage] = [:]
-    @ObservationIgnored private var decodes: [Int: Task<CGImage, Error>] = [:]
+    @ObservationIgnored private(set) var decodes: [Int: Task<CGImage, Error>] = [:]
     /// The decode asked for last: each waits for the one before, so `FrameSource` goes through the file in order.
     @ObservationIgnored private var lastDecode: Task<CGImage, Error>?
     /// Whether every frame fits the memory budget; known from the first frame decoded at the target.
@@ -37,12 +36,12 @@ final class AnimationPlayer {
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var visible = true
 
-    init(colorSpace: CGColorSpace?) {
+    public init(colorSpace: CGColorSpace?) {
         self.colorSpace = colorSpace
     }
 
     /// `first` is frame 0 at `target`, already on screen.
-    func start(url: URL, animation: Animation, target: DecodeTarget, first: CGImage, playing: Bool) {
+    public func start(url: URL, animation: Animation, target: DecodeTarget, first: CGImage, playing: Bool) {
         stop()
         guard animation.frameCount > 1 else { return }
         self.url = url
@@ -56,7 +55,7 @@ final class AnimationPlayer {
     }
 
     /// Synchronous: once it returns no frame of this file reaches the canvas.
-    func stop() {
+    public func stop() {
         task?.cancel()
         task = nil
         generation += 1
@@ -69,7 +68,7 @@ final class AnimationPlayer {
     }
 
     /// A zoom change: the frames decode at `target` from now on, the frame shown stays the same.
-    func retarget(_ target: DecodeTarget) {
+    public func retarget(_ target: DecodeTarget) {
         guard url != nil else { return }
         task?.cancel()
         generation += 1
@@ -80,7 +79,7 @@ final class AnimationPlayer {
         play()
     }
 
-    func togglePlaying() {
+    public func togglePlaying() {
         guard frameCount > 1 else { return }
         playback.togglePlaying()
         pausedFrame = playback.isPlaying ? nil : playback.frame
@@ -92,18 +91,20 @@ final class AnimationPlayer {
     }
 
     /// ⌥→ / ⌥←: one frame on or back, pausing; false at either end.
-    @discardableResult func step(forward: Bool) -> Bool {
+    @discardableResult public func step(forward: Bool) -> Bool {
         guard frameCount > 1 else { return false }
         task?.cancel()
         generation += 1
         let moved = playback.step(forward: forward)
+        // A held key steps faster than frames decode: the decodes left behind would never be taken.
+        dropUnwanted()
         if pausedFrame != playback.frame { pausedFrame = playback.frame }
         if moved { showFrame(playback.frame) }
         return moved
     }
 
     /// Playback waits while the window is hidden (occluded or minimized) and goes on from the same frame.
-    func setVisible(_ visible: Bool) {
+    public func setVisible(_ visible: Bool) {
         guard visible != self.visible else { return }
         self.visible = visible
         if visible { play() } else { task?.cancel() }
@@ -191,12 +192,17 @@ final class AnimationPlayer {
     }
 
     private func show(_ image: CGImage) {
+        dropUnwanted()
+        current = image
+        onFrame(image)
+    }
+
+    /// Keeps only the frames and decodes `FrameStore.wanted` for the frame shown.
+    private func dropUnwanted() {
         let wanted = Set(FrameStore.wanted(shown: playback.frame, count: frameCount, keepsAll: keepsAll ?? false))
         frames = frames.filter { wanted.contains($0.key) }
         for (index, decode) in decodes where !wanted.contains(index) { decode.cancel() }
         decodes = decodes.filter { wanted.contains($0.key) }
-        current = image
-        onFrame(image)
     }
 
     private func fetch(_ index: Int) async throws -> CGImage {
