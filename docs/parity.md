@@ -141,6 +141,21 @@ switched off with a warning that they are old; until then opening such a file sh
 | XCF | Opens flattened at the canvas size, hidden layers left out. A Multiply layer looks applied; a layer group set to Screen is drawn as if Normal. No pages. | Spec: visible layers, normal blending with opacity, other modes a known limit. | v1 |
 | PSP | A one-layer file whose only stored composite is a 300 × 225 thumbnail opens at the full 800 × 600 from its layer. No pages. | Spec: full-size composite when stored, else the layers. | v1 |
 
+## Animation
+
+Own animated GIFs (6 frames at 0.5 s looping forever, 3 frames at 1 s with a loop count of 1, a
+zero-delay one), default settings.
+
+| Area | Observed behaviour | Featherview | Status |
+|---|---|---|---|
+| Playing | An animated GIF plays as soon as it opens, at the delays in the file, in a loop. | Same (spec "Animation"). | open |
+| Loop count | A file asking to loop only once kept looping. | Same: always loops. | open |
+| Zero delay | Frames with no delay play at a moderate pace, not as fast as possible. | Delays of 10 ms or less count as 100 ms, as browsers do. | open |
+| Pause | G stops the animation on the frame shown and starts it again from there; the Options menu has the same command. | G, and Image › Pause / Play Animation. | open |
+| Frames | Ctrl+Page Down / Up step one frame while stopped. | ⌥→ / ⌥← step frames (pages' keys, stopping playback), nothing past either end. | open |
+| Status bar | The last field shows the number of frames; it doesn't change while playing or stepping. The title shows no frame. | The frame count while playing; "frame 3 / 6" while paused; title unchanged. | open |
+| Next file | Moving on from a stopped animation to another one plays the new one; pause isn't remembered. | Same; coming back starts again at frame 1. | open |
+
 ## Not checked yet
 
 the meaning of X, options of
