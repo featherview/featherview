@@ -413,7 +413,9 @@ section for these yet; Task 10 writes one from the Decisions below. Rules: `AGEN
   - `ViewerModel.sortValues: [URL: SortValue]` (for the open folder and the stored key; emptied by `open`).
   - `func applySortOrder()` — reads `SortOrder.stored()`; queued behind `openTask`; reads missing values off
     the main thread (`.userInitiated`, `.utility` for Date Taken), then `relist(_:)`.
-  - `func relist(_ urls: [URL])` — `list.reorder(ImageSort.sorted(urls, by: .stored(), values: sortValues))`,
+  - `func relist(_ urls: [URL])` — keeps the listed files still in `urls` in their order and puts the others in
+    at their place (`ImageSort.inserting(_:into:by:values:)` with `sortValues`, no full sort on the main actor),
+    `list.reorder` with that,
     then `focusDecodes()` and prefetches the new neighbours at fit (as `becameActive()` does); never calls
     `show()` when the current image is unchanged.
   - `func readSortValues(for urls: [URL]) async` — reads and stores values for `urls` (new or renamed files).

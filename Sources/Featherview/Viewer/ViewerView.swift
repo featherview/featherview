@@ -27,6 +27,8 @@ struct ViewerView: View {
     @AppStorage(AppSettings.overlayTemplate.key) private var overlayTemplate = AppSettings.overlayTemplate.defaultValue
     @AppStorage(AppSettings.hidePointer.key) private var hidePointer = AppSettings.hidePointer.defaultValue
     @AppStorage(AppSettings.thumbnailSize.key) private var thumbnailSize = AppSettings.thumbnailSize.defaultValue
+    @AppStorage(AppSettings.sortKey.key) private var sortKey = AppSettings.sortKey.defaultValue
+    @AppStorage(AppSettings.sortAscending.key) private var sortAscending = AppSettings.sortAscending.defaultValue
     @AppStorage(toolbarHiddenKey) private var toolbarHidden = false
     @AppStorage(statusBarHiddenKey) private var statusBarHidden = false
     @State private var windowSize = CGSize.zero
@@ -198,6 +200,8 @@ struct ViewerView: View {
         .modifier(ToolbarHiddenInFullScreen())
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         .onChange(of: model.unsaved != nil) { model.window?.isDocumentEdited = $1 }
+        .onChange(of: sortKey) { model.applySortOrder() }
+        .onChange(of: sortAscending) { model.applySortOrder() }
         // Not set on the window directly: SwiftUI puts the scene's title back on its next update.
         .navigationTitle(model.title)
         .overlay(alignment: .topTrailing) { infoPanel }
@@ -958,6 +962,8 @@ struct ViewerCommands: Commands {
                 }
                 .disabled(model?.availability.hasPicture != true)
             }
+            Divider()
+            SortMenu()
         }
     }
 }

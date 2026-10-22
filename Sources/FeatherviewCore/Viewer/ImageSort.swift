@@ -56,24 +56,16 @@ public enum ImageSort {
         case .name:
             break
         case .dateModified, .size:
-            let resourceKey: URLResourceKey = key == .size ? .fileSizeKey : .contentModificationDateKey
+            // One stat per file, read fresh (a save changes size and date), following a symlink to the image:
+            // URL resource values cost ~4x as much, ~90 ms for 10,000 files ahead of a folder's first image.
             for url in urls {
-                // A URL keeps the values it read once: drop them, or a file saved since keeps its old size and date.
-                var fresh = url
-                fresh.removeAllCachedResourceValues()
-                // The scanner lists symlinked images: read the image's size and date, not the link's.
-                // Resolving only links: a realpath walk on every file cost ~20x the lookup itself.
-                guard var resources = try? fresh.resourceValues(forKeys: [resourceKey, .isSymbolicLinkKey]) else { continue }
-                if resources.isSymbolicLink == true {
-                    var target = url.resolvingSymlinksInPath()
-                    target.removeAllCachedResourceValues()
-                    guard let targetResources = try? target.resourceValues(forKeys: [resourceKey]) else { continue }
-                    resources = targetResources
-                }
+                var info = stat()
+                guard url.withUnsafeFileSystemRepresentation({ $0.map { stat($0, &info) } }) == 0 else { continue }
                 if key == .size {
-                    values[url] = resources.fileSize.map(SortValue.bytes)
+                    values[url] = .bytes(Int(info.st_size))
                 } else {
-                    values[url] = resources.contentModificationDate.map(SortValue.date)
+                    let time = info.st_mtimespec
+                    values[url] = .date(Date(timeIntervalSince1970: TimeInterval(time.tv_sec) + TimeInterval(time.tv_nsec) / 1e9))
                 }
             }
         case .kind:
@@ -98,8 +90,54 @@ public enum ImageSort {
             let byName = FolderScanner.inFinderOrder(urls)
             return order.ascending ? byName : byName.reversed()
         }
-        // Keys taken once: lastPathComponent inside the comparator made the scanner's sort 190 ms.
-        return entries(urls, values: values).sorted { precedes($0, $1, ascending: order.ascending) }.map(\.url)
+        // Names and values ranked once, so the sort compares numbers: comparing text per pair (Kind, and every
+        // tie) made 10,000 files take ~3x as long as the name sort.
+        let ranks = textRanks(values)
+        let keyed = FolderScanner.inFinderOrder(urls).enumerated().map { (index, url) in
+            (url: url, name: index, key: values[url].map { rank($0, ranks) })
+        }
+        return keyed.sorted { a, b in
+            switch (a.key, b.key) {
+            case let (x?, y?) where x != y: order.ascending ? x < y : x > y
+            case (_?, nil): true
+            case (nil, _?): false
+            default: a.name < b.name
+            }
+        }.map(\.url)
+    }
+
+    /// `sorted` with `added` put in at their place in the order, in a few comparisons each: a rename or a new file
+    /// doesn't sort the whole list again.
+    public static func inserting(_ added: [URL], into sorted: [URL], by order: SortOrder,
+                                 values: [URL: SortValue]) -> [URL] {
+        var result = sorted
+        for url in added {
+            let new = (url: url, name: url.lastPathComponent, value: values[url])
+            var (low, high) = (0, result.count)
+            while low < high {
+                let mid = (low + high) / 2
+                let other = result[mid]
+                let otherEntry = (url: other, name: other.lastPathComponent, value: values[other])
+                let after = order.key == .name
+                    ? new.name.localizedStandardCompare(otherEntry.name) == (order.ascending ? .orderedDescending : .orderedAscending)
+                    : precedes(otherEntry, new, ascending: order.ascending)
+                if after { low = mid + 1 } else { high = mid }
+            }
+            result.insert(url, at: low)
+        }
+        return result
+    }
+
+    /// A re-sort of the open list (a new order, Date Taken after an open): reads the values and sorts. Reads the
+    /// disk: call off the main thread. Dates and sizes are read again (a save or lossless rotate rewrites a file);
+    /// only Date Taken keeps `cached`, reading files it lacks, since it reads every header.
+    /// shortcut: a file without EXIF whose date taken falls back to its modification date keeps the date read
+    /// first, re-read Date Taken for files changed since if that shows.
+    public static func resorted(_ urls: [URL], by order: SortOrder,
+                                cached: [URL: SortValue]) -> (urls: [URL], values: [URL: SortValue]) {
+        var values = order.readsFileHeaders ? cached : [:]
+        values.merge(self.values(of: urls.filter { values[$0] == nil }, key: order.key)) { $1 }
+        return (sorted(urls, by: order, values: values), values)
     }
 
     /// The first of `sorted`, in one pass.
@@ -113,6 +151,23 @@ public enum ImageSort {
     }
 
     private typealias Entry = (url: URL, name: String, value: SortValue?)
+
+    /// Each distinct text value's place in `localizedStandardCompare` order: a few kinds, so a few comparisons.
+    private static func textRanks(_ values: [URL: SortValue]) -> [String: Int] {
+        var texts = Set<String>()
+        for case let .text(text) in values.values { texts.insert(text) }
+        let ordered = texts.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        return Dictionary(uniqueKeysWithValues: ordered.enumerated().map { ($1, $0) })
+    }
+
+    /// A value as a number that orders as `SortValue.compare` does (one key's values are all one case).
+    private static func rank(_ value: SortValue, _ textRanks: [String: Int]) -> Double {
+        switch value {
+        case let .date(date): date.timeIntervalSinceReferenceDate
+        case let .bytes(bytes): Double(bytes)
+        case let .text(text): Double(textRanks[text] ?? 0)
+        }
+    }
 
     private static func entries(_ urls: [URL], values: [URL: SortValue]) -> [Entry] {
         urls.map { ($0, $0.lastPathComponent, values[$0]) }
