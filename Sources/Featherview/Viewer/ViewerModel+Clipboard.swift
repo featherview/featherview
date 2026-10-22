@@ -10,9 +10,9 @@ extension ViewerModel {
     /// A copied image file opens as ⌘O would; else the clipboard's image shows, unsaved.
     func newFromClipboard() {
         let pasteboard = NSPasteboard.general
-        if let url = ClipboardWatch.fileURL(pasteboard) { return open(url) }
-        guard let type = ClipboardWatch.imageType(pasteboard), let data = pasteboard.data(forType: NSPasteboard.PasteboardType(type))
-        else { return }
+        let content = ClipboardWatch.content(pasteboard)
+        if case .file(let url) = content { return open(url) }
+        guard case .data(let type) = content, let data = pasteboard.data(forType: NSPasteboard.PasteboardType(type)) else { return }
         Task {
             let image = await Task.detached(priority: .userInitiated) { ClipboardImage.image(from: data) }.value
             guard let image else {

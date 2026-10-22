@@ -54,4 +54,14 @@ import UniformTypeIdentifiers
         #expect(ClipboardImage.preferredType(["public.file-url"]) == nil)
         #expect(ClipboardImage.preferredType(["com.adobe.pdf", "public.tiff"]) == "public.tiff")
     }
+
+    @Test func copiedFilesOpenTheFirstImageAndNeverTheirIcon() {
+        let text = URL(fileURLWithPath: "/tmp/notes.txt"), photo = URL(fileURLWithPath: "/tmp/photo.jpg")
+        // Finder's Copy puts the files' icon beside their URLs, as TIFF.
+        let finder = ["public.file-url", "com.apple.icns", "public.tiff"]
+        #expect(ClipboardImage.content(fileURLs: [text, photo], types: finder) == .file(photo))
+        #expect(ClipboardImage.content(fileURLs: [text], types: finder) == nil)
+        #expect(ClipboardImage.content(fileURLs: [], types: ["public.utf8-plain-text", "public.png"]) == .data(type: "public.png"))
+        #expect(ClipboardImage.content(fileURLs: [], types: ["public.utf8-plain-text"]) == nil)
+    }
 }

@@ -32,20 +32,14 @@ final class ClipboardWatch {
         Task {
             // Not on the launch path: the first image draws first.
             while ViewerModel.main.isOpening { try? await Task.sleep(for: .milliseconds(50)) }
-            let pasteboard = NSPasteboard.general
-            let has = Self.fileURL(pasteboard) != nil || Self.imageType(pasteboard) != nil
+            let has = Self.content(NSPasteboard.general) != nil
             if hasImage != has { hasImage = has }
         }
     }
 
-    /// A copied file Featherview reads (Finder's Copy).
-    static func fileURL(_ pasteboard: NSPasteboard) -> URL? {
+    /// A copied file Featherview reads (Finder's Copy), else the first image type ImageIO decodes.
+    static func content(_ pasteboard: NSPasteboard) -> ClipboardImage.Content? {
         let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]
-        return urls?.first.flatMap { ImageFormats.isDecodable($0) ? $0 : nil }
-    }
-
-    /// The first image type on the clipboard that ImageIO decodes.
-    static func imageType(_ pasteboard: NSPasteboard) -> String? {
-        ClipboardImage.preferredType(pasteboard.types?.map(\.rawValue) ?? [])
+        return ClipboardImage.content(fileURLs: urls ?? [], types: pasteboard.types?.map(\.rawValue) ?? [])
     }
 }
