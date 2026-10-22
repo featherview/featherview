@@ -152,8 +152,10 @@ public struct Slideshow: Equatable, Sendable {
         return current
     }
 
-    /// Interval changes apply to the image on screen (`shownAt`); Shuffle restarts the round from it.
-    public mutating func setOptions(_ options: Options, shownAt: ContinuousClock.Instant?) {
+    /// Interval changes apply to the image on screen, counted from when its interval started (shown,
+    /// resumed or held); Shuffle restarts the round from it.
+    public mutating func setOptions(_ options: Options) {
+        if let due { self.due = due - self.options.interval + options.interval }
         let reshuffle = options.shuffle != self.options.shuffle
         self.options = options
         if reshuffle {
@@ -161,7 +163,6 @@ public struct Slideshow: Equatable, Sendable {
             position = 0
             drawNextRound()
         }
-        if due != nil, let shownAt { due = shownAt + options.interval }
     }
 
     /// The next `ahead` images in play order (into the next round with Repeat), then the previous one.

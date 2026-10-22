@@ -205,8 +205,8 @@ The spec has no slideshow section yet; Task 4 writes one from the Decisions belo
     - `public mutating func remove(_ url: URL) -> URL?` — drops it from this and the next round; if
       it was `current`, returns the next in play order (else the previous; nil and finished when none
       is left). Not current: nil.
-    - `public mutating func setOptions(_ options: Options, shownAt: ContinuousClock.Instant?)` —
-      Decision 4. `shownAt` is when `current` was shown (nil if not yet).
+    - `public mutating func setOptions(_ options: Options)` — Decision 4. A new interval counts
+      from when the running one started (shown, resumed or held): `due` moves by the difference.
     - `public func neighbors(ahead: Int) -> [URL]` — the next `ahead` in play order (into the next
       round with Repeat), then the previous one; no duplicates, never `current`.
   - `public mutating func ImageList.select(_ url: URL) -> Bool` — makes `url` current (releases a

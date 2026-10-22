@@ -318,7 +318,7 @@ import Testing
     @Test func shuffleToggleRestartsFromCurrent() {
         var show = Slideshow(urls: urls(10), from: u(1), options: options(), seed: 1)
         for _ in 0..<2 { _ = show.step(forward: true) }  // at 3
-        show.setOptions(options(shuffle: true), shownAt: nil)
+        show.setOptions(options(shuffle: true))
         #expect(show.current == u(3))
         let round = play(&show, count: 10)
         #expect(round.count == 10)
@@ -328,9 +328,22 @@ import Testing
     @Test func intervalChangeAppliesNow() {
         var show = Slideshow(urls: urls(3), from: u(1), options: options(), seed: 1)
         show.shown(u(1), at: t0)
-        show.setOptions(options(seconds: 2), shownAt: t0)
+        show.setOptions(options(seconds: 2))
         #expect(show.due == t0 + .seconds(2))
         #expect(show.options.interval == .seconds(2))
+    }
+
+    @Test func intervalChangeKeepsResumeAndHoldStart() {
+        var show = Slideshow(urls: urls(5), from: u(1), options: options(seconds: 5), seed: 1)
+        show.shown(u(1), at: t0)
+        _ = show.togglePause(at: t0 + .seconds(1))
+        _ = show.togglePause(at: t0 + .seconds(100))  // the interval restarts here
+        show.setOptions(options(seconds: 10))
+        #expect(show.due == t0 + .seconds(110))
+        #expect(show.tick(at: t0 + .seconds(101)) == nil)
+        show.hold(at: t0 + .seconds(110))
+        show.setOptions(options(seconds: 2))
+        #expect(show.due == t0 + .seconds(112))
     }
 
     @Test func neighborsCrossIntoNextRound() {
