@@ -36,6 +36,8 @@ public struct Slideshow: Equatable, Sendable {
     private var forward = true
     /// The images that couldn't be shown since the last one that could.
     private var failedRun: Set<URL> = []
+    /// `current` has been on screen, so resuming may start its interval.
+    private var shownCurrent = false
 
     /// The first round plays from `current` (or the first image when it isn't listed).
     public init(urls: [URL], from current: URL, options: Options, seed: UInt64) {
@@ -54,6 +56,7 @@ public struct Slideshow: Equatable, Sendable {
     public mutating func shown(_ url: URL, at now: ContinuousClock.Instant) {
         guard url == current else { return }
         failedRun = []
+        shownCurrent = true
         if isPlaying { due = now + options.interval }
     }
 
@@ -76,10 +79,11 @@ public struct Slideshow: Equatable, Sendable {
         if forward { return advance() }
         position -= 1
         due = nil
+        shownCurrent = false
         return current
     }
 
-    /// Playing → paused; paused → playing with a full interval; finished → a new round, returned.
+    /// Playing → paused; paused → playing with a full interval (once `current` has shown); finished → a new round, returned.
     public mutating func togglePause(at now: ContinuousClock.Instant) -> URL? {
         if isFinished {
             guard !urls.isEmpty else { return nil }
@@ -90,7 +94,7 @@ public struct Slideshow: Equatable, Sendable {
             return current
         }
         isPaused.toggle()
-        due = isPaused ? nil : now + options.interval
+        due = isPaused || !shownCurrent ? nil : now + options.interval
         return nil
     }
 
@@ -106,15 +110,18 @@ public struct Slideshow: Equatable, Sendable {
         guard url == current else { return nil }
         failedRun.insert(url)
         guard !failedRun.isSuperset(of: urls) else { return finish() }
+        let start = self
         var direction = forward
         var turned = false
         while true {
             if let next = step(forward: direction) {
                 if failedRun.contains(next) { continue }
+                // `step` turns finished into paused; a failure keeps the state it came in with.
+                (isFinished, isPaused) = (start.isFinished, start.isPaused)
                 if turned, !direction { _ = finish() }
                 return next
             }
-            if turned { return finish() }
+            if turned { self = start; return finish() }
             direction.toggle()
             turned = true
         }
@@ -133,6 +140,7 @@ public struct Slideshow: Equatable, Sendable {
         drawNextRound()
         guard wasCurrent else { return nil }
         due = nil
+        shownCurrent = false
         if current != nil { return current }
         if options.repeats, !nextRound.isEmpty { startNextRound(); return current }
         if position > 0 { position -= 1; return current }
@@ -171,6 +179,7 @@ public struct Slideshow: Equatable, Sendable {
 
     private mutating func advance() -> URL? {
         due = nil
+        shownCurrent = false
         if position + 1 < round.count {
             position += 1
         } else if options.repeats, !nextRound.isEmpty {
@@ -191,6 +200,7 @@ public struct Slideshow: Equatable, Sendable {
         round = nextRound
         position = 0
         due = nil
+        shownCurrent = false
         drawNextRound()
     }
 

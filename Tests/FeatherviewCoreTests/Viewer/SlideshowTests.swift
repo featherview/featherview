@@ -147,6 +147,19 @@ import Testing
         #expect(show.due == t0 + .seconds(15))
     }
 
+    @Test func resumeBeforeShownWaitsForShown() {
+        var show = Slideshow(urls: urls(3), from: u(1), options: options(seconds: 1), seed: 1)
+        show.shown(u(1), at: t0)
+        #expect(show.togglePause(at: t0) == nil)
+        #expect(show.step(forward: true) == u(2))
+        #expect(show.togglePause(at: t0) == nil)
+        #expect(show.isPlaying)
+        #expect(show.due == nil)
+        #expect(show.tick(at: t0 + .seconds(1)) == nil)
+        show.shown(u(2), at: t0 + .milliseconds(1500))
+        #expect(show.due == t0 + .milliseconds(2500))
+    }
+
     @Test func finishedPlaysAgain() {
         var show = Slideshow(urls: urls(3), from: u(2), options: options(), seed: 1)
         _ = play(&show, count: 3)
@@ -203,6 +216,26 @@ import Testing
         #expect(show.current == u(4))
         show.shown(u(4), at: t0)
         #expect(show.due == nil)
+    }
+
+    @Test func failedAfterFinishingStaysFinished() {
+        var show = Slideshow(urls: urls(5), from: u(1), options: options(), seed: 1)
+        #expect(play(&show, count: 5) == urls(5))
+        #expect(show.failed(u(5)) == u(4))
+        #expect(show.failed(u(4)) == u(3))
+        #expect(show.isFinished)
+        #expect(!show.isPaused)
+        #expect(show.current == u(3))
+    }
+
+    @Test func failedWithNowhereLeftFinishesOnTheFailedOne() {
+        var show = Slideshow(urls: urls(4), from: u(3), options: options(), seed: 1)
+        #expect(advance(&show, at: t0) == u(4))
+        #expect(show.failed(u(4)) == u(3))
+        #expect(show.failed(u(3)) == nil)
+        #expect(show.isFinished)
+        #expect(!show.isPaused)
+        #expect(show.current == u(3))
     }
 
     @Test func failedRunCrossingRoundsFindsTheReadableOne() {
