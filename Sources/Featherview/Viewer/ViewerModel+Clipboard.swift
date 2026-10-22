@@ -42,6 +42,7 @@ extension ViewerModel {
     }
 
     private func cover(with picture: CGImage) {
+        endSlideshow()
         closeGrid()
         leaveCompare()
         closeChooser()
