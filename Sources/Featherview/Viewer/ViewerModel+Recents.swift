@@ -13,6 +13,11 @@ final class RecentFiles {
     private var list = RecentList()
     @ObservationIgnored private var loaded = false
     @ObservationIgnored private var waiting: [URL] = []
+    @ObservationIgnored private var checking = false
+    @ObservationIgnored private var checkAgain = false
+    /// One serial queue, not the cooperative pool: a stat on a hung share blocks one thread until it times out,
+    /// never the threads decoding and prefetching run on.
+    private static let statQueue = DispatchQueue(label: "net.mynetx.featherview.recents", qos: .utility)
 
     private var limit: Int { NSDocumentController.shared.maximumRecentDocumentCount }
 
@@ -28,26 +33,42 @@ final class RecentFiles {
 
     func clear() {
         NSDocumentController.shared.clearRecentDocuments(nil)
-        reload()
+        // A new generation also drops the result of a check still running.
+        list.finishReload([], token: list.startReload(), limit: limit)
     }
 
-    /// Also after the app's own Trash and move: the system's bookmark follows a moved file to its new path.
+    /// Drops entries gone from disk (also after the app's own Trash and move). Only the first call reads the
+    /// system's list; `note` and `clear` keep it current after that. At most one check runs; calls meanwhile
+    /// make it run once more.
     func reload() {
+        var candidates = list.urls
         if !loaded {
             loaded = true
             for url in waiting { NSDocumentController.shared.noteNewRecentDocumentURL(url) }
             waiting = []
+            // The one main-thread read (NSDocumentController is main-thread only; its getter resolves bookmarks):
+            // once per run, after the first image is on screen or 2 s after launch.
+            candidates = NSDocumentController.shared.recentDocumentURLs
             NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
                 MainActor.assumeIsolated { RecentFiles.shared.reload() }
             }
         }
+        guard !checking else { checkAgain = true; return }
+        checking = true
         let token = list.startReload()
-        let candidates = NSDocumentController.shared.recentDocumentURLs
         let limit = limit
-        // Off the main thread: a stat on an unresponsive share or a sleeping disk can take seconds.
-        Task.detached(priority: .utility) {
+        Self.statQueue.async {
             let fresh = candidates.filter { !RecentList.isGone($0) }
-            await MainActor.run { RecentFiles.shared.list.finishReload(fresh, token: token, limit: limit) }
+            Task { @MainActor in RecentFiles.shared.finishCheck(fresh, token: token, limit: limit) }
+        }
+    }
+
+    private func finishCheck(_ fresh: [URL], token: Int, limit: Int) {
+        list.finishReload(fresh, token: token, limit: limit)
+        checking = false
+        if checkAgain {
+            checkAgain = false
+            reload()
         }
     }
 }

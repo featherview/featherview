@@ -1,6 +1,6 @@
 import Foundation
 
-/// File › Open Recent's entries, newest first (plan M11 Decision 1). A reload checks the system's list
+/// File › Open Recent's entries, newest first (plan M11 Decision 1). A reload checks the entries
 /// off the main thread; files noted while it runs go first in its result, so neither side is lost.
 public struct RecentList: Sendable {
     public private(set) var urls: [URL] = []
@@ -21,7 +21,7 @@ public struct RecentList: Sendable {
         return generation
     }
 
-    /// `fresh`: the system's list as read at `startReload`, gone items left out. An older reload's result is dropped.
+    /// `fresh`: the entries as read at `startReload`, gone items left out. An older reload's result is dropped.
     public mutating func finishReload(_ fresh: [URL], token: Int, limit: Int) {
         guard token == generation else { return }
         let merged = Self.merge(notedSinceReload, fresh, limit: limit)
