@@ -3,12 +3,14 @@ public enum ViewerKey: Equatable, Sendable {
     case rotateRight, rotateLeft, toggleInfo, toggleFullScreen, fit, actualSize, zoomIn, zoomOut, toggleAnimation
     /// Commands that also have a ⌘ shortcut; the single key is for people switching over.
     case open, batch, minimize, settings, saveAs, about
+    case flipHorizontal, flipVertical, zoomToWidth, zoomToHeight, toggleKeepZoom
 
     /// `shift` counts only for letters: some layouts need Shift to type the others
     /// ('+' is Shift+= on US keyboards, digits need Shift on AZERTY). Caps Lock is ignored.
+    /// The one Shift letter is ⇧L, Keep Zoom.
     public static func action(characters: String, shift: Bool) -> ViewerKey? {
         let isLetter = characters.lowercased() != characters.uppercased()
-        if shift, isLetter { return nil }
+        if shift, isLetter { return characters.lowercased() == "l" ? .toggleKeepZoom : nil }
         switch characters.lowercased() {
         case "r": return .rotateRight
         case "l": return .rotateLeft
@@ -16,6 +18,10 @@ public enum ViewerKey: Equatable, Sendable {
         case "f": return .toggleFullScreen
         case "0": return .fit
         case "1": return .actualSize
+        case "2": return .zoomToWidth
+        case "3": return .zoomToHeight
+        case "h": return .flipHorizontal
+        case "v": return .flipVertical
         case "+", "=": return .zoomIn
         case "-": return .zoomOut
         case "o": return .open

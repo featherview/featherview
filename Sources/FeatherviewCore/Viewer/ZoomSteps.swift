@@ -1,5 +1,12 @@
 import CoreGraphics
 
+/// Where every new image starts unless Keep Zoom is on: fit, or one side filling the fit area.
+public enum FitMode: String, Sendable, CaseIterable { case fit, width, height }
+
+/// Where a picture is placed when it arrives: `keep` the relative position (also fit, where the clip
+/// centres it), `top` for Zoom to Width, `leading` for Zoom to Height.
+public enum ZoomStart: Equatable, Sendable { case keep, top, leading }
+
 /// Zoom factors: 1 = one image pixel per screen pixel.
 public enum ZoomSteps {
     public static let range = 0.05...16.0
@@ -8,6 +15,31 @@ public enum ZoomSteps {
     public static func fitFactor(image: CGSize, view: CGSize, displayScale: Double) -> Double {
         guard image.width > 0, image.height > 0 else { return 1 }
         return min(1, view.width * displayScale / image.width, view.height * displayScale / image.height)
+    }
+
+    /// The factor that makes one side of the image fill `view` (enlarging small images), within `range`.
+    /// `.fit` is `fitFactor`.
+    public static func fillFactor(image: CGSize, view: CGSize, displayScale: Double, mode: FitMode) -> Double {
+        guard image.width > 0, image.height > 0, view.width > 0, view.height > 0 else { return 1 }
+        let factor: Double
+        switch mode {
+        case .fit: return fitFactor(image: image, view: view, displayScale: displayScale)
+        case .width: factor = view.width * displayScale / image.width
+        case .height: factor = view.height * displayScale / image.height
+        }
+        return min(max(factor, range.lowerBound), range.upperBound)
+    }
+
+    /// The clear area's top-leading corner in document coordinates (flipped, y down) for a picture
+    /// arriving at `start`; nil for `.keep`. Unclamped: the clip view clamps and centres.
+    /// The picture never mirrors; only the leading edge follows the reading direction.
+    public static func startOrigin(_ start: ZoomStart, document: CGSize, clear: CGSize, rightToLeft: Bool) -> CGPoint? {
+        switch start {
+        case .keep: return nil
+        case .top: return CGPoint(x: (document.width - clear.width) / 2, y: 0)
+        case .leading: return CGPoint(x: rightToLeft ? document.width - clear.width : 0,
+                                      y: (document.height - clear.height) / 2)
+        }
     }
 
     /// From 2× on (each image pixel at least 2×2 screen pixels) the viewer shows sharp pixels instead of smoothing.

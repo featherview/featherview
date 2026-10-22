@@ -32,6 +32,8 @@ import Testing
         #expect(defaults.bool(forKey: AppSettings.checkForUpdates.key) == true)
         #expect(AppSettings.lastUpdateCheck.value(in: defaults) == .distantPast)
         #expect(AppSettings.skippedVersion.value(in: defaults) == "")
+        #expect(defaults.string(forKey: AppSettings.fitMode.key) == "fit")
+        #expect(defaults.object(forKey: AppSettings.keepZoom.key) as? Bool == false)
     }
 
     @Test func storedValueWinsAndWrongTypeFallsBack() {

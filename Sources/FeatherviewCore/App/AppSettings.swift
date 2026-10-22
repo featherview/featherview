@@ -39,6 +39,10 @@ public enum AppSettings {
     public static let checkerboard = Setting(key: "checkerboard", defaultValue: true)
     public static let rememberWindowFrame = Setting(key: "rememberWindowFrame", defaultValue: true)
     public static let zoomStepPercent = Setting(key: "zoomStepPercent", defaultValue: 10)
+    /// Where every new image starts: a `FitMode` raw value, set by Zoom to Fit / Width / Height.
+    public static let fitMode = Setting(key: "fitMode", defaultValue: FitMode.fit.rawValue)
+    /// View › Keep Zoom: a new image keeps the zoom and scroll position of the one before.
+    public static let keepZoom = Setting(key: "keepZoom", defaultValue: false)
     // Full screen
     public static let showOverlay = Setting(key: "showOverlay", defaultValue: true)
     public static let overlayTemplate = Setting(key: "overlayTemplate", defaultValue: "{path} — {index} / {count}")
@@ -72,6 +76,8 @@ public enum AppSettings {
             checkerboard.key: checkerboard.defaultValue,
             rememberWindowFrame.key: rememberWindowFrame.defaultValue,
             zoomStepPercent.key: zoomStepPercent.defaultValue,
+            fitMode.key: fitMode.defaultValue,
+            keepZoom.key: keepZoom.defaultValue,
             showOverlay.key: showOverlay.defaultValue,
             overlayTemplate.key: overlayTemplate.defaultValue,
             hidePointer.key: hidePointer.defaultValue,
