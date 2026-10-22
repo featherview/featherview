@@ -20,7 +20,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 7 | App formats | `docs/superpowers/plans/2026-10-17-milestone-7-app-formats.md` | done |
 | 8 | Finder previews | `docs/superpowers/plans/2026-10-19-milestone-8-finder-previews.md` | done |
 | 9 | Animation (v2) | `docs/superpowers/plans/2026-10-22-milestone-9-animation.md` | in progress |
-| 10 | Document icon (v2) | `docs/superpowers/plans/2026-10-22-document-icon.md` | planned |
+| 10 | Document icon (v2) | `docs/superpowers/plans/2026-10-22-document-icon.md` | ready |
 | 11 | Viewer conveniences (v2) | | observe first |
 | 12 | Zoom modes and flip (v2) | | observe first |
 | 13 | Thumbnail window (v2) | | planning |
