@@ -168,12 +168,19 @@ into the spec), `docs/parity.md` "Animation". Rules: `AGENTS.md`.
 The header (`anih`, after its size field): frames, steps, width, height, bit count, planes,
 rate (jiffies), flags. `seq ` is one u32 frame index per step; `rate` one u32 jiffies per step.
 
+Real files (Windows 11's `C:\Windows\Cursors\aero_busy.ani` and `aero_working.ani`, read in the VM,
+not copied): `anih` = 36, 18 frames, 18 steps, 0, 0, 32, 1, rate 3, flags 1; no `seq `, no `rate`
+chunk; each frame a CUR with three images (64, 48, 32 px). So the common case is header rate only:
+3 jiffies = 50 ms per frame, 18 frames in order.
+
 - [ ] **Step 1: Write the failing tests** (extend the existing `ani(...)` builder with `rates:`):
   `stepsFollowSequence` (3 frames, `seq ` = [2, 0, 2] → step 0 and 2 decode frame 2's colour, step 1 frame 0's);
   `ratesPerStep` (`rate` = [6, 30, 6] → `delays == [0.1, 0.5, 0.1]`); `headerRateWithoutRateChunk`
   (header rate 10, no `rate` → every delay 1/6 s); `zeroRateIsHundredMilliseconds` (header rate 0 →
   `Animation.read` gives 100 ms); `outOfRangeStepIsCorrupt` (`seq ` naming frame 9 of 3 → decode of that step throws,
-  step 0 still decodes); `firstFrameUnchanged` (existing tests keep passing).
+  step 0 still decodes); `busyCursorShape` (built like the real files: 18 CUR frames of 64/48/32 px,
+header rate 3, no `seq `/`rate` → `delays` 18 × 0.05 s, each step decodes 64 × 64); `firstFrameUnchanged`
+(existing tests keep passing).
 - [ ] **Step 2: Run** `swift test --filter ANIDecoderTests` → FAIL.
 - [ ] **Step 3: Implement.** Parse once into `(frames, steps, rates)`; keep the existing errors for raw-bitmap frames.
 - [ ] **Step 4: Run** `swift test --filter "ANIDecoderTests|AnimationTests|QuickLookSupportTests"` → PASS.
@@ -297,11 +304,12 @@ Rules:
 ### Task 6: Screen check, budgets, docs (main session, screen)
 
 Needs the maintainer's go (screen bursts). Sample folder: Task 1's fixtures written by a small
-`featherview-bench corpus`-style script into the scratchpad, plus 20 12 MP JPEGs and a 60-frame
-1600×1200 GIF.
+`featherview-bench corpus`-style script into the scratchpad, plus 20 12 MP JPEGs, a 60-frame
+1600×1200 GIF, and `aero_busy.ani` from the VM's `C:\Windows\Cursors` (556 KB: copied over in
+base64 pieces of ≤ 64 KB through `vmpal_exec`, kept in the scratchpad, never committed).
 
 - [ ] **Step 1: Check by hand** (release build): each format plays at its pace (a 40 ms GIF visibly
-  smooth); G pauses / plays, the status bar switches "6 frames" ↔ "frame 3 / 6"; ⌥→ / ⌥← step and stop at
+  smooth; `aero_busy.ani` turns like the Windows busy cursor, 18 frames at 50 ms); G pauses / plays, the status bar switches "6 frames" ↔ "frame 3 / 6"; ⌥→ / ⌥← step and stop at
   the ends; menu and toolbar titles; held → through a folder of animations and JPEGs: no stray frames,
   swap budget (`Navigate` p50/p95 in the log) unchanged; zoom in on a playing GIF re-targets; full
   screen plays; Accessibility "Play animated images" off → opens paused, G plays; window minimized →
