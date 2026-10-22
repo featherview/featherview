@@ -108,7 +108,9 @@ if (failing.length) log(`${failing.length} task(s) not clean after 3 fix rounds;
 phase('Integrate')
 const integration = passing.length ? await agent(
   `In the main repository checkout (not a worktree), on branch ${base}: merge these branches one at a time with --no-ff: ${passing.map(r => r.branch).join(', ')}.
+Other waves may be integrating into the same checkout: if .git/MERGE_HEAD exists, wait (check every 30 s, up to 20 min) until it is gone before you start.
 Resolve conflicts only if trivial and explain each; otherwise abort that merge and report it.
+Stage only the files you resolved (git add <file>); never git add -A or git add ., and leave untracked files alone.
 Then run swift build and swift test on ${base}. Report merged branches, any skipped, and the test summary line.`,
   { label: 'merge wave', phase: 'Integrate', schema: {
     type: 'object',
