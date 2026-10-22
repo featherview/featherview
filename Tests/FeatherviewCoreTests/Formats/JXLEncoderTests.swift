@@ -5,6 +5,7 @@ import ImageIO
 import os
 import Testing
 @testable import FeatherviewCore
+@testable import FeatherviewJXL
 
 @Suite struct JXLEncoderTests {
     @Test func linksLibjxl() {

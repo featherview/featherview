@@ -9,7 +9,7 @@ import Testing
         let ids = Set(FormatRegistry.writable.map(\.id))
         // docs/spec.md "Formats": ImageIO's list plus our own encoders.
         for id in ["jpg", "png", "heic", "avif", "tiff", "gif", "jp2", "pdf", "psd", "tga", "ico", "icns",
-                   "exr", "pbm", "bmp", "pgm", "ppm", "qoi", "pcx", "webp"] {
+                   "exr", "pbm", "bmp", "pgm", "ppm", "qoi", "pcx", "webp", "jxl"] {
             #expect(ids.contains(id), "\(id)")
         }
         for hidden in ["ktx", "ktx2", "astc", "pvr", "dds", "atx", "heics"] { #expect(!ids.contains(hidden)) }
@@ -44,6 +44,19 @@ import Testing
     @Test func onlyOneWebPEntry() {
         #expect(FormatRegistry.writable.filter { $0.fileExtension == "webp" }.count == 1)
         #expect(FormatRegistry.hidden.contains("org.webmproject.webp"))
+    }
+
+    @Test func jxlFollowsThePlan() throws {
+        let jxl = try #require(FormatRegistry.format(id: "jxl"))
+        #expect(jxl.name == "JPEG XL" && jxl.fileExtension == "jxl" && jxl.writer == .jxl)
+        #expect(jxl.optionFields == [.lossless, .quality, .effort, .keepMetadata])
+        let d = jxl.defaultOptions
+        #expect(d.quality == 90 && d.effort == 7 && !d.lossless && d.keepMetadata)
+        #expect(jxl.type?.identifier == "public.jpeg-xl")
+        #expect(FormatRegistry.writable.filter { $0.fileExtension == "jxl" }.count == 1)
+        #expect(FormatRegistry.hidden.contains("public.jpeg-xl"))
+        #expect(jxl.effortRange == 1...9)
+        #expect(try #require(FormatRegistry.format(id: "webp")).effortRange == 0...6)
     }
 
     @Test func oldStoredOptionsGetWebPDefaults() throws {
@@ -88,6 +101,49 @@ import Testing
         #expect(back == (try ImageEncoder.rgba(image(200, 150))))
     }
 
+    @Test func jxlUsesItsOptions() throws {
+        _ = Fixtures.jxl
+        let jxl = try #require(FormatRegistry.format(id: "jxl"))
+        let lossless = try ImageEncoder.encode([image(200, 150)], as: jxl, options: jxl.defaultOptions.with { $0.lossless = true })
+        let source = try #require(CGImageSourceCreateWithData(lossless as CFData, nil))
+        #expect(CGImageSourceGetType(source) as String? == "public.jpeg-xl")
+        let decoded = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        #expect(try #require(RGBAImage(decoded)) == (try ImageEncoder.rgba(image(200, 150))))
+        let low = try ImageEncoder.encode([image(200, 150)], as: jxl, options: jxl.defaultOptions.with { $0.quality = 20 })
+        let high = try ImageEncoder.encode([image(200, 150)], as: jxl, options: jxl.defaultOptions.with { $0.quality = 95 })
+        #expect(low.count < high.count)
+    }
+
+    @Test func rotatedPhotoKeepsMetadataUpright() throws {
+        _ = Fixtures.jxl
+        let jxl = try #require(FormatRegistry.format(id: "jxl"))
+        let dir = try Fixtures.makeTempDir()
+        let input = try Fixtures.writeImage(
+            to: dir.appendingPathComponent("portrait.jpg"), width: 40, height: 20, orientation: 6,
+            properties: [
+                kCGImagePropertyTIFFDictionary: [kCGImagePropertyTIFFModel: "iPhone 17"],
+                kCGImagePropertyExifDictionary: [kCGImagePropertyExifDateTimeOriginal: "2026:05:01 12:00:00",
+                                                 kCGImagePropertyExifFNumber: 2.8],
+                kCGImagePropertyGPSDictionary: [kCGImagePropertyGPSLatitude: 52.5, kCGImagePropertyGPSLatitudeRef: "N"],
+            ])
+        let pages = try ImageSaver.pages(of: input, for: jxl, options: jxl.defaultOptions)
+
+        let data = try ImageEncoder.encode(pages, as: jxl, options: jxl.defaultOptions, metadataFrom: input)
+
+        let p = try props(data)
+        #expect(p[kCGImagePropertyPixelWidth] as? Int == 20 && p[kCGImagePropertyPixelHeight] as? Int == 40)
+        #expect(p[kCGImagePropertyOrientation] as? Int ?? 1 == 1)
+        let exif = p[kCGImagePropertyExifDictionary] as? [CFString: Any]
+        #expect(exif?[kCGImagePropertyExifFNumber] as? Double == 2.8)
+        #expect(exif?[kCGImagePropertyExifDateTimeOriginal] as? String == "2026:05:01 12:00:00")
+        #expect((p[kCGImagePropertyTIFFDictionary] as? [CFString: Any])?[kCGImagePropertyTIFFModel] as? String == "iPhone 17")
+        #expect((p[kCGImagePropertyGPSDictionary] as? [CFString: Any])?[kCGImagePropertyGPSLatitude] as? Double == 52.5)
+
+        let stripped = try props(ImageEncoder.encode(pages, as: jxl, options: jxl.defaultOptions.with { $0.keepMetadata = false },
+                                                     metadataFrom: input))
+        #expect((stripped[kCGImagePropertyExifDictionary] as? [CFString: Any])?[kCGImagePropertyExifDateTimeOriginal] == nil)
+    }
+
     @Test func sixteenBitSourceEncodes() throws {
         let webp = try #require(FormatRegistry.format(id: "webp"))
         let p3 = try #require(CGColorSpace(name: CGColorSpace.displayP3))
@@ -109,6 +165,7 @@ import Testing
 
     @Test(arguments: FormatRegistry.writable)
     func everyFormatWritesSomethingReadable(format: OutputFormat) throws {
+        _ = Fixtures.jxl
         let data = try ImageEncoder.encode([image()], as: format, options: format.defaultOptions)
         #expect(data.count > 0)
         guard case .imageIO = format.writer else { return }  // own formats are checked by their codec tests

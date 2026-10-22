@@ -79,6 +79,8 @@ Sources/FeatherviewThumbnail/, Sources/FeatherviewPreview/
                            Finder thumbnail and Quick Look preview extensions (scripts/bundle.sh
                            wraps each into an .appex; Info.plists and entitlements in Resources/QuickLook/)
 Sources/CJPEGXR/           jxrlib (vendored C, not edited) and the small C shim JPEGXRDecoder calls
+Sources/FeatherviewJXL/    JPEG XL writing (libjxl, vendored in Sources/CJPEGXL); only the app links it, so the
+                           extensions stay without libjxl; the app hands it to ImageEncoder.jxlEncoder at launch
 Sources/FeatherviewBench/  featherview-bench (timings without a window); FeatherviewDMG: disk image art
 Tests/FeatherviewCoreTests/ Swift Testing suites, same folders as FeatherviewCore; Fixtures.swift
                            generates test images

@@ -71,7 +71,7 @@ struct FormatOptionsView: View {
         case .effort:
             LabeledContent("Effort:") {
                 Slider(value: Binding { Double(options.effort) } set: { options.effort = Int($0.rounded()) },
-                       in: 0...6, step: 1)
+                       in: Double(format.effortRange.lowerBound)...Double(format.effortRange.upperBound), step: 1)
                 Text("\(options.effort)")
                     .monospacedDigit()
                     .frame(minWidth: 28, alignment: .trailing)

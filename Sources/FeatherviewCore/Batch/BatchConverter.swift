@@ -113,14 +113,6 @@ public enum BatchConverter {
         return results.compactMap { $0 }
     }
 
-    /// Blocking ImageIO work runs on GCD, so it never ties up the cooperative pool the viewer's
-    /// decode tasks need. The task group still caps how many run at once.
-    private static func offPool<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
-        await withCheckedContinuation { done in
-            DispatchQueue.global(qos: .userInitiated).async { done.resume(returning: work()) }
-        }
-    }
-
     /// Decode (all pages the format needs, or each frame or page as its own output), the pipeline per
     /// page, tiles, encode. A copy only reads the date, or rewrites it losslessly.
     static func prepare(_ input: BatchInput, index: Int, settings: BatchSettings,

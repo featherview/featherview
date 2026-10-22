@@ -1,4 +1,5 @@
 import FeatherviewCore
+import FeatherviewJXL
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -8,6 +9,7 @@ struct FeatherviewApp: App {
     @State private var batch = BatchModel()
 
     init() {
+        ImageEncoder.jxlEncoder = JXLEncoder.encode
         // AppKit mirrors only for a right-to-left system language, not for one picked for this app alone.
         if let language = Bundle.main.preferredLocalizations.first,
            Locale.Language(identifier: language).characterDirection == .rightToLeft {

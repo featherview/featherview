@@ -775,9 +775,9 @@ final class ViewerModel {
             rotateTask = Task {
                 await previous?.value
                 do {
-                    try await Task.detached(priority: .userInitiated) {
-                        try ImageSaver.save(url, page: page, to: target, as: choice.format, options: choice.options)
-                    }.value
+                    try await offPool {
+                        Result { try ImageSaver.save(url, page: page, to: target, as: choice.format, options: choice.options) }
+                    }.get()
                     guard ImageFormats.isDecodable(target) else { return }
                     await cache.remove(target)  // it may have replaced a listed file
                     await fullSizeCache.remove(target)

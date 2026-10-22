@@ -8,12 +8,18 @@ public enum EncodeError: Error, Equatable {
 
 /// Turns upright pixels into a file's bytes in any `OutputFormat`, with its options (spec "Format options").
 public enum ImageEncoder {
+    /// `FeatherviewJXL.JXLEncoder.encode`, set by the app at launch (not linked here, see Package.swift); nil: JPEG XL fails.
+    /// Unsafe is sound only if it is written once before any encode: at launch, or in tests through `Fixtures.jxl`
+    /// (a `static let`, so its one write happens before every test that runs it reads).
+    nonisolated(unsafe) public static var jxlEncoder: (@Sendable (CGImage, _ quality: Int, _ lossless: Bool, _ effort: Int,
+                                                                 _ xmp: Data?) throws -> Data)?
+
     /// `pages` are upright (orientation applied); only TIFF with "keep all pages" and PDF write more
     /// than the first. Metadata of `source` (camera, EXIF, GPS, IPTC) is kept where the format and
     /// "keep metadata" allow; the orientation tag is always 1. `dpi` is written for ImageIO formats.
     /// `hdr` writes HEIC and AVIF with a gain map, for pixels decoded as HDR (`ImageDecoder.isHDR`).
-    /// `dateTaken` ("yyyy:MM:dd HH:mm:ss") goes into EXIF and TIFF dates of ImageIO formats, also
-    /// with "keep metadata" off; own encoders and PDF ignore it.
+    /// `dateTaken` ("yyyy:MM:dd HH:mm:ss") goes into EXIF and TIFF dates of ImageIO formats and JPEG XL,
+    /// also with "keep metadata" off; other own encoders and PDF ignore it.
     public static func encode(_ pages: [CGImage], as format: OutputFormat, options: FormatOptions,
                               metadataFrom source: URL? = nil, dpi: Int? = nil, hdr: Bool = false,
                               dateTaken: String? = nil) throws -> Data {
@@ -27,6 +33,10 @@ public enum ImageEncoder {
         case .webp:
             return try WebPEncoder.encode(try rgba(first), quality: options.quality, lossless: options.lossless,
                                           effort: options.effort, kind: options.webpKind)
+        case .jxl:
+            guard let jxlEncoder else { throw EncodeError.failed }
+            return try jxlEncoder(first, options.quality, options.lossless, options.effort,
+                                  metadataXMP(of: options.keepMetadata ? source : nil, dateTaken: dateTaken))
         case .pcx:  // PCX's header can't hold every size
             guard let data = try? PCXCodec.encode(try rgba(first)) else { throw EncodeError.failed }
             return data
@@ -163,6 +173,39 @@ public enum ImageEncoder {
     static func rgba(_ image: CGImage) throws -> RGBAImage {
         guard let pixels = RGBAImage(image) else { throw EncodeError.failed }
         return pixels
+    }
+
+    /// The source's EXIF, TIFF, GPS and IPTC as XMP (ImageIO's view of them), for a JPEG XL `xml ` box:
+    /// rationals stay exact there, unlike through the property dictionaries. Drops what no longer
+    /// matches the upright pixels. `dateTaken` replaces the EXIF and TIFF dates, as for ImageIO formats.
+    /// Nil when there is nothing to write.
+    static func metadataXMP(of input: URL?, dateTaken: String? = nil) -> Data? {
+        let kept: Set<String> = [
+            kCGImageMetadataNamespaceTIFF, kCGImageMetadataNamespaceExif, kCGImageMetadataNamespaceExifEX,
+            kCGImageMetadataNamespaceExifAux, kCGImageMetadataNamespaceDublinCore, kCGImageMetadataNamespacePhotoshop,
+            kCGImageMetadataNamespaceIPTCCore, kCGImageMetadataNamespaceIPTCExtension,
+        ].map { $0 as String }.reduce(into: []) { $0.insert($1) }
+        let dropped: Set<String> = ["tiff:Orientation", "exif:PixelXDimension", "exif:PixelYDimension"]
+        let metadata = CGImageMetadataCreateMutable()
+        var any = false
+        if let input, let source = CGImageSourceCreateWithURL(input as CFURL, nil),
+           let original = CGImageSourceCopyMetadataAtIndex(source, 0, nil) {
+            CGImageMetadataEnumerateTagsUsingBlock(original, nil, nil) { path, tag in
+                guard let namespace = CGImageMetadataTagCopyNamespace(tag) as String?, kept.contains(namespace),
+                      !dropped.contains(path as String) else { return true }
+                if CGImageMetadataSetTagWithPath(metadata, nil, path, tag) { any = true }
+                return true
+            }
+        }
+        if let dateTaken {
+            for (dictionary, key) in [(kCGImagePropertyExifDictionary, kCGImagePropertyExifDateTimeOriginal),
+                                      (kCGImagePropertyExifDictionary, kCGImagePropertyExifDateTimeDigitized),
+                                      (kCGImagePropertyTIFFDictionary, kCGImagePropertyTIFFDateTime)] {
+                if CGImageMetadataSetValueMatchingImageProperty(metadata, dictionary, key, dateTaken as CFString) { any = true }
+            }
+        }
+        guard any else { return nil }
+        return CGImageMetadataCreateXMPData(metadata, nil) as Data?
     }
 
     /// Keeps TIFF (camera make/model), EXIF, GPS and IPTC; drops what no longer matches the new pixels.

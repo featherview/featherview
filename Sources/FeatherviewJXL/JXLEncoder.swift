@@ -1,5 +1,6 @@
 import CJPEGXL
 import CoreGraphics
+import FeatherviewCore
 import Foundation
 import os
 
