@@ -31,4 +31,15 @@ import Testing
         player.stop()
     }
 
+    @Test func playerReleasedWhilePlayingGoesAway() async throws {
+        let url = try Self.gif(frames: 5, delay: 0.02)
+        var player: AnimationPlayer? = AnimationPlayer(colorSpace: nil)
+        weak let weakPlayer = player
+        player?.start(url: url, animation: try #require(Animation.read(url)), target: .full,
+                      first: Self.bigFirst(), playing: true)
+        try await Task.sleep(for: .milliseconds(100))
+        player = nil
+        for _ in 0..<50 where weakPlayer != nil { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(weakPlayer == nil)
+    }
 }

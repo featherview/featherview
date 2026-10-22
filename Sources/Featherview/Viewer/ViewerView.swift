@@ -199,6 +199,7 @@ struct ViewerView: View {
         .onAppear {
             focused = true
             ViewerModel.windows.viewerOpened()
+            model.player.setVisible(true)
             // Menu key equivalents (⌘C, ⌥1…) never reach onKeyPress; none of them is a browsing key.
             autoHide.keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
                 if event.window === model.window, !event.modifierFlags.isDisjoint(with: [.command, .control, .option]) {
@@ -209,6 +210,8 @@ struct ViewerView: View {
         }
         .onDisappear {
             ViewerModel.windows.viewerClosed()
+            // The main window's model outlives it; a reopened window plays on.
+            model.player.setVisible(false)
             if let monitor = autoHide.keyMonitor { NSEvent.removeMonitor(monitor) }
         }
         .onKeyPress(action: handle)

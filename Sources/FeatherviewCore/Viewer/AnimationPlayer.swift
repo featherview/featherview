@@ -129,34 +129,45 @@ public final class AnimationPlayer {
         task?.cancel()
         guard playback.isPlaying, visible, frameCount > 1 else { return }
         let generation = generation
-        task = Task { [weak self] in await self?.run(generation) }
+        task = Task { [weak self] in
+            var shownAt = ContinuousClock.now
+            // Holds the player only while a frame is taken, so a player whose window closed goes away.
+            while let delay = self?.decodeAhead(generation) {
+                do { try await Task.sleep(until: shownAt + delay, clock: .continuous) } catch { return }
+                guard await self?.advance(generation) == true else { return }
+                // A late frame isn't skipped: its delay counts from when it showed.
+                shownAt = .now
+            }
+        }
     }
 
-    private func run(_ generation: Int) async {
-        var shownAt = ContinuousClock.now
-        while isCurrent(generation) {
-            let shown = playback.frame
-            for index in FrameStore.wanted(shown: shown, count: frameCount, keepsAll: keepsAll ?? false).dropFirst()
-            where frames[index] == nil {
-                _ = decode(index)
-            }
-            do { try await Task.sleep(until: shownAt + delays[shown], clock: .continuous) } catch { return }
-            guard isCurrent(generation) else { return }
-            let next = (shown + 1) % frameCount
-            let image: CGImage
-            if let decoded = try? await fetch(next) {
-                guard isCurrent(generation) else { return }
-                image = decoded
-                playback.advance()
-            } else {
-                // A truncated file: play the frames that decode, then loop. With one good frame, stay on it.
-                guard isCurrent(generation), next > 1, let first = await cut(to: next), isCurrent(generation) else { return }
-                image = first
-            }
-            show(image)
-            // A late frame isn't skipped: its delay counts from when it showed.
-            shownAt = .now
+    /// Starts decoding the frames due after the one shown; returns how long that one stays, nil once stale.
+    private func decodeAhead(_ generation: Int) -> Duration? {
+        guard isCurrent(generation) else { return nil }
+        let shown = playback.frame
+        for index in FrameStore.wanted(shown: shown, count: frameCount, keepsAll: keepsAll ?? false).dropFirst()
+        where frames[index] == nil {
+            _ = decode(index)
         }
+        return delays[shown]
+    }
+
+    /// Shows the next frame; false once stale.
+    private func advance(_ generation: Int) async -> Bool {
+        guard isCurrent(generation) else { return false }
+        let next = (playback.frame + 1) % frameCount
+        let image: CGImage
+        if let decoded = try? await fetch(next) {
+            guard isCurrent(generation) else { return false }
+            image = decoded
+            playback.advance()
+        } else {
+            // A truncated file: play the frames that decode, then loop. With one good frame, stay on it.
+            guard isCurrent(generation), next > 1, let first = await cut(to: next), isCurrent(generation) else { return false }
+            image = first
+        }
+        show(image)
+        return true
     }
 
     /// Keeps only the first `count` frames, playing again from frame 0; returns frame 0.
