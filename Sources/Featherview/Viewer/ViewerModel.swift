@@ -81,7 +81,8 @@ final class ViewerModel {
                                hasPages: (pageCount > 1 || player.frameCount > 1) && !list.isHolding && !isGrid,
                                canShowGrid: isGrid || (!list.isEmpty && !isOpening),
                                canCompare: list.current != nil && !list.isHolding && !isGrid,
-                               canSwap: compareSession != nil && compareSession?.errorMessage == nil)
+                               canSwap: compareSession != nil && compareSession?.errorMessage == nil
+                                   && list.current != nil && !list.isHolding)
         if new != availability { availability = new }
         if isAnimation != (player.frameCount > 1) { isAnimation.toggle() }
     }
