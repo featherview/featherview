@@ -106,7 +106,7 @@ public struct Slideshow: Equatable, Sendable {
         return nil
     }
 
-    /// A panel was open when the image was due: it stays a full interval more.
+    /// A panel was open when the image was due, or it was zoomed without a new decode: it stays a full interval more.
     public mutating func hold(at now: ContinuousClock.Instant) {
         if due != nil { due = now + options.interval }
     }

@@ -189,6 +189,14 @@ import Testing
         #expect(show.due == t0 + .seconds(10))
     }
 
+    @Test func holdWhilePausedStaysPaused() {
+        var show = Slideshow(urls: urls(3), from: u(1), options: options(), seed: 1)
+        show.shown(u(1), at: t0)
+        _ = show.togglePause(at: t0 + .seconds(1))
+        show.hold(at: t0 + .seconds(2))  // a zoom while paused
+        #expect(show.due == nil)
+    }
+
     @Test func failedSkipsInDirection() {
         var show = Slideshow(urls: urls(5), from: u(1), options: options(), seed: 1)
         _ = show.step(forward: true)

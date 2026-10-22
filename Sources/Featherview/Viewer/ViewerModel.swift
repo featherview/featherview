@@ -350,7 +350,13 @@ final class ViewerModel {
         }
         self.zoom = zoom
         // A held image is gone from disk: show() would release it and decode the next file at the held page.
-        if needsReload, !list.isHolding { show(page: page, keepsPlayer: true) }
+        if needsReload, !list.isHolding {
+            show(page: page, keepsPlayer: true)
+        } else if slideshow != nil {
+            // No re-decode, so no `shown`: the zoomed image still gets a full interval.
+            slideshow?.hold(at: .now)
+            slideshowChanged()
+        }
     }
 
     private func pastEnd(forward: Bool) {
