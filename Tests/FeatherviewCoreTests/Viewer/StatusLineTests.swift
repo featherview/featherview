@@ -41,4 +41,11 @@ import Testing
                                    page: 0, pageCount: 1, frame: 0, frameCount: 1, modified: nil)
         #expect(line.fields == ["1 / 1"])
     }
+
+    @Test func selectionField() {
+        #expect(StatusLine.selection(count: 12, total: 120).fields == ["12 of 120 selected"])
+        // Counts are formatted for the locale, as the other fields.
+        #expect(StatusLine.selection(count: 1200, total: 10000).fields
+                == ["\(1200.formatted()) of \(10000.formatted()) selected"])
+    }
 }

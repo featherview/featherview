@@ -37,4 +37,9 @@ public struct StatusLine: Equatable, Sendable {
         }
         return StatusLine(fields: fields)
     }
+
+    /// The thumbnail grid's status bar while more than one cell is selected.
+    public static func selection(count: Int, total: Int) -> StatusLine {
+        StatusLine(fields: [String(localized: "\(count.formatted()) of \(total.formatted()) selected")])
+    }
 }
