@@ -871,6 +871,79 @@ final class ViewerModel {
         if pendingChanges.indices.contains(written) { pendingChanges.remove(at: written) }
     }
 
+    // MARK: Date taken
+
+    /// The files Adjust Date Taken… acts on and the first one's dates, read off the main thread.
+    struct DateSheetState: Identifiable {
+        let url: URL
+        /// The grid's other selected files: they shift by as much as the first one changes.
+        let others: [URL]
+        let original: String?
+        /// The file's modification date as a wall time, when it has no date taken.
+        let fileDate: String?
+        var id: URL { url }
+        var current: String? { original ?? fileDate }
+    }
+    var dateSheet: DateSheetState?
+
+    /// The viewed image, or the grid's selection.
+    var canAdjustDate: Bool { isGrid ? !gridSelection.isEmpty : availability.canChangeFile }
+
+    func showAdjustDate() {
+        guard canAdjustDate, let url = isGrid ? gridSelection.first : list.current else { return }
+        let others = isGrid ? Array(gridSelection.dropFirst()) : []
+        Task {
+            let (original, current) = await Task.detached { (DateTaken.original(of: url), DateTaken.current(of: url)) }.value
+            dateSheet = DateSheetState(url: url, others: others, original: original, fileDate: original == nil ? current : nil)
+        }
+    }
+
+    /// Sets the first file's date taken to `date` and shifts the others by as much, in place and losslessly.
+    func adjustDateTaken(to date: String) {
+        guard let sheet = dateSheet else { return }
+        dateSheet = nil
+        let urls = [sheet.url] + sheet.others
+        // Without a start date for the first file, the others get the same date.
+        let delta = sheet.current.flatMap(DateTaken.wallTime).flatMap { from in
+            DateTaken.wallTime(date).map { Int($0.timeIntervalSince(from)) }
+        }
+        let previous = rotateTask
+        // Behind rotations and flips: they swap the same file in.
+        rotateTask = Task {
+            await previous?.value
+            let failures = await Task.detached(priority: .userInitiated) {
+                var failures: [(url: URL, error: any Error)] = []
+                for url in urls {
+                    do {
+                        var target: String? = date
+                        if url != sheet.url, let delta { target = DateTaken.current(of: url).flatMap { DateTaken.shifted($0, by: delta) } }
+                        guard let target else { throw DateTakenError.unreadable }
+                        try DateTaken.apply(url, date: target)
+                    } catch {
+                        failures.append((url, error))
+                    }
+                }
+                return failures
+            }.value
+            for url in urls { knownInfo[url] = nil }
+            fileRevision += 1  // the Info panel reloads
+            // The status bar's date: the pixels didn't change, so no decode.
+            if !isGrid, let url = list.current, urls.contains(url) {
+                let page = page
+                let info = await Task.detached { FileInfo.read(url: url, page: page) }.value
+                if info.isFor(list.current, page: self.page) { fileInfo = info }
+            }
+            if let focus = gridFocus, urls.contains(focus) { readGridInfo() }
+            if failures.count > 1 {
+                errorMessage = String(localized: "\(failures.count) files couldn't be changed")
+            } else if let failure = failures.first {
+                errorMessage = urls.count == 1 && failure.error as? DateTakenError == .unsupportedFormat
+                    ? String(localized: "The date taken can be changed in JPEG, HEIC, TIFF and PSD files only")
+                    : String(localized: "Can't change the date taken of \(failure.url.lastPathComponent)")
+            }
+        }
+    }
+
     // MARK: Thumbnail grid
 
     /// T: the grid of the list's thumbnails in place of the image (on), or the focused cell's image (off).
