@@ -24,6 +24,18 @@ import Testing
         #expect(FileInfo.read(url: url, page: 0) != first)
     }
 
+    /// After a rename the picture stays on screen: its info moves to the new URL without a read.
+    @Test func movedKeepsValues() throws {
+        let dir = try Fixtures.makeTempDir()
+        let a = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 4)
+        let info = FileInfo.read(url: a, page: 0)
+        let b = dir.appendingPathComponent("b.jpg")  // never written: no read happens
+        let moved = info.moved(to: b)
+        #expect(moved.url == b)
+        #expect(moved.page == info.page && moved.pixelSize == info.pixelSize)
+        #expect(moved.bytes == info.bytes && moved.modified == info.modified && moved.values == info.values)
+    }
+
     /// A swap with no read for the new file (prefetch cancelled, a file not prefetched, another page)
     /// must not leave the previous file's size, bytes, date and fit zoom % beside the new image.
     @Test func shownInfoIsNeverAnotherFilesOrPages() throws {
