@@ -90,8 +90,42 @@ public enum ImageSort {
             let byName = FolderScanner.inFinderOrder(urls)
             return order.ascending ? byName : byName.reversed()
         }
-        // Keys taken once: lastPathComponent inside the comparator made the scanner's sort 190 ms.
-        return entries(urls, values: values).sorted { precedes($0, $1, ascending: order.ascending) }.map(\.url)
+        // Names and values ranked once, so the sort compares numbers: comparing text per pair (Kind, and every
+        // tie) made 10,000 files take ~3x as long as the name sort.
+        let ranks = textRanks(values)
+        let keyed = FolderScanner.inFinderOrder(urls).enumerated().map { (index, url) in
+            (url: url, name: index, key: values[url].map { rank($0, ranks) })
+        }
+        return keyed.sorted { a, b in
+            switch (a.key, b.key) {
+            case let (x?, y?) where x != y: order.ascending ? x < y : x > y
+            case (_?, nil): true
+            case (nil, _?): false
+            default: a.name < b.name
+            }
+        }.map(\.url)
+    }
+
+    /// `sorted` with `added` put in at their place in the order, in a few comparisons each: a rename or a new file
+    /// doesn't sort the whole list again.
+    public static func inserting(_ added: [URL], into sorted: [URL], by order: SortOrder,
+                                 values: [URL: SortValue]) -> [URL] {
+        var result = sorted
+        for url in added {
+            let new = (url: url, name: url.lastPathComponent, value: values[url])
+            var (low, high) = (0, result.count)
+            while low < high {
+                let mid = (low + high) / 2
+                let other = result[mid]
+                let otherEntry = (url: other, name: other.lastPathComponent, value: values[other])
+                let after = order.key == .name
+                    ? new.name.localizedStandardCompare(otherEntry.name) == (order.ascending ? .orderedDescending : .orderedAscending)
+                    : precedes(otherEntry, new, ascending: order.ascending)
+                if after { low = mid + 1 } else { high = mid }
+            }
+            result.insert(url, at: low)
+        }
+        return result
     }
 
     /// A re-sort of the open list (a new order, Date Taken after an open): reads the values and sorts. Reads the
@@ -117,6 +151,23 @@ public enum ImageSort {
     }
 
     private typealias Entry = (url: URL, name: String, value: SortValue?)
+
+    /// Each distinct text value's place in `localizedStandardCompare` order: a few kinds, so a few comparisons.
+    private static func textRanks(_ values: [URL: SortValue]) -> [String: Int] {
+        var texts = Set<String>()
+        for case let .text(text) in values.values { texts.insert(text) }
+        let ordered = texts.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        return Dictionary(uniqueKeysWithValues: ordered.enumerated().map { ($1, $0) })
+    }
+
+    /// A value as a number that orders as `SortValue.compare` does (one key's values are all one case).
+    private static func rank(_ value: SortValue, _ textRanks: [String: Int]) -> Double {
+        switch value {
+        case let .date(date): date.timeIntervalSinceReferenceDate
+        case let .bytes(bytes): Double(bytes)
+        case let .text(text): Double(textRanks[text] ?? 0)
+        }
+    }
 
     private static func entries(_ urls: [URL], values: [URL: SortValue]) -> [Entry] {
         urls.map { ($0, $0.lastPathComponent, values[$0]) }

@@ -30,10 +30,14 @@ extension ViewerModel {
         }
     }
 
-    /// Takes `urls` as the list in the stored order (sorted here, with `sortValues`). The current image stays on
-    /// screen; only its neighbours change.
+    /// Takes `urls` as the list in the stored order: files no longer in `urls` leave, new ones go in at their place
+    /// (with `sortValues`), so a rename or an arriving file costs a few comparisons, not a sort on the main thread.
+    /// The current image stays on screen; only its neighbours change.
     func relist(_ urls: [URL]) {
-        takeOrder(ImageSort.sorted(urls, by: .stored(), values: sortValues))
+        let wanted = Set(urls)
+        let kept = list.urls.filter(wanted.contains)
+        let listed = Set(kept)
+        takeOrder(ImageSort.inserting(urls.filter { !listed.contains($0) }, into: kept, by: .stored(), values: sortValues))
     }
 
     /// Reads and keeps the stored key's values for `urls` (new or renamed files), off the main thread.
