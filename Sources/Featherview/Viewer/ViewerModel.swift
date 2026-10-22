@@ -66,7 +66,8 @@ final class ViewerModel {
     private func updateAvailability() {
         // While the folder is listed its ends aren't known yet.
         let pastEnd = isOpening ? .loop : AppSettings.pastEndBehavior
-        let canBrowse = folder != nil
+        // In the grid → moves between cells, not images (Decision 8).
+        let canBrowse = folder != nil && !isGrid
         let new = Availability(canGoBack: canBrowse && pastEnd.canStep(forward: false, index: list.index, count: list.urls.count),
                                canGoForward: canBrowse && pastEnd.canStep(forward: true, index: list.index, count: list.urls.count),
                                hasCurrent: list.current != nil,
@@ -301,11 +302,13 @@ final class ViewerModel {
     }
 
     func next() {
+        guard !isGrid else { return }
         forward = true
         if list.next() { show() } else { pastEnd(forward: true) }
     }
 
     func previous() {
+        guard !isGrid else { return }
         forward = false
         if list.previous() { show() } else { pastEnd(forward: false) }
     }
@@ -824,6 +827,8 @@ final class ViewerModel {
                 }
                 await cache.remove(url)
                 await fullSizeCache.remove(url)
+                thumbnails?.shown.removeObject(forKey: url as NSURL)
+                await thumbnails?.cache.remove(url)
                 try? await Task.sleep(until: turned)
                 knownInfo[url] = nil
                 ready[url] = nil
