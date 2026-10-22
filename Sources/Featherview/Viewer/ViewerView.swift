@@ -24,6 +24,7 @@ struct ViewerView: View {
     @AppStorage(AppSettings.showOverlay.key) private var showOverlay = AppSettings.showOverlay.defaultValue
     @AppStorage(AppSettings.overlayTemplate.key) private var overlayTemplate = AppSettings.overlayTemplate.defaultValue
     @AppStorage(AppSettings.hidePointer.key) private var hidePointer = AppSettings.hidePointer.defaultValue
+    @AppStorage(AppSettings.thumbnailSize.key) private var thumbnailSize = AppSettings.thumbnailSize.defaultValue
     @AppStorage(toolbarHiddenKey) private var toolbarHidden = false
     @AppStorage(statusBarHiddenKey) private var statusBarHidden = false
     @State private var windowSize = CGSize.zero
@@ -54,7 +55,10 @@ struct ViewerView: View {
     private var canvas: some View {
         ZStack {
             background.ignoresSafeArea()
-            if let image = model.image {
+            if model.isGrid {
+                ThumbnailGrid(model: model, urls: model.list.urls, cellSize: thumbnailSize, insets: canvasInsets, onKey: gridKey)
+                    .ignoresSafeArea()
+            } else if let image = model.image {
                 ImageCanvas(image: image, player: model.player, size: drawSize(image), pixelWidth: pixelSize(image).width,
                             displayScale: displayScale, background: Theme.background, insets: canvasInsets, zoom: model.zoom,
                             checkerboard: checkerboard, turns: model.pendingTurns, leaving: model.isLeaving,
@@ -78,7 +82,7 @@ struct ViewerView: View {
         }
         .overlay { sheets }
         .overlay(alignment: .bottom) {
-            if let message = model.errorMessage, model.image != nil {
+            if let message = model.errorMessage, model.image != nil || model.isGrid {
                 Text(message)
                     .messageBox()
                     .padding(.horizontal)
@@ -86,7 +90,7 @@ struct ViewerView: View {
             }
         }
         .overlay(alignment: .topLeading) {
-            if model.isFullScreen, showOverlay, let url = model.list.current {
+            if model.isFullScreen, showOverlay, !model.isGrid, let url = model.list.current {
                 Text(OverlayTemplate.render(overlayTemplate, values: overlayValues(url)))
                     .font(.callout)
                     .foregroundStyle(.white)
@@ -115,7 +119,7 @@ struct ViewerView: View {
         .onChange(of: canvasInsets) { setViewSize(window: windowSize, toolbarHeight: toolbarHeight) }
         .overlay(alignment: .bottom) {
             // Nothing to report without a picture: an empty strip is just a grey bar.
-            if showsStatusBar, model.image != nil {
+            if showsStatusBar, model.image != nil || model.isGrid {
                 StatusBar(model: model)
                     .padding(.trailing, stripTrailing)
                     .opacity(barsVisible ? 1 : 0)
@@ -137,9 +141,12 @@ struct ViewerView: View {
         .onChange(of: hideBars, initial: true) { feedAutoHide(.enabled($1)) }
         .onChange(of: model.isFullScreen, initial: true) { feedAutoHide(.fullScreen($1)) }
         .onChange(of: model.image != nil, initial: true) { feedAutoHide(.pictureShown($1)) }
-        .onChange(of: model.chooser != nil || model.destinationPanel != nil || model.showInfo, initial: true) {
+        // The grid keeps its bars like a panel does: the strip holds its slider.
+        .onChange(of: model.chooser != nil || model.destinationPanel != nil || model.showInfo || model.isGrid, initial: true) {
             feedAutoHide(.panelOpen($1))
         }
+        // The grid's collection view had the keyboard.
+        .onChange(of: model.isGrid) { if !$1 { focused = true } }
         .onChange(of: barsVisible) { fadeBars(visible: $1) }
         .task(id: hideArm) { await hideBarsAtRest() }
         // On a new image and on entering full screen (double-click, F or Return leave the image as is).
@@ -212,6 +219,7 @@ struct ViewerView: View {
             ViewerModel.windows.viewerClosed()
             // The main window's model outlives it; a reopened window plays on.
             model.player.setVisible(false)
+            model.closeWindow()
             if let monitor = autoHide.keyMonitor { NSEvent.removeMonitor(monitor) }
         }
         .onKeyPress(action: handle)
@@ -397,6 +405,17 @@ struct ViewerView: View {
         feedAutoHide(.key(browsing: browsing))
         if model.isChooserOpen { return handleChooser(press, modifiers) }
         if let operation = model.destinationPanel { return handleDestinations(press, modifiers, operation) }
+        // The grid's keys, when its collection view hasn't the keyboard (the size slider, Tab); the viewer's keys do
+        // nothing there (Decision 13).
+        if model.isGrid {
+            var gridModifiers: MenuKey.Modifiers = []
+            if modifiers.contains(.command) { gridModifiers.insert(.command) }
+            if modifiers.contains(.shift) { gridModifiers.insert(.shift) }
+            if modifiers.contains(.option) { gridModifiers.insert(.option) }
+            if modifiers.contains(.control) { gridModifiers.insert(.control) }
+            if let key = GridKey.action(characters: press.characters, modifiers: gridModifiers) { _ = gridKey(key) }
+            return .handled
+        }
         if modifiers == .option {
             switch press.key {
             case .rightArrow, .leftArrow:
@@ -443,6 +462,11 @@ struct ViewerView: View {
         guard modifiers.subtracting(.shift).isEmpty,
               let action = ViewerKey.action(characters: press.characters, shift: modifiers.contains(.shift))
         else { return .ignored }
+        return perform(action) ? .handled : .ignored
+    }
+
+    /// False: the key does nothing here and goes on up.
+    private func perform(_ action: ViewerKey) -> Bool {
         switch action {
         case .rotateRight: model.rotate(.clockwise)
         case .rotateLeft: model.rotate(.counterClockwise)
@@ -459,12 +483,27 @@ struct ViewerView: View {
         case .about: openWindow(id: "about")
         case .saveAs: model.saveAs()
         case .toggleAnimation: model.toggleAnimation()
-        case .toggleThumbnails: return .ignored
-        case .flipHorizontal, .flipVertical, .zoomToWidth, .zoomToHeight, .toggleKeepZoom: return .ignored
-        case .swapImages, .toggleDifference: return .ignored  // compare mode only
+        case .toggleThumbnails: model.toggleGrid()
+        case .flipHorizontal, .flipVertical, .zoomToWidth, .zoomToHeight, .toggleKeepZoom: return false
+        case .swapImages, .toggleDifference: return false  // compare mode only
         case .slideshow, .playInWindow: break
         }
-        return .handled
+        return true
+    }
+
+    /// The grid's keys (its collection view has the keyboard). False: not the grid's, the key goes on up.
+    private func gridKey(_ key: GridKey) -> Bool {
+        switch key {
+        case .view: model.viewFromGrid(model.gridFocus)
+        case .toggle: model.toggleGrid()
+        case .leave: model.leaveGridCancelling()
+        case .larger: model.stepThumbnails(larger: true)
+        case .smaller: model.stepThumbnails(larger: false)
+        case .passOn(let action): return perform(action)
+        // shortcut: Space, ⌦ / ⌘⌫, F7, F8 and B do nothing in the grid yet, wire them when the selection's actions land.
+        case .quickLook, .trash, .move, .copy, .batch, .first, .last: return false
+        }
+        return true
     }
 
     /// While the folder chooser shows, keys drive it and nothing else.
@@ -546,7 +585,7 @@ struct OpenWithMenu: View {
                     model?.openWith(index)
                 }
                 .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .option)
-                .disabled(path.isEmpty || model?.availability.hasCurrent != true)
+                .disabled(path.isEmpty || model?.availability.hasCurrent != true || model?.isGrid == true)
             }
         }
     }
@@ -762,6 +801,8 @@ struct ViewerCommands: Commands {
                 }
             }
             .keyboardShortcut("c")
+            // The grid has no image to copy and no text field (Decision 13).
+            .disabled(model?.isGrid == true)
             Button("Cut") { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }
                 .keyboardShortcut("x")
             Button("Paste") { NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil) }
@@ -798,10 +839,11 @@ struct ViewerCommands: Commands {
                 Button("Move to Trash  (⌘⌫ or ⌦)") { model?.moveCurrentToTrash() }
             }
             .disabled(model?.availability.canChangeFile != true)
+            // In the grid these would act on the image viewed before T, not the cells (Decision 13).
             Button("Show in Finder") { model?.showInFinder() }
-                .disabled(model?.availability.hasCurrent != true)
+                .disabled(model?.availability.hasCurrent != true || model?.isGrid == true)
             OpenWithMenu(model: model)
-            if let url = model?.list.current, let type = DefaultViewer.claimableType(for: url) {
+            if let url = model?.list.current, model?.isGrid != true, let type = DefaultViewer.claimableType(for: url) {
                 Button("Always Open .\(url.pathExtension.lowercased()) Files with Featherview") {
                     Task { await DefaultViewerOffer.claim(type); claims += 1 }
                 }
@@ -810,7 +852,7 @@ struct ViewerCommands: Commands {
                 Button("Always Open with Featherview") {}.disabled(true)
             }
             Button("Show Info  (I)") { model?.showInfo.toggle() }
-                .disabled(model?.availability.hasCurrent != true)
+                .disabled(model?.availability.hasCurrent != true || model?.isGrid == true)
             Divider()
             Button("Batch Convert…  (B)") { openWindow(id: "batch") }
                 .keyboardShortcut("b")
@@ -826,13 +868,25 @@ struct ViewerCommands: Commands {
             Button(statusBarHidden ? "Show Status Bar" : "Hide Status Bar") { statusBarHidden.toggle() }
         }
         CommandGroup(after: .toolbar) {
+            Button(model?.isGrid == true ? "Show Image  (T)" : "Show Thumbnails  (T)") { model?.toggleGrid() }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
+                .disabled(model?.availability.canShowGrid != true)
             Group {
                 Button("Zoom to Fit  (0)") { model?.setZoom(.fit) }
                 Button("Actual Size  (1)") { model?.setZoom(.factor(1)) }
-                Button("Zoom In  (+)") { model?.zoomIn() }
-                Button("Zoom Out  (−)") { model?.zoomOut() }
             }
-            .disabled(model?.availability.hasCurrent != true)
+            .disabled(model?.availability.hasCurrent != true || model?.isGrid == true)
+            // In the grid + and − size the thumbnails (Decision 5).
+            if model?.isGrid == true {
+                Button("Larger Thumbnails  (+)") { model?.stepThumbnails(larger: true) }
+                Button("Smaller Thumbnails  (−)") { model?.stepThumbnails(larger: false) }
+            } else {
+                Group {
+                    Button("Zoom In  (+)") { model?.zoomIn() }
+                    Button("Zoom Out  (−)") { model?.zoomOut() }
+                }
+                .disabled(model?.availability.hasCurrent != true)
+            }
         }
     }
 }

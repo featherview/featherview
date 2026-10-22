@@ -307,6 +307,23 @@ enum Theme {
     /// Batch window footers: the images column's and the settings' bars share one height, so their
     /// dividers and controls line up.
     static let batchBarHeight = 40.0
+    /// Thumbnail grid: between cells, between the square and its name, the name line, the picture's inset in the
+    /// square, the name capsule's side padding and the size slider in the strip.
+    static let gridGap = 12.0
+    static let gridNameGap = 4.0
+    static let gridNameHeight = 16.0
+    static let gridPictureInset = 6.0
+    static let gridNamePadding = 6.0
+    static let gridSliderWidth = 96.0
+    @MainActor static let gridName = NSFont.systemFont(ofSize: 11)
+    /// The grid's AppKit colours: the same tokens as the SwiftUI ones above.
+    static let gridSelected = NSColor(toggledPill)
+    static let gridLoading = NSColor(cardFill)
+    static let gridLabel = NSColor(labelPrimary)
+    static let gridFailedGlyph = NSColor(labelTertiary)
+    static let gridOnAccent = NSColor(onAccent)
+    /// The app's AccentColor (feather), never the system's.
+    static let gridAccent = NSColor(named: "AccentColor") ?? .controlAccentColor
 
     /// Corner radii, from the outside in.
     enum Radius {
@@ -336,6 +353,8 @@ enum Theme {
         static let message = 6.0
         /// About icon tile.
         static let aboutTile = 28.8
+        /// Thumbnail grid: the selected cell's backdrop and the loading square.
+        static let gridCell = 8.0
     }
 
     // MARK: Motion

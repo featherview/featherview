@@ -59,6 +59,9 @@ struct ViewerToolbar: CustomizableToolbarContent {
                                   enabled: { $0.availability.hasPages }, model) { $0.nextPage() }
                 }
             }
+            ToolbarItem(id: "thumbnails", placement: .primaryAction) {
+                ThumbnailsToggle(model: model)
+            }
             ToolbarItem(id: "rotateLeft", placement: .primaryAction) {
                 ToolbarButton("Rotate Left", "rotate.left", "Rotate left (L)", enabled: { $0.availability.canChangeFile }, model) { $0.rotate(.counterClockwise) }
             }
@@ -66,14 +69,14 @@ struct ViewerToolbar: CustomizableToolbarContent {
                 ToolbarButton("Rotate Right", "rotate.right", "Rotate right (R)", enabled: { $0.availability.canChangeFile }, model) { $0.rotate(.clockwise) }
             }
             ToolbarItem(id: "zoomOut", placement: .primaryAction) {
-                ToolbarButton("Zoom Out", "minus.magnifyingglass", "Zoom out (−)", enabled: { $0.availability.hasCurrent }, model) { $0.zoomOut() }
+                ToolbarButton("Zoom Out", "minus.magnifyingglass", "Zoom out (−)", enabled: { $0.availability.hasCurrent && !$0.isGrid }, model) { $0.zoomOut() }
             }
             ToolbarItem(id: "fit", placement: .primaryAction) {
                 ToolbarButton("Zoom to Fit", "arrow.up.left.and.down.right.magnifyingglass", "Zoom to fit (0)",
-                              enabled: { $0.availability.hasCurrent }, model) { $0.setZoom(.fit) }
+                              enabled: { $0.availability.hasCurrent && !$0.isGrid }, model) { $0.setZoom(.fit) }
             }
             ToolbarItem(id: "zoomIn", placement: .primaryAction) {
-                ToolbarButton("Zoom In", "plus.magnifyingglass", "Zoom in (+)", enabled: { $0.availability.hasCurrent }, model) { $0.zoomIn() }
+                ToolbarButton("Zoom In", "plus.magnifyingglass", "Zoom in (+)", enabled: { $0.availability.hasCurrent && !$0.isGrid }, model) { $0.zoomIn() }
             }
             ToolbarItem(id: "info", placement: .primaryAction) {
                 InfoToggle(model: model)
@@ -118,7 +121,18 @@ private struct InfoToggle: View {
     var body: some View {
         Toggle("Info", systemImage: "info.circle", isOn: $model.showInfo)
             .help("Show info (I)")
-            .disabled(!model.availability.hasCurrent)
+            .disabled(!model.availability.hasCurrent || model.isGrid)
+    }
+}
+
+/// Thumbnails: toggled on while the grid shows (Decision 1).
+private struct ThumbnailsToggle: View {
+    let model: ViewerModel
+
+    var body: some View {
+        Toggle("Thumbnails", systemImage: "square.grid.2x2", isOn: Binding(get: { model.isGrid }, set: { _ in model.toggleGrid() }))
+            .help("Thumbnails (T)")
+            .disabled(!model.availability.canShowGrid)
     }
 }
 
