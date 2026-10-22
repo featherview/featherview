@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 public enum BatchConverter {
     /// One file's work before its commit.
     struct Prepared: Sendable {
-        /// The encoded output; nil when the input's bytes are copied at commit (`copiesUnchanged`) or it has `parts`.
+        /// The encoded output; nil when the input's bytes are copied at commit or it has `parts`.
         var data: Data?
         /// An input with several outputs: each already written to a hidden temp file in its output folder,
         /// with its `{part}` label, so only one part is in memory at a time.
@@ -141,7 +141,11 @@ public enum BatchConverter {
         }
         let usesDate = settings.renamePattern.contains("{date}") || (settings.text.isOn && settings.text.text.contains("{date}"))
         let date = newDate.flatMap(MetadataReader.exifDate) ?? (usesDate ? MetadataReader.dateTaken(of: url) : nil)
-        if settings.copiesUnchanged {
+        // With Frames and Pages, a still (one output) is copied as it would be without the step.
+        let copies = settings.copiesUnchanged
+            || (!settings.changeFormat && !settings.hasOperations && settings.frames.isOn && !settings.tiles.isOn
+                && Animation.read(url) == nil && ImageDecoder.pageCount(of: url) <= 1)
+        if copies {
             // The commit copies the bytes; a dangling link or a folder would copy as a link or fail as "Can't save".
             var isFolder: ObjCBool = false
             let target = url.resolvingSymlinksInPath().path

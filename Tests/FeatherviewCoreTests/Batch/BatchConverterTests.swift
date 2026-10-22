@@ -797,6 +797,33 @@ import Testing
         #expect(try names(out) == ["a.jpg"])
     }
 
+    @Test func stillWithFramesStepKeepingFormatIsCopied() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let still = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+
+        let output = try #require(await BatchConverter.run(job([still], out: out) {
+            $0.changeFormat = false
+            $0.frames.isOn = true
+        }).first?.output)
+
+        #expect(try Data(contentsOf: output) == Data(contentsOf: still))
+    }
+
+    @Test func stillWithFramesStepSetsDateLosslessly() async throws {
+        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
+        let still = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
+
+        let output = try #require(await BatchConverter.run(job([still], out: out) {
+            $0.changeFormat = false
+            $0.frames.isOn = true
+            $0.dateTaken.isOn = true
+            $0.dateTaken.mode = .set
+            $0.dateTaken.setTo = "2020:02:03 04:05:06"
+        }).first?.output)
+
+        #expect(try Data(contentsOf: output) == DateTaken.rewritten(still, date: "2020:02:03 04:05:06"))
+    }
+
     @Test func tilesOfStill() async throws {
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let input = try writeQuarterRed(to: dir.appendingPathComponent("a.png"), width: 1600, height: 900)
