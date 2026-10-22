@@ -4,31 +4,58 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
 
 **[Download](https://github.com/featherview/featherview/releases/latest)** · [Website](https://featherview.mynetx.net)
 
-- Opens instantly and flips through every image in the folder with the arrow keys
+## Viewing
+
+- Opens instantly and flips through every image in the folder with the arrow keys; past the last
+  one, a keyboard-driven folder chooser takes you on to the next folder
+- Fit, actual size, zoom to width or height for tall and wide images, and Keep Zoom to look at the
+  same spot from image to image
+- Thumbnail grid (T) of the folder, with a size slider and selection: Quick Look, move, copy, Trash
+  and batch convert several images at once
+- Slideshow (W) in full screen or in the window (⇧A), with shuffle and repeat; Space pauses
+- Compare two images side by side, zoomed and panned in step, with a difference view
+- Plays animated GIF, PNG, WebP, HEIC and AVIF, and Windows animated cursors; G pauses, ⌥→ / ⌥← step
+  frames
+- HDR photos (iPhone HEIC and JPEG, HDR AVIF, OpenEXR) show their extra brightness on HDR screens
+  (macOS 15 and later)
+- EXIF info panel (I), full screen (F or Return)
+
+## Organising
+
+- Move and copy to folders with F7 / F8 (14 destinations, one key each), Move to Trash with ⌘⌫;
+  sidecar files (`.xmp`, `.aae`, `.thm`) go along
+- Rename (F2), and sort by name, date modified, date taken, size or kind
+- Lossless rotate and flip of JPEG, HEIC and TIFF (R, L, H, V); adjust the date taken in place
+- Follow New Files shows each image as it lands in the folder, for tethered shooting and screenshots
+- Open Recent, Share, Set as Desktop Picture, Float on Top, New from Clipboard (⌘N)
+
+## Formats
+
 - Opens everything macOS can read (JPEG, PNG, HEIC, AVIF, JPEG XL, WebP, TIFF, GIF, BMP, PSD,
   JPEG 2000, TGA, OpenEXR, DNG and camera RAW), upright and colour-managed
 - Shows SVG, and PDF pages like a multi-page image
-- Plays animated GIF, PNG, WebP, HEIC and AVIF, and Windows animated cursors; G pauses, ⌥→ / ⌥← step frames
 - Also reads formats macOS can't: QOI, PCX/DCX, XBM, XPM, WBMP, Sun Raster, IFF/LBM (including HAM),
-  MacPaint, PAM, farbfeld, X Window Dump, FITS (astronomy), Windows animated cursors (first frame),
-  Kodak Photo CD (at 768 × 512), JPEG XR (HD Photo) and BPG
+  MacPaint, PAM, farbfeld, X Window Dump, FITS (astronomy), Windows animated cursors, Kodak Photo CD
+  (at 768 × 512), JPEG XR (HD Photo) and BPG
 - Shows layered files from image editors flattened: Photoshop PSB, GIMP XCF, Paint.NET PDN,
   PaintShop Pro PSP, Krita KRA and OpenRaster ORA (their stored flattened image), and Procreate (at
   full size, turned the way the canvas was). Blend modes other than normal are drawn as normal; PSB
   files without a stored composite, multichannel PSB and GIMP layer effects aren't shown; `.xcf.gz` isn't read
-- Finder thumbnails and Quick Look (Space) previews for the formats macOS can't read, with a
-  proper Kind name for each
-- HDR photos (iPhone HEIC and JPEG, HDR AVIF, OpenEXR) show their extra brightness on HDR screens
-  (macOS 15 and later)
-- Saves and batch converts to JPEG, PNG, HEIC, AVIF, TIFF, WebP, GIF, BMP, JPEG 2000, PDF, PSD, TGA,
-  ICO, ICNS, OpenEXR, PBM, PGM, PPM, QOI and PCX
-- Lossless JPEG/HEIC/TIFF rotation
+- Finder thumbnails, Quick Look (Space) previews and a document icon for the formats macOS can't
+  read, with a proper Kind name for each
+
+## Converting
+
+- Saves and batch converts to JPEG, JPEG XL, PNG, HEIC, AVIF, TIFF, WebP, GIF, BMP, JPEG 2000, PDF,
+  PSD, TGA, ICO, ICNS, OpenEXR, PBM, PGM, PPM, QOI and PCX
 - Batch convert and rename with crop, resize, rotate, colour, filters, canvas, border, text and
   watermark steps, a live preview and presets
-- EXIF info panel; delete moves to Trash
-- In 30 languages, with right-to-left layout in Arabic and Hebrew
+- The batch can also write every frame or page of a file as its own image, cut each image into
+  tiles, and set or shift the date taken
 
-Status: public preview (0.9), on the way to 1.0. Requires macOS 14 (Sonoma) or later.
+In 30 languages, with right-to-left layout in Arabic and Hebrew.
+
+Status: public preview, on the way to 1.0. Requires macOS 14 (Sonoma) or later.
 
 ## Third-party code
 
