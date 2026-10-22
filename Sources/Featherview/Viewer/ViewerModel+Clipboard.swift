@@ -79,6 +79,12 @@ extension ViewerModel {
         dontSave.keyEquivalent = "d"
         dontSave.keyEquivalentModifierMask = .command
         alert.addButton(withTitle: String(localized: "Cancel")).keyEquivalent = "\u{1b}"
+        if let window {
+            // A sheet on a minimized window or one on another Space stays out of sight, and a quit would wait on it.
+            if window.isMiniaturized { window.deminiaturize(nil) }
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate()  // a quit from the Dock leaves another app in front
+        }
         let response = if let window { await alert.beginSheetModal(for: window) } else { alert.runModal() }
         switch response {
         case .alertFirstButtonReturn:
