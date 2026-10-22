@@ -37,18 +37,14 @@ final class RecentFiles {
         list.finishReload([], token: list.startReload(), limit: limit)
     }
 
-    /// Drops entries gone from disk (also after the app's own Trash and move). Only the first call reads the
-    /// system's list; `note` and `clear` keep it current after that. At most one check runs; calls meanwhile
-    /// make it run once more.
+    /// Re-reads the system's list and drops entries gone from disk; also after the app's own Trash and move, as
+    /// the system's bookmark follows a moved or renamed file to its new path. At most one check runs; calls
+    /// meanwhile make it run once more, so a burst of calls reads the list twice at most.
     func reload() {
-        var candidates = list.urls
         if !loaded {
             loaded = true
             for url in waiting { NSDocumentController.shared.noteNewRecentDocumentURL(url) }
             waiting = []
-            // The one main-thread read (NSDocumentController is main-thread only; its getter resolves bookmarks):
-            // once per run, after the first image is on screen or 2 s after launch.
-            candidates = NSDocumentController.shared.recentDocumentURLs
             NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
                 MainActor.assumeIsolated { RecentFiles.shared.reload() }
             }
@@ -56,6 +52,10 @@ final class RecentFiles {
         guard !checking else { checkAgain = true; return }
         checking = true
         let token = list.startReload()
+        // On the main thread, as NSDocumentController must be: its getter resolves the bookmarks, which can't be
+        // done elsewhere. It runs only on activation, after Trash or a move, or for a stale entry chosen, never on
+        // the launch or browsing path, and AppKit pays the same read itself for the Dock menu.
+        let candidates = NSDocumentController.shared.recentDocumentURLs
         let limit = limit
         Self.statQueue.async {
             let fresh = candidates.filter { !RecentList.isGone($0) }
