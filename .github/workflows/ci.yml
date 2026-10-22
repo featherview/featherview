@@ -12,6 +12,8 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Two runners side by side: the tests need only Core and the test targets, the app build catches what only
+# the app's code breaks. The release bundle is built by the release itself (disk image), not here.
 jobs:
   test:
     # Liquid Glass needs the macOS 26 SDK (Xcode 26).
@@ -21,11 +23,17 @@ jobs:
       - uses: actions/checkout@v7
       - name: Toolchain
         run: xcodebuild -version && swift --version
-      - name: Build
-        # Everything, the app and tests included, in one debug build. The release bundle is built by the
-        # release itself (disk image), not here.
-        run: swift build --build-tests
+      - name: Build tests
+        run: swift build --product FeatherviewPackageTests
       - name: Test
-        # shortcut: serial (~3 min); in parallel the run hangs on the 3-core runner, never locally,
+        # shortcut: serial (~2 min); in parallel the run hangs on the 3-core runner, never locally,
         # find the blocking test when CI needs to be faster.
         run: swift test --skip-build --no-parallel
+
+  app:
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build app, extensions and tools
+        run: swift build
