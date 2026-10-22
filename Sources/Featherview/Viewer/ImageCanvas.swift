@@ -22,7 +22,7 @@ final class PanController {
 
 /// Moves the clear area (between the bars) so its top-leading corner is at `point` in the document.
 @MainActor
-private func moveVisibleOrigin(_ scrollView: NSScrollView, to point: CGPoint) {
+func moveVisibleOrigin(_ scrollView: NSScrollView, to point: CGPoint) {
     let clip = scrollView.contentView
     let origin = CGPoint(x: point.x - clip.contentInsets.left, y: point.y - clip.contentInsets.top)
     let target = clip.constrainBoundsRect(NSRect(origin: origin, size: clip.bounds.size)).origin
@@ -39,7 +39,7 @@ private func moveVisibleOrigin(_ scrollView: NSScrollView, to point: CGPoint) {
     }
 }
 
-private extension NSScrollView {
+extension NSScrollView {
     /// The part of the view not under the toolbar or the status strip, in document coordinates
     /// (the document view is flipped, so the top inset is at the low y).
     @MainActor var clearRect: NSRect {
@@ -93,6 +93,9 @@ struct ImageCanvas: NSViewRepresentable {
     var onCommit: @MainActor (CGImage) -> Void = { _ in }
     /// False in compare: two panes animating apart would drift, so zoom steps are cuts there.
     var animatesZoom = true
+    /// In compare: pans this pane in step with the other one.
+    var compareLink: CompareLink? = nil
+    var pane: CompareSession.Pane = .first
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = CanvasScrollView()
@@ -123,6 +126,8 @@ struct ImageCanvas: NSViewRepresentable {
         let canvas = scrollView as? CanvasScrollView
         canvas?.onPinch = onPinch
         canvas?.onSwipe = onSwipe
+        compareLink?.register(scrollView, as: pane)
+        canvas?.onLead = { [weak compareLink, pane] in compareLink?.lead(pane) }
         // A pinch zooms about the pointer at once; a step or Fit about the centre of the clear area, animated.
         let pinch = canvas?.takePinch()
         let oldSize = view.frame.size
@@ -188,7 +193,11 @@ struct ImageCanvas: NSViewRepresentable {
             let offset = pinch == nil ? CGPoint(x: visible.width / 2, y: visible.height / 2)
                 : CGPoint(x: anchor.x - oldVisible.minX, y: anchor.y - oldVisible.minY)
             let point = startPoint ?? CGPoint(x: centre.x * size.width - offset.x, y: centre.y * size.height - offset.y)
-            guard animate else { return moveVisibleOrigin(scrollView, to: point) }
+            guard animate else {
+                moveVisibleOrigin(scrollView, to: point)
+                compareLink?.resized(pane)
+                return
+            }
             if panelRefit {
                 // The clip keeps a picture smaller than the clear area centred, which overrides an animated scroll
                 // position: the picture's layer moves from its old place on screen to its new one instead.
@@ -235,6 +244,8 @@ private extension CGImage {
 private final class CanvasScrollView: NSScrollView {
     var onPinch: (Double) -> Void = { _ in }
     var onSwipe: (_ likeRightArrow: Bool) -> Void = { _ in }
+    /// The user moved this canvas (scroll, pinch, click): in compare it leads the other pane.
+    var onLead: () -> Void = {}
     /// The pointer at the last pinch step (window coordinates) and when, until the canvas zooms about it.
     private var pinch: (location: CGPoint, time: TimeInterval)?
 
@@ -248,6 +259,7 @@ private final class CanvasScrollView: NSScrollView {
 
     override func magnify(with event: NSEvent) {
         guard event.magnification != 0 else { return }
+        onLead()
         pinch = (event.locationInWindow, event.timestamp)
         onPinch(1 + event.magnification)
     }
@@ -258,6 +270,7 @@ private final class CanvasScrollView: NSScrollView {
     }
 
     override func scrollWheel(with event: NSEvent) {
+        onLead()
         // Two-finger swipe between pages (the system setting), only when there's nothing to pan sideways.
         if event.phase == .began, NSEvent.isSwipeTrackingFromScrollEventsEnabled,
            abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY),
@@ -467,6 +480,7 @@ private final class ImageLayerView: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        (enclosingScrollView as? CanvasScrollView)?.onLead()
         onClick()
         if event.clickCount == 2 { return onDoubleClick() }
         guard let scrollView = enclosingScrollView else { return }

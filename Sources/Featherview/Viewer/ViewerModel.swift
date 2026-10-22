@@ -550,6 +550,11 @@ final class ViewerModel {
     /// View › Zoom to Fit / Width / Height (0, 2, 3): every new image starts in it from now on, and the image
     /// shown goes to it, at its start edge.
     func setFitMode(_ mode: FitMode) {
+        if let session = secondLeads {
+            let size = session.info?.pixelSize
+            return setSecondZoom(size.map { mode == .fit ? .fit : .factor(ZoomSteps.fillFactor(
+                image: $0, view: viewSize, displayScale: displayScale, mode: mode)) } ?? .fit, session)
+        }
         UserDefaults.standard.set(mode.rawValue, forKey: AppSettings.fitMode.key)
         setZoom(Zoom(mode))
         arrival = (arrival.id + 1, zoom.start)
@@ -558,6 +563,13 @@ final class ViewerModel {
     /// A zoom step, or a pinch step. From fit or a fill mode, steps from the scale the image is shown at, which
     /// needs its full pixel size.
     func zoom(by multiplier: Double) {
+        if let session = secondLeads {
+            let shown: Double? = if case .factor(let factor) = session.ownZoom { factor } else {
+                session.info?.pixelSize.map { ZoomSteps.fitFactor(image: $0, view: viewSize, displayScale: displayScale) }
+            }
+            if let shown { setSecondZoom(.factor(ZoomSteps.step(shown, by: multiplier)), session) }
+            return
+        }
         if case .factor(let factor) = zoom {
             setZoom(.factor(ZoomSteps.step(factor, by: multiplier)))
             return
@@ -575,6 +587,12 @@ final class ViewerModel {
             let shown = size.map { factor(for: $0) ?? ZoomSteps.fitFactor(image: $0, view: viewSize, displayScale: displayScale) } ?? 1
             setZoom(.factor(ZoomSteps.step(shown, by: multiplier)))
         }
+    }
+
+    /// 1 and View › Actual Size.
+    func actualSize() {
+        if let session = secondLeads { return setSecondZoom(.factor(1), session) }
+        setZoom(.factor(1))
     }
 
     /// Shows `list.current` (page 0 unless `page` is given), then prefetches its neighbours so
@@ -1380,6 +1398,10 @@ final class ViewerModel {
 
     /// The second pane while comparing; none exists until compare starts.
     private(set) var compareSession: CompareSession? { didSet { updateAvailability() } }
+    /// View › Zoom and Pan in Step (`AppSettings.compareInStep`), read again on each compare start.
+    private(set) var compareInStep = true
+    /// Pans the two panes in step; exists only while comparing.
+    @ObservationIgnored private(set) var compareLink: CompareLink?
     /// The running `CompareShow` signpost: from showSecond() until pane 2's canvas commits `image`.
     @ObservationIgnored private var compareShow: (state: OSSignpostIntervalState, image: CGImage?)?
 
@@ -1396,8 +1418,13 @@ final class ViewerModel {
             compareSession.change(to: second)
             updateAvailability()
         } else {
-            compareSession = CompareSession(url: second, zoomCache: ImageCache(
+            compareInStep = AppSettings.compareInStep.value()
+            let session = CompareSession(url: second, zoomCache: ImageCache(
                 capacity: 1, hdr: ImageDecoder.supportsHDR, colorSpace: Self.screenSpace, queue: decodes))
+            let link = CompareLink(inStep: compareInStep)
+            link.onLeader = { [weak session] in session?.leader = $0 }
+            compareLink = link
+            compareSession = session
         }
         focusDecodes()
         showSecond()
@@ -1419,6 +1446,7 @@ final class ViewerModel {
         guard let compareSession else { return }
         compareSession.task?.cancel()
         endCompareShow("superseded")
+        compareLink = nil
         self.compareSession = nil
         focusDecodes()
     }
@@ -1438,7 +1466,7 @@ final class ViewerModel {
     /// Fit until both pictures' sizes are known.
     var secondZoom: Zoom {
         guard let compareSession else { return .fit }
-        guard AppSettings.compareInStep.value() else { return compareSession.ownZoom }
+        guard compareInStep else { return compareSession.ownZoom }
         guard let info = compareSession.info, info.url == compareSession.url, let second = info.pixelSize,
               let fileInfo, fileInfo.isFor(list.current, page: page), let first = fileInfo.pixelSize else {
             // Pane 1's details are the previous file's until its decode lands: pane 2 keeps its zoom meanwhile.
@@ -1448,6 +1476,30 @@ final class ViewerModel {
         let matched = CompareSync.matchedFactor(factor, first: first, second: second)
         compareSession.lastMatched = matched
         return .factor(matched)
+    }
+
+    /// View › Zoom and Pan in Step, remembered. On: pane 2 snaps to pane 1's zoom and pan, and pane 1 leads.
+    func setCompareInStep(_ on: Bool) {
+        UserDefaults.standard.set(on, forKey: AppSettings.compareInStep.key)
+        // Off: pane 2 keeps the matched zoom it shows and is adjusted from there.
+        if !on, compareInStep, let compareSession { compareSession.ownZoom = secondZoom }
+        compareInStep = on
+        compareLink?.inStep = on
+        guard on, let compareLink else { return }
+        compareLink.lead(.first)
+        showSecond()
+        compareLink.follow(.second)
+    }
+
+    /// In step off, with pane 2 the one last clicked, scrolled or pinched: zoom keys, 0, 1 and pinch zoom it.
+    private var secondLeads: CompareSession? {
+        guard let compareSession, !compareInStep, compareSession.leader == .second else { return nil }
+        return compareSession
+    }
+
+    private func setSecondZoom(_ zoom: Zoom, _ session: CompareSession) {
+        session.ownZoom = zoom
+        showSecond()
     }
 
     /// The scale pane 2's picture is shown at, from its full pixel size.
