@@ -932,7 +932,7 @@ final class ViewerModel {
                 return (original, original == nil ? DateTaken.fileDate(of: url) : nil)
             }.value
             // The sheet doesn't name its file: not over another one the user moved on to meanwhile.
-            guard isGrid == grid, (grid ? gridSelection.first : list.current) == url else { return }
+            guard isGrid == grid, grid ? gridSelection == [url] + others : list.current == url else { return }
             dateSheet = DateSheetState(url: url, others: others, original: original, fileDate: fileDate)
         }
     }
