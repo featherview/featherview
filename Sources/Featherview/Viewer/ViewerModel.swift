@@ -1243,7 +1243,7 @@ final class ViewerModel {
         if isGrid { viewFromGrid(gridFocus) }
         leaveCompare()
         guard slideshow == nil, Slideshow.mayStart(hasCurrent: list.current != nil, isOpening: isOpening),
-              let current = list.current else { return }
+              let current = list.listedCurrent else { return }
         slideshow = Slideshow(urls: list.urls, from: current, options: AppSettings.slideshowOptions,
                               seed: .random(in: .min ... .max))
         if Slideshow.waitsForFullScreen(requested: fullScreen, isFullScreen: isFullScreen, hasWindow: window != nil) {
@@ -1253,7 +1253,7 @@ final class ViewerModel {
         slideshowChanged()
         // Shown again: its interval starts, and the neighbours prefetched are the play order's.
         guard let first = slideshow?.current else { return }
-        if first == current { show(page: page, keepsPlayer: true) } else { go(to: first) }
+        if first == list.current { show(page: page, keepsPlayer: true) } else { go(to: first) }  // go(to:) drops a held image
     }
 
     /// Stops the timer and lets the display sleep again, at once.

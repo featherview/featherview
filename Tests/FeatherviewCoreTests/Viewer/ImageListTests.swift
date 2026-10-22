@@ -147,6 +147,12 @@ import Testing
         released.release()
         #expect(released.current == urls[2])
 
+        // A slideshow started on a held image plays on from the one after it.
+        var playing = ImageList(urls: urls, current: urls[1])
+        #expect(playing.listedCurrent == urls[1])
+        playing.remove(urls[1], hold: true)
+        #expect(playing.listedCurrent == urls[2])
+
         var other = ImageList(urls: urls, current: urls[1])
         other.remove(urls[3], hold: true)  // not current: nothing to hold
         #expect(!other.isHolding)
