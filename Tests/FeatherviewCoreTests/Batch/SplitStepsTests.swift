@@ -73,4 +73,21 @@ import Testing
         #expect(PartLabels.combined(frames: 3, rows: 1, columns: 1) == ["1", "2", "3"])
         #expect(PartLabels.combined(frames: 1, rows: 1, columns: 1) == [])
     }
+
+    @Test func labelsMatchTilesOutsideTheLimits() throws {
+        for (columns, rows) in [(0, 2), (200, 1), (150, 1), (-3, 101)] {
+            let count = try TileStep.rects(width: 1000, height: 1000, columns: columns, rows: rows, overlap: 0).count
+            #expect(PartLabels.tiles(rows: rows, columns: columns).count == count)
+            #expect(PartLabels.combined(frames: 2, rows: rows, columns: columns).count == 2 * count)
+        }
+        #expect(PartLabels.tiles(rows: 1, columns: 150).first == "1-001")
+        #expect(PartLabels.combined(frames: 1, rows: 1, columns: 0) == [])
+    }
+
+    @Test func hugeOverlapDoesNotTrap() throws {
+        #expect(try TileStep.rects(width: 100, height: 100, columns: 3, rows: 1, overlap: .max).count == 3)
+        #expect(throws: TileError.self) {
+            try TileStep.rects(width: 100, height: 100, columns: 3, rows: 1, overlap: .min)
+        }
+    }
 }
