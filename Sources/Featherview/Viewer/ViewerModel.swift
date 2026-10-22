@@ -966,6 +966,11 @@ final class ViewerModel {
                 let info = await Task.detached { FileInfo.read(url: url, page: page) }.value
                 if info.isFor(list.current, page: self.page) { fileInfo = info }
             }
+            if let session = compareSession, session.errorMessage == nil, selected.contains(session.url) {
+                let url = session.url
+                let info = await Task.detached { FileInfo.read(url: url, page: 0) }.value
+                if compareSession === session, session.url == url { session.info = info }
+            }
             if let focus = gridFocus, selected.contains(focus) { readGridInfo() }
             if failures.count > 1 {
                 errorMessage = String(localized: "\(failures.count) files couldn't be changed")
