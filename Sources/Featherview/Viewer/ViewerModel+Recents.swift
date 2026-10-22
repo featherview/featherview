@@ -37,10 +37,12 @@ final class RecentFiles {
         list.finishReload([], token: list.startReload(), limit: limit)
     }
 
-    /// Re-reads the system's list and drops entries gone from disk; also after the app's own Trash and move, as
-    /// the system's bookmark follows a moved or renamed file to its new path. At most one check runs; calls
-    /// meanwhile make it run once more, so a burst of calls reads the list twice at most.
+    /// Drops entries gone from disk; on activation and after the app's own Trash and move. The first check reads
+    /// the system's list; later ones check the entries off the main thread and re-read the system's list only when
+    /// one is missing, as its bookmark follows a moved or renamed file to its new path. At most one check runs;
+    /// calls meanwhile make it run once more.
     func reload() {
+        let readsSystem = !loaded
         if !loaded {
             loaded = true
             for url in waiting { NSDocumentController.shared.noteNewRecentDocumentURL(url) }
@@ -49,26 +51,35 @@ final class RecentFiles {
                 MainActor.assumeIsolated { RecentFiles.shared.reload() }
             }
         }
+        check(readingSystem: readsSystem)
+    }
+
+    private func check(readingSystem: Bool) {
         guard !checking else { checkAgain = true; return }
         checking = true
         let token = list.startReload()
-        // On the main thread, as NSDocumentController must be: its getter resolves the bookmarks, which can't be
-        // done elsewhere. It runs only on activation, after Trash or a move, or for a stale entry chosen, never on
-        // the launch or browsing path, and AppKit pays the same read itself for the Dock menu.
-        let candidates = NSDocumentController.shared.recentDocumentURLs
+        // On the main thread, as NSDocumentController must be: its getter resolves every bookmark, which a stale
+        // entry on a dropped share can make slow. So only the first check reads it, and a check that found an
+        // entry missing; a plain ⌘-Tab never does.
+        let candidates = readingSystem ? NSDocumentController.shared.recentDocumentURLs : list.urls
         let limit = limit
         Self.statQueue.async {
             let fresh = candidates.filter { !RecentList.isGone($0) }
-            Task { @MainActor in RecentFiles.shared.finishCheck(fresh, token: token, limit: limit) }
+            Task { @MainActor in
+                RecentFiles.shared.finishCheck(fresh, missing: fresh.count < candidates.count && !readingSystem,
+                                               token: token, limit: limit)
+            }
         }
     }
 
-    private func finishCheck(_ fresh: [URL], token: Int, limit: Int) {
-        list.finishReload(fresh, token: token, limit: limit)
+    private func finishCheck(_ fresh: [URL], missing: Bool, token: Int, limit: Int) {
         checking = false
+        // A missing entry may have moved: the system's list knows where to.
+        if missing { return check(readingSystem: true) }
+        list.finishReload(fresh, token: token, limit: limit)
         if checkAgain {
             checkAgain = false
-            reload()
+            check(readingSystem: false)
         }
     }
 }
