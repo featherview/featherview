@@ -59,7 +59,7 @@ struct AdjustDateSheet: View {
 }
 
 /// Date and time with seconds, in GMT: SwiftUI's DatePicker has no seconds on macOS.
-private struct SecondsDatePicker: NSViewRepresentable {
+struct SecondsDatePicker: NSViewRepresentable {
     @Binding var date: Date
 
     func makeNSView(context: Context) -> NSDatePicker {

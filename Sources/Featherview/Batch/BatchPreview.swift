@@ -20,7 +20,12 @@ struct BatchPreview: View {
                 Grid(alignment: .topLeading, horizontalSpacing: 16, verticalSpacing: 6) {
                     GridRow {
                         caption(preview.error == nil ? preview.originalSize.map { Text("Original \(Int($0.width)) × \(Int($0.height))") } : nil)
-                        caption(preview.error == nil ? preview.outputSize.map { Text("Output \(Int($0.width)) × \(Int($0.height))") } : nil)
+                        caption(preview.error == nil ? preview.partSize.map { size in
+                            preview.parts > 1
+                                ? Text("Output \(Int(size.width)) × \(Int(size.height)) · \(preview.parts) files",
+                                       comment: "Batch preview: each output file's pixel size and how many files one input gives")
+                                : Text("Output \(Int(size.width)) × \(Int(size.height))")
+                        } : nil)
                         caption(nil)
                     }
                     GridRow {
@@ -31,7 +36,7 @@ struct BatchPreview: View {
                                 .gridCellColumns(2)
                         } else {
                             picture(preview.original)
-                            picture(preview.output)
+                            picture(preview.output, tiles: preview.tiles, in: preview.outputSize)
                         }
                         namesList
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -62,12 +67,26 @@ struct BatchPreview: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func picture(_ image: CGImage?) -> some View {
+    /// `tiles` in the pixels of `size`, drawn as lines over the picture.
+    private func picture(_ image: CGImage?, tiles: [CGRect] = [], in size: CGSize? = nil) -> some View {
         Group {
             if let image {
                 Image(decorative: image, scale: 1)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+                    .overlay {
+                        if let size, !tiles.isEmpty {
+                            GeometryReader { shown in
+                                let scale = shown.size.width / size.width
+                                Path { path in
+                                    for tile in tiles {
+                                        path.addRect(tile.applying(CGAffineTransform(scaleX: scale, y: scale)))
+                                    }
+                                }
+                                .stroke(Theme.accent, lineWidth: 1)
+                            }
+                        }
+                    }
             } else {
                 Color.clear
             }
@@ -185,13 +204,21 @@ final class BatchPreviewModel {
     private(set) var output: CGImage?
     private(set) var originalSize: CGSize?
     private(set) var outputSize: CGSize?
+    /// How many files the shown input gives, and its tiles in the pixels of `outputSize` (empty without Tiles).
+    private(set) var parts = 1
+    private(set) var tiles: [CGRect] = []
     private(set) var error: String?
+
+    /// The size of each output file: a tile's, else the whole output's.
+    var partSize: CGSize? { tiles.first?.size ?? outputSize }
     private(set) var names: [String] = []
     private(set) var more = 0
     private(set) var folder = ""
 
     /// The last small decode and watermark, so a settings change only reruns the pipeline.
     @ObservationIgnored private var cache = Cache()
+    /// Frames or pages per file, for the names: they don't change with the settings.
+    @ObservationIgnored private var frameCounts: [URL: Int] = [:]
     @ObservationIgnored private let imageJobs = LatestWins()
     @ObservationIgnored private let nameJobs = LatestWins()
 
@@ -201,12 +228,15 @@ final class BatchPreviewModel {
         var size: CGSize?
         var watermarkPath: String?
         var watermark: CIImage?
+        var frames: Int?
     }
 
     private struct Rendered: Sendable {
         var cache: Cache
         var output: CGImage?
         var outputSize: CGSize?
+        var parts = 1
+        var tiles: [CGRect] = []
         var error: String?
     }
 
@@ -222,6 +252,8 @@ final class BatchPreviewModel {
             originalSize = result.cache.size
             output = result.output
             outputSize = result.outputSize
+            parts = result.parts
+            tiles = result.tiles
             error = result.error
         }
     }
@@ -230,22 +262,62 @@ final class BatchPreviewModel {
         nameJobs.submit { [self] in
             try? await Task.sleep(for: .milliseconds(150))
             guard !Task.isCancelled else { return }
-            let result = await Task.detached(priority: .userInitiated) { Self.names(key) }.value
+            let counts = frameCounts
+            let result = await Task.detached(priority: .userInitiated) { Self.names(key, frameCounts: counts) }.value
+            frameCounts = result.frameCounts
             guard !Task.isCancelled else { return }
-            (names, more, folder) = result
+            (names, more, folder) = (result.names, result.more, result.folder)
         }
     }
 
-    /// The first five names as if every file succeeds, how many follow, and the first file's folder.
-    private nonisolated static func names(_ key: NamesKey) -> ([String], Int, String) {
-        guard let first = key.inputs.first else { return ([], 0, "") }
+    /// The first five names (each input's parts in order) as if every file succeeds, how many names
+    /// follow, and the first file's folder.
+    private nonisolated static func names(_ key: NamesKey, frameCounts: [URL: Int])
+        -> (names: [String], more: Int, folder: String, frameCounts: [URL: Int]) {
+        guard let first = key.inputs.first else { return ([], 0, "", frameCounts) }
         let s = key.settings
+        var counts = frameCounts
         var namer = BatchNamer(settings: s, inputs: key.inputs)
         let usesDate = s.renamePattern.contains("{date}")
-        let names = key.inputs.prefix(5).map {
-            namer.next(for: $0, date: usesDate ? MetadataReader.dateTaken(of: $0.url) : nil).lastPathComponent
+        var names: [String] = [], total = 0
+        for input in key.inputs {
+            var frames = 1
+            if s.frames.isOn {
+                frames = counts[input.url] ?? Self.frames(of: input.url)
+                counts[input.url] = frames
+            }
+            let labels = labels(s, frames: frames)
+            total += max(labels.count, 1)
+            guard names.count < 5 else { continue }
+            let urls = namer.names(for: input, date: usesDate ? MetadataReader.dateTaken(of: input.url) : nil, parts: labels)
+            names += urls.prefix(5 - names.count).map(\.lastPathComponent)
         }
-        return (names, key.inputs.count - names.count, namer.folder(for: first).path)
+        return (names, total - names.count, namer.folder(for: first).path, counts)
+    }
+
+    /// As the converter counts them: an animation's frames, else a document's pages.
+    private nonisolated static func frames(of url: URL) -> Int {
+        Animation.read(url)?.frameCount ?? ImageDecoder.pageCount(of: url)
+    }
+
+    private nonisolated static func labels(_ s: BatchSettings, frames: Int) -> [String] {
+        PartLabels.combined(frames: frames, rows: s.tiles.isOn ? s.tiles.rows : 1, columns: s.tiles.isOn ? s.tiles.columns : 1)
+    }
+
+    /// The shown input's file count and, with Tiles, its tiles of the output.
+    private nonisolated static func split(_ rendered: Rendered, _ s: BatchSettings, url: URL) -> Rendered {
+        var rendered = rendered
+        guard s.splits, let size = rendered.outputSize else { return rendered }
+        if s.frames.isOn && rendered.cache.frames == nil { rendered.cache.frames = frames(of: url) }
+        rendered.parts = max(labels(s, frames: s.frames.isOn ? rendered.cache.frames ?? 1 : 1).count, 1)
+        guard s.tiles.isOn else { return rendered }
+        do {
+            rendered.tiles = try TileStep.rects(width: Int(size.width), height: Int(size.height),
+                                                columns: s.tiles.columns, rows: s.tiles.rows, overlap: s.tiles.overlap)
+        } catch {
+            return Rendered(cache: rendered.cache, error: String(localized: "The tile settings leave no image"))
+        }
+        return rendered
     }
 
     private nonisolated static func render(_ key: ImageKey, cache: Cache) -> Rendered {
@@ -262,7 +334,7 @@ final class BatchPreviewModel {
         }
         let s = key.settings
         guard s.hasOperations else {
-            return Rendered(cache: cache, output: image, outputSize: size)
+            return split(Rendered(cache: cache, output: image, outputSize: size), s, url: url)
         }
         var watermark: CIImage?
         if s.watermark.isOn {
@@ -286,7 +358,7 @@ final class BatchPreviewModel {
         do {
             let (output, outputSize) = try ImagePipeline.preview(image, originalSize: size, s,
                                                                  context: PipelineContext(values: values, watermark: watermark))
-            return Rendered(cache: cache, output: output, outputSize: outputSize)
+            return split(Rendered(cache: cache, output: output, outputSize: outputSize), s, url: url)
         } catch CanvasError.nothingLeft {
             return Rendered(cache: cache, error: String(localized: "The canvas settings leave no image"))
         } catch {

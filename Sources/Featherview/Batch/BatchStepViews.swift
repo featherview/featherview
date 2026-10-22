@@ -14,7 +14,7 @@ struct BatchCardBody: View {
             Toggle("Change size", isOn: $model.settings.resize.isOn)
             if model.settings.resize.isOn { ResizeStepView(s: $model.settings.resize) }
         case .name:
-            RenameStep(pattern: $model.settings.renamePattern)
+            RenameStep(pattern: $model.settings.renamePattern, splits: model.settings.splits)
             SaveToRow(folder: $model.settings.outputFolder)
             Text("Safety and dates")
                 .font(Theme.badge)
@@ -28,8 +28,12 @@ struct BatchCardBody: View {
         case .border: BorderStepView(s: $model.settings.border)
         case .text: TextStepView(s: $model.settings.text)
         case .watermark: WatermarkStepView(s: $model.settings.watermark)
-        // shortcut: no settings rows yet, until the batch window task adds them.
-        case .frames, .tiles, .dateTaken: EmptyView()
+        case .frames:
+            Text("Each frame of an animation and each page of a document becomes its own file.")
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        case .tiles: TilesStepView(s: $model.settings.tiles)
+        case .dateTaken: DateTakenStepView(s: $model.settings.dateTaken)
         }
     }
 }
@@ -108,6 +112,7 @@ private struct SaveToRow: View {
 
 private struct RenameStep: View {
     @Binding var pattern: String
+    let splits: Bool
 
     var body: some View {
         LabeledContent("Pattern:") {
@@ -117,7 +122,7 @@ private struct RenameStep: View {
         }
         LabeledContent("") {
             VStack(alignment: .leading, spacing: 6) {
-                PlaceholderButtons(placeholders: ["{name}", "{n}", "{n:3}", "{date}"], text: $pattern)
+                PlaceholderButtons(placeholders: ["{name}", "{n}", "{n:3}", "{date}"] + (splits ? ["{part}"] : []), text: $pattern)
                 Text("The counter counts only the files that are converted.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -206,6 +211,88 @@ private struct OrientationStepView: View {
                 Toggle("Horizontally", isOn: $s.flipHorizontal)
                 Toggle("Vertically", isOn: $s.flipVertical)
             }
+        }
+    }
+}
+
+// MARK: - Frames, tiles, date taken
+
+private struct TilesStepView: View {
+    @Binding var s: TilesSettings
+
+    var body: some View {
+        CountRow("Columns:", $s.columns)
+        CountRow("Rows:", $s.rows)
+        IntRow("Overlap:", clamped($s.overlap, -9999...9999), unit: "px", hint: "Negative values leave gaps")
+    }
+}
+
+/// 1…100, typed or stepped.
+private struct CountRow: View {
+    let label: LocalizedStringKey
+    @Binding var value: Int
+    init(_ label: LocalizedStringKey, _ value: Binding<Int>) { self.label = label; _value = clamped(value, 1...100) }
+
+    var body: some View {
+        LabeledContent(label) {
+            IntField($value)
+            Stepper(label, value: $value, in: 1...100).labelsHidden()
+        }
+    }
+}
+
+private struct DateTakenStepView: View {
+    @Binding var s: DateTakenSettings
+    /// The direction while the shift is 0, where the sign can't hold it.
+    @State private var earlierAtZero = false
+
+    private var earlier: Binding<Bool> {
+        Binding { s.shiftSeconds == 0 ? earlierAtZero : s.shiftSeconds < 0 } set: {
+            earlierAtZero = $0
+            s.shiftSeconds = ($0 ? -1 : 1) * abs(s.shiftSeconds)
+        }
+    }
+
+    /// One part of the shift's size: `unit` seconds each, `range` of them within the next larger part.
+    private func part(_ unit: Int, _ range: ClosedRange<Int>) -> Binding<Int> {
+        clamped(Binding {
+            abs(s.shiftSeconds) / unit % (range.upperBound + 1)
+        } set: { new in
+            let size = abs(s.shiftSeconds)
+            let rest = size - size / unit % (range.upperBound + 1) * unit
+            s.shiftSeconds = (earlier.wrappedValue ? -1 : 1) * (rest + new * unit)
+        }, range)
+    }
+
+    var body: some View {
+        Picker("Change:", selection: $s.mode) {
+            Text("Set to").tag(DateTakenMode.set)
+            Text("Shift").tag(DateTakenMode.shift)
+        }
+        .pickerStyle(.segmented)
+        .fixedSize()
+        switch s.mode {
+        case .set:
+            LabeledContent("Date taken:") {
+                SecondsDatePicker(date: Binding { DateTaken.wallTime(s.setTo) ?? .now } set: { s.setTo = DateTaken.exif($0) })
+                    .accessibilityLabel("Date Taken")
+                    .fixedSize()
+            }
+        case .shift:
+            Picker("Shift:", selection: earlier) {
+                // Own keys: "Later" alone is the update prompt's "not now".
+                Text(LocalizedStringResource("dateShift.later", defaultValue: "Later", comment: "Batch Date Taken: shift the date forward")).tag(false)
+                Text(LocalizedStringResource("dateShift.earlier", defaultValue: "Earlier", comment: "Batch Date Taken: shift the date back")).tag(true)
+            }
+            .pickerStyle(.segmented)
+            .fixedSize()
+            IntRow("Days:", part(86_400, 0...3650), unit: "")
+            IntRow("Hours:", part(3600, 0...23), unit: "")
+            IntRow("Minutes:", part(60, 0...59), unit: "")
+            IntRow("Seconds:", part(1, 0...59), unit: "")
+        }
+        LabeledContent("") {
+            Text("Changes the converted files, not the originals.").font(.caption).foregroundStyle(.secondary)
         }
     }
 }
@@ -492,6 +579,11 @@ struct AnchorPicker: View {
         case .bottomRight: LocalizedStringResource("anchor.bottomRight", defaultValue: "Bottom right", comment: "Picture position")
         }
     }
+}
+
+/// Keeps typed values in `range`.
+private func clamped(_ value: Binding<Int>, _ range: ClosedRange<Int>) -> Binding<Int> {
+    Binding { value.wrappedValue } set: { value.wrappedValue = min(max($0, range.lowerBound), range.upperBound) }
 }
 
 private struct IntField: View {
