@@ -691,6 +691,10 @@ final class ViewerModel {
     /// Called when this viewer's window becomes key: now its neighbours are worth decoding.
     func becameActive() {
         updateAvailability()  // "Past the end of a folder" may have changed in Preferences
+        // Pane 2's file may have been trashed or moved in Finder meanwhile.
+        if let compareSession, compareSession.errorMessage == nil, !FileManager.default.fileExists(atPath: compareSession.url.path) {
+            secondFailed(compareSession, url: compareSession.url)
+        }
         guard zoom == .fit, !list.isEmpty else { return }
         let neighbors = focusDecodes()
         Task { await cache.prefetch(neighbors, target: .fit(screens)) }
@@ -1074,6 +1078,8 @@ final class ViewerModel {
     func swapCompared() {
         guard availability.canSwap, let compareSession, let first = list.current else { return }
         let second = compareSession.url
+        // shortcut: a file gone in Finder shows until a swap or the app is reactivated; watch it if users ask.
+        guard FileManager.default.fileExists(atPath: second.path) else { return secondFailed(compareSession, url: second) }
         compareSession.change(to: first)
         if list.select(second) { show() } else { open(second, keepingCompare: true) }
         showSecond()
