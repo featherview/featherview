@@ -18,6 +18,11 @@ public struct FileInfo: Equatable, Sendable {
                         values: OverlayTemplate.fileValues(of: url))
     }
 
+    /// The same values under a new URL: after a rename the picture stays without a new read.
+    public func moved(to url: URL) -> FileInfo {
+        FileInfo(url: url, page: page, pixelSize: pixelSize, bytes: bytes, modified: modified, values: values)
+    }
+
     /// A read for another page of the same file has another pixel size.
     public func isFor(_ url: URL?, page: Int) -> Bool { self.url == url && self.page == page }
 
