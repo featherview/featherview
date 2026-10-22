@@ -5,6 +5,8 @@ public enum ViewerKey: Equatable, Sendable {
     /// Commands that also have a ⌘ shortcut; the single key is for people switching over.
     case open, batch, minimize, settings, saveAs, about
     case flipHorizontal, flipVertical, zoomToWidth, zoomToHeight, toggleKeepZoom
+    /// Compare mode only; the view ignores them outside compare.
+    case swapImages, toggleDifference
 
     /// `shift` counts only for letters: some layouts need Shift to type the others
     /// ('+' is Shift+= on US keyboards, digits need Shift on AZERTY). Caps Lock is ignored.
@@ -33,6 +35,8 @@ public enum ViewerKey: Equatable, Sendable {
         case "a": return .about
         case "g": return .toggleAnimation
         case "t": return .toggleThumbnails
+        case "x": return .swapImages
+        case "d": return .toggleDifference
         default: return nil
         }
     }

@@ -37,6 +37,13 @@ import Testing
         #expect(defaults.object(forKey: AppSettings.keepZoom.key) as? Bool == false)
     }
 
+    @Test func compareInStepDefaultsOn() {
+        let defaults = freshDefaults()
+        #expect(AppSettings.compareInStep.value(in: defaults) == true)
+        AppSettings.registerDefaults(in: defaults)
+        #expect(defaults.bool(forKey: AppSettings.compareInStep.key) == true)
+    }
+
     @Test func storedValueWinsAndWrongTypeFallsBack() {
         let defaults = freshDefaults()
         defaults.set(25, forKey: AppSettings.zoomStepPercent.key)

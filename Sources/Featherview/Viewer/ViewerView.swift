@@ -461,6 +461,7 @@ struct ViewerView: View {
         case .toggleAnimation: model.toggleAnimation()
         case .toggleThumbnails: return .ignored
         case .flipHorizontal, .flipVertical, .zoomToWidth, .zoomToHeight, .toggleKeepZoom: return .ignored
+        case .swapImages, .toggleDifference: return .ignored  // compare mode only
         }
         return .handled
     }

@@ -45,6 +45,8 @@ public enum AppSettings {
     public static let fitMode = Setting(key: "fitMode", defaultValue: FitMode.fit.rawValue)
     /// View › Keep Zoom: a new image keeps the zoom and scroll position of the one before.
     public static let keepZoom = Setting(key: "keepZoom", defaultValue: false)
+    /// View › Zoom and Pan in Step while comparing two images.
+    public static let compareInStep = Setting(key: "compareInStep", defaultValue: true)
     // Full screen
     public static let showOverlay = Setting(key: "showOverlay", defaultValue: true)
     public static let overlayTemplate = Setting(key: "overlayTemplate", defaultValue: "{path} — {index} / {count}")
@@ -81,6 +83,7 @@ public enum AppSettings {
             thumbnailSize.key: thumbnailSize.defaultValue,
             fitMode.key: fitMode.defaultValue,
             keepZoom.key: keepZoom.defaultValue,
+            compareInStep.key: compareInStep.defaultValue,
             showOverlay.key: showOverlay.defaultValue,
             overlayTemplate.key: overlayTemplate.defaultValue,
             hidePointer.key: hidePointer.defaultValue,

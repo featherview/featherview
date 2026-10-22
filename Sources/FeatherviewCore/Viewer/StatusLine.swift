@@ -10,17 +10,7 @@ public struct StatusLine: Equatable, Sendable {
     public static func make(pixelSize: CGSize?, zoomPercent: Int?, fileBytes: Int?, index: Int, count: Int,
                             page: Int, pageCount: Int, frame: Int? = nil, frameCount: Int = 1,
                             modified: Date?) -> StatusLine {
-        var fields: [String] = []
-        if let pixelSize {
-            let width = Int(pixelSize.width).formatted(), height = Int(pixelSize.height).formatted()
-            fields.append(String(localized: "\(width) × \(height)"))
-        }
-        if let zoomPercent {
-            fields.append((Double(zoomPercent) / 100).formatted(.percent))
-        }
-        if let fileBytes {
-            fields.append(ByteCountFormatter.string(fromByteCount: Int64(fileBytes), countStyle: .file))
-        }
+        var fields = describe(pixelSize: pixelSize, zoomPercent: zoomPercent, fileBytes: fileBytes)
         fields.append(String(localized: "\((index + 1).formatted()) / \(count.formatted())"))
         if pageCount > 1 {
             fields.append(String(localized: "page \((page + 1).formatted()) / \(pageCount.formatted())"))
@@ -41,5 +31,30 @@ public struct StatusLine: Equatable, Sendable {
     /// The thumbnail grid's status bar while more than one cell is selected.
     public static func selection(count: Int, total: Int) -> StatusLine {
         StatusLine(fields: [String(localized: "\(count.formatted()) of \(total.formatted()) selected")])
+    }
+
+    /// One compare pane's strip: the name, then the fields `make` writes, without position, page or frame.
+    public static func pane(name: String, pixelSize: CGSize?, zoomPercent: Int?, fileBytes: Int?,
+                            modified: Date?) -> StatusLine {
+        var fields = [name] + describe(pixelSize: pixelSize, zoomPercent: zoomPercent, fileBytes: fileBytes)
+        if let modified {
+            fields.append(modified.formatted(date: .abbreviated, time: .shortened))
+        }
+        return StatusLine(fields: fields)
+    }
+
+    private static func describe(pixelSize: CGSize?, zoomPercent: Int?, fileBytes: Int?) -> [String] {
+        var fields: [String] = []
+        if let pixelSize {
+            let width = Int(pixelSize.width).formatted(), height = Int(pixelSize.height).formatted()
+            fields.append(String(localized: "\(width) × \(height)"))
+        }
+        if let zoomPercent {
+            fields.append((Double(zoomPercent) / 100).formatted(.percent))
+        }
+        if let fileBytes {
+            fields.append(ByteCountFormatter.string(fromByteCount: Int64(fileBytes), countStyle: .file))
+        }
+        return fields
     }
 }
