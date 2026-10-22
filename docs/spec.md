@@ -532,3 +532,9 @@ never downloads or installs anything itself.
 
 The feather mark, `Resources/AppIcon.svg` (source of `AppIcon.icns` and the
 website favicon). No cat imagery.
+
+Document icon: files in the formats only Featherview reads (the types Featherview declares) show the
+feather alone, without the app icon's tile, on the system's document page with the extension under
+it, also when another app is their default. A default app's own document icon wins where it brings
+one (GIMP for several of these formats). JFIF and APNG, which Preview reads too, keep the system's
+icons.

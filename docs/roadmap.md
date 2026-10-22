@@ -20,7 +20,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 7 | App formats | `docs/superpowers/plans/2026-10-17-milestone-7-app-formats.md` | done |
 | 8 | Finder previews | `docs/superpowers/plans/2026-10-19-milestone-8-finder-previews.md` | done |
 | 9 | Animation (v2) | `docs/superpowers/plans/2026-10-22-milestone-9-animation.md` | in progress |
-| 10 | Document icon (v2) | `docs/superpowers/plans/2026-10-22-document-icon.md` | ready |
+| 10 | Document icon (v2) | `docs/superpowers/plans/2026-10-22-document-icon.md` | done |
 | 11 | Viewer conveniences (v2) | | planning |
 | 12 | Zoom modes and flip (v2) | | planning |
 | 13 | Thumbnail grid (v2) | `docs/superpowers/plans/2026-10-22-milestone-13-thumbnails.md` | planned |
@@ -247,7 +247,7 @@ rates. Batch and Save As keep writing the first frame. Memory stays bounded (fra
 size, a window of frames instead of all of them for long animations) and browsing budgets hold:
 the first frame shows as fast as a still image.
 
-### Document icon (v2)
+### Document icon (v2, done)
 
 Files in the formats only Featherview reads show the feather (without the app icon's tile) on the
 system's document page, with the extension under it, through `UTTypeIcons` in our type

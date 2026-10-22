@@ -101,7 +101,7 @@ How a file's icon is chosen, read through `NSWorkspace.icon(forFile:)` (what Fin
 - Produces: asset name `DocumentBadge`; per declaration
   `UTTypeIcons = { UTTypeIconBadgeName: "DocumentBadge", UTTypeIconText: <first extension, uppercased> }`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Read `Resources/Info.plist` the way `QuickLookSupportTests.plist(_:)` does (`Fixtures.repo`).
 
@@ -122,27 +122,27 @@ Read `Resources/Info.plist` the way `QuickLookSupportTests.plist(_:)` does (`Fix
 }
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `swift test --filter DocumentIconTests`
 Expected: FAIL (no `UTTypeIcons`, no iconset).
 
-- [ ] **Step 3: Render the badge**
+- [x] **Step 3: Render the badge**
 
 From `Resources/Feather.svg` with `rsvg-convert -w N -h N` for N = 16, 32, 128, 256, 512 and their
 doubles, into `Resources/Assets.xcassets/DocumentBadge.iconset/` with the standard names. No
 `Contents.json` in the iconset (spike fact 7).
 
-- [ ] **Step 4: Add `UTTypeIcons` to the 22 declarations in `Resources/Info.plist`**
+- [x] **Step 4: Add `UTTypeIcons` to the 22 declarations in `Resources/Info.plist`**
 
 Keep the plist's existing order and tab indentation; `plutil -lint Resources/Info.plist` passes.
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `swift test --filter "DocumentIconTests|QuickLookSupportTests|InfoPlistStringsTests"`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Resources/Assets.xcassets/DocumentBadge.iconset Resources/Info.plist scripts/bundle.sh Tests/FeatherviewCoreTests/Imaging/DocumentIconTests.swift
@@ -157,13 +157,13 @@ git commit -m "feat: feather document icon for the formats only Featherview read
 - Modify: `docs/spec.md` ("App icon": a "Document icon" paragraph)
 - Modify: `docs/roadmap.md` (v2 "Document icon": done)
 
-- [ ] **Step 1: Build and register**
+- [x] **Step 1: Build and register**
 
 Run: `scripts/bundle.sh release && /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f build/Featherview.app`
 Expected: `xcrun assetutil --info build/Featherview.app/Contents/Resources/Assets.car` lists
 `DocumentBadge` and `AccentColor`.
 
-- [ ] **Step 2: Render every type's icon offscreen**
+- [x] **Step 2: Render every type's icon offscreen**
 
 A throwaway Swift script in the session scratchpad: for each extension of the 22 types plus `jfif`,
 `NSWorkspace.shared.icon(for: UTType(filenameExtension:)!)` drawn into a 256 px and a 16 px bitmap,
@@ -174,17 +174,17 @@ page before), and the JPEG icon for `jfif`. If an old generic page sticks, run
 `lsregister -f` again and note in the spec whether an update needs anything (it shouldn't: an
 updated app is re-registered).
 
-- [ ] **Step 3: Spec**
+- [x] **Step 3: Spec**
 
 Under "App icon": files in the formats only Featherview reads show the feather on the system's
 document page with the extension under it (the default app's own document icon wins where it
 brings one; JFIF keeps the JPEG icon). Reference the 22 types as "the types Featherview declares".
 
-- [ ] **Step 4: Roadmap**
+- [x] **Step 4: Roadmap**
 
 Mark "Document icon" done under v2.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/spec.md docs/roadmap.md
