@@ -156,8 +156,8 @@ final class BatchModel {
             let converted = results.filter { $0.status == .converted }
             // Input sizes from add: the originals may be in the Trash by now.
             let bytesIn = converted.reduce(0) { $0 + list.size(of: $1.input) }
-            let bytesOut = converted.reduce(0) {
-                $0 + (($1.output.flatMap { try? $0.resourceValues(forKeys: [.fileSizeKey]).fileSize }) ?? 0)
+            let bytesOut = converted.flatMap(\.outputs).reduce(0) {
+                $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
             }
             return BatchReport.summary(results: results, seconds: seconds, bytesIn: bytesIn,
                                        bytesOut: bytesOut, folder: folder)
@@ -169,7 +169,7 @@ final class BatchModel {
     private func flushPending() {
         guard !pending.isEmpty else { return }
         results.append(contentsOf: pending)
-        if let written = pending.last(where: { $0.status == .converted })?.output { lastWritten = written }
+        if let written = pending.last(where: { $0.status == .converted })?.outputs.last { lastWritten = written }
         // One change per flush: each change of an observed property notifies every row.
         var map = resultFor
         for result in pending { map[result.input] = result }

@@ -46,10 +46,12 @@ public enum PartLabels {
     }
 
     /// Frame-major `frame-row-column`; a single frame or a 1 × 1 grid drops its part, both single give none.
-    public static func combined(frames: Int, rows: Int, columns: Int) -> [String] {
+    /// At most `limit` of them, built lazily.
+    public static func combined(frames: Int, rows: Int, columns: Int, limit: Int = .max) -> [String] {
         let tiles = TileStep.clamped(rows) * TileStep.clamped(columns) > 1 ? tiles(rows: rows, columns: columns) : []
-        guard frames > 1 else { return tiles }
-        return tiles.isEmpty ? padded(frames) : padded(frames).flatMap { f in tiles.map { "\(f)-\($0)" } }
+        guard frames > 1 else { return Array(tiles.prefix(limit)) }
+        guard !tiles.isEmpty else { return Array(padded(frames).prefix(limit)) }
+        return Array(padded(frames).lazy.flatMap { f in tiles.lazy.map { "\(f)-\($0)" } }.prefix(limit))
     }
 
     private static func padded(_ count: Int) -> [String] {

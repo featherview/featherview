@@ -18,6 +18,7 @@ struct BatchCards: View {
                         Button(card.title) {
                             card.setAdded(true, in: &model.settings)
                             model.openCard = card
+                            if card == .dateTaken && model.settings.dateTaken.setTo.isEmpty { seedDateTaken() }
                         }
                         .disabled(card.isAdded(in: model.settings))
                     }
@@ -26,6 +27,17 @@ struct BatchCards: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// "Set to" starts at the selected (or first) input's date taken, else now.
+    private func seedDateTaken() {
+        let items = model.inputs.items
+        let url = (items.first(where: model.selection.contains) ?? items.first)?.url
+        Task {
+            let date = await Task.detached(priority: .userInitiated) { DateTakenSettings.seed(for: url) }.value
+            // The user may have picked a date meanwhile.
+            if model.settings.dateTaken.setTo.isEmpty { model.settings.dateTaken.setTo = date }
+        }
     }
 }
 
