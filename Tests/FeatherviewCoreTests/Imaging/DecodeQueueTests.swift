@@ -3,6 +3,13 @@ import Testing
 @testable import FeatherviewCore
 
 @Suite struct DecodeQueueTests {
+    /// Save As and the batch block on encoders (JPEG XL waits for a free slot): never on a cooperative-pool thread.
+    @Test func offPoolLeavesTheCooperativePool() async {
+        let label = await offPool { String(cString: __dispatch_queue_get_label(nil)) }
+        #expect(!label.contains("cooperative"))
+        #expect(String(cString: __dispatch_queue_get_label(nil)).contains("cooperative"))  // where the test itself runs
+    }
+
     private let urls = (0..<5).map { URL(fileURLWithPath: "/tmp/\($0).jpg") }
 
     /// Occupies one of the queue's threads until `release`, so later jobs wait.

@@ -1,6 +1,14 @@
 import Foundation
 import os
 
+/// Runs blocking ImageIO or encoder work on GCD, so it never ties up the cooperative pool the viewer's
+/// decode tasks need (Save As, the batch).
+public func offPool<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
+    await withCheckedContinuation { done in
+        DispatchQueue.global(qos: .userInitiated).async { done.resume(returning: work()) }
+    }
+}
+
 /// Runs blocking decodes on its own threads, at most `width` at once, nearest to the image shown first.
 /// ImageIO blocks its thread until done; on Swift's cooperative pool (one thread per core) stale prefetches
 /// would hold every thread while the image the user wants waits.
