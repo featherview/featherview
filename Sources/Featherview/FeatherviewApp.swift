@@ -171,7 +171,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for (index, url) in urls.enumerated() {
             // The main window takes the first file while it has none (launch) or no viewer window is open;
             // every other file gets a window.
-            let mainIsEmpty = viewer.list.current == nil && !viewer.isOpening && viewer.emptyFolder == nil
+            let mainIsEmpty = viewer.list.current == nil && !viewer.isOpening && viewer.emptyFolder == nil && viewer.unsaved == nil
             if index == 0, ViewerModel.windows.mainTakesFile(mainIsEmpty: mainIsEmpty) {
                 viewer.open(url)
             } else {
