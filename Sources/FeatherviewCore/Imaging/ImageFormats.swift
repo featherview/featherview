@@ -7,17 +7,23 @@ public enum ImageFormats {
     static let decodable: [UTType] =
         (CGImageSourceCopyTypeIdentifiers() as? [String] ?? []).compactMap { UTType($0) }
 
+    /// Other spellings of a format's extension: macOS has no UTType ImageIO lists for .jfif, .jif, .jfi (browsers
+    /// save .jfif) or .apng, and HEIF's extensions name the format the writers call HEIC.
+    private static let aliases = ["jfif": "jpg", "jif": "jpg", "jfi": "jpg", "heif": "heic", "hif": "heic", "apng": "png"]
+
+    /// The extension of the format `ext` names, lowercased (`jfif` is `jpg`).
+    public static func canonicalExtension(_ ext: String) -> String {
+        let ext = ext.lowercased()
+        return aliases[ext] ?? ext
+    }
+
     /// Decided by file extension only, so scanning a 10k-file folder never opens a file.
     public static func isDecodable(_ url: URL) -> Bool {
         if OwnDecoders.format(for: url) != nil { return true }
-        // macOS has no UTType for these JPEG extensions (browsers save .jfif), ImageIO reads them.
-        var ext = ["jfif", "jif", "jfi"].contains(url.pathExtension.lowercased()) ? "jpg" : url.pathExtension
-        // macOS has no UTType ImageIO lists for animated PNG's extension, ImageIO reads it as PNG.
-        if ext.lowercased() == "apng" { ext = "png" }
-        // macOS has no UTType for Photoshop Large Documents, ImageIO reads them as PSD (by content).
-        if ext.lowercased() == "psb" { ext = "psd" }
-        // macOS has no UTType for Netpbm's PAM, ImageIO reads it with the rest of the family (by content).
-        if ext.lowercased() == "pam" { ext = "pbm" }
+        var ext = canonicalExtension(url.pathExtension)
+        // Not that format, but ImageIO reads them by content with it: Photoshop Large Documents as PSD, Netpbm's
+        // PAM with the rest of the family (macOS has no UTType for either).
+        ext = ["psb": "psd", "pam": "pbm"][ext] ?? ext
         // PDF is read by our own decoder above; ImageIO would give only its first page, without pages.
         guard let type = UTType(filenameExtension: ext), !type.conforms(to: .pdf) else { return false }
         return decodable.contains { type.conforms(to: $0) }
