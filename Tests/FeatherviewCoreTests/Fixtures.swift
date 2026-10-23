@@ -120,22 +120,32 @@ enum Fixtures {
         guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
         return url
     }
-    /// A gain-map image: left half 4× SDR white, right half a dark colour. macOS 15+ only.
+    /// An HDR image in the quadrants of `writeQuadrants`, red and white 4× SDR bright, stored with `orientation`:
+    /// with an ISO gain map, or as PQ HDR (`pq`, no gain map). macOS 15+ only.
     @available(macOS 15, *)
     @discardableResult
-    static func writeHDRGainMap(to url: URL, type: UTType = .heic) throws -> URL {
+    static func writeHDRGainMap(to url: URL, type: UTType = .heic, orientation: Int = 1, pq: Bool = false) throws -> URL {
         let space = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3)!
         let context = CGContext(data: nil, width: 64, height: 48, bitsPerComponent: 16, bytesPerRow: 0, space: space,
                                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
                                     | CGBitmapInfo.floatComponents.rawValue | CGBitmapInfo.byteOrder16Little.rawValue)!
-        context.setFillColor(CGColor(colorSpace: space, components: [4, 4, 4, 1])!)
-        context.fill(CGRect(x: 0, y: 0, width: 32, height: 48))
-        context.setFillColor(CGColor(colorSpace: space, components: [0.5, 0.2, 0.1, 1])!)
-        context.fill(CGRect(x: 32, y: 0, width: 32, height: 48))
+        let quadrants: [(CGRect, [CGFloat])] = [  // Core Graphics counts y from the bottom
+            (CGRect(x: 0, y: 24, width: 32, height: 24), [4, 0, 0, 1]),
+            (CGRect(x: 32, y: 24, width: 32, height: 24), [0, 1, 0, 1]),
+            (CGRect(x: 0, y: 0, width: 32, height: 24), [0, 0, 1, 1]),
+            (CGRect(x: 32, y: 0, width: 32, height: 24), [4, 4, 4, 1]),
+        ]
+        for (rect, components) in quadrants {
+            context.setFillColor(CGColor(colorSpace: space, components: components)!)
+            context.fill(rect)
+        }
         guard let dest = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil)
         else { throw CocoaError(.fileWriteUnknown) }
-        CGImageDestinationAddImage(dest, context.makeImage()!,
-                                   [kCGImageDestinationEncodeRequest: kCGImageDestinationEncodeToISOGainmap] as CFDictionary)
+        // Without a content headroom ImageIO encodes a headroom of 1: a gain map that brightens nothing.
+        CGImageDestinationAddImage(dest, CGImageCreateCopyWithContentHeadroom(4, context.makeImage()!)!, [
+            kCGImageDestinationEncodeRequest: pq ? kCGImageDestinationEncodeToISOHDR : kCGImageDestinationEncodeToISOGainmap,
+            kCGImagePropertyOrientation: orientation,
+        ] as CFDictionary)
         guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
         return url
     }
