@@ -22,8 +22,9 @@ let usage = """
             before (the bench never does). --baseline exits 1 if a median is > 10 % slower or a row is gone.
     browse  steps through the folder like a held arrow key: one step every --interval-ms, whether
             or not the last one finished, through an 8-image cache with 2 neighbours prefetched each way.
-            --loops N steps through the folder N times, prints each loop's peak footprint and exits 1 if
-            the last loop's peak is more than 10 % above the first's (a leak).
+            --loops N steps through the folder N times, prints each loop's peak footprint and, from 3 loops,
+            exits 1 if the last loop's peak is more than 10 % above every earlier loop's but the first (a leak;
+            loop 1 fills the empty cache and decoder pools).
     thumbnail  asks Finder's thumbnail service (256 × 256 points at 2×) for each file, as Finder does, and
             exits 1 if one gets no thumbnail; --out also writes them as PNG. It doesn't say which extension
             drew a thumbnail: for formats only Featherview reads, any thumbnail at all is ours. macOS uses the
@@ -264,8 +265,10 @@ struct Step: Sendable {
     print("peak cache: \(peakCache / 1_000_000) MB decoded, peak footprint: \(peaks.max()! / 1_000_000) MB (screen \(screen[0]), every \(interval) ms)")
     guard loops > 1 else { return }
     for (loop, peak) in peaks.enumerated() { print("loop \(loop + 1): peak footprint \(peak / 1_000_000) MB") }
-    if Double(peaks.last!) > Double(peaks[0]) * 1.1 {
-        print("leak: the last loop's peak is more than 10 % above the first's")
+    // Loop 1 starts with an empty cache and decoder pools, so it only warms up; a leak climbs past every warm loop.
+    guard loops > 2 else { return print("leak check: needs --loops 3 or more (loop 1 only warms up)") }
+    if Double(peaks.last!) > Double(peaks.dropFirst().dropLast().max()!) * 1.1 {
+        print("leak: the last loop's peak is more than 10 % above every earlier warm loop's")
         exit(1)
     }
 }
