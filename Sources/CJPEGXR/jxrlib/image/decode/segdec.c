@@ -359,8 +359,14 @@ Int _FORCEINLINE DecodeSignificantRun (Int iMaxRun, struct CAdaptiveHuffman *pAH
 {
     Int iIndex;
     static const Int aRemap[] = {1,2,3,5,7,   1,2,3,5,7,   /*1,2,3,4,6,  */1,2,3,4,5 };
-    Int iBin = gSignificantRunBin[iMaxRun];
+    Int iBin;
     Int iRun = 0, iFLC = 0;
+
+    // featherview: runs are 1 to 14 in a valid stream; a damaged one ends the block instead of reading
+    // past gSignificantRunBin.
+    if (iMaxRun > 14)
+        return 16;
+    iBin = gSignificantRunBin[iMaxRun];
 
     if (iMaxRun < 5) {
         if (iMaxRun == 1) {

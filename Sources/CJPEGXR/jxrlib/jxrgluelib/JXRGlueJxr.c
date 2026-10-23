@@ -1570,7 +1570,7 @@ ERR ParsePFDEntry(
 
         case WMP_tagTransformation:
             FailIf(1 != uCount, WMP_errUnsupportedFormat);
-            assert(uValue < O_MAX);
+            FailIf(uValue >= O_MAX, WMP_errUnsupportedFormat);  // featherview: an error, not an assert
             pID->WMP.fOrientationFromContainer = TRUE;
             pID->WMP.oOrientationFromContainer = uValue;
             break;
@@ -1652,96 +1652,83 @@ ERR ParsePFDEntry(
             break;
 
         // Descriptive Metadata
+        // featherview: an entry ReadPropvar can't read, or of another type, is kept as it is (Featherview
+        // never reads these), without asserting on its type.
         case WMP_tagImageDescription:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarImageDescription));
-            assert(DPKVT_LPSTR == pID->WMP.sDescMetadata.pvarImageDescription.vt);
             break;
 
         case WMP_tagCameraMake:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarCameraMake));
-            assert(DPKVT_LPSTR == pID->WMP.sDescMetadata.pvarCameraMake.vt);
             break;
 
         case WMP_tagCameraModel:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarCameraModel));
-            assert(DPKVT_LPSTR == pID->WMP.sDescMetadata.pvarCameraModel.vt);
             break;
 
         case WMP_tagSoftware:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarSoftware));
-            assert(DPKVT_LPSTR == pID->WMP.sDescMetadata.pvarSoftware.vt);
             break;
 
         case WMP_tagDateTime:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarDateTime));
-            assert(DPKVT_LPSTR == pID->WMP.sDescMetadata.pvarDateTime.vt);
             break;
 
         case WMP_tagArtist:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarArtist));
-            assert(DPKVT_LPSTR == pID->WMP.sDescMetadata.pvarArtist.vt);
             break;
 
         case WMP_tagCopyright:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarCopyright));
-            assert(DPKVT_LPSTR == pID->WMP.sDescMetadata.pvarCopyright.vt);
             break;
 
         case WMP_tagRatingStars:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarRatingStars));
-            assert(DPKVT_UI2 == pID->WMP.sDescMetadata.pvarRatingStars.vt);
             break;
 
         case WMP_tagRatingValue:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarRatingValue));
-            assert(DPKVT_UI2 == pID->WMP.sDescMetadata.pvarRatingValue.vt);
             break;
 
         case WMP_tagCaption:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarCaption));
-            assert((DPKVT_BYREF | DPKVT_UI1) == pID->WMP.sDescMetadata.pvarCaption.vt);
-
-            // Change type from C-style byte array to LPWSTR
-            assert((U8*)pID->WMP.sDescMetadata.pvarCaption.VT.pwszVal ==
-                pID->WMP.sDescMetadata.pvarCaption.VT.pbVal);
-            assert(0 == pID->WMP.sDescMetadata.pvarCaption.VT.pwszVal[uCount/sizeof(U16) - 1]); // Confirm null-term
-            //  make sure null term (ReadPropvar allocated enough space for this)
-            pID->WMP.sDescMetadata.pvarCaption.VT.pwszVal[uCount/sizeof(U16)] = 0;
-            pID->WMP.sDescMetadata.pvarCaption.vt = DPKVT_LPWSTR;
+            // featherview: converted only when it was read as bytes (otherwise pwszVal may be NULL)
+            if ((DPKVT_BYREF | DPKVT_UI1) == pID->WMP.sDescMetadata.pvarCaption.vt && pID->WMP.sDescMetadata.pvarCaption.VT.pbVal != NULL) {
+                // Change type from C-style byte array to LPWSTR
+                //  make sure null term (ReadPropvar allocated enough space for this)
+                pID->WMP.sDescMetadata.pvarCaption.VT.pwszVal[uCount/sizeof(U16)] = 0;
+                pID->WMP.sDescMetadata.pvarCaption.vt = DPKVT_LPWSTR;
+            }
             break;
 
         case WMP_tagDocumentName:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarDocumentName));
-            assert(DPKVT_LPSTR == pID->WMP.sDescMetadata.pvarDocumentName.vt);
             break;
 
         case WMP_tagPageName:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarPageName));
-            assert(DPKVT_LPSTR == pID->WMP.sDescMetadata.pvarPageName.vt);
             break;
 
         case WMP_tagPageNumber:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarPageNumber));
-            assert(DPKVT_UI4 == pID->WMP.sDescMetadata.pvarPageNumber.vt);
             break;
 
         case WMP_tagHostComputer:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarHostComputer));
-            assert(DPKVT_LPSTR == pID->WMP.sDescMetadata.pvarHostComputer.vt);
             break;
 
         default:

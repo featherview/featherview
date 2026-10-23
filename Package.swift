@@ -25,13 +25,14 @@ let package = Package(
         // every public and async symbol of FeatherviewCore survives dead-stripping. The app hands it to ImageEncoder.jxlEncoder.
         .target(name: "FeatherviewJXL", dependencies: ["FeatherviewCore", "CJPEGXL"]),
         // jxrlib (BSD-2-Clause, Microsoft), vendored from github.com/Tom94/jxrlib at 0e1337d (Debian's
-        // patches applied); only JPEGXRDecoder uses it. The encoder sources are there because the glue links them.
+        // patches applied, plus our fixes for damaged files, each marked `featherview:`); only JPEGXRDecoder uses it.
+        // The encoder sources are there because the glue links them.
         .target(name: "CJPEGXR", exclude: ["jxrlib/LICENSE"],
                 cSettings: [
                     .define("__ANSI__"), .define("DISABLE_PERF_MEASUREMENT"),
                     .headerSearchPath("jxrlib/common/include"), .headerSearchPath("jxrlib/image/sys"),
                     .headerSearchPath("jxrlib/jxrgluelib"),
-                    .unsafeFlags(["-w", "-O2"]),  // third-party code we don't edit: no warnings; optimised in debug too, for the tests
+                    .unsafeFlags(["-w", "-O2"]),  // third-party code: no warnings; optimised in debug too, for the tests
                 ]),
         // libjxl 0.12.0 (BSD-3-Clause + patent grant) with highway (Apache-2.0 or BSD-3-Clause), brotli (MIT) and
         // skcms (BSD-3-Clause), vendored from github.com/libjxl/libjxl at v0.12.0 (a7a9c787; highway 457c8917,
