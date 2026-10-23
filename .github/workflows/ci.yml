@@ -7,9 +7,14 @@ on:
     paths-ignore: ['docs/**', '**.md', 'research/**', '.claude/**', '.github/ISSUE_TEMPLATE/**']
   pull_request:
     paths-ignore: ['docs/**', '**.md', 'research/**', '.claude/**', '.github/ISSUE_TEMPLATE/**']
+  # The sanitizer runs: Mondays, and by hand.
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
 
+# Per event too, so a push to main never cancels the sanitizer run.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 # Two runners side by side: the tests need only Core and the test targets, the app build catches what only
@@ -17,6 +22,7 @@ concurrency:
 jobs:
   build:
     name: ${{ matrix.job }}
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     # Liquid Glass needs the macOS 26 SDK (Xcode 26).
     runs-on: macos-26
     timeout-minutes: 20
@@ -48,3 +54,13 @@ jobs:
       - name: Test
         if: matrix.test
         run: ${{ matrix.test }}
+
+  # The whole suite under AddressSanitizer and ThreadSanitizer (scripts/sanitize.sh). Too slow for every push.
+  sanitize:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: macos-26
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - name: Sanitizers
+        run: scripts/sanitize.sh
