@@ -54,7 +54,7 @@ const MERGED = {
   required: ['merged', 'testsPassed', 'testSummary'],
 }
 
-const STRINGS = `New UI text: add the keys to Resources/Localizable.xcstrings by hand, in the file's existing format, translated into all 29 other languages (don't commit the whole-file rewrite scripts/strings.sh makes; you may run it to see which keys are new, then reset the file).`
+const STRINGS = `New UI text: run scripts/strings.sh to extract it into Resources/Localizable.xcstrings, then translate the new keys into all 29 other languages and commit the catalog. Never add keys to the catalog by hand.`
 
 const tag = item => {
   const m = item.plan.match(/milestone-(\d+)/)
@@ -118,7 +118,7 @@ ${open.map((f, i) => `${i + 1}. [${f.severity}] ${f.where}: ${f.problem}. Scenar
   const merge = await agent(
     `In the main repository checkout (not a worktree), on branch ${base}: merge ${done.branch} with --no-ff (message "Merge branch '${name}'").
 If .git/MERGE_HEAD exists, another merge is in progress: wait (check every 30 s, up to 20 min) until it is gone before you start.
-Resolve conflicts only if trivial and explain each. For Resources/Localizable.xcstrings, merge as JSON: keep ours, add theirs' new or changed keys, keep the file's format so the diff only adds lines. Otherwise abort the merge and report it.
+Resolve conflicts only if trivial and explain each. For a Resources/Localizable.xcstrings conflict, run scripts/merge-strings.py, then git add Resources/Localizable.xcstrings (if it stops because both sides changed a key, that conflict is not trivial). Otherwise abort the merge and report it.
 Stage only the files you resolved (git add <file>); never git add -A or git add ., and leave untracked files alone.
 Then run swift build and swift test on ${base} (a known timing-flaky test may fail under load: rerun that suite alone and report both). Do not push.`,
     { label: `${name} merge`, phase: 'Integrate', schema: MERGED })
