@@ -281,7 +281,7 @@ final class ViewerModel {
     /// `keepingCompare`: pane 1 changes folder (a swap or a compare start), pane 2 stays.
     /// `remember`: listed in File › Open Recent (not for browsing into another folder).
     func open(_ url: URL, keepingCompare: Bool = false, remember: Bool = true) {
-        if guardUnsaved(.open, then: { [weak self] in self?.open(url, keepingCompare: keepingCompare, remember: remember) }) {
+        if guardUnsaved(then: { [weak self] in self?.open(url, keepingCompare: keepingCompare, remember: remember) }) {
             return
         }
         if remember { RecentFiles.shared.note(url) }
@@ -419,7 +419,7 @@ final class ViewerModel {
     }
 
     func next() {
-        if guardUnsaved(.next, then: { [weak self] in self?.show() }) { return }
+        if guardUnsaved(then: { [weak self] in self?.show() }) { return }
         guard !isGrid else { return }
         forward = true
         if slideshow != nil { return slideshowStep(forward: true) }
@@ -427,7 +427,7 @@ final class ViewerModel {
     }
 
     func previous() {
-        if guardUnsaved(.previous, then: { [weak self] in self?.show() }) { return }
+        if guardUnsaved(then: { [weak self] in self?.show() }) { return }
         guard !isGrid else { return }
         forward = false
         if slideshow != nil { return slideshowStep(forward: false) }
@@ -436,12 +436,12 @@ final class ViewerModel {
     /// Home / End: nothing during a slideshow, a shuffled round has no first or last.
     func first() {
         guard slideshow == nil else { return }
-        if guardUnsaved(.first, then: { [weak self] in self?.first() }) { return }
+        if guardUnsaved(then: { [weak self] in self?.first() }) { return }
         list.first(); show()
     }
     func last() {
         guard slideshow == nil else { return }
-        if guardUnsaved(.last, then: { [weak self] in self?.last() }) { return }
+        if guardUnsaved(then: { [weak self] in self?.last() }) { return }
         list.last(); show()
     }
 
