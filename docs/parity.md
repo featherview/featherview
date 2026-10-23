@@ -22,7 +22,7 @@ has a German layout, so `+`/`−` were checked on the numpad and the German `+`/
 | Next / previous | ↑ ↓ do not change images. ← → and ↑ ↓ scroll instead when the image is larger than the window. | Decided: arrows pan when the image is larger than the window, navigate otherwise; two-finger scroll pans. | v1 |
 | First / last | Home / End jump to first / last (Ctrl variants do the same). | Same. | v1 |
 | End of folder | Going past the last (or before the first) file opens a small folder browser starting at the current folder: restart this folder, go up (←), or enter a subfolder (→ / Space). Siblings are listed in plain alphabetical order (d10 before d2) with image counts filled in only once visited. Every hop takes several keys. | Decided: → past the last image jumps straight to the next folder, no dialog (spec). Open: siblings only, or also subfolders; what happens after the last sibling. | v1 (details open) |
-| Random | A key shows a random file of the folder. | Image › Random Image: a random other image, never the one shown; nothing with fewer than two images; off in a slideshow and the grid. | v2 |
+| Random | A key shows a random file of the folder. | Image › Random Image: a random other image, never the one shown; nothing with fewer than two images; off in a slideshow and the grid; menu item only, no key. | v2 |
 | Corrupt file | Reaching a corrupt file shows a modal error with the full path; after dismissing it the window is empty but → continues from that position. | Spec: inline "Can't open <name>", no modal, browsing continues. Keep ours. | v1 |
 
 ## Display

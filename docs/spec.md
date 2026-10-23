@@ -149,8 +149,7 @@ the image at its position shows, as after Move to Trash. Disabled without a fold
 
 Image › "Random Image" shows a random other image of the list, never the one already shown. Nothing
 happens with fewer than two images. Off during a slideshow (it has its own order) and in the grid.
-Its single key is the one the reference viewer uses (parity row "Random"), ⇧ plus that letter if
-ours already uses the letter, else the menu item only.
+It has no single key: the menu item only.
 
 ### Desktop picture
 

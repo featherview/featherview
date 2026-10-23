@@ -249,4 +249,52 @@ import Testing
         list.next()
         #expect(list.current == nil)
     }
+
+    @Test func randomNeverPicksCurrent() {
+        let five = ["a", "b", "c", "d", "e"].map { URL(fileURLWithPath: "/x/\($0).jpg") }
+        var list = ImageList(urls: five, current: five[2])
+        var generator = SplitMix64(seed: 42)
+        var picked = Set<URL>()
+        for _ in 0..<200 {
+            let before = list.current
+            let moved = list.selectRandom(using: &generator)  // outside #expect: the macro can't take inout
+            #expect(moved)
+            #expect(list.current != before)
+            if let current = list.current { picked.insert(current) }
+        }
+        #expect(picked == Set(five))
+    }
+
+    @Test func randomNeedsTwoImages() {
+        var generator = SplitMix64(seed: 1)
+        var one = ImageList(urls: [urls[0]])
+        let movedOne = one.selectRandom(using: &generator)
+        #expect(!movedOne)
+        #expect(one.current == urls[0])
+        var empty = ImageList(urls: [])
+        let movedEmpty = empty.selectRandom(using: &generator)
+        #expect(!movedEmpty)
+    }
+
+    @Test func randomReleasesHeld() {
+        var list = ImageList(urls: urls, current: urls[1])
+        list.remove(urls[1], hold: true)
+        var generator = SplitMix64(seed: 7)
+        let moved = list.selectRandom(using: &generator)
+        #expect(moved)
+        #expect(!list.isHolding)
+    }
+}
+
+/// A seeded generator, so random picks repeat from run to run.
+private struct SplitMix64: RandomNumberGenerator {
+    var state: UInt64
+    init(seed: UInt64) { state = seed }
+    mutating func next() -> UInt64 {
+        state &+= 0x9E37_79B9_7F4A_7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+        return z ^ (z >> 31)
+    }
 }

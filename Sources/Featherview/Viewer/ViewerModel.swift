@@ -439,6 +439,12 @@ final class ViewerModel {
         if guardUnsaved(then: { [weak self] in self?.last() }) { return }
         list.last(); show()
     }
+    /// Random Image: nothing during a slideshow (its own order), in the grid or over an unsaved image.
+    func randomImage() {
+        guard slideshow == nil, !isGrid, unsaved == nil else { return }
+        var generator = SystemRandomNumberGenerator()
+        if list.selectRandom(using: &generator) { show() }
+    }
 
     func setZoom(_ zoom: Zoom) {
         var needsReload = (zoom == .fit) != (self.zoom == .fit)
