@@ -55,8 +55,6 @@ final class ViewerModel {
     /// True while a folder is being scanned, so the view shows nothing instead of the open hint.
     private(set) var isOpening = false { didSet { updateAvailability() } }
     var showInfo = false
-    /// I, the menu item and the toolbar button: an image is shown, not the grid or two compared.
-    var canShowInfo: Bool { availability.hasCurrent && !isGrid && compareSession == nil }
     private(set) var zoom = Zoom(ViewerModel.fitMode)
     /// The zoom the canvas draws `image` at: a new file's reset to the fit mode reaches it with that file's image,
     /// so the picture being left doesn't zoom (or animate) on its way out.
@@ -98,55 +96,18 @@ final class ViewerModel {
         }
     }
 
-    /// When toolbar buttons and menu items can act; the methods they call guard on the same.
-    struct Availability: Equatable {
-        /// ← / → work with no images too, as long as a folder is known (the chooser leaves it);
-        /// with "Past the end: Stop" not past the folder's ends.
-        var canGoBack = false
-        var canGoForward = false
-        var hasCurrent = false
-        /// W, ⇧A: an image shows and its folder is listed.
-        var canStartSlideshow = false
-        /// Zoom: a file's image or an unsaved one.
-        var hasPicture = false
-        /// Rotate, Trash, F7 / F8: not on a held (already removed) image.
-        var canChangeFile = false
-        var hasPages = false
-        /// T: the window has a list to show as thumbnails (also while the grid shows, to leave it).
-        var canShowGrid = false
-        /// File › Compare With…: an image shows (not the grid).
-        var canCompare = false
-        /// X: comparing, and pane 2's file opened.
-        var canSwap = false
-        /// D: comparing, both pictures decoded, pane 2's file opened.
-        var canShowDifference = false
-        /// Set as Desktop Picture: a file the system itself can show.
-        var canSetDesktop = false
-    }
     /// Stored, and set only when a value flips: buttons reading `list` would all re-evaluate on every image.
-    private(set) var availability = Availability()
+    private(set) var availability = ViewerAvailability()
     private func updateAvailability() {
-        // While the folder is listed its ends aren't known yet.
-        let pastEnd = isOpening ? .loop : AppSettings.pastEndBehavior
-        // In the grid → moves between cells, not images (Decision 8).
-        let canBrowse = folder != nil && !isGrid
-        // A slideshow steps in its play order, which has no Finder ends.
-        let new = Availability(canGoBack: canBrowse && (slideshow != nil || pastEnd.canStep(forward: false, index: list.index, count: list.urls.count)),
-                               canGoForward: canBrowse && (slideshow != nil || pastEnd.canStep(forward: true, index: list.index, count: list.urls.count)),
-                               hasCurrent: list.current != nil,
-                               canStartSlideshow: Slideshow.mayStart(hasCurrent: list.current != nil, isOpening: isOpening),
-                               hasPicture: list.current != nil || unsaved != nil,
-                               // In the grid these act on one viewed image (Decision 13).
-                               canChangeFile: list.current != nil && !list.isHolding && !isGrid,
-                               hasPages: (pageCount > 1 || player.frameCount > 1) && !list.isHolding && !isGrid,
-                               canShowGrid: isGrid || (!list.isEmpty && !isOpening),
-                               canCompare: list.current != nil && !list.isHolding && !isGrid,
-                               canSwap: compareSession != nil && compareSession?.errorMessage == nil
-                                   && list.current != nil && !list.isHolding,
-                               canShowDifference: compareSession != nil && compareSession?.errorMessage == nil
-                                   && image != nil && compareSession?.image != nil,
-                               canSetDesktop: list.current != nil && !list.isHolding && !isGrid
-                                   && list.current.map(ImageFormats.desktopCanShow) == true)
+        let new = ViewerAvailability(ViewerState(
+            hasCurrent: list.current != nil, isHolding: list.isHolding, isOpening: isOpening, isEmpty: list.isEmpty,
+            index: list.index, count: list.urls.count, pageCount: pageCount, frameCount: player.frameCount,
+            isGrid: isGrid, gridSelectionCount: gridSelection.count,
+            isComparing: compareSession != nil, compareFailed: compareSession?.errorMessage != nil,
+            compareDecoded: image != nil && compareSession?.image != nil,
+            showsDifference: compareSession?.showsDifference == true, isSlideshow: slideshow != nil,
+            hasUnsaved: unsaved != nil, hasFolder: folder != nil, pastEnd: AppSettings.pastEndBehavior,
+            desktopCanShow: list.current.map(ImageFormats.desktopCanShow) == true))
         if new != availability { availability = new }
         if isAnimation != (player.frameCount > 1) { isAnimation.toggle() }
     }
@@ -1228,11 +1189,8 @@ final class ViewerModel {
     }
     var dateSheet: DateSheetState?
 
-    /// The viewed image, or the grid's selection.
-    var canAdjustDate: Bool { isGrid ? !gridSelection.isEmpty : availability.canChangeFile }
-
     func showAdjustDate() {
-        guard canAdjustDate, let url = isGrid ? gridSelection.first : list.current else { return }
+        guard availability.canAdjustDate, let url = isGrid ? gridSelection.first : list.current else { return }
         let others = isGrid ? Array(gridSelection.dropFirst()) : []
         let grid = isGrid
         Task {
@@ -1306,7 +1264,7 @@ final class ViewerModel {
     /// The last cell clicked or moved to: T, Return and double-click view it; the strip shows its details.
     var gridFocus: URL? { didSet { if gridFocus != oldValue { readGridInfo() } } }
     /// The selected cells' files, in list order; set by the grid.
-    var gridSelection: [URL] = []
+    var gridSelection: [URL] = [] { didSet { updateAvailability() } }
     /// The focused cell's details for the strip, read off the main thread.
     private(set) var gridInfo: FileInfo?
     @ObservationIgnored private var gridInfoTask: Task<Void, Never>?
@@ -1628,6 +1586,7 @@ final class ViewerModel {
         if compareSession.showsDifference { return endDifference(compareSession) }
         guard availability.canShowDifference else { return }
         compareSession.showsDifference = true
+        updateAvailability()
         pausedForDifference = player.isPlaying
         // The difference is made from frame 0 (the model's image), so pane 1 shows that frame.
         if let image { player.pauseOnFirst(showing: image) }
@@ -1652,6 +1611,7 @@ final class ViewerModel {
     /// The difference goes (D again, leaving compare, pane 2 can't open); pane 1's animation plays again.
     private func endDifference(_ session: CompareSession) {
         session.showsDifference = false
+        updateAvailability()
         session.difference = nil
         if pausedForDifference, !player.isPlaying, player.frameCount > 1 { player.togglePlaying() }
         pausedForDifference = false

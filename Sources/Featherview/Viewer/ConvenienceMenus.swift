@@ -113,7 +113,7 @@ struct FollowToggle: View {
 
     var body: some View {
         Toggle("Follow New Files", isOn: Binding(get: { model?.followsNewFiles == true }, set: { model?.followsNewFiles = $0 }))
-            .disabled(model?.folder == nil)
+            .disabled(model?.availability.canFollow != true)
     }
 }
 
