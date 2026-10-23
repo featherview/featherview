@@ -53,7 +53,7 @@ extension ViewerModel {
         list = ImageList(urls: [])
         // Ends the covered image's decode, animation and navigation; the empty list leaves no picture.
         show()
-        pendingChanges = []
+        pendingChanges.reset()
         fileInfo = nil
         image = picture
         errorMessage = nil
