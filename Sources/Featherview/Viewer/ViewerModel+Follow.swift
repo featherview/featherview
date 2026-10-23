@@ -38,9 +38,11 @@ extension ViewerModel {
             await scan?.value
             guard followsNewFiles, folder == self.folder, openTask == scan, unsaved == nil else { return }
             let listed = list.urls
+            // Around the current file, the scan names files as the list does (a file's folder isn't symlink-resolved).
+            let around = list.current ?? folder
             let includeHidden = AppSettings.showHiddenFiles.value()
             let found = await Task.detached(priority: .userInitiated) { () -> (scanned: [URL], added: [URL], removed: [URL], newest: URL?)? in
-                guard let scanned = try? FolderScanner.images(around: folder, includeHidden: includeHidden, sorted: false)
+                guard let scanned = try? FolderScanner.images(around: around, includeHidden: includeHidden, sorted: false)
                 else { return nil }
                 let (added, removed) = Arrivals.diff(listed: listed, scanned: scanned)
                 let newest = Arrivals.newest(added) {
@@ -66,10 +68,11 @@ extension ViewerModel {
             relist(found.scanned)
             if !list.isEmpty { emptyFolder = nil }
             guard let newest = found.newest else { return }
+            followTask?.cancel()  // an earlier queued rescan's wait
             followTask = Task {
                 guard await Arrivals.settled(newest), !Task.isCancelled, followsNewFiles,
                       // The list takes arrivals; the window stays while something else is up.
-                      !isChooserOpen, destinationPanel == nil, unsaved == nil,
+                      !isChooserOpen, destinationPanel == nil, unsaved == nil, !renaming,
                       list.select(newest) else { return }
                 show()
             }
