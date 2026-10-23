@@ -1,1 +1,8 @@
 blank_issues_enabled: true
+contact_links:
+  - name: Ideas, questions and beta feedback
+    url: https://github.com/featherview/featherview/discussions
+    about: Feature wishes, "how do I…", and how Featherview works for you.
+  - name: Security problem
+    url: https://github.com/featherview/featherview/security/advisories/new
+    about: A file that crashes or hangs Featherview, reported privately.

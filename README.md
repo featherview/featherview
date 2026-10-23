@@ -44,6 +44,8 @@ Status: public preview (0.9), on the way to 1.0. Requires macOS 14 (Sonoma) or l
 
 ## Install
 
+Needs a Mac with Apple Silicon and macOS 14 (Sonoma) or later.
+
 Download `Featherview-<version>.dmg` from the
 [latest release](https://github.com/featherview/featherview/releases/latest), open it and drag `Featherview.app` to
 `Applications`.
