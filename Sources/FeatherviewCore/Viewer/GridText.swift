@@ -7,6 +7,15 @@ public enum GridText {
         String(localized: "\(count) images")
     }
 
+    /// A cell's tooltip: the name, then the status bar's fields for that file once `info` is read.
+    public static func tooltip(name: String, info: FileInfo?, index: Int, count: Int, failed: Bool) -> String {
+        if failed { return String(localized: "Can't open \(name)") }
+        guard let info else { return name }
+        let details = StatusLine.make(pixelSize: info.pixelSize, zoomPercent: nil, fileBytes: info.bytes, index: index,
+                                      count: count, page: 0, pageCount: 1, modified: info.modified).fields
+        return name + "\n" + details.joined(separator: "  ·  ")
+    }
+
     public static func trashFailed(_ failed: [URL]) -> String {
         if failed.count > 1 { return String(localized: "Couldn't move \(failed.count) images to the Trash") }
         let name = failed.first?.lastPathComponent ?? ""

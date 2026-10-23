@@ -41,4 +41,30 @@ import Testing
         #expect(try englishOne("Move %lld images to %@?") == "Move %lld image to %@?")
         #expect(try englishOne("Copy %lld images to %@?") == "Copy %lld image to %@?")
     }
+
+    private func info(_ url: URL, modified: Date) -> FileInfo {
+        FileInfo(url: url, page: 0, pixelSize: CGSize(width: 4032, height: 3024), bytes: 2_400_000,
+                 modified: modified, values: [:])
+    }
+
+    @Test func tooltipWithDetails() {
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let tip = GridText.tooltip(name: "a.jpg", info: info(a, modified: date), index: 2, count: 120, failed: false)
+        let details = StatusLine.make(pixelSize: CGSize(width: 4032, height: 3024), zoomPercent: nil, fileBytes: 2_400_000,
+                                      index: 2, count: 120, page: 0, pageCount: 1, modified: date).fields
+        #expect(tip == "a.jpg\n" + details.joined(separator: "  ·  "))
+        #expect(tip.contains("3 / 120"))
+        #expect(tip.contains("4,032 × 3,024") || tip.contains("4032 × 3024"))
+    }
+
+    @Test func tooltipWithoutInfo() {
+        #expect(GridText.tooltip(name: "a.jpg", info: nil, index: 2, count: 120, failed: false) == "a.jpg")
+    }
+
+    @Test func tooltipForFailedFile() {
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        #expect(GridText.tooltip(name: "a.jpg", info: info(a, modified: date), index: 2, count: 120, failed: true)
+                == "Can't open a.jpg")
+        #expect(GridText.tooltip(name: "a.jpg", info: nil, index: 2, count: 120, failed: true) == "Can't open a.jpg")
+    }
 }
