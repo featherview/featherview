@@ -56,7 +56,8 @@ swift build                      # debug build of everything
 swift test                       # all tests
 swift test --filter ImageListTests   # one suite
 scripts/bundle.sh debug          # build/Featherview.app (ad-hoc signed)
-scripts/strings.sh               # after changing UI text: extract strings into Resources/Localizable.xcstrings
+scripts/strings.sh               # after changing UI text: extract strings into Resources/Localizable.xcstrings, then translate the new keys
+scripts/merge-strings.py         # catalog merge conflict: resolves it, then git add Resources/Localizable.xcstrings
 open build/Featherview.app
 open -a build/Featherview.app ~/Pictures/some.jpg   # open a file with it
 swift run -c release featherview-bench corpus /tmp/fv   # generated test images, then: decode /tmp/fv, browse /tmp/fv/browse
