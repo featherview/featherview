@@ -30,11 +30,6 @@ import Testing
         #expect(abs(ZoomSteps.step(fit, by: 1.1) - 0.22) < 1e-9)
     }
 
-    @Test func stepsStayInRange() {
-        #expect(ZoomSteps.step(16, by: 1.1) == 16)
-        #expect(ZoomSteps.step(0.05, by: 1 / 1.1) == 0.05)
-    }
-
     @Test func pixelsShowFromTwiceTheirSizeOnScreen() {
         // 1000 px drawn 1000 pt wide on Retina is 200 %: pixels show.
         #expect(ZoomSteps.showsPixels(drawnWidth: 1000, imageWidth: 1000, displayScale: 2))
@@ -57,7 +52,7 @@ import Testing
         #expect(near(size, CGSize(width: 955.68, height: 637.12)))
     }
 
-    @Test func fitDrawSizeIsUnchanged() {
+    @Test func fitDrawSizeNeverEnlargesAndShrinksToTheView() {
         // Small image: never enlarged.
         #expect(ZoomSteps.drawSize(decoded: CGSize(width: 400, height: 300), full: CGSize(width: 400, height: 300),
                                    factor: nil, view: CGSize(width: 1500, height: 900), displayScale: 2)

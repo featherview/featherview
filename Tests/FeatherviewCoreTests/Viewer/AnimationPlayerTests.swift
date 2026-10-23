@@ -124,7 +124,9 @@ import Testing
         // Back to frame 1, which decodes behind 3 and 4; G before it arrives plays on from the kept frame 2.
         player.step(forward: false)
         player.togglePlaying()
-        try await Task.sleep(for: .milliseconds(300))
+        // Three frames played on: the dropped decode of frame 1 has come back by then.
+        for _ in 0..<1_000 where shown.count < 5 { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(shown.count >= 5)
         #expect(player.frameCount == 6)
         player.stop()
     }

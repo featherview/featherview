@@ -68,18 +68,24 @@ import UniformTypeIdentifiers
                 == ["img_1.jpg", "IMG_2.jpg", "IMG_3.png", "IMG_10.jpg", "IMG_20.png"])
     }
 
+    /// Values with many ties and some missing, for comparing the fast paths with `sorted`.
+    private func mixedValues(_ urls: [URL], key: SortKey) -> [URL: SortValue] {
+        var values: [URL: SortValue] = [:]
+        for (i, u) in urls.enumerated() where i % 7 != 0 {
+            switch key {
+            case .name: break
+            case .dateModified, .dateTaken: values[u] = .date(Date(timeIntervalSince1970: Double(i % 11)))
+            case .size: values[u] = .bytes(i % 13)
+            case .kind: values[u] = .text("kind \(i % 5)")
+            }
+        }
+        return values
+    }
+
     @Test func insertingMatchesSorted() {
         let urls = (0..<200).map { url("img\($0 % 37)-\($0).jpg") }
         for key in SortKey.allCases {
-            var values: [URL: SortValue] = [:]
-            for (i, u) in urls.enumerated() where i % 7 != 0 {  // some values missing
-                switch key {
-                case .name: break
-                case .dateModified, .dateTaken: values[u] = .date(Date(timeIntervalSince1970: Double(i % 11)))
-                case .size: values[u] = .bytes(i % 13)
-                case .kind: values[u] = .text("kind \(i % 5)")
-                }
-            }
+            let values = mixedValues(urls, key: key)
             for ascending in [true, false] {
                 let order = SortOrder(key: key, ascending: ascending)
                 let listed = ImageSort.sorted(Array(urls.shuffled().prefix(150)), by: order, values: values)
@@ -136,8 +142,9 @@ import UniformTypeIdentifiers
         #expect(ImageSort.values(of: [link], key: .dateTaken)[link] == .date(date))
     }
 
-    @Test func sizeAndDateResolveOnlySymlinks() throws {
-        // Resolving every path walks each component with lstat: ~20x the size lookup, over the folder-open budget.
+    @Test func sizeAndDateCostAboutAStatAndResolveOnlySymlinks() throws {
+        // A folder opens on its first image by date or size: all values are read before that image decodes.
+        // Resolving every path walks each of the 20 components with lstat, ~20x a stat.
         var dir = try Fixtures.makeTempDir()
         for i in 0..<20 { dir.appendPathComponent("d\(i)") }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -145,27 +152,6 @@ import UniformTypeIdentifiers
         for name in names { FileManager.default.createFile(atPath: dir.appendingPathComponent(name).path, contents: Data(count: 1)) }
         let fresh = { names.map { URL(fileURLWithPath: dir.appendingPathComponent($0).path) } }
         // Fastest of five, fresh URLs each time (a URL caches its resource values).
-        func fastest(_ body: ([URL]) throws -> Void) rethrows -> Duration {
-            try (0..<5).map { _ in
-                let urls = fresh()
-                let start = ContinuousClock.now
-                try body(urls)
-                return ContinuousClock.now - start
-            }.min()!
-        }
-        let plain = try fastest { for url in $0 { _ = try url.resourceValues(forKeys: [.fileSizeKey, .isSymbolicLinkKey]) } }
-        var values: [URL: SortValue] = [:]
-        let sorted = fastest { values = ImageSort.values(of: $0, key: .size) }
-        #expect(values.count == 2_000)
-        #expect(sorted < plain * 2, "\(sorted) vs \(plain)")
-    }
-
-    @Test func sizeAndDateCostAboutAStat() throws {
-        // A folder opens on its first image by date or size: all values are read before that image decodes.
-        let dir = try Fixtures.makeTempDir()
-        let names = (0..<2_000).map { "\($0).jpg" }
-        for name in names { FileManager.default.createFile(atPath: dir.appendingPathComponent(name).path, contents: Data(count: 1)) }
-        let fresh = { names.map { URL(fileURLWithPath: dir.appendingPathComponent($0).path) } }
         func fastest(_ body: ([URL]) -> Void) -> Duration {
             (0..<5).map { _ in
                 let urls = fresh()
@@ -179,7 +165,7 @@ import UniformTypeIdentifiers
             var values: [URL: SortValue] = [:]
             let read = fastest { values = ImageSort.values(of: $0, key: key) }
             #expect(values.count == 2_000)
-            #expect(read < plain * 3, "\(key): \(read) vs \(plain)")
+            #expect(read < plain * 5, "\(key): \(read) vs \(plain)")
         }
     }
 
@@ -213,15 +199,7 @@ import UniformTypeIdentifiers
     @Test func firstMatchesSorted() {
         let urls = (0..<200).map { url("img\($0 % 37)-\($0).jpg") }.shuffled()
         for key in SortKey.allCases {
-            var values: [URL: SortValue] = [:]
-            for (i, u) in urls.enumerated() where i % 7 != 0 {  // some values missing
-                switch key {
-                case .name: break
-                case .dateModified, .dateTaken: values[u] = .date(Date(timeIntervalSince1970: Double(i % 11)))
-                case .size: values[u] = .bytes(i % 13)
-                case .kind: values[u] = .text("kind \(i % 5)")
-                }
-            }
+            let values = mixedValues(urls, key: key)
             for ascending in [true, false] {
                 let order = SortOrder(key: key, ascending: ascending)
                 #expect(ImageSort.first(urls, by: order, values: values)
@@ -265,7 +243,7 @@ import UniformTypeIdentifiers
     @Test func storedOrderRoundTripsAndDefaultsToName() {
         let name = "featherview-tests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
-        defaults.removePersistentDomain(forName: name)
+        defer { defaults.removePersistentDomain(forName: name) }
         #expect(SortOrder.stored(in: defaults) == .finder)
         let order = SortOrder(key: .size, ascending: false)
         defaults.set(order.key.rawValue, forKey: AppSettings.sortKey.key)

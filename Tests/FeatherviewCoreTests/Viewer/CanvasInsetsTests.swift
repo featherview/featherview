@@ -28,13 +28,6 @@ struct CanvasInsetsTests {
         #expect(insets.fitArea(in: CGSize(width: 1220, height: 700)) == CGSize(width: 1188, height: 596))
     }
 
-    /// The bars fade but stay laid out, so `make` has no auto-hide input: the same inputs, the same insets.
-    @Test func insetsDontChangeWhenBarsAutoHide() {
-        let shown = CanvasInsets.make(toolbarHeight: 52, statusBarShown: true, fullScreen: false)
-        let faded = CanvasInsets.make(toolbarHeight: 52, statusBarShown: true, fullScreen: false)
-        #expect(shown == faded)
-    }
-
     /// The on-image error box sits above the glass strip, not on it, and keeps the side margin without one.
     @Test func messageBoxClearsTheStrip() {
         let shown = CanvasInsets.make(toolbarHeight: 52, statusBarShown: true, fullScreen: false)

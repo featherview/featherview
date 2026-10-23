@@ -2,68 +2,27 @@ import Testing
 @testable import FeatherviewCore
 
 @Suite struct ViewerKeyTests {
-    @Test func mapsCharacters() {
-        #expect(ViewerKey.action(characters: "r", shift: false) == .rotateRight)
-        #expect(ViewerKey.action(characters: "R", shift: false) == .rotateRight)  // Caps Lock
-        #expect(ViewerKey.action(characters: "=", shift: false) == .zoomIn)
-        #expect(ViewerKey.action(characters: "q", shift: false) == nil)
+    // Caps Lock gives uppercase without Shift; US '+' is Shift+=; AZERTY digits need Shift.
+    @Test(arguments: [
+        ("r", false, ViewerKey.rotateRight), ("R", false, .rotateRight), ("l", false, .rotateLeft), ("L", false, .rotateLeft),
+        ("=", false, .zoomIn), ("+", true, .zoomIn), ("0", true, .fit), ("1", true, .actualSize), ("-", true, .zoomOut),
+        ("2", false, .zoomToWidth), ("2", true, .zoomToWidth), ("3", false, .zoomToHeight),
+        ("o", false, .open), ("b", false, .batch), ("m", false, .minimize), ("p", false, .settings),
+        ("s", false, .saveAs), ("a", false, .about), ("A", true, .playInWindow),
+        ("g", false, .toggleAnimation), ("G", false, .toggleAnimation),
+        ("h", false, .flipHorizontal), ("v", false, .flipVertical), ("L", true, .toggleKeepZoom),
+        ("x", false, .swapImages), ("d", false, .toggleDifference), ("D", false, .toggleDifference),
+        ("t", false, .toggleThumbnails), ("T", false, .toggleThumbnails), ("w", false, .slideshow), ("W", false, .slideshow),
+    ] as [(String, Bool, ViewerKey)])
+    func viewerKeys(_ characters: String, _ shift: Bool, _ action: ViewerKey) {
+        #expect(ViewerKey.action(characters: characters, shift: shift) == action)
     }
 
-    // US '+' is Shift+=; AZERTY digits need Shift.
-    @Test(arguments: [("+", ViewerKey.zoomIn), ("0", .fit), ("1", .actualSize), ("-", .zoomOut)])
-    func shiftTypedCharactersWork(_ characters: String, _ action: ViewerKey) {
-        #expect(ViewerKey.action(characters: characters, shift: true) == action)
-    }
-
-    @Test(arguments: [("o", ViewerKey.open), ("b", .batch), ("m", .minimize), ("p", .settings)])
-    func commandsHaveSingleKeysLikeTheReferenceViewer(_ characters: String, _ action: ViewerKey) {
-        #expect(ViewerKey.action(characters: characters, shift: false) == action)
-    }
-
-    @Test func shiftedLettersAreNotShortcuts() {
-        #expect(ViewerKey.action(characters: "R", shift: true) == nil)
-    }
-
-    @Test func saveAsAndAbout() {
-        #expect(ViewerKey.action(characters: "s", shift: false) == .saveAs)
-        #expect(ViewerKey.action(characters: "a", shift: false) == .about)
-        #expect(ViewerKey.action(characters: "S", shift: true) == nil)
-    }
-
-    @Test func gTogglesAnimation() {
-        #expect(ViewerKey.action(characters: "g", shift: false) == .toggleAnimation)
-        #expect(ViewerKey.action(characters: "G", shift: false) == .toggleAnimation)  // Caps Lock
-        #expect(ViewerKey.action(characters: "G", shift: true) == nil)
-    }
-
-    @Test func flipKeys() {
-        #expect(ViewerKey.action(characters: "h", shift: false) == .flipHorizontal)
-        #expect(ViewerKey.action(characters: "v", shift: false) == .flipVertical)
-        #expect(ViewerKey.action(characters: "H", shift: true) == nil)
-    }
-
-    @Test func fillKeys() {
-        #expect(ViewerKey.action(characters: "2", shift: false) == .zoomToWidth)
-        #expect(ViewerKey.action(characters: "3", shift: false) == .zoomToHeight)
-        #expect(ViewerKey.action(characters: "2", shift: true) == .zoomToWidth)  // AZERTY
-    }
-
-    @Test func shiftLTogglesKeepZoom() {
-        #expect(ViewerKey.action(characters: "L", shift: true) == .toggleKeepZoom)
-        #expect(ViewerKey.action(characters: "l", shift: false) == .rotateLeft)
-        #expect(ViewerKey.action(characters: "L", shift: false) == .rotateLeft)  // Caps Lock
-        #expect(ViewerKey.action(characters: "R", shift: true) == nil)
-    }
-
-    @Test func xSwapsDTogglesDifference() {
-        #expect(ViewerKey.action(characters: "x", shift: false) == .swapImages)
-        #expect(ViewerKey.action(characters: "d", shift: false) == .toggleDifference)
-        #expect(ViewerKey.action(characters: "D", shift: false) == .toggleDifference)  // Caps Lock
-    }
-
-    @Test func shiftXIsNothing() {
-        #expect(ViewerKey.action(characters: "X", shift: true) == nil)
-        #expect(ViewerKey.action(characters: "D", shift: true) == nil)
+    @Test(arguments: [
+        ("q", false), ("R", true), ("S", true), ("G", true), ("H", true), ("X", true), ("D", true), ("T", true), ("W", true),
+    ] as [(String, Bool)])
+    func keysWithoutAnAction(_ characters: String, _ shift: Bool) {
+        #expect(ViewerKey.action(characters: characters, shift: shift) == nil)
     }
 
     @Test func arrowStepsFollowLayoutDirection() {
@@ -71,28 +30,5 @@ import Testing
         #expect(!ViewerKey.arrowGoesForward(isRightArrow: false, rightToLeft: false))
         #expect(!ViewerKey.arrowGoesForward(isRightArrow: true, rightToLeft: true))   // → is previous in Arabic/Hebrew
         #expect(ViewerKey.arrowGoesForward(isRightArrow: false, rightToLeft: true))
-    }
-
-    @Test func tTogglesThumbnails() {
-        #expect(ViewerKey.action(characters: "t", shift: false) == .toggleThumbnails)
-        #expect(ViewerKey.action(characters: "T", shift: false) == .toggleThumbnails)  // Caps Lock
-        #expect(ViewerKey.action(characters: "T", shift: true) == nil)
-    }
-
-    @Test func wStartsSlideshow() {
-        #expect(ViewerKey.action(characters: "w", shift: false) == .slideshow)
-        #expect(ViewerKey.action(characters: "W", shift: false) == .slideshow)  // Caps Lock
-    }
-
-    @Test func shiftAPlaysInWindow() {
-        #expect(ViewerKey.action(characters: "A", shift: true) == .playInWindow)
-    }
-
-    @Test func plainAIsStillAbout() {
-        #expect(ViewerKey.action(characters: "a", shift: false) == .about)
-    }
-
-    @Test func shiftWIsNothing() {
-        #expect(ViewerKey.action(characters: "W", shift: true) == nil)
     }
 }

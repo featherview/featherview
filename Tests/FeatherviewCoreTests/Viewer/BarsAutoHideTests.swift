@@ -36,8 +36,6 @@ import Testing
         #expect(machine.barsVisible)
     }
 
-    @Test func noHidingInTheBackground() { expectNoHiding(while: .windowKey(false), until: .windowKey(true)) }
-
     @Test func hidesAfterTheRest() {
         var machine = enabled()
         machine.handle(.pointerMoved, now: 0)
@@ -55,11 +53,8 @@ import Testing
         #expect(machine.barsVisible)
     }
 
-    @Test func pointerMoveShowsAgain() { expectShows(after: .pointerMoved) }
-    @Test func topEdgeShowsAgain() { expectShows(after: .pointerAtTopEdge) }
-    @Test func otherKeyShowsAgain() { expectShows(after: .key(browsing: false)) }
-
-    private func expectShows(after event: BarsAutoHide.Event) {
+    @Test(arguments: [BarsAutoHide.Event.pointerMoved, .pointerAtTopEdge, .key(browsing: false)])
+    func hiddenBarsShowAgainOn(_ event: BarsAutoHide.Event) {
         var machine = hidden()
         #expect(machine.barsVisible == false)
         machine.handle(event, now: 4)
@@ -111,13 +106,13 @@ import Testing
         #expect(wasHidden.hideAt == nil)
     }
 
-    @Test func noHidingWhilePanelOpen() { expectNoHiding(while: .panelOpen(true), until: .panelOpen(false)) }
-    @Test func noHidingOverBars() { expectNoHiding(while: .pointerOverBars(true), until: .pointerOverBars(false)) }
-    /// The empty window, "No images in…" or a full-window error: nothing to rest the pointer over.
-    @Test func noHidingWithoutPicture() { expectNoHiding(while: .pictureShown(false), until: .pictureShown(true)) }
-    @Test func fullScreenNeverHides() { expectNoHiding(while: .fullScreen(true), until: .fullScreen(false)) }
-
-    private func expectNoHiding(while block: BarsAutoHide.Event, until unblock: BarsAutoHide.Event) {
+    /// No picture: the empty window, "No images in…" or a full-window error leave nothing to rest the pointer over.
+    @Test(arguments: [
+        (BarsAutoHide.Event.windowKey(false), BarsAutoHide.Event.windowKey(true)), (.panelOpen(true), .panelOpen(false)),
+        (.pointerOverBars(true), .pointerOverBars(false)), (.pictureShown(false), .pictureShown(true)),
+        (.fullScreen(true), .fullScreen(false)),
+    ])
+    func noHidingWhile(_ block: BarsAutoHide.Event, until unblock: BarsAutoHide.Event) {
         var machine = enabled()
         machine.handle(.pointerMoved, now: 0)
         machine.handle(block, now: 1)
