@@ -241,7 +241,7 @@ import UniformTypeIdentifiers
     }
 
     @Test func storedOrderRoundTripsAndDefaultsToName() {
-        let name = "featherview-tests-\(UUID().uuidString)"
+        let name = testDefaultsName()
         let defaults = UserDefaults(suiteName: name)!
         defer { defaults.removePersistentDomain(forName: name) }
         #expect(SortOrder.stored(in: defaults) == .finder)

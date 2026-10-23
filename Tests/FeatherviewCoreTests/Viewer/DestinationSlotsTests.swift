@@ -9,7 +9,7 @@ import Testing
     }
 
     @Test func persistsAndPadsToFourteen() {
-        let name = "featherview-tests-\(UUID().uuidString)"
+        let name = testDefaultsName()
         let defaults = UserDefaults(suiteName: name)!
         defer { defaults.removePersistentDomain(forName: name) }
         #expect(DestinationSlots(defaults: defaults).folders == Array(repeating: nil, count: 14))
@@ -29,7 +29,7 @@ import Testing
 
     /// Two holders of a stale copy (Settings, another viewer window) must not undo each other's slots.
     @Test func updateKeepsChangesMadeMeanwhile() {
-        let name = "featherview-tests-\(UUID().uuidString)"
+        let name = testDefaultsName()
         let defaults = UserDefaults(suiteName: name)!
         defer { defaults.removePersistentDomain(forName: name) }
         let keep = URL(fileURLWithPath: "/Users/x/Keep", isDirectory: true)

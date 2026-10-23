@@ -4,7 +4,7 @@ import Testing
 
 /// A private defaults domain per test, so tests never touch the user's settings or each other.
 @Suite final class AppSettingsTests {
-    let name = "featherview-tests-\(UUID().uuidString)"
+    let name = testDefaultsName()
     let defaults: UserDefaults
 
     init() { defaults = UserDefaults(suiteName: name)! }

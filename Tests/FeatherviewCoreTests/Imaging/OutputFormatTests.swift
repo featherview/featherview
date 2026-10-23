@@ -288,7 +288,7 @@ import Testing
 }
 
 @Suite final class FormatSettingsTests {
-    let name = "FormatSettingsTests-\(UUID().uuidString)"
+    let name = testDefaultsName()
     let defaults: UserDefaults
 
     init() { defaults = UserDefaults(suiteName: name)! }

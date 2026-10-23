@@ -4,7 +4,7 @@ import Testing
 
 @Suite struct BatchSettingsTests {
     private func freshDefaults() -> (UserDefaults, String) {
-        let name = "featherview-tests-\(UUID().uuidString)"
+        let name = testDefaultsName()
         let defaults = UserDefaults(suiteName: name)!
         defaults.removePersistentDomain(forName: name)
         return (defaults, name)

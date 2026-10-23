@@ -4,7 +4,7 @@ import Testing
 
 @Suite struct AppearanceModeTests {
     @Test func unknownValueFallsBackToSystem() {
-        let name = "featherview-tests-\(UUID().uuidString)"
+        let name = testDefaultsName()
         let defaults = UserDefaults(suiteName: name)!
         defer { defaults.removePersistentDomain(forName: name) }
         defaults.set("sepia", forKey: AppSettings.appearance.key)
