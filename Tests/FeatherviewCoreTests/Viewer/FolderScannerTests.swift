@@ -96,6 +96,19 @@ import Testing
         #expect(names.sorted() == ["a.jpg", name].sorted())
     }
 
+    // Refresh scans around the shown file's URL, which cached "regular file" while it existed.
+    @Test func deletedOpenedFileIsNotListed() throws {
+        let dir = try Fixtures.makeTempDir()
+        try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 4, height: 4)
+        let gone = dir.appendingPathComponent("b.jpg")
+        try Fixtures.writeImage(to: gone, width: 4, height: 4)
+        _ = try FolderScanner.images(around: gone)
+        try FileManager.default.removeItem(at: gone)
+
+        let names = try FolderScanner.images(around: gone).map(\.lastPathComponent)
+        #expect(names == ["a.jpg"])
+    }
+
     @Test func openedFileInOtherCaseIsListedOnce() throws {
         let dir = try Fixtures.makeTempDir()
         try Fixtures.writeImage(to: dir.appendingPathComponent("img.jpg"), width: 4, height: 4)

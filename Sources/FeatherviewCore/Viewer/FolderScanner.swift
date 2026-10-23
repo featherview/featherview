@@ -79,6 +79,8 @@ public enum FolderScanner {
 
     /// For symlinks (followed) and entries of unknown type.
     private static func isRegularFile(_ url: URL) -> Bool {
+        var url = url
+        url.removeAllCachedResourceValues()  // a URL keeps what it read, also after the file is gone
         guard let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
         else { return false }
         if values.isSymbolicLink == true {
