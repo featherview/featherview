@@ -129,6 +129,13 @@ it opens the browser at a new GitHub issue from the repo's bug report form
 (`.github/ISSUE_TEMPLATE/bug_report.yml`), with Featherview version and build, macOS version and Mac
 model filled in; the person describes what happened.
 
+After Featherview crashed, the next launch offers, once per crash and at the earliest 10 seconds after
+launch (like the update check): "Featherview quit unexpectedly last time." with "Report…" and "Not Now".
+Report… opens the same bug report form as Help › Report a Bug…, with the crash summary (exception type
+and the crashed thread's first 15 frames) in a "Crash report" field. Nothing is sent by the app. Only
+Featherview's own reports count (its process, not the extensions'); only reports newer than the last one
+offered.
+
 ### Rotate
 
 Lossless: only the EXIF orientation tag changes. Supported for JPEG, HEIC and TIFF; other

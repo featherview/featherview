@@ -8,15 +8,27 @@ public enum AboutInfo {
 
     /// Fields of `.github/ISSUE_TEMPLATE/bug_report.yml` that the app fills in (issue forms take them from the query).
     public enum BugReportField: String, CaseIterable, Sendable {
-        case version, macOS = "macos", mac
+        case version, macOS = "macos", mac, crash
     }
 
-    /// A new issue from the bug report form with version, macOS and Mac model filled in.
-    public static func bugReportURL(version: String, build: String, macOS: String, model: String) -> URL {
-        let values: [BugReportField: String] = [.version: "\(version) (\(build))", .macOS: macOS, .mac: model]
+    /// GitHub turns away longer new-issue links.
+    static let maxURLLength = 8000
+
+    /// A new issue from the bug report form with version, macOS and Mac model filled in, and a crash summary when given
+    /// (cut at a line end to keep the link short enough).
+    public static func bugReportURL(version: String, build: String, macOS: String, model: String, crash: String? = nil) -> URL {
         let unreserved = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~")
-        let query = BugReportField.allCases.map { "&\($0.rawValue)=\(values[$0]!.addingPercentEncoding(withAllowedCharacters: unreserved)!)" }
-        return URL(string: repository.absoluteString + "/issues/new?template=bug_report.yml" + query.joined())!
+        func item(_ field: BugReportField, _ value: String) -> String {
+            "&\(field.rawValue)=\(value.addingPercentEncoding(withAllowedCharacters: unreserved)!)"
+        }
+        var link = repository.absoluteString + "/issues/new?template=bug_report.yml"
+            + item(.version, "\(version) (\(build))") + item(.macOS, macOS) + item(.mac, model)
+        if let crash {
+            var lines = crash.components(separatedBy: "\n")
+            while !lines.isEmpty, (link + item(.crash, lines.joined(separator: "\n"))).count > maxURLLength { lines.removeLast() }
+            if !lines.isEmpty { link += item(.crash, lines.joined(separator: "\n")) }
+        }
+        return URL(string: link)!
     }
 
     public static func reportText(version: String, build: String, macOS: String, model: String) -> String {

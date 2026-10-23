@@ -72,6 +72,9 @@ public enum AppSettings {
     public static let lastUpdateCheck = Setting(key: "lastUpdateCheck", defaultValue: Date.distantPast)
     /// The version Skip This Version was clicked for ("" = none).
     public static let skippedVersion = Setting(key: "skippedVersion", defaultValue: "")
+    // Crash reports
+    /// The modification date of the last crash report offered, so each crash is offered once.
+    public static let lastCrashOffered = Setting(key: "lastCrashOffered", defaultValue: Date.distantPast)
 
     public static var appearanceMode: AppearanceMode { AppearanceMode(stored: appearance.value()) }
 
@@ -122,6 +125,7 @@ public enum AppSettings {
             checkForUpdates.key: checkForUpdates.defaultValue,
             lastUpdateCheck.key: lastUpdateCheck.defaultValue,
             skippedVersion.key: skippedVersion.defaultValue,
+            lastCrashOffered.key: lastCrashOffered.defaultValue,
         ]
         for setting in openWith { values[setting.key] = setting.defaultValue }
         defaults.register(defaults: values)
