@@ -84,7 +84,14 @@ import Testing
         child.executableURL = URL(fileURLWithPath: arguments[0])
         child.arguments = ["--test-bundle-path", bundle, "--filter", "parallelFirstEncodesChild", bundle,
                            "--testing-library", "swift-testing"]
-        child.environment = ProcessInfo.processInfo.environment.merging([Self.freshKey: "1"]) { $1 }
+        var environment = ProcessInfo.processInfo.environment.merging([Self.freshKey: "1"]) { $1 }
+        // Under a sanitizer the bundle carries its runtime, which must load before the bundle does (scripts/sanitize.sh).
+        let frameworks = URL(fileURLWithPath: bundle).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Frameworks")
+        if let runtime = try? FileManager.default.contentsOfDirectory(atPath: frameworks.path)
+            .first(where: { $0.hasPrefix("libclang_rt.") && $0.hasSuffix("_osx_dynamic.dylib") }) {
+            environment["DYLD_INSERT_LIBRARIES"] = frameworks.appendingPathComponent(runtime).path
+        }
+        child.environment = environment
         let pipe = Pipe()
         child.standardOutput = pipe
         child.standardError = pipe
