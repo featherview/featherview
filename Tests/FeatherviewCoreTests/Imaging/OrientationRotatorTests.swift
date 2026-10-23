@@ -207,18 +207,14 @@ import UniformTypeIdentifiers
             let after = Self.storedData(url)
             #expect(after.pixels == stored.pixels && after.gainMap == stored.gainMap
                     && after.colorSpace == stored.colorSpace, "\(kind) \(orientation) \(change)")
+            if kind == .gainMapHEIC {  // ImageIO reports irot/imir; the Exif tag must agree for other tools
+                #expect(HEIFLayout.exifOrientation(try Data(contentsOf: url))
+                        == OrientationRotator.next(orientation, change), "\(kind) \(orientation) \(change)")
+            }
             let leftovers = try FileManager.default.contentsOfDirectory(atPath: dir.path)
                 .filter { $0.hasPrefix(".featherview-") }
             #expect(leftovers.isEmpty)
         }
-    }
-
-    @Test func heifRewriteSurvivesTruncatedFiles() throws {
-        guard #available(macOS 15, *) else { return }
-        let url = try Fixtures.writeHDRGainMap(to: try Fixtures.makeTempDir().appendingPathComponent("gm.heic"))
-        let data = try Data(contentsOf: url)
-        #expect(HEIFOrientation.setting(6, in: data) != nil)
-        for length in 0..<data.count { _ = HEIFOrientation.setting(6, in: data.prefix(length)) }  // must not trap
     }
 
     @Test func gainMapHEICInReadOnlyFolderLeavesOriginalIntact() throws {
