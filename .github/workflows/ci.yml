@@ -15,10 +15,21 @@ concurrency:
 # Two runners side by side: the tests need only Core and the test targets, the app build catches what only
 # the app's code breaks. The release bundle is built by the release itself (disk image), not here.
 jobs:
-  test:
+  build:
+    name: ${{ matrix.job }}
     # Liquid Glass needs the macOS 26 SDK (Xcode 26).
     runs-on: macos-26
     timeout-minutes: 20
+    strategy:
+      # Each runner finishes and reports on its own, whatever the other one does.
+      fail-fast: false
+      matrix:
+        include:
+          - job: test
+            build: swift build --product FeatherviewPackageTests
+            test: swift test --skip-build
+          - job: app
+            build: swift build
     steps:
       - uses: actions/checkout@v7
       # The C libraries (libjxl, jxrlib, libwebp) take most of a cold build and never change between pushes: the
@@ -29,29 +40,11 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: .build
-          key: build-test-${{ hashFiles('toolchain.txt', 'Package.swift', 'Package.resolved', 'Sources/CJPEGXL/**', 'Sources/CJPEGXR/**') }}
+          key: build-${{ matrix.job }}-${{ hashFiles('toolchain.txt', 'Package.swift', 'Package.resolved', 'Sources/CJPEGXL/**', 'Sources/CJPEGXR/**') }}
       - name: C sources as old as the cached build
         run: find Sources/CJPEGXL Sources/CJPEGXR -type f -exec touch -t 200001010000 {} +
-      - name: Build tests
-        run: swift build --product FeatherviewPackageTests
+      - name: Build
+        run: ${{ matrix.build }}
       - name: Test
-        run: swift test --skip-build
-
-  app:
-    runs-on: macos-26
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-      # The C libraries (libjxl, jxrlib, libwebp) take most of a cold build and never change between pushes: the
-      # build folder is cached, keyed on their sources and the toolchain. Checkout stamps every file with the time
-      # it ran, so their sources get a fixed old date back: the key guarantees they equal the cached build's.
-      - name: Toolchain
-        run: (xcodebuild -version && swift --version) | tee toolchain.txt
-      - uses: actions/cache@v6
-        with:
-          path: .build
-          key: build-app-${{ hashFiles('toolchain.txt', 'Package.swift', 'Package.resolved', 'Sources/CJPEGXL/**', 'Sources/CJPEGXR/**') }}
-      - name: C sources as old as the cached build
-        run: find Sources/CJPEGXL Sources/CJPEGXR -type f -exec touch -t 200001010000 {} +
-      - name: Build app, extensions and tools
-        run: swift build
+        if: matrix.test
+        run: ${{ matrix.test }}
