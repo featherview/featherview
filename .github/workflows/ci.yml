@@ -35,9 +35,7 @@ jobs:
       - name: Build tests
         run: swift build --product FeatherviewPackageTests
       - name: Test
-        # shortcut: serial (~2 min); in parallel the run hangs on the 3-core runner, never locally,
-        # find the blocking test when CI needs to be faster.
-        run: swift test --skip-build --no-parallel
+        run: swift test --skip-build
 
   app:
     runs-on: macos-26

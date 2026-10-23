@@ -119,8 +119,9 @@ import UniformTypeIdentifiers
         let pixel = try firstPixel(try await convert(input, to: format))
         #expect(pixel[3] == 255 && pixel[0] > 100, "\(pixel)")
         let saved = try Fixtures.makeTempDir().appendingPathComponent("g.\(format)")
-        try ImageSaver.save(input, page: 0, to: saved, as: try #require(FormatRegistry.format(id: format)),
-                            options: FormatOptions())
+        let output = try #require(FormatRegistry.format(id: format))
+        // AVIF's encoder needs a free cooperative-pool thread: off the pool, as Save As runs it.
+        try await offPool { try ImageSaver.save(input, page: 0, to: saved, as: output, options: FormatOptions()) }
         let savedPixel = try firstPixel(saved)
         #expect(savedPixel[3] == 255 && savedPixel[0] > 100, "\(savedPixel)")
     }

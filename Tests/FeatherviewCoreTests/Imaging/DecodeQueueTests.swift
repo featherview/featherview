@@ -10,6 +10,10 @@ import Testing
         #expect(String(cString: __dispatch_queue_get_label(nil)).contains("cooperative"))  // where the test itself runs
     }
 
+    @Test func offPoolPassesErrorsThrough() async {
+        await #expect(throws: CancellationError.self) { try await offPool { () throws(CancellationError) in throw CancellationError() } }
+    }
+
     private let urls = (0..<5).map { URL(fileURLWithPath: "/tmp/\($0).jpg") }
 
     /// Occupies one of the queue's threads until `release`, so later jobs wait.
