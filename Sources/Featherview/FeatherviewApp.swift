@@ -190,7 +190,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // shortcut: once the batch ends with no window open the app stays running, until the user quits; fine for v1.
+    // shortcut: once the batch ends with no window open the app stays running until the user quits, quit after the batch if users ask.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { !isBusy() }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
