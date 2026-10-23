@@ -33,6 +33,19 @@ import Testing
         #expect(CrashReports.newest(in: folder, newerThan: nil)?.lastPathComponent == own.lastPathComponent)
     }
 
+    @Test func firstRunOffersOnlyARecentCrash() throws {
+        let folder = try Fixtures.makeTempDir()
+        let launch = Date.now
+        _ = try Self.write(Self.ips(), "Featherview-old.ips", in: folder, date: launch.addingTimeInterval(-21 * 86_400))
+        let firstRun = CrashReports.offerCutoff(lastOffered: .distantPast, launch: launch)
+        #expect(CrashReports.newest(in: folder, newerThan: firstRun) == nil)
+        let recent = try Self.write(Self.ips(), "Featherview-recent.ips", in: folder, date: launch.addingTimeInterval(-60))
+        #expect(CrashReports.newest(in: folder, newerThan: firstRun)?.lastPathComponent == recent.lastPathComponent)
+        // Once a date is stored, it alone decides.
+        let stored = launch.addingTimeInterval(-30 * 86_400)
+        #expect(CrashReports.offerCutoff(lastOffered: stored, launch: launch) == stored)
+    }
+
     @Test func newestAfterDateWins() throws {
         let folder = try Fixtures.makeTempDir()
         let now = Date.now

@@ -196,9 +196,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Spec "Help menu": after a crash, offers once (10 s after launch, like the update check) to open the bug report
     /// form with the crash summary; nothing is sent by the app.
     private func offerCrashReport() {
+        let launch = Date.now
         Task {
             try? await Task.sleep(for: .seconds(10))
-            let last = AppSettings.lastCrashOffered.value()
+            let stored = AppSettings.lastCrashOffered.value()
+            let last = CrashReports.offerCutoff(lastOffered: stored, launch: launch)
+            // From the first launch on, only crashes after it are offered.
+            if stored == .distantPast { AppSettings.lastCrashOffered.set(launch) }
             let found = await Task.detached { () -> (date: Date, summary: String)? in
                 guard let url = CrashReports.newest(newerThan: last),
                       let date = try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,

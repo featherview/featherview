@@ -7,6 +7,15 @@ public enum CrashReports {
     static let processName = "Featherview"
     static let maxFrames = 15
 
+    /// With nothing stored yet (the first launch of a build that offers reports), only a report this recent counts as
+    /// "last time": an older one predates clean launches of an earlier version.
+    static let firstRunWindow: TimeInterval = 3600
+
+    /// The date a report must be newer than to be offered at `launch`.
+    public static func offerCutoff(lastOffered: Date, launch: Date) -> Date {
+        lastOffered == .distantPast ? launch.addingTimeInterval(-firstRunWindow) : lastOffered
+    }
+
     /// The newest readable report of the app's own process modified after `newerThan`.
     public static func newest(in folder: URL = folder, newerThan: Date?) -> URL? {
         let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
