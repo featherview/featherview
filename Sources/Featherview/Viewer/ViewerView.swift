@@ -540,11 +540,8 @@ struct ViewerView: View {
         // The grid's keys, when its collection view hasn't the keyboard (the size slider, Tab); the viewer's keys do
         // nothing there (Decision 13).
         if model.isGrid {
-            var gridModifiers: MenuKey.Modifiers = []
-            if modifiers.contains(.command) { gridModifiers.insert(.command) }
-            if modifiers.contains(.shift) { gridModifiers.insert(.shift) }
-            if modifiers.contains(.option) { gridModifiers.insert(.option) }
-            if modifiers.contains(.control) { gridModifiers.insert(.control) }
+            let gridModifiers = MenuKey.Modifiers(command: modifiers.contains(.command), shift: modifiers.contains(.shift),
+                                                  option: modifiers.contains(.option), control: modifiers.contains(.control))
             if let key = GridKey.action(characters: press.characters, modifiers: gridModifiers) { _ = gridKey(key) }
             return .handled
         }

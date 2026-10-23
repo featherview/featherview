@@ -303,11 +303,8 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
 
     override func keyDown(with event: NSEvent) {
         let flags = event.modifierFlags
-        var modifiers: MenuKey.Modifiers = []
-        if flags.contains(.command) { modifiers.insert(.command) }
-        if flags.contains(.shift) { modifiers.insert(.shift) }
-        if flags.contains(.option) { modifiers.insert(.option) }
-        if flags.contains(.control) { modifiers.insert(.control) }
+        let modifiers = MenuKey.Modifiers(command: flags.contains(.command), shift: flags.contains(.shift),
+                                          option: flags.contains(.option), control: flags.contains(.control))
         if let key = GridKey.action(characters: event.charactersIgnoringModifiers ?? "", modifiers: modifiers), onKey(key) { return }
         super.keyDown(with: event)
     }

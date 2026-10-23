@@ -1076,14 +1076,20 @@ final class ViewerModel {
     /// Lets the user pick a slot's folder; returns false if they cancelled.
     @discardableResult
     func chooseFolder(for slot: Int) -> Bool {
+        guard let slots = Self.chooseFolder(for: slot, in: slots) else { return false }
+        self.slots = slots
+        return true
+    }
+
+    /// The panel for a slot's folder, starting in its current one; the saved slots, nil if the user cancelled.
+    static func chooseFolder(for slot: Int, in slots: DestinationSlots) -> DestinationSlots? {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         panel.directoryURL = slots[slot]
-        guard panel.runModal() == .OK, let url = panel.url else { return false }
-        slots = DestinationSlots.update(in: .standard) { $0[slot] = url }
-        return true
+        guard panel.runModal() == .OK, let url = panel.url else { return nil }
+        return DestinationSlots.update(in: .standard) { $0[slot] = url }
     }
 
     private func confirm(_ operation: FileOperation, _ urls: [URL], _ folder: URL) -> Bool {

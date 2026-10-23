@@ -204,12 +204,7 @@ private struct MoveCopySettings: View {
     }
 
     private func choose(_ slot: Int) {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.canCreateDirectories = true
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        slots = DestinationSlots.update(in: .standard) { $0[slot] = url }
+        if let chosen = ViewerModel.chooseFolder(for: slot, in: slots) { slots = chosen }
     }
 }
 

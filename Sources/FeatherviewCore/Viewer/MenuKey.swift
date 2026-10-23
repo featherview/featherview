@@ -8,6 +8,15 @@ public struct MenuKey: Equatable, Sendable {
         public static let shift = Modifiers(rawValue: 2)
         public static let option = Modifiers(rawValue: 4)
         public static let control = Modifiers(rawValue: 8)
+
+        /// From the four flags of an AppKit or SwiftUI key event; callers drop the others (Caps Lock, Fn).
+        public init(command: Bool, shift: Bool, option: Bool, control: Bool) {
+            self = []
+            if command { insert(.command) }
+            if shift { insert(.shift) }
+            if option { insert(.option) }
+            if control { insert(.control) }
+        }
     }
 
     public let title: String
