@@ -20,7 +20,7 @@ struct BatchImagesColumn: View {
                             BatchImageRow(input: input, state: model.state(of: input))
                                 .background(SystemSelectionOff())
                                 .listRowBackground(model.selection.contains(input)
-                                    ? RoundedRectangle(cornerRadius: 6).fill(Color.accentColor.opacity(0.15)) : nil)
+                                    ? RoundedRectangle(cornerRadius: Theme.Radius.batchRow).fill(Theme.batchSelection) : nil)
                         }
                     }
                     // Not the sidebar style: its source list checks for flat indentation on every insert,
@@ -37,7 +37,7 @@ struct BatchImagesColumn: View {
                 return true
             } isTargeted: { isDropTarget = $0 }
             .overlay {
-                if isDropTarget { RoundedRectangle(cornerRadius: 6).stroke(.tint, lineWidth: 2).padding(2) }
+                if isDropTarget { RoundedRectangle(cornerRadius: Theme.Radius.batchRow).stroke(.tint, lineWidth: 2).padding(2) }
             }
             Divider()
             bottomBar
@@ -185,7 +185,7 @@ private struct BatchImageRow: View {
                 if let thumbnail = info?.thumbnail {
                     Image(nsImage: thumbnail).resizable().scaledToFit()
                 } else {
-                    RoundedRectangle(cornerRadius: 3).fill(.quaternary)
+                    RoundedRectangle(cornerRadius: Theme.Radius.batchThumbnail).fill(.quaternary)
                 }
             }
             .frame(width: 36, height: 36)
@@ -193,7 +193,7 @@ private struct BatchImageRow: View {
                 Text(input.url.lastPathComponent).lineLimit(1).truncationMode(.middle)
                 Text(stateLine ?? info?.line ?? " ")
                     .font(.caption)
-                    .foregroundStyle(isFailed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                    .foregroundStyle(isFailed ? AnyShapeStyle(Theme.failure) : AnyShapeStyle(.secondary))
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
@@ -217,8 +217,8 @@ private struct BatchImageRow: View {
         switch state {
         case .waiting: Image(systemName: "clock").foregroundStyle(.secondary).accessibilityLabel("Waiting")
         case .working: ProgressView().controlSize(.small).accessibilityLabel("Working")
-        case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).accessibilityLabel("Done")
-        case .failed: Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red).accessibilityLabel("Failed")
+        case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.success).accessibilityLabel("Done")
+        case .failed: Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.failure).accessibilityLabel("Failed")
         case nil: EmptyView()
         }
     }

@@ -52,12 +52,7 @@ enum MenuKeys {
             saved.append(Saved(item: item, title: item.title, key: item.keyEquivalent, modifiers: item.keyEquivalentModifierMask, shown: key))
             item.title = key.title
             item.keyEquivalent = key.key
-            var modifiers: NSEvent.ModifierFlags = []
-            if key.modifiers.contains(.command) { modifiers.insert(.command) }
-            if key.modifiers.contains(.shift) { modifiers.insert(.shift) }
-            if key.modifiers.contains(.option) { modifiers.insert(.option) }
-            if key.modifiers.contains(.control) { modifiers.insert(.control) }
-            item.keyEquivalentModifierMask = modifiers
+            item.keyEquivalentModifierMask = NSEvent.ModifierFlags(key.modifiers)
         }
     }
 
@@ -85,6 +80,21 @@ enum MenuKeys {
 
     private static func allItems(_ menu: NSMenu) -> [NSMenuItem] {
         menu.items.flatMap { [$0] + ($0.submenu.map(allItems) ?? []) }
+    }
+}
+
+extension NSEvent.ModifierFlags {
+    init(_ modifiers: MenuKey.Modifiers) {
+        self = []
+        if modifiers.contains(.command) { insert(.command) }
+        if modifiers.contains(.shift) { insert(.shift) }
+        if modifiers.contains(.option) { insert(.option) }
+        if modifiers.contains(.control) { insert(.control) }
+    }
+
+    /// The four flags a key uses; the others (Caps Lock, Fn) drop out.
+    var menuKey: MenuKey.Modifiers {
+        MenuKey.Modifiers(command: contains(.command), shift: contains(.shift), option: contains(.option), control: contains(.control))
     }
 }
 

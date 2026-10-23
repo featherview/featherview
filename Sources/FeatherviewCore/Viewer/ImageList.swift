@@ -75,11 +75,6 @@ public struct ImageList: Equatable, Sendable {
         index = next.flatMap(urls.firstIndex(of:)) ?? min(index, max(urls.count - 1, 0))
     }
 
-    /// Drops the current entry (after Trash); the following image becomes current.
-    public mutating func removeCurrent() {
-        if let current { remove(current) }
-    }
-
     /// Drops `url` (after Trash) and keeps showing the same image; if `url` was current,
     /// the following image becomes current (the previous one at the end), or with `hold`, stays
     /// current until the next move.
@@ -98,20 +93,9 @@ public struct ImageList: Equatable, Sendable {
         index = next.flatMap(urls.firstIndex(of:)) ?? 0
     }
 
-    /// Images up to `radius` steps either side of current, nearest first, for prefetching.
-    public func neighbors(radius: Int) -> [URL] {
-        guard urls.count > 1, radius > 0 else { return [] }
-        var result: [URL] = []
-        for step in 1...radius {
-            for offset in [step, -step] where urls.indices.contains(index + offset) {
-                result.append(urls[index + offset])
-            }
-        }
-        return result
-    }
-
-    /// The same images, those ahead of a run first (`forward`: the following ones), then those behind, nearest
-    /// first in each: holding → wants the next ones sooner than the ones already seen.
+    /// Images up to `radius` steps either side of current, for prefetching: those ahead of a run first (`forward`:
+    /// the following ones), then those behind, nearest first in each: holding → wants the next ones sooner than
+    /// the ones already seen.
     public func neighbors(radius: Int, forward: Bool) -> [URL] {
         guard urls.count > 1, radius > 0 else { return [] }
         let direction = forward ? 1 : -1

@@ -498,14 +498,15 @@ private final class ImageLayerView: NSView {
 
     override func mouseUp(with event: NSEvent) { dragStart = nil }
 
-    /// Grey and white 8-point squares behind transparent images.
+    /// Grey and white squares behind transparent images.
     private static let checkerColor: CGColor = {
-        let tile = NSImage(size: NSSize(width: 16, height: 16), flipped: false) { rect in
-            NSColor(white: 0.8, alpha: 1).setFill()
+        let side = Theme.checkerTile
+        let tile = NSImage(size: NSSize(width: 2 * side, height: 2 * side), flipped: false) { rect in
+            Theme.checkerDark.setFill()
             rect.fill()
-            NSColor.white.setFill()
-            NSRect(x: 0, y: 0, width: 8, height: 8).fill()
-            NSRect(x: 8, y: 8, width: 8, height: 8).fill()
+            Theme.checkerLight.setFill()
+            NSRect(x: 0, y: 0, width: side, height: side).fill()
+            NSRect(x: side, y: side, width: side, height: side).fill()
             return true
         }
         return NSColor(patternImage: tile).cgColor

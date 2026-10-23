@@ -68,7 +68,7 @@ struct BatchDoneView: View {
     private func lines(_ failures: [String]) -> some View {
         LazyVStack(alignment: .leading, spacing: 2) {
             ForEach(Array(failures.enumerated()), id: \.offset) { _, line in
-                Text(line).foregroundStyle(.red)
+                Text(line).foregroundStyle(Theme.failure)
             }
         }
         .textSelection(.enabled)
