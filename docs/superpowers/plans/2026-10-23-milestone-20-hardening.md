@@ -191,7 +191,8 @@ extensions'); only reports newer than the last one offered.
 **Files:** Modify `Sources/FeatherviewBench/main.swift` (`browse … --loops N`).
 
 - [ ] **Step 1:** `--loops N` steps through the folder N times; prints peak footprint per loop and exits 1
-  if the last loop's peak is more than 10 % above the first loop's (a leak).
+  if the last loop's peak is more than 10 % above every earlier loop's but the first (a leak). Loop 1 is
+  warm-up (empty cache and decoder pools), so the check needs 3 loops or more.
 - [ ] **Step 2:** Run on `swift run -c release featherview-bench corpus /tmp/fv` → `browse /tmp/fv/browse
   --loops 5 --interval-ms 30`, and on `~/FeatherviewSamples/photos` when present; a leak is a bug, found with
   Instruments' Leaks / `leaks --atExit`, fixed with a test where Core owns it.

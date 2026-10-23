@@ -7,7 +7,7 @@ struct OptionError: Error, Equatable {
 let knownOptions: [String: Set<String>] = [
     "corpus": [],
     "decode": ["--raw", "--screen", "--runs", "--json", "--baseline"],
-    "browse": ["--screen", "--interval-ms"],
+    "browse": ["--screen", "--interval-ms", "--loops"],
     "thumbnail": ["--out"],
     "fuzz": ["--out", "--seconds", "--seed"],
     "grid": ["--points", "--scale", "--cells", "--width", "--json", "--baseline"],
