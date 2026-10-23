@@ -157,7 +157,10 @@ enum ProcreateFixture {
             #expect(image.width == 6 && image[1, 1] == (255, 0, 0, 255))
         }
         #expect(throws: DecodeError.self) { try ImageDecoder.decode(try ProcreateFixture.file(noComposite, preview: false)) }
-        // Values of the wrong type in the archive fail without crashing, like any corrupt file.
+    }
+
+    /// Values of the wrong type in the archive fail without crashing, like any corrupt file.
+    @Test func oddlyTypedArchiveValuesFailSafely() throws {
         for odd: Any in ["256" as NSString, [256] as NSArray, 1e300 as NSNumber, -256 as NSNumber] {
             let document = ProcreateFixture.Document()
             document.oddTileSize = odd

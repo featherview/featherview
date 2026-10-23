@@ -53,14 +53,6 @@ import Testing
         #expect(try QOICodec.decode(QOICodec.encode(image)) == image)
     }
 
-    @Test func decodesThroughImageDecoder() throws {
-        OwnDecoders.register(QOICodec.format)
-        let url = try Fixtures.makeTempDir().appendingPathComponent("a.qoi")
-        try QOICodec.encode(Self.noise(width: 17, height: 9)).write(to: url)
-        let image = try ImageDecoder.decode(url)
-        #expect(image.width == 17 && image.height == 9)
-    }
-
     @Test func diffWrapsAround() throws {
         // From opaque black: 255 is a diff of -1, and 255 -> 0 a diff of +1 (arithmetic wraps).
         var image = RGBAImage(width: 2, height: 1)

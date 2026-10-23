@@ -137,8 +137,6 @@ import Testing
     }
 
     @Test func dcxPagesThroughImageDecoder() throws {
-        OwnDecoders.register(PCXCodec.pcx)
-        OwnDecoders.register(PCXCodec.dcx)
         let first = try PCXCodec.encode(RGBAImage(width: 3, height: 2))
         let second = try PCXCodec.encode(RGBAImage(width: 5, height: 4))
         let table = Fixtures.le32(0x3ADE68B1) + Fixtures.le32(16) + Fixtures.le32(16 + first.count) + Fixtures.le32(0)

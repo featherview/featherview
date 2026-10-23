@@ -64,16 +64,14 @@ import Testing
     @Test func canvasRefusesHugeSizes() {
         #expect(throws: OwnDecodeError.corrupt) { try LayerCanvas(width: 70000, height: 10) }
     }
+}
 
-    @Test func differenceOfIdenticalImagesIsZero() {
+@Suite struct SampleCorpusTests {
+    @Test func corpusDifferenceComparesOverWhite() {
         let image = Fixtures.solid(3, 2, (10, 200, 30, 128))
         #expect(SampleCorpus.difference(image, image) == 0)
         #expect(SampleCorpus.difference(image, Fixtures.solid(2, 3, (10, 200, 30, 128))) == .infinity)
         // Fully transparent pixels of any colour look the same over white.
         #expect(SampleCorpus.difference(Fixtures.solid(1, 1, (0, 0, 0, 0)), Fixtures.solid(1, 1, (255, 9, 9, 0))) == 0)
     }
-}
-
-private extension Array {
-    func repeated(_ n: Int) -> [Element] { (0..<n).flatMap { _ in self } }
 }

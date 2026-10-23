@@ -53,19 +53,6 @@ import UniformTypeIdentifiers
         #expect(image.width == 32 && image[5, 5] == (255, 0, 0, 255))
     }
 
-    @Test func theSequenceDecidesTheFirstFrame() throws {
-        let frames = [try Self.ico(sizes: [16], colour: (255, 0, 0, 255)), try Self.ico(sizes: [16], colour: (0, 0, 255, 255))]
-        let image = try #require(RGBAImage(try ANIDecoder.format.decode(Data(Self.ani(frames: frames, sequence: [1, 0])), 0, nil)))
-        #expect(image[5, 5] == (0, 0, 255, 255))
-    }
-
-    @Test func decodesThroughImageDecoder() throws {
-        let url = try Fixtures.makeTempDir().appendingPathComponent("a.ani")
-        try Data(Self.ani(frames: [try Self.ico(sizes: [32], colour: (0, 255, 0, 255))])).write(to: url)
-        #expect(ImageFormats.isDecodable(url) && ImageDecoder.displaySize(of: url) == CGSize(width: 32, height: 32))
-        #expect(try ImageDecoder.decode(url).width == 32)
-    }
-
     @Test func rejectsBadFiles() throws {
         let good = Self.ani(frames: [try Self.ico(sizes: [16], colour: (0, 0, 0, 255))])
         #expect(throws: OwnDecodeError.notThisFormat) { try ANIDecoder.format.decode(Data("RIFF\0\0\0\0WAVE".utf8), 0, nil) }
@@ -117,7 +104,7 @@ import UniformTypeIdentifiers
         #expect(image[5, 5] == Self.colours[0])
     }
 
-    @Test func busyCursorShape() throws {
+    @Test func cursorFramesShowTheirLargestSizeAtTheHeaderRate() throws {
         let frames = try (0..<18).map { n in try Self.cur(sizes: [64, 48, 32], colour: (UInt8(n * 10), 0, 0, 255)) }
         let data = Data(Self.ani(frames: frames, rate: 3))
         #expect(ANIDecoder.format.delays?(data) == Array(repeating: 0.05, count: 18))

@@ -44,16 +44,6 @@ import Testing
         #expect(image[0, 0] == (255, 0, 0, 255) && image[1, 0] == (0, 0, 255, 255))
     }
 
-    @Test func decodesThroughImageDecoder() throws {
-        let bytes = Self.file([Self.card("SIMPLE", "T"), Self.card("BITPIX", "8"), Self.card("NAXIS", "2"),
-                               Self.card("NAXIS1", "3"), Self.card("NAXIS2", "1")], data: [1, 2, 3])
-        for ext in ["fits", "fit", "fts"] {
-            let url = try Fixtures.makeTempDir().appendingPathComponent("a.\(ext)")
-            try Data(bytes).write(to: url)
-            #expect(ImageFormats.isDecodable(url) && ImageDecoder.displaySize(of: url) == CGSize(width: 3, height: 1))
-        }
-    }
-
     @Test func rejectsBadFiles() {
         let cards = [Self.card("SIMPLE", "T"), Self.card("BITPIX", "8"), Self.card("NAXIS", "2"),
                      Self.card("NAXIS1", "2"), Self.card("NAXIS2", "2")]

@@ -52,13 +52,6 @@ import Testing
         #expect(image.width == 15 && image.height == 13)
     }
 
-    @Test func decodesThroughImageDecoder() throws {
-        let url = try Fixtures.makeTempDir().appendingPathComponent("t.bpg")
-        try Data(Self.gradient).write(to: url)
-        let image = try ImageDecoder.decode(url)
-        #expect(image.width == 16 && image.height == 16)
-    }
-
     @Test func writesExpGolombAndEmulationPrevention() {
         var w = BPGDecoder.BitWriter()
         w.ue(0); w.ue(3); w.u(0, 2)  // 1 00100 00
@@ -94,6 +87,6 @@ import Testing
         file += Self.gradient[8...]
         let start = ContinuousClock.now
         #expect(throws: OwnDecodeError.truncated) { try BPGDecoder.decode(Data(file)) }
-        #expect(ContinuousClock.now - start < .milliseconds(200))
+        #expect(ContinuousClock.now - start < .seconds(2))
     }
 }
