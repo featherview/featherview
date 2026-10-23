@@ -126,21 +126,12 @@ public struct BatchNamer: Sendable {
 
 public enum BatchCopy {
     /// `BatchSettings.copiesUnchanged`: copies `input`'s bytes to a hidden temp file in `output`'s folder, then moves
-    /// it in without replacing (`BatchConverter.moveExclusive`). Returns the final URL (a " 2"
+    /// it in without replacing (`BatchConverter.moveIn`). Returns the final URL (a " 2"
     /// suffix if the name was taken meanwhile).
     public static func copy(_ input: URL, to output: URL) throws -> URL {
-        let folder = output.deletingLastPathComponent()
-        let temp = folder.appendingPathComponent(".featherview-\(UUID().uuidString).tmp")
+        let temp = ImageSaver.tempURL(in: output.deletingLastPathComponent())
         defer { try? FileManager.default.removeItem(at: temp) }
         try FileManager.default.copyItem(at: input.resolvingSymlinksInPath(), to: temp)  // the bytes, not a link
-        let base = output.deletingPathExtension().lastPathComponent, ext = output.pathExtension
-        var target = output
-        for n in 2...10_000 {
-            let err = BatchConverter.moveExclusive(temp.path, target.path)
-            if err == 0 { return target }
-            guard err == EEXIST else { throw POSIXError(POSIXErrorCode(rawValue: err) ?? .EIO) }
-            target = BatchNamer.fitted(base, suffix: " \(n)", ext: ext, in: folder)
-        }
-        throw POSIXError(.EEXIST)
+        return try BatchConverter.moveIn(temp, to: output) { BatchConverter.moveExclusive($0, $1) }
     }
 }

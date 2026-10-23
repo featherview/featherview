@@ -68,8 +68,7 @@ public enum OrientationRotator {
         guard let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
         else { throw RotateError.unreadable }
         let current = props[kCGImagePropertyOrientation] as? Int ?? 1
-        let temp = url.deletingLastPathComponent()
-            .appendingPathComponent(".featherview-\(UUID().uuidString).\(url.pathExtension)")
+        let temp = ImageSaver.tempURL(in: url.deletingLastPathComponent(), ext: url.pathExtension)
         defer { try? FileManager.default.removeItem(at: temp) }  // no-op once swapped in
         guard let dest = CGImageDestinationCreateWithURL(temp as CFURL, sourceType, 1, nil) else {
             throw RotateError.writeFailed

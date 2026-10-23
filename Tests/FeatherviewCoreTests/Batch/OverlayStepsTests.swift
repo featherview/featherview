@@ -15,6 +15,14 @@ import UniformTypeIdentifiers
         #expect(TextStep.render("{name} in {folder} on {date} #{n}", values) == "IMG_1 in Trip on 2026-10-17 #7")
     }
 
+    @Test func valuesFromAFile() {
+        let url = URL(fileURLWithPath: "/p/Trip/IMG_1.jpg")
+        let date = DateComponents(calendar: Calendar(identifier: .gregorian), year: 2026, month: 10, day: 17, hour: 12).date!
+        #expect(TextValues(url: url, date: date, index: 7)
+            == TextValues(name: "IMG_1", folder: "Trip", date: RenamePattern("{date}").baseName(original: "", index: 1, date: date), index: 7))
+        #expect(TextValues(url: url, date: nil, index: 1) == TextValues(name: "IMG_1", folder: "Trip", date: "", index: 1))
+    }
+
     @Test func renderKeepsUnknown() {
         #expect(TextStep.render("{foo} {name} {n:x}", values) == "{foo} IMG_1 {n:x}")
     }

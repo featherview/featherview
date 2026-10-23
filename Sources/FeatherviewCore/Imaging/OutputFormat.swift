@@ -78,16 +78,16 @@ public struct FormatOptions: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let d = FormatOptions()
-        quality = (try? c.decodeIfPresent(Int.self, forKey: .quality)) ?? d.quality
-        lossless = (try? c.decodeIfPresent(Bool.self, forKey: .lossless)) ?? d.lossless
-        progressive = (try? c.decodeIfPresent(Bool.self, forKey: .progressive)) ?? d.progressive
-        keepMetadata = (try? c.decodeIfPresent(Bool.self, forKey: .keepMetadata)) ?? d.keepMetadata
-        targetSizeKB = (try? c.decodeIfPresent(Int.self, forKey: .targetSizeKB)) ?? d.targetSizeKB
-        interlaced = (try? c.decodeIfPresent(Bool.self, forKey: .interlaced)) ?? d.interlaced
-        tiffCompression = (try? c.decodeIfPresent(TIFFCompression.self, forKey: .tiffCompression)) ?? d.tiffCompression
-        keepAllPages = (try? c.decodeIfPresent(Bool.self, forKey: .keepAllPages)) ?? d.keepAllPages
-        effort = (try? c.decodeIfPresent(Int.self, forKey: .effort)) ?? d.effort
-        webpKind = (try? c.decodeIfPresent(WebPPictureKind.self, forKey: .webpKind)) ?? d.webpKind
+        quality = c.value(.quality, d.quality)
+        lossless = c.value(.lossless, d.lossless)
+        progressive = c.value(.progressive, d.progressive)
+        keepMetadata = c.value(.keepMetadata, d.keepMetadata)
+        targetSizeKB = c.value(.targetSizeKB, d.targetSizeKB)
+        interlaced = c.value(.interlaced, d.interlaced)
+        tiffCompression = c.value(.tiffCompression, d.tiffCompression)
+        keepAllPages = c.value(.keepAllPages, d.keepAllPages)
+        effort = c.value(.effort, d.effort)
+        webpKind = c.value(.webpKind, d.webpKind)
     }
 
     func with(_ change: (inout FormatOptions) -> Void) -> FormatOptions {

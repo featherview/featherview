@@ -321,9 +321,7 @@ final class BatchPreviewModel {
         }
         // Same values as the converter, so the preview shows the text the output gets.
         let date = s.text.isOn && s.text.text.contains("{date}") ? BatchPreviewNames.date(s, url: url) : nil
-        let day = date.map { RenamePattern("{date}").baseName(original: "", index: 1, date: $0) } ?? ""
-        let values = TextValues(name: url.deletingPathExtension().lastPathComponent,
-                                folder: url.deletingLastPathComponent().lastPathComponent, date: day, index: key.index + 1)
+        let values = TextValues(url: url, date: date, index: key.index + 1)
         do {
             let (output, outputSize) = try ImagePipeline.preview(image, originalSize: size, s,
                                                                  context: PipelineContext(values: values, watermark: watermark))

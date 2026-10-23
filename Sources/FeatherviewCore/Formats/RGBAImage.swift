@@ -32,13 +32,18 @@ public struct RGBAImage: Equatable, Sendable {
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
               let data = context.data else { return nil }
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-        var pixels = Array(UnsafeBufferPointer(start: data.assumingMemoryBound(to: UInt8.self), count: width * height * 4))
+        let pixels = Array(UnsafeBufferPointer(start: data.assumingMemoryBound(to: UInt8.self), count: width * height * 4))
+        self.init(width: width, height: height, pixels: pixels)
+        unpremultiply()
+    }
+
+    /// Turns premultiplied colour back into straight colour, rounded; opaque and clear pixels stay as they are.
+    public mutating func unpremultiply() {
         for i in stride(from: 0, to: pixels.count, by: 4) {
             let alpha = Int(pixels[i + 3])
             guard alpha > 0, alpha < 255 else { continue }
             for c in 0..<3 { pixels[i + c] = UInt8(min(255, (Int(pixels[i + c]) * 255 + alpha / 2) / alpha)) }
         }
-        self.init(width: width, height: height, pixels: pixels)
     }
 
     public subscript(x: Int, y: Int) -> (r: UInt8, g: UInt8, b: UInt8, a: UInt8) {

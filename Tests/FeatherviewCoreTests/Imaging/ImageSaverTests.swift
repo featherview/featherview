@@ -7,6 +7,13 @@ import Testing
 extension ImageSaverTests {
     private var image: CGImage { Fixtures.animationFrame(0, width: 8, height: 6) }
 
+    @Test func tempURLIsHiddenUniqueAndInTheFolder() {
+        let folder = URL(fileURLWithPath: "/tmp/x")
+        let a = ImageSaver.tempURL(in: folder), b = ImageSaver.tempURL(in: folder, ext: "jpg")
+        #expect(a.deletingLastPathComponent().path == "/tmp/x" && a.lastPathComponent.hasPrefix(".featherview-"))
+        #expect(a.pathExtension == "tmp" && b.pathExtension == "jpg" && a.lastPathComponent != b.lastPathComponent)
+    }
+
     @Test func saveImageWritesPNG() throws {
         let url = try Fixtures.makeTempDir().appendingPathComponent("pasted.png")
         try ImageSaver.save(image, to: url, as: .png, options: OutputFormat.png.defaultOptions)

@@ -11,6 +11,12 @@ public struct TextValues: Sendable, Equatable {
     public init(name: String, folder: String, date: String, index: Int) {
         self.name = name; self.folder = folder; self.date = date; self.index = index
     }
+
+    /// The values for `url`, its `date` in the same day format as the rename pattern's {date} ("" without one).
+    public init(url: URL, date: Date?, index: Int) {
+        self.init(name: url.deletingPathExtension().lastPathComponent, folder: url.deletingLastPathComponent().lastPathComponent,
+                  date: date.map { RenamePattern("{date}").baseName(original: "", index: 1, date: $0) } ?? "", index: index)
+    }
 }
 
 /// The batch "Add text" step: Core Text draws the block, Core Image composites it.
