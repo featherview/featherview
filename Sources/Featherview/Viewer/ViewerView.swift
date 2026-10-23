@@ -1115,7 +1115,6 @@ struct ViewerCommands: Commands {
             }
             Divider()
             Toggle("Keep Zoom  (⇧L)", isOn: $keepZoom)
-                .disabled(model?.isGrid == true)
             Divider()
             SortMenu()
             FollowToggle(model: model)

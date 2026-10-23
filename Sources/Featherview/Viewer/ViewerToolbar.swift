@@ -164,7 +164,6 @@ private struct KeepZoomToggle: View {
     var body: some View {
         Toggle("Keep Zoom", systemImage: "pin", isOn: $keepZoom)
             .help("Keep zoom (⇧L)")
-            .disabled(model.isGrid)
     }
 }
 
