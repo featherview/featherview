@@ -318,10 +318,17 @@ final class ViewerModel {
             decodes.focus((isFolder ? [] : [url]) + kept)
             return count
         }
+        // The folder's images, unsorted, with their values for the sort key.
+        let scanFolder: @Sendable () throws -> (urls: [URL], values: [URL: SortValue]) = {
+            let scanned = try Signposts.poster.withIntervalSignpost("Scan") {
+                try FolderScanner.images(around: url, includeHidden: includeHidden, sorted: false)
+            }
+            return (scanned, ImageSort.values(of: scanned, key: listOrder.key))
+        }
         // A folder's first image is known only after its scan, so the scan runs here too, alongside the
-        // window build, and its first image starts decoding at once (it used to wait for both).
+        // window build, and its first image starts decoding at once.
         // Also reads the first image's file details while it decodes, so the status bar is complete in the
-        // frame that shows the image (read after it, they waited for the toolbar build at launch).
+        // frame that shows the image (read after it, they would wait for the toolbar build at launch).
         let prepare = Task.detached(priority: .userInitiated) { [cache, fullSizeCache, decodes, openCount] () -> (scan: Result<[URL], Error>?, info: FileInfo?, values: [URL: SortValue]) in
             await cache.removeAll()
             await fullSizeCache.removeAll()
@@ -329,13 +336,8 @@ final class ViewerModel {
                 if let prefetch { await cache.prefetch([url], target: prefetch) }
                 return (nil, FileInfo.read(url: url, page: 0), [:])
             }
-            let scan = Result {
-                try Signposts.poster.withIntervalSignpost("Scan") {
-                    try FolderScanner.images(around: url, includeHidden: includeHidden, sorted: false)
-                }
-            }
-            let scanned = (try? scan.get()) ?? []
-            let values = ImageSort.values(of: scanned, key: listOrder.key)
+            let scan = Result { try scanFolder() }
+            let (scanned, values) = (try? scan.get()) ?? ([], [:])
             let first = ImageSort.first(scanned, by: listOrder, values: values)
             if let prefetch, let first,
                // Not on the main actor: at launch it is busy building the window, and the decode would wait for it.
@@ -346,7 +348,7 @@ final class ViewerModel {
                }) {
                 await cache.prefetch([first], target: prefetch)
             }
-            return (scan.map { ImageSort.sorted($0, by: listOrder, values: values) }, first.map { FileInfo.read(url: $0, page: 0) }, values)
+            return (scan.map { ImageSort.sorted($0.urls, by: listOrder, values: values) }, first.map { FileInfo.read(url: $0, page: 0) }, values)
         }
         openTask = Task {
             defer { if !Task.isCancelled { isOpening = false } }
@@ -366,10 +368,7 @@ final class ViewerModel {
                     values = folderValues
                 } else {
                     (urls, values) = try await Task.detached(priority: .userInitiated) {
-                        let scanned = try Signposts.poster.withIntervalSignpost("Scan") {
-                            try FolderScanner.images(around: url, includeHidden: includeHidden, sorted: false)
-                        }
-                        let values = ImageSort.values(of: scanned, key: listOrder.key)
+                        let (scanned, values) = try scanFolder()
                         return (ImageSort.sorted(scanned, by: listOrder, values: values), values)
                     }.value
                 }
@@ -955,9 +954,7 @@ final class ViewerModel {
     private func removeFromList(_ url: URL) async {
         RecentFiles.shared.reload()
         ready[url] = nil
-        await cache.remove(url)
-        await fullSizeCache.remove(url)
-        await thumbnails?.cache.remove(url)
+        await dropDecodes(of: url)
         let wasCurrent = list.current == url
         let wasLast = list.index == list.urls.count - 1
         // A slideshow decides what shows: the next in play order, never held.
@@ -1066,10 +1063,15 @@ final class ViewerModel {
     func forgetDecodes(of url: URL) async {
         knownInfo[url] = nil
         ready[url] = nil
+        await dropDecodes(of: url)
+        fileRevision += 1
+    }
+
+    /// The file's decodes go from the window's caches and the grid's.
+    private func dropDecodes(of url: URL) async {
         await cache.remove(url)
         await fullSizeCache.remove(url)
         await thumbnails?.cache.remove(url)
-        fileRevision += 1
     }
 
     /// Lets the user pick a slot's folder; returns false if they cancelled.
@@ -1121,9 +1123,7 @@ final class ViewerModel {
                 try await Task.detached(priority: .userInitiated) { try OrientationRotator.apply(url, change, page: page) }.value
                 // Only for the file on screen: another one shown meanwhile cleared the changes.
                 if list.current == url { pendingChanges.written(url) }
-                await cache.remove(url)
-                await fullSizeCache.remove(url)
-                await thumbnails?.cache.remove(url)
+                await dropDecodes(of: url)
                 try? await Task.sleep(until: turned)
                 knownInfo[url] = nil
                 ready[url] = nil
@@ -1790,11 +1790,7 @@ final class ViewerModel {
             copies.submit {
                 guard let data = await Task.detached(priority: .userInitiated, operation: { ClipboardImage.pngData(unsaved) }).value,
                       !Task.isCancelled else { return }
-                NSPasteboard.general.clearContents()
-                if !NSPasteboard.general.setData(data, forType: .png) {
-                    self.errorMessage = String(localized: "Couldn't copy \(String(localized: "Untitled"))")
-                }
-                ClipboardWatch.shared.recheck()
+                self.putOnPasteboard(data, name: String(localized: "Untitled"))
             }
             return
         }
@@ -1809,17 +1805,20 @@ final class ViewerModel {
                 guard let data = await Task.detached(priority: .userInitiated, operation: { ClipboardImage.pngData(image) }).value
                 else { throw DecodeError.unreadable(url) }
                 guard !Task.isCancelled else { return }
-                let pasteboard = NSPasteboard.general
-                pasteboard.clearContents()
-                // the pasteboard can still refuse very large data; say so rather than leave it silently empty
-                if !pasteboard.setData(data, forType: .png) {
-                    self.errorMessage = String(localized: "Couldn't copy \(url.lastPathComponent)")
-                }
-                ClipboardWatch.shared.recheck()
+                self.putOnPasteboard(data, name: url.lastPathComponent)
             } catch {
                 if !Task.isCancelled { self.errorMessage = String(localized: "Couldn't copy \(url.lastPathComponent)") }
             }
         }
+    }
+
+    /// The pasteboard can still refuse very large data: says so rather than leave it silently empty.
+    private func putOnPasteboard(_ png: Data, name: String) {
+        NSPasteboard.general.clearContents()
+        if !NSPasteboard.general.setData(png, forType: .png) {
+            errorMessage = String(localized: "Couldn't copy \(name)")
+        }
+        ClipboardWatch.shared.recheck()
     }
 
     /// ⌥1–⌥3: opens the current file in the app set in Settings › Open With. Not in the grid (Decision 13).
