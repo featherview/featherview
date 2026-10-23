@@ -571,13 +571,18 @@ final class ViewerModel {
             return setZoom(.factor(ZoomSteps.step(shown, by: multiplier)))
         }
         guard let url = list.current else { return }
+        func step(from size: CGSize?) {
+            let shown = size.map { factor(for: $0) ?? ZoomSteps.fitFactor(image: $0, view: viewSize, displayScale: displayScale) } ?? 1
+            setZoom(.factor(ZoomSteps.step(shown, by: multiplier)))
+        }
+        // Page 0's prefetched read; a rotation drops it, so it never has the old orientation.
+        if page == 0, let size = knownInfo[url]?.pixelSize { return step(from: size) }
         let from = zoom
         Task {
             let page = page
             let size = await Task.detached { ImageDecoder.displaySize(of: url, page: page) }.value
             guard zoom == from, list.current == url else { return }
-            let shown = size.map { factor(for: $0) ?? ZoomSteps.fitFactor(image: $0, view: viewSize, displayScale: displayScale) } ?? 1
-            setZoom(.factor(ZoomSteps.step(shown, by: multiplier)))
+            step(from: size)
         }
     }
 
@@ -599,7 +604,8 @@ final class ViewerModel {
         }
         loadTask?.cancel()
         endNavigation("superseded")
-        list.release()
+        // Guarded: a mutation of `list` re-evaluates everything that reads it.
+        if list.isHolding { list.release() }
         // The old file's count would let ⌥→ ask a single-page file for page 2; it's read again below.
         // Assigned only when they change: the toolbar reads pageCount and would rebuild its items on every image.
         if page == 0 {
