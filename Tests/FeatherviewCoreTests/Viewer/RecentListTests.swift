@@ -74,3 +74,69 @@ import Testing
         #expect(!RecentList.isRememberable(dir.appending(path: "archive.zip")))
     }
 }
+
+@Suite struct RecentCheckTests {
+    @Test func theFirstCheckReadsTheSystemLaterOnesTheOwnList() {
+        var check = RecentCheck()
+        #expect(check.request() == .system)
+        #expect(check.finished(missing: false) == nil)
+        #expect(check.request() == .ownList)
+        #expect(check.finished(missing: false) == nil)
+        #expect(check.request() == .ownList)
+    }
+
+    /// ⌘-Tab several times while a stat hangs: one more check afterwards, not one per activation.
+    @Test func aBurstOfRequestsWhileOneRunsGivesExactlyOneRerun() {
+        var check = RecentCheck()
+        #expect(check.request() == .system)
+        #expect(check.request() == nil)
+        #expect(check.request() == nil)
+        #expect(check.request() == nil)
+        #expect(check.finished(missing: false) == .ownList)
+        #expect(check.finished(missing: false) == nil)
+        #expect(check.request() == .ownList)
+    }
+
+    /// A moved file: the system's bookmark knows its new path, so one system read follows; it isn't repeated
+    /// even when that read leaves fewer entries.
+    @Test func aMissingEntryLeadsToOneSystemReadNeverTwoInARow() {
+        var check = RecentCheck()
+        _ = check.request()
+        _ = check.finished(missing: false)
+        #expect(check.request() == .ownList)
+        #expect(check.finished(missing: true) == .system)
+        #expect(check.finished(missing: true) == nil)
+    }
+
+    @Test func aMissingEntryOnTheFirstSystemReadEndsTheCheck() {
+        var check = RecentCheck()
+        #expect(check.request() == .system)
+        #expect(check.finished(missing: true) == nil)
+    }
+
+    /// The rerun asked for during the own-list check waits until the system read it led to is done.
+    @Test func theRerunComesAfterTheSystemReadAMissingEntryLedTo() {
+        var check = RecentCheck()
+        _ = check.request()
+        _ = check.finished(missing: false)
+        _ = check.request()
+        #expect(check.request() == nil)
+        #expect(check.finished(missing: true) == .system)
+        #expect(check.finished(missing: false) == .ownList)
+        #expect(check.finished(missing: false) == nil)
+    }
+
+    /// Clear Menu while a check runs: RecentList's generation drops the check's result; the check itself
+    /// still ends normally.
+    @Test func clearDuringACheckDropsItsResultButNotTheCheck() {
+        let a = URL(fileURLWithPath: "/p/a.jpg")
+        var list = RecentList(), check = RecentCheck()
+        #expect(check.request() == .system)
+        let token = list.startReload()
+        list.finishReload([], token: list.startReload(), limit: 10)  // clear
+        #expect(check.finished(missing: false) == nil)
+        list.finishReload([a], token: token, limit: 10)
+        #expect(list.urls.isEmpty)
+        #expect(check.request() == .ownList)
+    }
+}

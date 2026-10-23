@@ -13,8 +13,7 @@ final class RecentFiles {
     private var list = RecentList()
     @ObservationIgnored private var loaded = false
     @ObservationIgnored private var waiting: [URL] = []
-    @ObservationIgnored private var checking = false
-    @ObservationIgnored private var checkAgain = false
+    @ObservationIgnored private var checks = RecentCheck()
     /// One serial queue, not the cooperative pool: a stat on a hung share blocks one thread until it times out,
     /// never the threads decoding and prefetching run on.
     private static let statQueue = DispatchQueue(label: "net.mynetx.featherview.recents", qos: .utility)
@@ -37,12 +36,9 @@ final class RecentFiles {
         list.finishReload([], token: list.startReload(), limit: limit)
     }
 
-    /// Drops entries gone from disk; on activation and after the app's own Trash and move. The first check reads
-    /// the system's list; later ones check the entries off the main thread and re-read the system's list only when
-    /// one is missing, as its bookmark follows a moved or renamed file to its new path. At most one check runs;
-    /// calls meanwhile make it run once more.
+    /// Drops entries gone from disk; on activation and after the app's own Trash and move. `RecentCheck` decides
+    /// which list each check reads.
     func reload() {
-        let readsSystem = !loaded
         if !loaded {
             loaded = true
             for url in waiting { NSDocumentController.shared.noteNewRecentDocumentURL(url) }
@@ -51,36 +47,27 @@ final class RecentFiles {
                 MainActor.assumeIsolated { RecentFiles.shared.reload() }
             }
         }
-        check(readingSystem: readsSystem)
+        if let source = checks.request() { check(source) }
     }
 
-    private func check(readingSystem: Bool) {
-        guard !checking else { checkAgain = true; return }
-        checking = true
+    private func check(_ source: RecentCheck.Source) {
         let token = list.startReload()
-        // On the main thread, as NSDocumentController must be: its getter resolves every bookmark, which a stale
-        // entry on a dropped share can make slow. So only the first check reads it, and a check that found an
-        // entry missing; a plain ⌘-Tab never does.
-        let candidates = readingSystem ? NSDocumentController.shared.recentDocumentURLs : list.urls
+        // On the main thread, as NSDocumentController must be.
+        let candidates = source == .system ? NSDocumentController.shared.recentDocumentURLs : list.urls
         let limit = limit
         Self.statQueue.async {
             let fresh = candidates.filter { !RecentList.isGone($0) }
             Task { @MainActor in
-                RecentFiles.shared.finishCheck(fresh, missing: fresh.count < candidates.count && !readingSystem,
-                                               token: token, limit: limit)
+                RecentFiles.shared.finishCheck(fresh, missing: fresh.count < candidates.count, token: token, limit: limit)
             }
         }
     }
 
     private func finishCheck(_ fresh: [URL], missing: Bool, token: Int, limit: Int) {
-        checking = false
-        // A missing entry may have moved: the system's list knows where to.
-        if missing { return check(readingSystem: true) }
-        list.finishReload(fresh, token: token, limit: limit)
-        if checkAgain {
-            checkAgain = false
-            check(readingSystem: false)
-        }
+        let next = checks.finished(missing: missing)
+        // A missing entry may have moved: the system's list knows where to, so this result is superseded.
+        if next != .system { list.finishReload(fresh, token: token, limit: limit) }
+        if let next { check(next) }
     }
 }
 
