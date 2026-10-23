@@ -218,8 +218,9 @@ Two columns and a bottom bar, titled "Batch Convert":
   up/down, Save List… and Load List…. When empty it shows one prominent **Choose Folder…** button,
   with Add Files… and "or drop images here" beneath it.
 - Settings (trailing) as numbered cards that are always there: **2 Format**, **3 Size**,
-  **4 Name**. Below them **Add Step**, a menu of the eight extra steps (Crop, Rotate & Flip,
-  Colour, Filters, Canvas, Border, Text, Watermark; steps already added are disabled in it).
+  **4 Name**. Below them **Add Step**, a menu of the eleven extra steps (Frames and Pages, Crop, Rotate and
+  Flip, Colour, Filters, Canvas, Border, Text, Watermark, Tiles, Date Taken; steps already added are
+  disabled in it).
   Picking one adds its card below the core cards, in the menu's order, opened; its ✕ removes it
   and turns the step off. An added step is on.
 - One card is open at a time; opening one folds the others. A folded card is one line: its name
