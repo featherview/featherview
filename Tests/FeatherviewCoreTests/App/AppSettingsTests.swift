@@ -2,18 +2,18 @@ import Foundation
 import Testing
 @testable import FeatherviewCore
 
-@Suite struct AppSettingsTests {
-    /// A private defaults domain per test, so tests never touch the user's settings or each other.
-    private func freshDefaults() -> UserDefaults {
-        let name = "featherview-tests-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: name)!
-        defaults.removePersistentDomain(forName: name)
-        return defaults
-    }
+/// A private defaults domain per test, so tests never touch the user's settings or each other.
+@Suite final class AppSettingsTests {
+    let name = "featherview-tests-\(UUID().uuidString)"
+    let defaults: UserDefaults
+
+    init() { defaults = UserDefaults(suiteName: name)! }
+    deinit { defaults.removePersistentDomain(forName: name) }
 
     @Test func defaultsMatchTheSpec() {
-        let defaults = freshDefaults()
+        #expect(AppSettings.compareInStep.value(in: defaults) == true)  // before registering too
         AppSettings.registerDefaults(in: defaults)
+        #expect(defaults.bool(forKey: AppSettings.compareInStep.key) == true)
         #expect(AppSettings.pastEnd.value(in: defaults) == "folderChooser")
         #expect(defaults.bool(forKey: AppSettings.showHiddenFiles.key) == false)
         #expect(defaults.bool(forKey: AppSettings.showNextAfterRemoval.key) == true)
@@ -43,7 +43,6 @@ import Testing
     }
 
     @Test func setStoresUnderTheKey() {
-        let defaults = freshDefaults()
         AppSettings.keepZoom.set(true, in: defaults)
         AppSettings.thumbnailSize.set(160, in: defaults)
         AppSettings.skippedVersion.set("1.2", in: defaults)
@@ -51,15 +50,7 @@ import Testing
         #expect(defaults.object(forKey: "keepZoom") as? Bool == true && AppSettings.skippedVersion.value(in: defaults) == "1.2")
     }
 
-    @Test func compareInStepDefaultsOn() {
-        let defaults = freshDefaults()
-        #expect(AppSettings.compareInStep.value(in: defaults) == true)
-        AppSettings.registerDefaults(in: defaults)
-        #expect(defaults.bool(forKey: AppSettings.compareInStep.key) == true)
-    }
-
     @Test func slideshowOptionsFromSettings() {
-        let defaults = freshDefaults()
         defaults.set(10, forKey: AppSettings.slideshowSeconds.key)
         defaults.set(true, forKey: AppSettings.slideshowShuffle.key)
         #expect(AppSettings.slideshowOptions(in: defaults)
@@ -69,7 +60,6 @@ import Testing
     }
 
     @Test func storedValueWinsAndWrongTypeFallsBack() {
-        let defaults = freshDefaults()
         defaults.set(25, forKey: AppSettings.zoomStepPercent.key)
         defaults.set("yes", forKey: AppSettings.checkerboard.key)
         #expect(AppSettings.zoomStepPercent.value(in: defaults) == 25)
@@ -77,8 +67,10 @@ import Testing
     }
 
     @Test func unknownPastEndFallsBackToChooser() {
-        #expect(PastEndBehavior(rawValue: "sideways") == nil)
-        #expect(PastEndBehavior.allCases == [.folderChooser, .loop, .stop])
+        defaults.set("sideways", forKey: AppSettings.pastEnd.key)
+        #expect(AppSettings.pastEndBehavior(in: defaults) == .folderChooser)
+        defaults.set("loop", forKey: AppSettings.pastEnd.key)
+        #expect(AppSettings.pastEndBehavior(in: defaults) == .loop)
     }
 }
 

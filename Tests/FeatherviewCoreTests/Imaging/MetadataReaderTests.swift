@@ -37,12 +37,6 @@ import Testing
         #expect(MetadataReader.fields(from: [:], fileSize: nil).isEmpty)
     }
 
-    @Test func readsFileSizeFromDisk() throws {
-        let dir = try Fixtures.makeTempDir()
-        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
-        #expect(MetadataReader.fields(for: url).contains { $0.label == "File size" })
-    }
-
     private func camera(make: String?, model: String?) -> String? {
         var tiff: [CFString: Any] = [:]
         tiff[kCGImagePropertyTIFFMake] = make

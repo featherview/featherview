@@ -80,17 +80,14 @@ import UniformTypeIdentifiers
         #expect(throws: DateTakenError.unreadable) { try DateTaken.rewritten(url, date: "2024:07:01 12:00:00") }
     }
 
-    @Test func shiftIgnoresDaylightSaving() {
-        // Wall-time arithmetic never sees a zone; Europe/Berlin jumps 02:00 → 03:00 that night.
-        #expect(DateTaken.shifted("2026:03:29 01:30:00", by: 3600) == "2026:03:29 02:30:00")
-    }
-
-    @Test func shiftAcrossLeapDay() {
-        #expect(DateTaken.shifted("2024:03:01 10:00:00", by: -86400) == "2024:02:29 10:00:00")
-    }
-
-    @Test func shiftAcrossYear() {
-        #expect(DateTaken.shifted("2025:12:31 23:59:59", by: 1) == "2026:01:01 00:00:00")
+    // Wall-time arithmetic never sees a zone: Europe/Berlin jumps 02:00 → 03:00 on 2026-03-29, which changes nothing.
+    @Test(arguments: [
+        ("2026:03:29 01:30:00", 3600, "2026:03:29 02:30:00"),    // across a daylight-saving jump
+        ("2024:03:01 10:00:00", -86400, "2024:02:29 10:00:00"),  // back across a leap day
+        ("2025:12:31 23:59:59", 1, "2026:01:01 00:00:00"),       // across the year
+    ])
+    func shiftIsWallTimeArithmetic(_ date: String, _ seconds: Int, _ expected: String) {
+        #expect(DateTaken.shifted(date, by: seconds) == expected)
     }
 
     @Test func shiftRefusesPlaceholders() {

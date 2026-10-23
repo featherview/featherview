@@ -75,8 +75,11 @@ public enum AppSettings {
 
     public static var appearanceMode: AppearanceMode { AppearanceMode(stored: appearance.value()) }
 
-    public static var pastEndBehavior: PastEndBehavior {
-        PastEndBehavior(rawValue: pastEnd.value()) ?? .folderChooser
+    public static var pastEndBehavior: PastEndBehavior { pastEndBehavior(in: .standard) }
+
+    /// The stored choice; an unknown value falls back to the folder chooser.
+    public static func pastEndBehavior(in defaults: UserDefaults) -> PastEndBehavior {
+        PastEndBehavior(rawValue: pastEnd.value(in: defaults)) ?? .folderChooser
     }
 
     public static var slideshowOptions: Slideshow.Options { slideshowOptions(in: .standard) }

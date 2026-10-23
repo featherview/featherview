@@ -27,7 +27,7 @@ import UniformTypeIdentifiers
         #expect(claimable("README") == nil)
     }
 
-    @Test func commonTypesStartWithJPEG() {
+    @Test func commonTypesAreTheOneClickSet() {
         #expect(DefaultViewer.commonTypes == [.jpeg, .png, .heic, .gif, .tiff, .webP])
     }
 

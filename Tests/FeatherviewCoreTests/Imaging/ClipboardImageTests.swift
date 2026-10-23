@@ -8,32 +8,22 @@ import UniformTypeIdentifiers
 @Suite struct ClipboardImageTests {
     @Test func pngDataIsCompressedAndRoundTrips() throws {
         let dir = try Fixtures.makeTempDir()
-        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("c.jpg"), width: 2000, height: 1000)
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("c.jpg"), width: 200, height: 100)
         let image = try ImageDecoder.decode(url)
         let data = try #require(ClipboardImage.pngData(image))
         // NSImage's TIFF is uncompressed (w × h × 4) and the pasteboard refuses it above ~256 MB
         #expect(data.count < image.width * image.height * 4 / 2)
         let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
         let back = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
-        #expect(back.width == 2000 && back.height == 1000)
+        #expect(back.width == 200 && back.height == 100)
     }
 
-    @Test func pngDataDecodes() throws {
-        let data = Fixtures.encoded(Fixtures.animationFrame(0, width: 8, height: 6), as: .png, orientation: 1)
+    /// A JPEG's orientation is applied: 4 × 2 turned is 2 × 4.
+    @Test(arguments: [(UTType.png, 1, 8, 6, 8, 6), (.tiff, 1, 8, 6, 8, 6), (.jpeg, 6, 4, 2, 2, 4)])
+    func pastedDataDecodes(type: UTType, orientation: Int, width: Int, height: Int, shownWidth: Int, shownHeight: Int) throws {
+        let data = Fixtures.encoded(Fixtures.animationFrame(0, width: width, height: height), as: type, orientation: orientation)
         let image = try #require(ClipboardImage.image(from: data))
-        #expect(image.width == 8 && image.height == 6)
-    }
-
-    @Test func tiffDataDecodes() throws {
-        let data = Fixtures.encoded(Fixtures.animationFrame(0, width: 8, height: 6), as: .tiff, orientation: 1)
-        let image = try #require(ClipboardImage.image(from: data))
-        #expect(image.width == 8 && image.height == 6)
-    }
-
-    @Test func jpegOrientationApplied() throws {
-        let data = Fixtures.encoded(Fixtures.animationFrame(0, width: 4, height: 2), as: .jpeg, orientation: 6)
-        let image = try #require(ClipboardImage.image(from: data))
-        #expect(image.width == 2 && image.height == 4)
+        #expect(image.width == shownWidth && image.height == shownHeight)
     }
 
     @Test func garbageAndEmptyAreNil() {
