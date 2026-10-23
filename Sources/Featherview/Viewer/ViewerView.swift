@@ -612,7 +612,7 @@ struct ViewerView: View {
         case .rotateLeft: model.rotate(.counterClockwise)
         case .flipHorizontal: model.flip(.horizontal)
         case .flipVertical: model.flip(.vertical)
-        case .toggleInfo: if model.canShowInfo { model.showInfo.toggle() }
+        case .toggleInfo: if model.availability.canShowInfo { model.showInfo.toggle() }
         case .toggleFullScreen: model.toggleFullScreen()
         case .fit: model.setFitMode(.fit)
         case .actualSize: model.actualSize()
@@ -758,7 +758,7 @@ struct OpenWithMenu: View {
                     model?.openWith(index)
                 }
                 .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .option)
-                .disabled(path.isEmpty || model?.availability.hasCurrent != true || model?.isGrid == true)
+                .disabled(path.isEmpty || model?.availability.canShowInFinder != true)
             }
         }
     }
@@ -972,7 +972,7 @@ struct ViewerCommands: Commands {
         CommandGroup(after: .newItem) {
             Button("Save As…  (S)") { model?.saveAs() }
                 .keyboardShortcut("s", modifiers: [.command, .shift])
-                .disabled(model?.availability.canChangeFile != true && model?.unsaved == nil)
+                .disabled(model?.availability.canSaveAs != true)
             Button("Rename…  (F2)") { model?.beginRename() }
                 .disabled(model?.availability.canChangeFile != true)
             Divider()
@@ -985,11 +985,11 @@ struct ViewerCommands: Commands {
                 Button("Move to Trash  (⌘⌫ or ⌦)") { model?.moveCurrentToTrash() }
             }
             // The viewed image, or the grid's selection.
-            .disabled(model?.operationTargets.isEmpty != false)
+            .disabled(model?.availability.hasOperationTargets != true)
             Divider()
             // In the grid these would act on the image viewed before T, not the cells (Decision 13).
             Button("Show in Finder") { model?.showInFinder() }
-                .disabled(model?.availability.hasCurrent != true || model?.isGrid == true)
+                .disabled(model?.availability.canShowInFinder != true)
             OpenWithMenu(model: model)
             if let url = model?.list.current, model?.isGrid != true, let type = DefaultViewer.claimableType(for: url) {
                 Button("Always Open .\(url.pathExtension.lowercased()) Files with Featherview") {
@@ -1006,7 +1006,7 @@ struct ViewerCommands: Commands {
                 openWindow(id: "batch")
             }
             .keyboardShortcut("b")
-            .disabled(model?.isGrid == true && model?.gridSelection.isEmpty == true)
+            .disabled(model?.availability.canBatch == false)
         }
         CommandGroup(replacing: .pasteboard) {
             // Text fields and selected text (batch window, Info panel) keep their own Copy and Paste.
@@ -1020,7 +1020,7 @@ struct ViewerCommands: Commands {
             }
             .keyboardShortcut("c")
             // The grid has no image to copy and no text field (Decision 13).
-            .disabled(model?.isGrid == true)
+            .disabled(model?.availability.canCopy == false)
             Button("Cut") { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }
                 .keyboardShortcut("x")
             Button("Paste") { NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil) }
@@ -1056,18 +1056,18 @@ struct ViewerCommands: Commands {
             .disabled(model?.availability.canChangeFile != true)
             // Also on the grid's selection, as Photos does (Decision 8).
             Button("Adjust Date Taken…") { model?.showAdjustDate() }
-                .disabled(model?.canAdjustDate != true)
+                .disabled(model?.availability.canAdjustDate != true)
             Divider()
             Button("Set as Desktop Picture") { model?.setDesktopPicture() }
                 .disabled(model?.availability.canSetDesktop != true)
             Button("Show Info  (I)") { model?.showInfo.toggle() }
-                .disabled(model?.canShowInfo != true)
+                .disabled(model?.availability.canShowInfo != true)
             if model?.isGrid == true {
                 // The two selected cells, in list order.
                 Button("Compare") {
                     if let model, model.gridSelection.count == 2 { model.compare(model.gridSelection[0], with: model.gridSelection[1]) }
                 }
-                .disabled(model?.gridSelection.count != 2)
+                .disabled(model?.availability.canCompareSelection != true)
             }
         }
         // Not ToolbarCommands: SwiftUI shows its toolbar at every launch, so whether it's hidden is kept here.
@@ -1095,7 +1095,7 @@ struct ViewerCommands: Commands {
                                                               set: { model?.setCompareInStep($0) }))
                 Toggle("Show Difference  (D)", isOn: Binding(get: { model?.compareSession?.showsDifference == true },
                                                              set: { _ in model?.toggleDifference() }))
-                    .disabled(model?.availability.canShowDifference != true && model?.compareSession?.showsDifference != true)
+                    .disabled(model?.availability.canToggleDifference != true)
             }
             Group {
                 Button("Zoom to Fit  (0)") { model?.setFitMode(.fit) }
@@ -1103,7 +1103,7 @@ struct ViewerCommands: Commands {
                 Button("Zoom to Width  (2)") { model?.setFitMode(.width) }
                 Button("Zoom to Height  (3)") { model?.setFitMode(.height) }
             }
-            .disabled(model?.availability.hasPicture != true || model?.isGrid == true)
+            .disabled(model?.availability.canZoom != true)
             // In the grid + and − size the thumbnails (Decision 5).
             if model?.isGrid == true {
                 Button("Larger Thumbnails  (+)") { model?.stepThumbnails(larger: true) }
@@ -1113,7 +1113,7 @@ struct ViewerCommands: Commands {
                     Button("Zoom In  (+)") { model?.zoomIn() }
                     Button("Zoom Out  (−)") { model?.zoomOut() }
                 }
-                .disabled(model?.availability.hasPicture != true)
+                .disabled(model?.availability.canZoom != true)
             }
             Divider()
             Toggle("Keep Zoom  (⇧L)", isOn: $keepZoom)
@@ -1131,7 +1131,7 @@ struct ViewerCommands: Commands {
                     if playing { model?.endSlideshow() } else { model?.startSlideshow(fullScreen: false) }
                 }
             }
-            .disabled(!playing && model?.availability.canStartSlideshow != true)
+            .disabled(model?.availability.canToggleSlideshow != true)
             if let state = model?.slideshowState {
                 Button(state == .playing ? "Pause Slideshow  (Space)" : "Resume Slideshow  (Space)") {
                     model?.toggleSlideshowPause()
