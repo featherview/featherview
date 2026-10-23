@@ -29,7 +29,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 16 | Batch extras (v2) | `docs/superpowers/plans/2026-10-22-milestone-16-batch-extras.md` | ready |
 | 17 | JPEG XL writing (v2) | `docs/superpowers/plans/2026-10-22-milestone-17-jpeg-xl-writing.md` | ready |
 | 18 | Quick wins (v2): Refresh, random image, desktop placement, grid tooltips | `docs/superpowers/plans/2026-10-22-milestone-18-quick-wins.md` | ready (after 11 and 13) |
-| 19 | Simplify: decisions from the app into tested Core types, catalog format, duplicates | `docs/superpowers/plans/2026-10-22-milestone-19-simplify.md` | ready (after the waves of 11–17, before 18) |
+| 19 | Simplify: decisions from the app into tested Core types, catalog format, duplicates | `docs/superpowers/plans/2026-10-22-milestone-19-simplify.md` | done |
 
 ## 1. Core viewer and batch
 

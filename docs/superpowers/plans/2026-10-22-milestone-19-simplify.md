@@ -1,7 +1,7 @@
 # Milestone 19: Simplify Implementation Plan
 
 > **For agentic workers:** Run with the `plan-wave-lite` workflow, tasks in order (they share `ViewerModel.swift`).
-> Tasks 8 and 9 run in the main session. Steps use checkbox (`- [ ]`) syntax for tracking.
+> Tasks 8 and 9 run in the main session. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Move the decisions the app target makes into FeatherviewCore, where they get unit tests, and remove the
 friction that cost the most review rounds in milestones 11–17: the string catalog's format and duplicated code.
@@ -47,19 +47,19 @@ already are; `ViewerModel` keeps only the wiring (state, decode tasks, AppKit).
 - Create: `scripts/merge-strings.py`
 - Modify: `AGENTS.md` (Commands: `scripts/strings.sh` and `scripts/merge-strings.py`)
 
-- [ ] **Step 1:** Save the parsed catalog (`python3 -c 'import json; json.load(...)'`), run `scripts/strings.sh`,
+- [x] **Step 1:** Save the parsed catalog (`python3 -c 'import json; json.load(...)'`), run `scripts/strings.sh`,
   and compare: the only allowed differences are layout and new or stale `extractionState` markers. Any key that
   appears untranslated is a real gap: translate it in this task (all 29 languages), as in commit ada06d1.
-- [ ] **Step 2:** Commit the catalog alone: `chore: string catalog in xcstringstool's own format`.
-- [ ] **Step 3:** Write `scripts/merge-strings.py`: run during a merge conflict on the catalog, it reads stages
+- [x] **Step 2:** Commit the catalog alone: `chore: string catalog in xcstringstool's own format`.
+- [x] **Step 3:** Write `scripts/merge-strings.py`: run during a merge conflict on the catalog, it reads stages
   1/2/3 (`git show :N:Resources/Localizable.xcstrings`), keeps ours, adds keys theirs added or changed, stops
   with exit 1 naming any key both sides changed differently, and writes the file byte-for-byte in the tool's
   format (check: reading the Step 2 file and writing it back gives an identical file — `cmp`).
-- [ ] **Step 4:** AGENTS.md Commands: "after changing UI text: `scripts/strings.sh`, then translate the new keys"
+- [x] **Step 4:** AGENTS.md Commands: "after changing UI text: `scripts/strings.sh`, then translate the new keys"
   (drop any advice to edit the catalog by hand), and "catalog merge conflict: `scripts/merge-strings.py`, then
   `git add Resources/Localizable.xcstrings`". Update the `plan-wave-lite` workflow's STRINGS text and merge
   prompt to match.
-- [ ] **Step 5: Commit:** `chore: merge-strings script; strings.sh is the way to add UI text`
+- [x] **Step 5: Commit:** `chore: merge-strings script; strings.sh is the way to add UI text`
 
 ### Task 2: Which actions each mode allows (`ViewerAvailability`)
 
@@ -77,13 +77,13 @@ already are; `ViewerModel` keeps only the wiring (state, decode tasks, AppKit).
   `canShowInfo` and `canAdjustDate`, built by `public init(_ state: ViewerState)`.
   `ViewerModel.availability` becomes a `ViewerAvailability`; `updateAvailability()` builds the snapshot.
 
-- [ ] **Step 1:** Tests, one per mode and the combinations: plain viewer; holding a removed file; opening; empty
+- [x] **Step 1:** Tests, one per mode and the combinations: plain viewer; holding a removed file; opening; empty
   list; grid (with 0, 1, 2 selected); compare (and its failed second file); slideshow; unsaved pasted picture
   (Next/Previous/Home/End enabled so they can ask, file actions, T, W and Compare disabled); multi-page; animation.
   Expected values copied from today's `updateAvailability()` and the menu `.disabled` conditions.
-- [ ] **Step 2–4:** fail, implement, pass. Replace every `.disabled(...)` in `ViewerView.swift`,
+- [x] **Step 2–4:** fail, implement, pass. Replace every `.disabled(...)` in `ViewerView.swift`,
   `ViewerToolbar.swift` and `ConvenienceMenus.swift` that recomputes a condition with the matching field.
-- [ ] **Step 5: Commit:** `refactor: what each viewer mode allows is decided and tested in Core`
+- [x] **Step 5: Commit:** `refactor: what each viewer mode allows is decided and tested in Core`
 
 ### Task 3: A slideshow's failed decode (`Slideshow.decodeFailed`)
 
@@ -95,11 +95,11 @@ already are; `ViewerModel` keeps only the wiring (state, decode tasks, AppKit).
   `public mutating func decodeFailed(_ url: URL) -> FailedDecode` on `Slideshow`: `.skip` (through `failed(_:)`)
   while `current` hasn't been shown, `.showError` once it has (`shownCurrent`), or when `url != current`.
 
-- [ ] **Step 1:** Tests: first decode of the current file fails → skip; after `shown` → showError; a later page or
+- [x] **Step 1:** Tests: first decode of the current file fails → skip; after `shown` → showError; a later page or
   zoom failure of a shown file → showError; every file failing → `.skip(to: nil)`; paused → showError for a shown file.
-- [ ] **Step 2–4:** fail, implement, pass; the catch branch calls it; `shownCurrent` goes back to `private(set)`
+- [x] **Step 2–4:** fail, implement, pass; the catch branch calls it; `shownCurrent` goes back to `private(set)`
   use only inside `Slideshow`.
-- [ ] **Step 5: Commit:** `refactor: a slideshow's skip-or-show rule lives in Slideshow`
+- [x] **Step 5: Commit:** `refactor: a slideshow's skip-or-show rule lives in Slideshow`
 
 ### Task 4: When Open Recent reads the system's list (`RecentCheck`)
 
@@ -111,11 +111,11 @@ already are; `ViewerModel` keeps only the wiring (state, decode tasks, AppKit).
   (`.system` for the first check, `.ownList` after; nil while one runs — remembered for one rerun) and
   `public mutating func finished(missing: Bool) -> Source?` (`.system` when an own-list check found an entry
   missing, the remembered rerun's source otherwise, nil when done). `public enum Source { case system, ownList }`.
-- [ ] **Step 1:** Tests: first request reads the system; later ones the own list; a burst of requests while one
+- [x] **Step 1:** Tests: first request reads the system; later ones the own list; a burst of requests while one
   runs gives exactly one rerun; a missing entry leads to one system read, never two in a row; clear's generation
   is unaffected (it stays in `RecentList`).
-- [ ] **Step 2–4:** fail, implement, pass; `RecentFiles` keeps the queue and NSDocumentController calls only.
-- [ ] **Step 5: Commit:** `refactor: when Open Recent reads the system's list is decided in Core`
+- [x] **Step 2–4:** fail, implement, pass; `RecentFiles` keeps the queue and NSDocumentController calls only.
+- [x] **Step 5: Commit:** `refactor: when Open Recent reads the system's list is decided in Core`
 
 ### Task 5: What an unsaved pasted picture lets through (`UnsavedRules`)
 
@@ -126,11 +126,11 @@ already are; `ViewerModel` keeps only the wiring (state, decode tasks, AppKit).
 - Produces: `public enum ViewerCommand` (next, previous, first, last, open, close, newFromClipboard, quit) and
   `public static func asksFirst(_ command: ViewerCommand, hasUnsaved: Bool) -> Bool`; every app entry point that
   leaves the picture calls `leaveUnsaved` exactly when this says so (one guard helper, not a copy per function).
-- [ ] **Step 1:** Tests: each command with and without an unsaved picture (all leaving commands ask; nothing asks
+- [x] **Step 1:** Tests: each command with and without an unsaved picture (all leaving commands ask; nothing asks
   without one).
-- [ ] **Step 2–4:** fail, implement, pass. The per-function `if unsaved != nil { return leaveUnsaved { … } }`
+- [x] **Step 2–4:** fail, implement, pass. The per-function `if unsaved != nil { return leaveUnsaved { … } }`
   copies become one `guardUnsaved(_ command:, then:)`.
-- [ ] **Step 5: Commit:** `refactor: which commands ask before leaving a pasted picture is one tested rule`
+- [x] **Step 5: Commit:** `refactor: which commands ask before leaving a pasted picture is one tested rule`
 
 ### Task 6: Pending rotations and flips (`PendingChanges`)
 
@@ -141,29 +141,29 @@ already are; `ViewerModel` keeps only the wiring (state, decode tasks, AppKit).
 - Produces: `public struct PendingChanges: Sendable` with `add(_ change: OrientationChange)`,
   `written(_ change:)`, `failed() -> OrientationChange?` (removes the first not yet written),
   `decodedAgain()` (drops the written ones), `reset()` and `var transform: PictureTransform`.
-- [ ] **Step 1:** Tests from M12's rules: R then V shows the combined transform; a new decode of the same file drops
+- [x] **Step 1:** Tests from M12's rules: R then V shows the combined transform; a new decode of the same file drops
   written changes; another file clears all; a failure removes the first unwritten change.
-- [ ] **Step 2–4:** fail, implement, pass.
-- [ ] **Step 5: Commit:** `refactor: pending rotations and flips are a tested Core value`
+- [x] **Step 2–4:** fail, implement, pass.
+- [x] **Step 5: Commit:** `refactor: pending rotations and flips are a tested Core value`
 
 ### Task 7: Duplicated code
 
 **Files:** as found; at least `Sources/FeatherviewCore/Viewer/MenuKey.swift` and the two copies of the
 modifier-flag mapping (`ThumbnailGrid.swift` `keyDown`, `ViewerView.swift` grid key handling).
 
-- [ ] **Step 1:** `MenuKey.Modifiers.init(command:shift:option:control:)` in Core (test: each flag), used by both
+- [x] **Step 1:** `MenuKey.Modifiers.init(command:shift:option:control:)` in Core (test: each flag), used by both
   copies (AppKit and SwiftUI flags convert at the call site).
-- [ ] **Step 2:** Search the app target for other copies (repeated `.disabled` conditions not covered by Task 2,
+- [x] **Step 2:** Search the app target for other copies (repeated `.disabled` conditions not covered by Task 2,
   repeated error-message building, repeated open-panel setup) and fold each into one function in the file that
   owns it. List each in the commit message.
-- [ ] **Step 3: Commit:** `refactor: one copy each of the modifier mapping and <list>`
+- [x] **Step 3: Commit:** `refactor: one copy each of the modifier mapping and <list>`
 
 ### Task 8: Simplify over the whole project (main session)
 
 The `simplify` skill reviews changed code by default; here it gets the whole project as its scope, because the
 duplication and dead code this milestone is after sit between milestones, not inside one diff.
 
-- [ ] **Step 1: Invoke** `Skill(simplify, args: "Scope: the whole repository at main, not a diff. Context:
+- [x] **Step 1: Invoke** `Skill(simplify, args: "Scope: the whole repository at main, not a diff. Context:
   docs/spec.md (requirements), AGENTS.md (rules: layering — logic that needs no window lives in FeatherviewCore;
   Theme tokens; translatable text; no history in comments), docs/roadmap.md (milestones 1–19), and this plan
   (Tasks 1–7 already moved the viewer's decisions into Core). Cover Sources/FeatherviewCore, Sources/Featherview,
@@ -173,15 +173,15 @@ duplication and dead code this milestone is after sit between milestones, not in
   catalog keys (extractionState stale); `shortcut:` comments whose condition has passed (run ponytail-debt
   first); decisions still made in app files that Tasks 2–6 missed; test fixtures that duplicate Fixtures.
   No behaviour changes.")`.
-- [ ] **Step 2:** Apply what is clearly dead or duplicated, one commit per area (`refactor:` / `chore:`), each with
+- [x] **Step 2:** Apply what is clearly dead or duplicated, one commit per area (`refactor:` / `chore:`), each with
   `swift build` and `swift test` green. Anything that would change behaviour or needs a decision goes to a list
   for the maintainer instead.
-- [ ] **Step 3:** One review agent over the whole milestone's diff against its starting commit (no behaviour
+- [x] **Step 3:** One review agent over the whole milestone's diff against its starting commit (no behaviour
   change, budgets unaffected); fix what it confirms.
 
 ### Task 9 (main session): measure, docs
 
-- [ ] **Step 1:** Budgets unchanged: `featherview-bench decode` and `browse` against the milestone's start
+- [x] **Step 1:** Budgets unchanged: `featherview-bench decode` and `browse` against the milestone's start
   (`--baseline`), and `swift test` time.
-- [ ] **Step 2:** `ViewerModel.swift` line count before and after in the commit message; roadmap row 19 → done.
-- [ ] **Step 3: Commit:** `docs: milestone 19 done`
+- [x] **Step 2:** `ViewerModel.swift` line count before and after in the commit message; roadmap row 19 → done.
+- [x] **Step 3: Commit:** `docs: milestone 19 done`
