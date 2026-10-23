@@ -144,6 +144,24 @@ struct RecentMenu: View {
     }
 }
 
+/// File › Always Open .ext Files with Featherview: its own view, so only this item reads the current file.
+struct AlwaysOpenMenuItem: View {
+    let model: ViewerModel?
+    /// Bumped after a claim, so the item asks again for the current file's type.
+    @Binding var claims: Int
+
+    var body: some View {
+        if let url = model?.list.current, model?.isGrid != true, let type = DefaultViewer.claimableType(for: url) {
+            Button("Always Open .\(url.pathExtension.lowercased()) Files with Featherview") {
+                Task { await DefaultViewerOffer.claim(type); claims += 1 }
+            }
+            .disabled(claims >= 0 && DefaultViewerOffer.cachedOpensWithFeatherview(type))
+        } else {
+            Button("Always Open with Featherview") {}.disabled(true)
+        }
+    }
+}
+
 /// File › Share: the system's share menu for the current file.
 struct ShareMenu: View {
     let model: ViewerModel?

@@ -988,14 +988,7 @@ struct ViewerCommands: Commands {
             Button("Show in Finder") { model?.showInFinder() }
                 .disabled(model?.availability.canShowInFinder != true)
             OpenWithMenu(model: model)
-            if let url = model?.list.current, model?.isGrid != true, let type = DefaultViewer.claimableType(for: url) {
-                Button("Always Open .\(url.pathExtension.lowercased()) Files with Featherview") {
-                    Task { await DefaultViewerOffer.claim(type); claims += 1 }
-                }
-                .disabled(claims >= 0 && DefaultViewerOffer.opensWithFeatherview(type))
-            } else {
-                Button("Always Open with Featherview") {}.disabled(true)
-            }
+            AlwaysOpenMenuItem(model: model, claims: $claims)
             Divider()
             Button("Batch Convert…  (B)") {
                 // In the grid the selection joins the batch's list.

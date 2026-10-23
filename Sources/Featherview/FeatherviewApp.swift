@@ -100,11 +100,30 @@ enum DefaultViewerOffer {
 
     static func opensWithFeatherview(_ type: UTType) -> Bool { handler(for: type) == Bundle.main.bundleIdentifier }
 
+    private static var opensCache: [UTType: Bool] = [:]
+    private static var clearsCacheOnActivation: NSObjectProtocol?
+
+    /// `opensWithFeatherview` asked once per type, for the File menu, which is rebuilt on every image.
+    /// Forgotten after a claim and when the app becomes active (another app may have taken the type).
+    static func cachedOpensWithFeatherview(_ type: UTType) -> Bool {
+        if clearsCacheOnActivation == nil {
+            clearsCacheOnActivation = NotificationCenter.default.addObserver(
+                forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
+                MainActor.assumeIsolated { opensCache = [:] }
+            }
+        }
+        if let known = opensCache[type] { return known }
+        let opens = opensWithFeatherview(type)
+        opensCache[type] = opens
+        return opens
+    }
+
     /// Makes Featherview the default for `type`. From macOS 26.4 macOS confirms it in a prompt of its own,
     /// one per type, which is why every click claims a single type. No message afterwards: Keep in that
     /// prompt and a refusal look alike, and Settings › Browsing shows which app opens the type.
     static func claim(_ type: UTType) async {
         try? await NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpen: type)
+        opensCache[type] = nil
     }
 
     /// Asks once, after the first window is up and its first image (if any) is on screen, never on the launch path.
