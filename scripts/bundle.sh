@@ -7,6 +7,8 @@ cd "$(dirname "$0")/.."
 # look. The real SDK version turns on Liquid Glass toolbars and controls; 14 and 15 are unaffected.
 SDK="$(xcrun --show-sdk-version)"
 LINK="-Xlinker -platform_version -Xlinker macos -Xlinker 14.0 -Xlinker $SDK"
+# Releases are universal (Apple Silicon and Intel); debug builds stay native for speed.
+[ "$CONFIG" = release ] && LINK="$LINK --arch arm64 --arch x86_64"
 swift build -c "$CONFIG" --product Featherview $LINK
 BINDIR="$(swift build -c "$CONFIG" --show-bin-path $LINK)"
 APP=build/Featherview.app
@@ -50,6 +52,15 @@ appex() {
 }
 appex FeatherviewThumbnail Resources/QuickLook/Thumbnail-Info.plist
 appex FeatherviewPreview Resources/QuickLook/Preview-Info.plist
+# A release missing an architecture in any binary would not launch on that Mac.
+if [ "$CONFIG" = release ]; then
+  find "$APP" -type f -perm -u+x | while read -r bin; do
+    file -b "$bin" | grep -q Mach-O || continue
+    archs="$(lipo -archs "$bin")"
+    case " $archs " in *" arm64 "*) ;; *) echo "error: $bin lacks arm64 ($archs)" >&2; exit 1;; esac
+    case " $archs " in *" x86_64 "*) ;; *) echo "error: $bin lacks x86_64 ($archs)" >&2; exit 1;; esac
+  done
+fi
 # Ad-hoc signature: runs on this Mac. Public releases need a Developer ID signature + notarization.
 codesign --force --sign - "$APP"
 echo "$APP"

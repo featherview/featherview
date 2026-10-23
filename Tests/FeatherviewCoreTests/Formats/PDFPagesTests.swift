@@ -53,7 +53,8 @@ import Testing
         #expect(throws: DecodeError.unreadable(url)) { try ImageDecoder.decode(url, page: 1) }
     }
 
-    @Test func notAPDFIsUnreadable() throws {
+    @Test(.disabled(if: Fixtures.underRosetta, "Core Graphics' x86_64 PDF parser crashes, see underRosetta"))
+    func notAPDFIsUnreadable() throws {
         let url = try Fixtures.writeCorrupt(to: Fixtures.makeTempDir().appendingPathComponent("bad.pdf"))
         #expect(ImageDecoder.displaySize(of: url) == nil)
         #expect(throws: DecodeError.unreadable(url)) { try ImageDecoder.decode(url) }

@@ -14,6 +14,13 @@ enum Fixtures {
     /// Gives `ImageEncoder` its JPEG XL encoder, as the app does at launch: `_ = Fixtures.jxl` before writing JPEG XL.
     static let jxl: Void = { ImageEncoder.jxlEncoder = JXLEncoder.encode }()
 
+    /// An x86_64 test run on Apple Silicon. Core Graphics' x86_64 PDF parser on macOS 27 (which no Intel Mac
+    /// runs) crashes now and then on a broken PDF there, so tests feeding it broken PDFs skip under Rosetta.
+    static let underRosetta: Bool = {
+        var translated: Int32 = 0, size = MemoryLayout<Int32>.size
+        return sysctlbyname("sysctl.proc_translated", &translated, &size, nil, 0) == 0 && translated == 1
+    }()
+
     /// Integers as big- and little-endian bytes, for building files byte by byte (only the low bytes count).
     static func be16(_ v: Int) -> [UInt8] { [8, 0].map { UInt8(truncatingIfNeeded: v >> $0) } }
     static func be32(_ v: Int) -> [UInt8] { [24, 16, 8, 0].map { UInt8(truncatingIfNeeded: v >> $0) } }
