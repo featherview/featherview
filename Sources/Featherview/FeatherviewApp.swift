@@ -6,7 +6,6 @@ import UniformTypeIdentifiers
 @main
 struct FeatherviewApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var batch = BatchModel.shared
 
     init() {
         ImageEncoder.jxlEncoder = JXLEncoder.encode
@@ -34,6 +33,8 @@ struct FeatherviewApp: App {
         }
 
         Window("Batch", id: "batch") {
+            // Built when the window first opens: its settings and presets stay off the launch path.
+            let batch = BatchModel.shared
             BatchView(model: batch)
                 .onAppear {
                     appDelegate.isBusy = { batch.isRunning }
