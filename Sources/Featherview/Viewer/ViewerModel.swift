@@ -186,6 +186,8 @@ final class ViewerModel {
     /// Rename (F2): the field shows in the title, or in a sheet with the toolbar hidden or in full screen (ViewerModel+Rename).
     var renaming = false
     var renamingInSheet = false
+    /// The file the field renames: the image shown when F2 was pressed, even if another one shows by the time it commits.
+    @ObservationIgnored var renamingURL: URL?
     /// A rename being committed: losing focus while Return's commit waits must not commit twice.
     @ObservationIgnored var renameBusy = false
     /// ⌘N's image from the clipboard, not saved yet; it covers `coveredList`, which shows again once it's left.

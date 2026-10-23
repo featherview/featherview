@@ -202,7 +202,7 @@ private struct TitleRenameField: View {
 
     init(model: ViewerModel) {
         self.model = model
-        _draft = State(initialValue: model.list.current?.lastPathComponent ?? "")
+        _draft = State(initialValue: model.renamingURL?.lastPathComponent ?? "")
     }
 
     var body: some View {

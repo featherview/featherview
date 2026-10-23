@@ -105,7 +105,7 @@ struct RenameSheet: View {
 
     init(model: ViewerModel) {
         self.model = model
-        _text = State(initialValue: model.list.current?.lastPathComponent ?? "")
+        _text = State(initialValue: model.renamingURL?.lastPathComponent ?? "")
     }
 
     var body: some View {

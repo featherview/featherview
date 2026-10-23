@@ -5,18 +5,22 @@ import FeatherviewCore
 /// and the picture stays on screen without a new decode.
 extension ViewerModel {
     func beginRename() {
-        guard availability.canChangeFile, !renaming else { return }
+        guard availability.canChangeFile, !renaming, let url = list.current else { return }
+        renamingURL = url
+        errorMessage = nil
         renamingInSheet = isFullScreen || UserDefaults.standard.bool(forKey: toolbarHiddenKey)
         renaming = true
     }
 
     func cancelRename() {
         renaming = false
+        renamingURL = nil
+        errorMessage = nil
     }
 
-    /// Renames the current file to `typed`; false keeps the field open (the message says why).
+    /// Renames the file F2 was pressed on to `typed`; false keeps the field open (the message says why).
     func commitRename(_ typed: String) async -> Bool {
-        guard renaming, !renameBusy, let url = list.current, !list.isHolding else { return true }
+        guard renaming, !renameBusy, let url = renamingURL, !list.isHolding else { return true }
         renameBusy = true
         defer { renameBusy = false }
         var name = FileRenamer.trimmed(typed)
@@ -77,7 +81,8 @@ extension ViewerModel {
         alert.informativeText = String(localized: "The image may then open in another app, or not at all.")
         alert.addButton(withTitle: String(localized: "Keep .\(change.old)"))
         alert.addButton(withTitle: change.new.isEmpty ? String(localized: "Remove") : String(localized: "Use .\(change.new)"))
-        let response = if let window { await alert.beginSheetModal(for: window) } else { alert.runModal() }
+        // In the sheet, the viewer window already has RenameSheet attached: a second sheet there would wait behind it.
+        let response = if let window { await alert.beginSheetModal(for: window.attachedSheet ?? window) } else { alert.runModal() }
         return response == .alertSecondButtonReturn
     }
 
