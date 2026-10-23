@@ -70,4 +70,11 @@ import Testing
         #expect(image.width == 512 && image.height == 512)
         #expect(image[0, 0].r == 0 && image[1, 0].r == 255)
     }
+
+    /// 65536 × 65536 claimed in the header: refused as corrupt before anything is allocated.
+    @Test func hugeHeaderIsRefused() {
+        let data = Data("#define t_width 65536\n#define t_height 65536\nstatic unsigned char t_bits[] = {\n0x00, };".utf8)
+        #expect(throws: OwnDecodeError.corrupt) { try XBMDecoder.size(data) }
+        #expect(throws: OwnDecodeError.corrupt) { try XBMDecoder.decode(data) }
+    }
 }

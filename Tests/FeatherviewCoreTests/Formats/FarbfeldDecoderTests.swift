@@ -20,4 +20,11 @@ import Testing
         // 65536×4096 claimed with no pixels: throws before allocating.
         #expect(throws: OwnDecodeError.truncated) { try FarbfeldDecoder.decode(Data(Array("farbfeld".utf8) + [0, 1, 0, 0, 0, 0, 0x10, 0])) }
     }
+
+    /// 65536 × 65536 claimed in the header: refused as corrupt before anything is allocated.
+    @Test func hugeHeaderIsRefused() {
+        let data = Data(Array("farbfeld".utf8) + [0, 1, 0, 0, 0, 1, 0, 0])
+        #expect(throws: OwnDecodeError.corrupt) { try FarbfeldDecoder.size(data) }
+        #expect(throws: OwnDecodeError.corrupt) { try FarbfeldDecoder.decode(data) }
+    }
 }

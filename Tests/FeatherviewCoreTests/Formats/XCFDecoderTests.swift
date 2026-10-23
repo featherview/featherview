@@ -496,4 +496,11 @@ struct XCFBuilder {
             if normal { #expect(difference < 3, "\(name): \(difference)") }
         }
     }
+
+    /// 65536 × 65536 claimed in the header: refused as corrupt before anything is allocated.
+    @Test func hugeHeaderIsRefused() {
+        let data = XCFBuilder(width: 65536, height: 65536).data
+        #expect(throws: OwnDecodeError.corrupt) { try XCFDecoder.size(data) }
+        #expect(throws: OwnDecodeError.corrupt) { try XCFDecoder.decode(data) }
+    }
 }

@@ -167,4 +167,14 @@ enum ProcreateFixture {
             #expect(RGBAImage(try ImageDecoder.decode(try ProcreateFixture.file(document)))?.width == 6)
         }
     }
+
+    /// 65536 × 65536 claimed in the document: the canvas is refused before its tiles are read, so the
+    /// stored preview shows instead.
+    @Test func hugeHeaderIsRefused() throws {
+        let document = ProcreateFixture.Document()
+        document.size = "{65536, 65536}"
+        let data = try Data(contentsOf: try ProcreateFixture.file(document))
+        #expect(ProcreateDecoder.format.size(data, 0) == CGSize(width: 6, height: 4))  // ZipFixture.png
+        #expect(try ProcreateDecoder.format.decode(data, 0, nil).width == 6)
+    }
 }

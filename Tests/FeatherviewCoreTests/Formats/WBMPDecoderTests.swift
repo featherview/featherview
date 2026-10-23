@@ -31,4 +31,11 @@ import Testing
         #expect(throws: OwnDecodeError.truncated) { try WBMPDecoder.decode(Data([0, 0, 0x84, 0x80, 0x00, 0xA0, 0x00])) }
         #expect(ContinuousClock.now - start < .seconds(2))
     }
+
+    /// 65536 × 65536 claimed in the header: refused as corrupt before anything is allocated.
+    @Test func hugeHeaderIsRefused() {
+        let data = Data([0, 0, 0x84, 0x80, 0x00, 0x84, 0x80, 0x00, 0xFF])
+        #expect(throws: OwnDecodeError.corrupt) { try WBMPDecoder.size(data) }
+        #expect(throws: OwnDecodeError.corrupt) { try WBMPDecoder.decode(data) }
+    }
 }

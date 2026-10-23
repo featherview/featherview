@@ -89,4 +89,11 @@ import Testing
         #expect(throws: OwnDecodeError.truncated) { try BPGDecoder.decode(Data(file)) }
         #expect(ContinuousClock.now - start < .seconds(2))
     }
+
+    /// 65536 × 65536 claimed in the header: refused as corrupt before anything is allocated.
+    @Test func hugeHeaderIsRefused() {
+        let data = Data([0x42, 0x50, 0x47, 0xFB, 0x20, 0x00, 0x84, 0x80, 0x00, 0x84, 0x80, 0x00] + Self.gradient[8...])
+        #expect(throws: OwnDecodeError.corrupt) { try BPGDecoder.size(data) }
+        #expect(throws: OwnDecodeError.corrupt) { try BPGDecoder.decode(data) }
+    }
 }

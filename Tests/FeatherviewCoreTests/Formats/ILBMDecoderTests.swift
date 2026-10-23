@@ -137,4 +137,11 @@ import Testing
         }
         #expect(throws: OwnDecodeError.notThisFormat) { try ILBMDecoder.decode(Self.form([], kind: "8SVX")) }
     }
+
+    /// 65535 × 65535 (BMHD's sides are 16 bits) claimed in the header: refused as corrupt before anything is allocated.
+    @Test func hugeHeaderIsRefused() {
+        let data = Self.form([Self.bmhd(width: 65535, height: 65535, planes: 1), Self.chunk("BODY", [0, 0])])
+        #expect(throws: OwnDecodeError.corrupt) { try ILBMDecoder.size(data) }
+        #expect(throws: OwnDecodeError.corrupt) { try ILBMDecoder.decode(data) }
+    }
 }
