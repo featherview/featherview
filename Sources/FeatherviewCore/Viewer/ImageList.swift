@@ -27,7 +27,7 @@ public struct ImageList: Equatable, Sendable {
     public var listedCurrent: URL? { urls.indices.contains(index) ? urls[index] : nil }
     public var isEmpty: Bool { urls.isEmpty }
     /// 1-based, for the window title: "3 / 120".
-    public var position: String { isEmpty ? "0 / 0" : "\(index + 1) / \(urls.count)" }
+    public var position: String { isEmpty ? "0 / 0" : "\((index + 1).formatted()) / \(urls.count.formatted())" }
 
     /// False (and unchanged) at the last image: the caller decides what "past the end" means.
     @discardableResult

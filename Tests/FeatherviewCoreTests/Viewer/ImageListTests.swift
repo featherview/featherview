@@ -11,6 +11,13 @@ import Testing
         #expect(list.position == "3 / 4")
     }
 
+    // The title's position reads like the status bar's ("5,000 / 10,000" in English).
+    @Test func positionFormatsNumbersForTheLocale() {
+        let many = (0..<10_000).map { URL(fileURLWithPath: "/x/\($0).jpg") }
+        let list = ImageList(urls: many, current: many[4_999])
+        #expect(list.position == "\(5_000.formatted()) / \(10_000.formatted())")
+    }
+
     @Test func unknownCurrentStartsAtFirst() {
         #expect(ImageList(urls: urls, current: URL(fileURLWithPath: "/x/zzz.jpg")).index == 0)
     }
