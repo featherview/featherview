@@ -1,15 +1,15 @@
 
 //*@@@+++@@@@******************************************************************
 //
-// Copyright (c) Microsoft Corp.
+// Copyright © Microsoft Corp.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// * Redistributions of source code must retain the above copyright notice,
+// • Redistributions of source code must retain the above copyright notice,
 //   this list of conditions and the following disclaimer.
-// * Redistributions in binary form must reproduce the above copyright notice,
+// • Redistributions in binary form must reproduce the above copyright notice,
 //   this list of conditions and the following disclaimer in the documentation
 //   and/or other materials provided with the distribution.
 //
@@ -27,8 +27,8 @@
 //
 //*@@@---@@@@******************************************************************
 #include <limits.h>
-#include <wchar.h>
 #include <JXRGlue.h>
+#include <wchar.h>
 
 
 static const char szHDPhotoFormat[] = "<dc:format>image/vnd.ms-photo</dc:format>";
@@ -189,6 +189,10 @@ void FreeDescMetadata(DPKPROPVARIANT *pvar)
 
         case DPKVT_LPWSTR:
             PKFree((void **) &pvar->VT.pwszVal);
+            break;
+
+        case DPKVT_UI1 | DPKVT_BYREF:
+            PKFree((void **) &pvar->VT.pbVal);
             break;
 
         default:
@@ -828,8 +832,8 @@ ERR PKImageEncode_EncodeContent_Encode(
     //================================
     for (i = 0; i < cLine; i += 16)
     {
-		Bool f420 = ( pIE->WMP.wmiI.cfColorFormat == YUV_420 ||
-					  (pIE->WMP.wmiSCP.bYUVData && pIE->WMP.wmiSCP.cfColorFormat==YUV_420) );
+        Bool f420 = ( pIE->WMP.wmiI.cfColorFormat == YUV_420 ||
+                      (pIE->WMP.wmiSCP.bYUVData && pIE->WMP.wmiSCP.cfColorFormat==YUV_420) );
         CWMImageBufferInfo wmiBI = { 0 };
         wmiBI.pv = pbPixels + cbStride * i / (f420 ? 2 : 1);
         wmiBI.cLine = min(16, cLine - i);
@@ -1518,7 +1522,7 @@ ERR PKImageEncode_Create_WMP(PKImageEncode** ppIE)
     pIE->Transcode = PKImageEncode_Transcode_WMP;
     pIE->CreateNewFrame = PKImageEncode_CreateNewFrame_WMP;
     pIE->Release = PKImageEncode_Release_WMP;
-	pIE->bWMP = TRUE;
+    pIE->bWMP = TRUE;
 
 Cleanup:
     return err;
@@ -1551,6 +1555,8 @@ ERR ParsePFDEntry(
     {
         case WMP_tagPixelFormat:
         {
+            FailIf(WMP_typBYTE != uType, WMP_errUnsupportedFormat);
+            FailIf(16 != uCount, WMP_errUnsupportedFormat);
             unsigned char *pGuid = (unsigned char *) &pID->guidPixFormat;
             /** following code is endian-agnostic **/
             Call(GetULong(pWS, uValue, (U32 *)pGuid));
@@ -1559,7 +1565,7 @@ ERR ParsePFDEntry(
             Call(pWS->Read(pWS, pGuid + 8, 8));
 
             PI.pGUIDPixFmt = &pID->guidPixFormat;
-            PixelFormatLookup(&PI, LOOKUP_FORWARD);
+            Call(PixelFormatLookup(&PI, LOOKUP_FORWARD));
 
             pID->WMP.bHasAlpha = !!(PI.grBit & PK_pixfmtHasAlpha);
             pID->WMP.wmiI.cBitsPerUnit = PI.cbitUnit;
@@ -1570,17 +1576,21 @@ ERR ParsePFDEntry(
 
         case WMP_tagTransformation:
             FailIf(1 != uCount, WMP_errUnsupportedFormat);
-            FailIf(uValue >= O_MAX, WMP_errUnsupportedFormat);  // featherview patch: an error, not an assert
+            FailIf(uValue >= O_MAX, WMP_errUnsupportedFormat);
             pID->WMP.fOrientationFromContainer = TRUE;
             pID->WMP.oOrientationFromContainer = uValue;
             break;
 
         case WMP_tagImageWidth:
+            FailIf(1 != uCount, WMP_errUnsupportedFormat);
             FailIf(0 == uValue, WMP_errUnsupportedFormat);
+            pID->uWidth = uValue; // it will be discarded later because the WMI info are used instead (the default implementation discarded this value)
             break;
 
         case WMP_tagImageHeight:
+            FailIf(1 != uCount, WMP_errUnsupportedFormat);
             FailIf(0 == uValue, WMP_errUnsupportedFormat);
+            pID->uHeight = uValue; // it will be discarded later because the WMI info are used instead (the default implementation discarded this value)
             break;
 
         case WMP_tagImageOffset:
@@ -1652,8 +1662,7 @@ ERR ParsePFDEntry(
             break;
 
         // Descriptive Metadata
-        // featherview patch: an entry ReadPropvar can't read, or of another type, is kept as it is (Featherview
-        // never reads these), without asserting on its type.
+        // featherview patch: an entry ReadPropvar can't read, or of another type, is kept as it is, without asserting on its type
         case WMP_tagImageDescription:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarImageDescription));
@@ -1702,12 +1711,15 @@ ERR ParsePFDEntry(
         case WMP_tagCaption:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarCaption));
-            // featherview patch: converted only when it was read as bytes (otherwise pwszVal may be NULL)
-            if ((DPKVT_BYREF | DPKVT_UI1) == pID->WMP.sDescMetadata.pvarCaption.vt && pID->WMP.sDescMetadata.pvarCaption.VT.pbVal != NULL) {
-                // Change type from C-style byte array to LPWSTR
-                //  make sure null term (ReadPropvar allocated enough space for this)
-                pID->WMP.sDescMetadata.pvarCaption.VT.pwszVal[uCount/sizeof(U16)] = 0;
-                pID->WMP.sDescMetadata.pvarCaption.vt = DPKVT_LPWSTR;
+
+            if (errTmp == WMP_errSuccess) { // sanity check
+                // featherview patch: converted only when it was read as bytes (the check said !=); the file needn't end it with a null
+                if ((DPKVT_BYREF | DPKVT_UI1) == pID->WMP.sDescMetadata.pvarCaption.vt && uCount >= sizeof(U16) * 2) {
+                    // Change type from C-style byte array to LPWSTR
+                    //  make sure null term (ReadPropvar allocated enough space for this)
+                    pID->WMP.sDescMetadata.pvarCaption.VT.pwszVal[uCount/sizeof(U16)] = 0;
+                    pID->WMP.sDescMetadata.pvarCaption.vt = DPKVT_LPWSTR;
+                }
             }
             break;
 
@@ -1732,8 +1744,15 @@ ERR ParsePFDEntry(
             break;
 
         default:
-            // fprintf(stderr, "Unrecognized WMPTag: %d(%#x), %d, %d, %#x" CRLF,
-            //     (int)uTag, (int)uTag, (int)uType, (int)uCount, (int)uValue);
+#if defined(_DEBUG) || defined(DBG)
+#if __STDC_VERSION__ >= 201112L
+            fprintf_s(stderr, "Unrecognized WMPTag: %d(%#x), %d, %d, %#x" CRLF,
+                (int)uTag, (int)uTag, (int)uType, (int)uCount, (int)uValue);
+#else
+            fprintf(stderr, "Unrecognized WMPTag: %d(%#x), %d, %d, %#x" CRLF,
+                (int)uTag, (int)uTag, (int)uType, (int)uCount, (int)uValue);
+#endif
+#endif
             break;
     }
 
@@ -1767,6 +1786,10 @@ ERR ParsePFD(
 
     pID->WMP.bHasAlpha = ((pID->WMP.bHasAlpha) && (pID->WMP.wmiDEMisc.uAlphaOffset != 0) && (pID->WMP.wmiDEMisc.uAlphaByteCount != 0));//has planar alpha
 
+    // I want a valid TIFF IFD (Sanity check)
+    if(pID->uWidth == 0 || pID->uHeight == 0)
+        err = WMP_errUnsupportedFormat;
+
 Cleanup:
     return err;
 }
@@ -1791,8 +1814,8 @@ ERR ReadContainer(
 
     //================================
     // Header
-    Call(pWS->Read(pWS, szSig, sizeof(szSig))); offPos += 2;
-    FailIf(szSig != strstr(szSig, "II"), WMP_errUnsupportedFormat);
+    Call(pWS->Read(pWS, szSig, 2)); offPos += 2;
+    FailIf((szSig[0] != 'I' ||szSig[1] != 'I'), WMP_errUnsupportedFormat);
 
     Call(GetUShort(pWS, offPos, &uWmpID)); offPos += 2;
     FailIf(WMP_valWMPhotoID != (0x00FF & uWmpID), WMP_errUnsupportedFormat);
@@ -1928,11 +1951,11 @@ ERR PKImageDecode_Copy_WMP(
 #endif // REENTRANT_MODE
 
     cThumbnailScale = 1;
-	if (pID->WMP.wmiI.cThumbnailWidth > 0)
-	{
-		while(cThumbnailScale * pID->WMP.wmiI.cThumbnailWidth < pID->uWidth)
-			cThumbnailScale <<= 1;
-	}
+    if (pID->WMP.wmiI.cThumbnailWidth > 0)
+    {
+        while(cThumbnailScale * pID->WMP.wmiI.cThumbnailWidth < pID->uWidth)
+            cThumbnailScale <<= 1;
+    }
     // note the following implementation can't handle fractional linesperMBRow limiting
     // us to >= 1/256 thumbnail which is unfortunate, but all the PS plugin needs is 1/256
     // and I didn't care to get into floating point or a bunch of conditional tests or
@@ -1968,6 +1991,7 @@ ERR PKImageDecode_Copy_WMP(
 #ifdef REENTRANT_MODE
         if (0 == pID->WMP.DecoderCurrMBRow)
         {
+            FailIf(NULL == pID->WMP.wmiSCP.pWStream, WMP_errFail);
             Call(pID->WMP.wmiSCP.pWStream->GetPos(pID->WMP.wmiSCP.pWStream, &(pID->WMP.cMarker)));
             FailIf(ICERR_OK != ImageStrDecInit(&pID->WMP.wmiI, &pID->WMP.wmiSCP, &pID->WMP.ctxSC), WMP_errFail);
         }
@@ -1984,6 +2008,7 @@ ERR PKImageDecode_Copy_WMP(
             pID->WMP.cLinesCropped = 0;
             pID->WMP.fFirstNonZeroDecode = FALSE;
             FailIf(ICERR_OK != ImageStrDecTerm(pID->WMP.ctxSC), WMP_errFail);
+            FailIf(NULL == pID->WMP.wmiSCP.pWStream, WMP_errFail);
             Call(pID->WMP.wmiSCP.pWStream->SetPos(pID->WMP.wmiSCP.pWStream, pID->WMP.cMarker));
             FailIf(ICERR_OK != ImageStrDecInit(&pID->WMP.wmiI, &pID->WMP.wmiSCP, &pID->WMP.ctxSC), WMP_errFail);
         }
@@ -2011,7 +2036,10 @@ ERR PKImageDecode_Copy_WMP(
             size_t cLinesDecoded;
             wmiBI.uiFirstMBRow = i;
             wmiBI.uiLastMBRow = i;
-            FailIf(ICERR_OK != ImageStrDecDecode(pID->WMP.ctxSC, &wmiBI, &cLinesDecoded), WMP_errFail);
+            if (ICERR_OK != ImageStrDecDecode(pID->WMP.ctxSC, &wmiBI, &cLinesDecoded)) {
+                ImageStrDecTerm(pID->WMP.ctxSC);
+                FailIf(TRUE, WMP_errFail);
+            }
             pID->WMP.cLinesDecoded = cLinesDecoded;
             if (FALSE == pID->WMP.fFirstNonZeroDecode && cLinesDecoded > 0)
             {
@@ -2033,7 +2061,7 @@ ERR PKImageDecode_Copy_WMP(
         wmiBI.pv = pbLowMemAdj;
 
         // If we're past the top of the image, then we're done, so terminate.
-        if (linesperMBRow * (cMBRow - 1) >= (U32) pID->WMP.cLinesCropped + pID->WMP.wmiI.cROIHeight) {
+        if ((ULong)linesperMBRow * (cMBRow - 1) >= (U32) pID->WMP.cLinesCropped + pID->WMP.wmiI.cROIHeight) {
             FailIf(ICERR_OK != ImageStrDecTerm(pID->WMP.ctxSC), WMP_errFail);
         }
         pID->WMP.DecoderCurrMBRow = cMBRow; // Set to next possible MBRow that is decodable
@@ -2111,11 +2139,14 @@ ERR PKImageDecode_Copy_WMP(
             size_t cLinesDecoded;
             wmiBI.uiFirstMBRow = i;
             wmiBI.uiLastMBRow = i;
-            FailIf(ICERR_OK != ImageStrDecDecode(pID->WMP.ctxSC_Alpha, &wmiBI, &cLinesDecoded), WMP_errFail);
+            if (ICERR_OK != ImageStrDecDecode(pID->WMP.ctxSC_Alpha, &wmiBI, &cLinesDecoded)) {
+                ImageStrDecTerm(pID->WMP.ctxSC_Alpha);
+                FailIf(TRUE, WMP_errFail);
+            }
         }
 
         // If we're past the top of the image, then we're done, so terminate
-        if (linesperMBRow * (cMBRow - 1) >= (U32) pID->WMP.cLinesCropped + pID->WMP.wmiI.cROIHeight) {
+        if ((ULong)linesperMBRow * (cMBRow - 1) >= (U32) pID->WMP.cLinesCropped + pID->WMP.wmiI.cROIHeight) {
             FailIf(ICERR_OK != ImageStrDecTerm(pID->WMP.ctxSC_Alpha), WMP_errFail);
         }
         pID->WMP.DecoderCurrAlphaMBRow = cMBRow; // Set to next possible MBRow that is decodable

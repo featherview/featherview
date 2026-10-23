@@ -1,14 +1,14 @@
 //*@@@+++@@@@******************************************************************
 //
-// Copyright (c) Microsoft Corp.
+// Copyright © Microsoft Corp.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// * Redistributions of source code must retain the above copyright notice,
+// • Redistributions of source code must retain the above copyright notice,
 //   this list of conditions and the following disclaimer.
-// * Redistributions in binary form must reproduce the above copyright notice,
+// • Redistributions in binary form must reproduce the above copyright notice,
 //   this list of conditions and the following disclaimer in the documentation
 //   and/or other materials provided with the distribution.
 //
@@ -30,6 +30,7 @@
 
 #define INITGUID
 #include <JXRGlue.h>
+#include <memory_lim.h>
 
 //================================================================
 const PKIID IID_PKImageScanEncode = 1;
@@ -43,9 +44,10 @@ const PKIID IID_PKImageWmpDecode = 201;
 //================================================================
 // Misc supporting functions
 //================================================================
+
 ERR PKAlloc(void** ppv, size_t cb)
 {
-    *ppv = calloc(1, cb);
+    *ppv = calloc_lim(1, cb);
     return *ppv ? WMP_errSuccess : WMP_errOutOfMemory;
 }
 
@@ -69,8 +71,9 @@ ERR PKAllocAligned(void** ppv, size_t cb, size_t iAlign)
     const size_t c_cbBlockSize = cb + sizeof(void*) + iAlign - 1;
 
     *ppv = NULL;
-    pOrigPtr = calloc(1, c_cbBlockSize);
-    if (NULL == pOrigPtr)
+
+    pOrigPtr = calloc_lim(1, c_cbBlockSize);
+    if (pOrigPtr == NULL)
         return WMP_errOutOfMemory;
 
     iAlignmentCorrection = iAlign - ((size_t)pOrigPtr % iAlign);
@@ -101,7 +104,32 @@ ERR PKFreeAligned(void** ppv)
     return WMP_errSuccess;
 }
 
+ERR PKAlloc_SetLimit(size_t cb)
+{
+    alloc_set_lim(cb);
+    return WMP_errSuccess;
+}
 
+ERR PKAlloc_GetLimit(size_t *pcb)
+{
+    if(pcb == NULL)
+        return WMP_errInvalidArgument;
+    *pcb = alloc_get_lim();
+    return WMP_errSuccess;
+}
+
+ERR PKLibJxr_GetVersion(U32 *version)
+{
+    if(version == NULL)
+        return WMP_errInvalidArgument;
+
+#if defined(JXR_VERSION)
+    *version = JXR_VERSION;
+    return WMP_errSuccess;
+#else
+    return WMP_errNotYetImplemented;
+#endif
+}
 
 int PKStrnicmp(const char* s1, const char* s2, size_t c)
 {
@@ -109,8 +137,7 @@ int PKStrnicmp(const char* s1, const char* s2, size_t c)
     return c ? *s1 - *s2 : 0;
 }
 
-static const PKPixelInfo pixelInfo[] =
-{
+static const PKPixelInfo pixelInfo[] = {
     {&GUID_PKPixelFormatDontCare, 1, Y_ONLY, BD_8, 8, PK_pixfmtNul, 0, 0, 0, 0},
 
     // Gray
@@ -207,9 +234,9 @@ static const PKPixelInfo pixelInfo[] =
     {&GUID_PKPixelFormat32bppRGBE, 4, CF_RGBE, BD_8, 32, PK_pixfmtNul, PK_PI_RGBE, 4, 8, 1},
 
     //YUV
-    {&GUID_PKPixelFormat12bppYUV420, 3, YUV_420, BD_8, 48, PK_pixfmtNul},
-    {&GUID_PKPixelFormat16bppYUV422, 3, YUV_422, BD_8, 32, PK_pixfmtNul},
-    {&GUID_PKPixelFormat24bppYUV444, 3, YUV_444, BD_8, 24, PK_pixfmtNul},
+    {&GUID_PKPixelFormat12bppYUV420, 3, YUV_420, BD_8, 48, PK_pixfmtNul, 0, 0, 0, 0},
+    {&GUID_PKPixelFormat16bppYUV422, 3, YUV_422, BD_8, 32, PK_pixfmtNul, 0, 0, 0, 0},
+    {&GUID_PKPixelFormat24bppYUV444, 3, YUV_444, BD_8, 24, PK_pixfmtNul, 0, 0, 0, 0},
 };
 
 //----------------------------------------------------------------
@@ -255,7 +282,7 @@ Cleanup:
 
 const PKPixelFormatGUID* GetPixelFormatFromHash(const U8 uPFHash)
 {
-    int i;
+    size_t i;
 
     for (i = 0; i < sizeof2(pixelInfo); i++)
     {
@@ -427,6 +454,15 @@ ERR PKCodecFactory_CreateDecoderFromFile(const char* szFilename, PKImageDecode**
     pDecoder->fStreamOwner = !0;
 
 Cleanup:
+    // Fix possible memory leak: when pDecoder->Initialize fails, fStreamOwner is not
+    // set to 1 and the stream is not freed. Not sure why fStreamOwner is set outside
+    // the Decode_Initialize* function so, I fix it here.
+    if(pStream && err != WMP_errSuccess) {
+        if(pDecoder && pDecoder->pStream == pStream)
+            pDecoder->fStreamOwner = !0;
+        else
+            PKFree((void **)&pStream);
+    }
     return err;
 }
 
@@ -599,7 +635,7 @@ ERR PKImageEncode_WriteSource(
 
     U8* pb = NULL;
 
-	// CWMTranscodingParam* pParam = NULL;
+    // CWMTranscodingParam* pParam = NULL;
 
     // get pixel format
     Call(pFC->GetSourcePixelFormat(pFC, &enPFFrom));
@@ -607,21 +643,21 @@ ERR PKImageEncode_WriteSource(
     FailIf(!IsEqualGUID(&pIE->guidPixFormat, &enPFTo), WMP_errUnsupportedFormat);
 
     // calc common stride
-//    Call(GetPixelInfo(enPFFrom, &pPIFrom));
+    //    Call(GetPixelInfo(enPFFrom, &pPIFrom));
     pPIFrom.pGUIDPixFmt = &enPFFrom;
     PixelFormatLookup(&pPIFrom, LOOKUP_FORWARD);
 
-//    Call(GetPixelInfo(enPFTo, &pPITo));
+    //    Call(GetPixelInfo(enPFTo, &pPITo));
     pPITo.pGUIDPixFmt = &enPFTo;
     PixelFormatLookup(&pPITo, LOOKUP_FORWARD);
 
-//    cbStrideFrom = (pPIFrom->cbPixel * pRect->Width + pPIFrom->cbPixelDenom - 1) / pPIFrom->cbPixelDenom;
+    //    cbStrideFrom = (pPIFrom->cbPixel * pRect->Width + pPIFrom->cbPixelDenom - 1) / pPIFrom->cbPixelDenom;
     cbStrideFrom = (BD_1 == pPIFrom.bdBitDepth ? ((pPIFrom.cbitUnit * pRect->Width + 7) >> 3) : (((pPIFrom.cbitUnit + 7) >> 3) * pRect->Width));
     if (&GUID_PKPixelFormat12bppYUV420 == pPIFrom.pGUIDPixFmt
         || &GUID_PKPixelFormat16bppYUV422 == pPIFrom.pGUIDPixFmt)
         cbStrideFrom >>= 1;
 
-//    cbStrideTo = (pPITo->cbPixel * pIE->uWidth + pPITo->cbPixelDenom - 1) / pPITo->cbPixelDenom;
+    //    cbStrideTo = (pPITo->cbPixel * pIE->uWidth + pPITo->cbPixelDenom - 1) / pPITo->cbPixelDenom;
     cbStrideTo = (BD_1 == pPITo.bdBitDepth ? ((pPITo.cbitUnit * pIE->uWidth + 7) >> 3) : (((pPITo.cbitUnit + 7) >> 3) * pIE->uWidth));
     if (&GUID_PKPixelFormat12bppYUV420 == pPITo.pGUIDPixFmt
         || &GUID_PKPixelFormat16bppYUV422 == pPITo.pGUIDPixFmt)
@@ -630,11 +666,11 @@ ERR PKImageEncode_WriteSource(
     cbStride = max(cbStrideFrom, cbStrideTo);
 
     // actual dec/enc with local buffer
-    Call(PKAllocAligned((void **) &pb, cbStride * pRect->Height, 128));
+    Call(PKAllocAligned((void **) &pb, (size_t)cbStride * pRect->Height, 128));
 
     Call(pFC->Copy(pFC, pRect, pb, cbStride));
 
-	Call(pIE->WritePixels(pIE, pRect->Height, pb, cbStride));
+    Call(pIE->WritePixels(pIE, pRect->Height, pb, cbStride));
 
 Cleanup:
     PKFreeAligned((void **) &pb);
@@ -692,21 +728,21 @@ ERR PKImageEncode_Transcode(
     FailIf(!IsEqualGUID(&pIE->guidPixFormat, &enPFTo), WMP_errUnsupportedFormat);
 
     // calc common stride
-//    Call(GetPixelInfo(enPFFrom, &pPIFrom));
+    //    Call(GetPixelInfo(enPFFrom, &pPIFrom));
     pPIFrom.pGUIDPixFmt = &enPFFrom;
     PixelFormatLookup(&pPIFrom, LOOKUP_FORWARD);
 
-//    Call(GetPixelInfo(enPFTo, &pPITo));
+    //    Call(GetPixelInfo(enPFTo, &pPITo));
     pPITo.pGUIDPixFmt = &enPFTo;
     PixelFormatLookup(&pPITo, LOOKUP_FORWARD);
 
-//    cbStrideFrom = (pPIFrom->cbPixel * pRect->Width + pPIFrom->cbPixelDenom - 1) / pPIFrom->cbPixelDenom;
+    //    cbStrideFrom = (pPIFrom->cbPixel * pRect->Width + pPIFrom->cbPixelDenom - 1) / pPIFrom->cbPixelDenom;
     cbStrideFrom = (BD_1 == pPIFrom.bdBitDepth ? ((pPIFrom.cbitUnit * pRect->Width + 7) >> 3) : (((pPIFrom.cbitUnit + 7) >> 3) * pRect->Width));
     if (&GUID_PKPixelFormat12bppYUV420 == pPIFrom.pGUIDPixFmt
         || &GUID_PKPixelFormat16bppYUV422 == pPIFrom.pGUIDPixFmt)
         cbStrideFrom >>= 1;
 
-//    cbStrideTo = (pPITo->cbPixel * pIE->uWidth + pPITo->cbPixelDenom - 1) / pPITo->cbPixelDenom;
+    //    cbStrideTo = (pPITo->cbPixel * pIE->uWidth + pPITo->cbPixelDenom - 1) / pPITo->cbPixelDenom;
     cbStrideTo = (BD_1 == pPITo.bdBitDepth ? ((pPITo.cbitUnit * pIE->uWidth + 7) >> 3) : (((pPITo.cbitUnit + 7) >> 3) * pIE->uWidth));
     if (&GUID_PKPixelFormat12bppYUV420 == pPITo.pGUIDPixFmt
         || &GUID_PKPixelFormat16bppYUV422 == pPITo.pGUIDPixFmt)
@@ -720,7 +756,7 @@ ERR PKImageEncode_Transcode(
         cParam.cWidth = pFC->pDecoder->WMP.wmiI.cROIWidth;
         cParam.cHeight = pFC->pDecoder->WMP.wmiI.cROIHeight;
         cParam.oOrientation = pFC->pDecoder->WMP.wmiI.oOrientation;
-//        cParam.cfColorFormat = pFC->pDecoder->WMP.wmiI.cfColorFormat;
+        //        cParam.cfColorFormat = pFC->pDecoder->WMP.wmiI.cfColorFormat;
         cParam.uAlphaMode = pFC->pDecoder->WMP.wmiSCP.uAlphaMode;
         cParam.bfBitstreamFormat = pFC->pDecoder->WMP.wmiSCP.bfBitstreamFormat;
         cParam.sbSubband = pFC->pDecoder->WMP.wmiSCP.sbSubband;
@@ -728,13 +764,13 @@ ERR PKImageEncode_Transcode(
 
         Call(pIE->Transcode(pIE, pFC->pDecoder, &cParam));
     }
-	else
-	{
-		// actual dec/enc with local buffer
-	    Call(PKAllocAligned((void **) &pb, cbStride * pRect->Height, 128));
-		Call(pFC->Copy(pFC, pRect, pb, cbStride));
-		Call(pIE->WritePixels(pIE, pRect->Height, pb, cbStride));
-	}
+    else
+    {
+        // actual dec/enc with local buffer
+        Call(PKAllocAligned((void **) &pb, (size_t)cbStride * pRect->Height, 128));
+        Call(pFC->Copy(pFC, pRect, pb, cbStride));
+        Call(pIE->WritePixels(pIE, pRect->Height, pb, cbStride));
+    }
 
 Cleanup:
     PKFreeAligned((void **) &pb);
@@ -778,7 +814,7 @@ ERR PKImageEncode_Create(PKImageEncode** ppIE)
     pIE->SetColorContext = PKImageEncode_SetColorContext;
     pIE->SetDescriptiveMetadata = PKImageEncode_SetDescriptiveMetadata;
     pIE->WritePixels = PKImageEncode_WritePixels;
-//    pIE->WriteSource = PKImageEncode_WriteSource;
+    //    pIE->WriteSource = PKImageEncode_WriteSource;
 
     pIE->WritePixelsBandedBegin = PKImageEncode_WritePixelsBandedBegin;
     pIE->WritePixelsBanded = PKImageEncode_WritePixelsBanded;
@@ -786,7 +822,7 @@ ERR PKImageEncode_Create(PKImageEncode** ppIE)
 
     pIE->CreateNewFrame = PKImageEncode_CreateNewFrame;
     pIE->Release = PKImageEncode_Release;
-	pIE->bWMP = FALSE;
+    pIE->bWMP = FALSE;
 
 Cleanup:
     return err;

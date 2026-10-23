@@ -1,17 +1,17 @@
 //+---------------------------------------------------------------------------
 //
-// Copyright (c) Microsoft Corp.
+// Copyright © Microsoft Corp.
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
-//
-// * Redistributions of source code must retain the above copyright notice,
+// 
+// • Redistributions of source code must retain the above copyright notice,
 //   this list of conditions and the following disclaimer.
-// * Redistributions in binary form must reproduce the above copyright notice,
+// • Redistributions in binary form must reproduce the above copyright notice,
 //   this list of conditions and the following disclaimer in the documentation
 //   and/or other materials provided with the distribution.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -170,38 +170,45 @@ typedef FMTID *LPFMTID;
 #define _SYS_GUID_OPERATORS_
 #include <string.h>
 
-// Faster (but makes code fatter) inline version...use sparingly
+#if defined(__unix__) || defined(__APPLE__) // fix compilation error under macOS and Linux
+#include <wchar.h>
+#endif
+
 #ifdef __cplusplus
-__inline int InlineIsEqualGUID(REFGUID rguid1, REFGUID rguid2)
-{
-   return (
-      ((unsigned long *) &rguid1)[0] == ((unsigned long *) &rguid2)[0] &&
-      ((unsigned long *) &rguid1)[1] == ((unsigned long *) &rguid2)[1] &&
-      ((unsigned long *) &rguid1)[2] == ((unsigned long *) &rguid2)[2] &&
-      ((unsigned long *) &rguid1)[3] == ((unsigned long *) &rguid2)[3]);
-}
 
 __inline int IsEqualGUID(REFGUID rguid1, REFGUID rguid2)
 {
-    return !memcmp(&rguid1, &rguid2, sizeof(GUID));
+    return (rguid1.Data1 == rguid2.Data1 &&
+            rguid1.Data2 == rguid2.Data2 &&
+            rguid1.Data3 == rguid2.Data3 &&
+            rguid1.Data4[0] == rguid2.Data4[0] &&
+            rguid1.Data4[1] == rguid2.Data4[1] &&
+            rguid1.Data4[2] == rguid2.Data4[2] &&
+            rguid1.Data4[3] == rguid2.Data4[3] &&
+            rguid1.Data4[4] == rguid2.Data4[4] &&
+            rguid1.Data4[5] == rguid2.Data4[5] &&
+            rguid1.Data4[6] == rguid2.Data4[6] &&
+            rguid1.Data4[7] == rguid2.Data4[7]);
 }
 
 #else   // ! __cplusplus
 
-#define InlineIsEqualGUID(rguid1, rguid2)  \
-        (((unsigned long *) rguid1)[0] == ((unsigned long *) rguid2)[0] &&   \
-        ((unsigned long *) rguid1)[1] == ((unsigned long *) rguid2)[1] &&    \
-        ((unsigned long *) rguid1)[2] == ((unsigned long *) rguid2)[2] &&    \
-        ((unsigned long *) rguid1)[3] == ((unsigned long *) rguid2)[3])
-
-#define IsEqualGUID(rguid1, rguid2) (!memcmp(rguid1, rguid2, sizeof(GUID)))
+static inline int IsEqualGUID(REFGUID rguid1, REFGUID rguid2)
+{
+    return (rguid1->Data1 == rguid2->Data1 &&
+            rguid1->Data2 == rguid2->Data2 &&
+            rguid1->Data3 == rguid2->Data3 &&
+            rguid1->Data4[0] == rguid2->Data4[0] &&
+            rguid1->Data4[1] == rguid2->Data4[1] &&
+            rguid1->Data4[2] == rguid2->Data4[2] &&
+            rguid1->Data4[3] == rguid2->Data4[3] &&
+            rguid1->Data4[4] == rguid2->Data4[4] &&
+            rguid1->Data4[5] == rguid2->Data4[5] &&
+            rguid1->Data4[6] == rguid2->Data4[6] &&
+            rguid1->Data4[7] == rguid2->Data4[7]);
+}
 
 #endif  // __cplusplus
-
-#ifdef __INLINE_ISEQUAL_GUID
-#undef IsEqualGUID
-#define IsEqualGUID(rguid1, rguid2) InlineIsEqualGUID(rguid1, rguid2)
-#endif
 
 // Same type, different name
 

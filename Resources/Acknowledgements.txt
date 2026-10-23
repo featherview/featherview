@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 Featherview includes jxrlib
-(https://github.com/4creators/jxrlib), under this licence:
+(https://github.com/mircomir/jxrlib), under this licence:
 
 Copyright (c) Microsoft Corp.
 All rights reserved.
