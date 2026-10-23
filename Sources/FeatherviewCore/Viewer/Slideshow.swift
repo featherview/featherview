@@ -45,7 +45,7 @@ public struct Slideshow: Equatable, Sendable {
     /// The images that couldn't be shown since the last one that could.
     private var failedRun: Set<URL> = []
     /// `current` has been on screen, so resuming may start its interval.
-    public private(set) var shownCurrent = false
+    private(set) var shownCurrent = false
 
     /// The first round plays from `current` (or the first image when it isn't listed).
     public init(urls: [URL], from current: URL, options: Options, seed: UInt64) {
@@ -133,6 +133,21 @@ public struct Slideshow: Equatable, Sendable {
             direction.toggle()
             turned = true
         }
+    }
+
+    /// What a failed decode of `url` does during a slideshow.
+    public enum FailedDecode: Equatable, Sendable {
+        /// Skipped without a message (through `failed(_:)`): show the next image, or nothing when every one failed.
+        case skip(to: URL?)
+        /// The file's error shows, as outside a slideshow, and the interval runs on.
+        case showError
+    }
+
+    /// `current` failing before it has shown is skipped; once shown, a failed page or zoom leaves a readable
+    /// file, so its error shows. Another file's failure shows its error too.
+    public mutating func decodeFailed(_ url: URL) -> FailedDecode {
+        guard url == current, !shownCurrent else { return .showError }
+        return .skip(to: failed(url))
     }
 
     /// Drops `url` (Trash, move). If it was current: the next image in play order, else the previous

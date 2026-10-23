@@ -220,6 +220,41 @@ import Testing
         #expect(show.current == u(4))
     }
 
+    @Test func decodeFailedSkipsTheCurrentFileBeforeItShows() {
+        var show = Slideshow(urls: urls(3), from: u(1), options: options(), seed: 1)
+        #expect(show.decodeFailed(u(1)) == .skip(to: u(2)))
+        #expect(show.current == u(2))
+    }
+
+    @Test func decodeFailedShowsTheErrorOnceShown() {
+        var show = Slideshow(urls: urls(3), from: u(1), options: options(), seed: 1)
+        show.shown(u(1), at: t0)
+        #expect(show.decodeFailed(u(1)) == .showError)  // a later page or zoom of the file on screen
+        #expect(show.current == u(1))
+        #expect(show.due == t0 + .seconds(5))  // the interval runs on
+    }
+
+    @Test func decodeFailedShowsTheErrorForAnotherFile() {
+        var show = Slideshow(urls: urls(3), from: u(1), options: options(), seed: 1)
+        #expect(show.decodeFailed(u(3)) == .showError)
+        #expect(show.current == u(1))
+    }
+
+    @Test func decodeFailedEveryFileSkipsToNothing() {
+        var show = Slideshow(urls: urls(2), from: u(1), options: options(), seed: 1)
+        #expect(show.decodeFailed(u(1)) == .skip(to: u(2)))
+        #expect(show.decodeFailed(u(2)) == .skip(to: nil))
+        #expect(show.isFinished)
+    }
+
+    @Test func decodeFailedWhilePausedShowsTheErrorForAShownFile() {
+        var show = Slideshow(urls: urls(3), from: u(1), options: options(), seed: 1)
+        show.shown(u(1), at: t0)
+        _ = show.togglePause(at: t0 + .seconds(1))
+        #expect(show.decodeFailed(u(1)) == .showError)
+        #expect(show.isPaused)
+    }
+
     @Test func failedAtTheStartTurnsBack() {
         var show = Slideshow(urls: urls(5), from: u(1), options: options(), seed: 1)
         _ = show.step(forward: true)  // at 2
