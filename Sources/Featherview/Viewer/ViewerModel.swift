@@ -185,12 +185,7 @@ final class ViewerModel {
     /// less memory than full size.
     /// shortcut: screens are read at launch; a display plugged in later decodes for the old set, re-read on
     /// `NSApplication.didChangeScreenParametersNotification` if that comes up.
-    let screens: [PixelSize] = {
-        let screens = NSScreen.screens.map {
-            PixelSize(width: Int($0.frame.width * $0.backingScaleFactor), height: Int($0.frame.height * $0.backingScaleFactor))
-        }
-        return screens.isEmpty ? [PixelSize(width: 2560, height: 1600)] : screens
-    }()
+    let screens = PixelSize.screens(NSScreen.screens.map { ($0.frame.size, $0.backingScaleFactor) })
     /// Display decodes come in it, so Core Animation doesn't colour-convert each image on the main thread.
     /// shortcut: the main screen's at launch; on another display CA converts again (slower, and clipped to the first
     /// display's gamut), follow the window's screen if people browse on two displays.
