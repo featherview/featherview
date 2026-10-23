@@ -50,6 +50,8 @@ const VERDICT = {
   required: ['real', 'why'],
 }
 
+const STRINGS = `New UI text: run scripts/strings.sh to extract it into Resources/Localizable.xcstrings, then translate the new keys into all 29 other languages and commit the catalog. Never add keys to the catalog by hand.`
+
 const LENSES = [
   { key: 'spec', agentType: 'spec-guard',
     prompt: 'Review against docs/spec.md, the plan task, and the AGENTS.md rules (clean room, never lose data, error wording, layering).' },
@@ -61,7 +63,8 @@ const implement = n => agent(
   `Implement Task ${n} of ${plan}, exactly as written, using superpowers:test-driven-development.
 You are in your own git worktree branched from ${base}. Name your branch task-${n}.
 First confirm the tasks Task ${n} "Needs" (plan's execution-order table) are present in ${base}; if not, stop and say so.
-Touch only the files Task ${n} lists. Run \`swift build\` and \`swift test\`; both must pass.
+Touch only the files Task ${n} lists (plus the string catalog). ${STRINGS}
+Never run the app or anything that uses the screen. Run \`swift build\` and \`swift test\`; both must pass.
 If a plan test is wrong, fix the test and say why; never change specified behaviour to make a test pass.
 Commit with a conventional commit message. Do not tick checkboxes in the plan.`,
   { label: `task ${n}`, phase: 'Implement', isolation: 'worktree', schema: DONE })
@@ -69,12 +72,12 @@ Commit with a conventional commit message. Do not tick checkboxes in the plan.`,
 const reviewAll = (done, n, round) => parallel(LENSES.map(l => () => agent(
   `Review plan Task ${n} of ${plan} (round ${round}). Branch ${done.branch}, worktree ${done.worktree}: cd there; compare with ${base} (git diff ${base}...HEAD). Implementer's note: ${done.summary}
 ${l.prompt}
-Return findings only for real problems with a concrete failing scenario. No style opinions, no praise. Empty list if clean.`,
+Do not run the app. Return findings only for real problems with a concrete failing scenario. No style opinions, no praise. Empty list if clean.`,
   { label: `review ${n} ${l.key} r${round}`, phase: 'Review', schema: FINDINGS, ...(l.agentType ? { agentType: l.agentType } : {}) })))
 
 // Each blocker/should finding must survive an independent skeptic before anyone fixes it.
 const verify = (f, done, n) => agent(
-  `In worktree ${done.worktree} (plan Task ${n} of ${plan}), check this claimed defect. Default to real=false unless you can confirm it from the code or by running it.
+  `In worktree ${done.worktree} (plan Task ${n} of ${plan}), check this claimed defect. Default to real=false unless you can confirm it from the code or by running a test (never the app).
 Where: ${f.where}
 Problem: ${f.problem}
 Failing scenario: ${f.scenario}`,
@@ -92,7 +95,7 @@ const results = await pipeline(tasks, implement, async (done, n) => {
   let open = await confirmedFindings(done, n, 1)
   for (let round = 2; open.length && round <= 4; round++) {
     await agent(
-      `cd ${done.worktree} (branch ${done.branch}). Fix these confirmed findings for plan Task ${n} of ${plan}. For each, first add a failing test that shows it, then fix. Run swift build and swift test; commit with "fix:" messages.
+      `cd ${done.worktree} (branch ${done.branch}). Fix these confirmed findings for plan Task ${n} of ${plan}. For each, first add a failing test that shows it, then fix. Never run the app. Run swift build and swift test; commit with "fix:" messages.
 ${open.map((f, i) => `${i + 1}. [${f.severity}] ${f.where}: ${f.problem}. Scenario: ${f.scenario}`).join('\n')}`,
       { label: `fix ${n} r${round - 1}`, phase: 'Fix' })
     open = await confirmedFindings(done, n, round)
@@ -109,7 +112,7 @@ phase('Integrate')
 const integration = passing.length ? await agent(
   `In the main repository checkout (not a worktree), on branch ${base}: merge these branches one at a time with --no-ff: ${passing.map(r => r.branch).join(', ')}.
 Other waves may be integrating into the same checkout: if .git/MERGE_HEAD exists, wait (check every 30 s, up to 20 min) until it is gone before you start.
-Resolve conflicts only if trivial and explain each; otherwise abort that merge and report it.
+Resolve conflicts only if trivial and explain each. For a Resources/Localizable.xcstrings conflict, run scripts/merge-strings.py, then git add Resources/Localizable.xcstrings (if it stops because both sides changed a key, that conflict is not trivial). Otherwise abort that merge and report it.
 Stage only the files you resolved (git add <file>); never git add -A or git add ., and leave untracked files alone.
 Then run swift build and swift test on ${base}. Report merged branches, any skipped, and the test summary line.`,
   { label: 'merge wave', phase: 'Integrate', schema: {
