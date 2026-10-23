@@ -28,7 +28,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 15 | Compare images (v2) | `docs/superpowers/plans/2026-10-22-milestone-15-compare.md` | ready |
 | 16 | Batch extras (v2) | `docs/superpowers/plans/2026-10-22-milestone-16-batch-extras.md` | ready |
 | 17 | JPEG XL writing (v2) | `docs/superpowers/plans/2026-10-22-milestone-17-jpeg-xl-writing.md` | ready |
-| 18 | Quick wins (v2): Refresh, random image, desktop placement, grid tooltips | `docs/superpowers/plans/2026-10-22-milestone-18-quick-wins.md` | ready (after 11 and 13) |
+| 18 | Quick wins (v2): Refresh, random image, desktop placement, grid tooltips | `docs/superpowers/plans/2026-10-22-milestone-18-quick-wins.md` | done |
 | 19 | Simplify: decisions from the app into tested Core types, catalog format, duplicates | `docs/superpowers/plans/2026-10-22-milestone-19-simplify.md` | done |
 | 20 | Hardening: fuzzing, sanitizers, real files through every write path, Intel, crash reports | `docs/superpowers/plans/2026-10-23-milestone-20-hardening.md` | ready |
 

@@ -27,7 +27,8 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
 - Rename (F2), and sort by name, date modified, date taken, size or kind
 - Lossless rotate and flip of JPEG, HEIC and TIFF (R, L, H, V); adjust the date taken in place
 - Follow New Files shows each image as it lands in the folder, for tethered shooting and screenshots
-- Open Recent, Share, Set as Desktop Picture, Float on Top, New from Clipboard (⌘N)
+- Open Recent, Share, Set as Desktop Picture (fill, fit, stretch or centre), Float on Top, New from Clipboard (⌘N)
+- Refresh the folder (F5), jump to a random image
 
 ## Formats
 
