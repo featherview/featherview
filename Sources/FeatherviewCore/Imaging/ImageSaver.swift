@@ -4,12 +4,12 @@ import Foundation
 /// Save As from the viewer (spec "Menu commands"), and the pages both it and the batch write.
 public enum ImageSaver {
     /// The pages to write: every page for PDF and for TIFF with "keep all pages", else just `page`.
-    /// Upright, at most `maxPixelSize` on the longest side (nil = full size).
+    /// Upright, at most `maxPixelSize` on the longest side (nil = full size). `pageCount`: the file's, when known.
     // shortcut: all pages are decoded before encoding, so a 200-page TIFF holds them all in memory; stream pages if that bites.
     public static func pages(of url: URL, page: Int = 0, for format: OutputFormat, options: FormatOptions,
-                             maxPixelSize: Int? = nil) throws -> [CGImage] {
+                             maxPixelSize: Int? = nil, pageCount: Int? = nil) throws -> [CGImage] {
         let all = format.writer == .pdf || (format.optionFields.contains(.keepAllPages) && options.keepAllPages)
-        let indices = all ? Array(0..<ImageDecoder.pageCount(of: url)) : [page]
+        let indices = all ? Array(0..<(pageCount ?? ImageDecoder.pageCount(of: url))) : [page]
         return try indices.map { try ImageDecoder.decode(url, maxPixelSize: maxPixelSize, page: $0) }
     }
 

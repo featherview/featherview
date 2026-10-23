@@ -118,6 +118,10 @@ public enum BatchConverter {
     static func prepare(_ input: BatchInput, index: Int, settings: BatchSettings,
                         watermark: Result<CIImage?, WatermarkError>) -> Prepared {
         let url = input.url, name = url.lastPathComponent
+        // Each read once per input, and only when a step needs it.
+        lazy var source = CGImageSourceCreateWithURL(url as CFURL, nil)
+        lazy var pageCount = ImageDecoder.pageCount(of: url, source: source)
+        lazy var animation = Animation.read(url)
         var newDate: String?, offset: String?
         if settings.dateTaken.isOn {
             newDate = settings.dateTaken.newDate(for: url)
@@ -126,15 +130,14 @@ public enum BatchConverter {
                     ? String(localized: "Choose a date for the Date Taken step")
                     : String(localized: "Can't change the date taken of \(name)"))
             }
-            offset = CGImageSourceCreateWithURL(url as CFURL, nil)
-                .flatMap { DateTaken.exifValue($0, kCGImagePropertyExifOffsetTimeOriginal) }
+            offset = source.flatMap { DateTaken.exifValue($0, kCGImagePropertyExifOffsetTimeOriginal) }
         }
         let usesDate = settings.renamePattern.contains("{date}") || (settings.text.isOn && settings.text.text.contains("{date}"))
         let date = newDate.flatMap(MetadataReader.exifDate) ?? (usesDate ? MetadataReader.dateTaken(of: url) : nil)
         // With Frames and Pages, a still (one output) is copied as it would be without the step.
         let copies = settings.copiesUnchanged
             || (!settings.changeFormat && !settings.hasOperations && settings.frames.isOn && !settings.tiles.isOn
-                && Animation.read(url) == nil && ImageDecoder.pageCount(of: url) <= 1)
+                && animation == nil && pageCount <= 1)
         if copies {
             // The commit copies the bytes; a dangling link or a folder would copy as a link or fail as "Can't save".
             var isFolder: ObjCBool = false
@@ -167,22 +170,21 @@ public enum BatchConverter {
             guard let own = FormatRegistry.format(id: ext) ?? FormatRegistry.writable.first(where: { type != nil && $0.type == type }),
                   // With Frames and Pages each output is one page.
                   own.writer == .pdf || own.optionFields.contains(.keepAllPages) || settings.frames.isOn
-                    || ImageDecoder.pageCount(of: url) <= 1
+                    || pageCount <= 1
             else { return Prepared(error: String(localized: "Can't save \(name) in its own format")) }
             format = own
             options = FormatSettings.options(for: own)
         }
         var limit: Int?, originalSize: CGSize?
-        if settings.hasOperations, let size = ImageDecoder.displaySize(of: url),
+        if settings.hasOperations, let size = ImageDecoder.displaySize(of: url, source: source),
            let l = ResizeStep.decodeLimit(settings, originalSize: size) {
             limit = l
             originalSize = size
         }
-        let pageCount = ImageDecoder.pageCount(of: url)
         // Frames and Pages: every frame of an animation (from one kept source) or every page is its own output.
         var reader: FrameReader?, units = 1
         if settings.frames.isOn {
-            if let animation = Animation.read(url) {
+            if let animation {
                 do { reader = try FrameReader(url: url, target: .full, colorSpace: nil) }
                 catch { return Prepared(error: String(localized: "Can't open \(name)")) }
                 units = animation.frameCount
@@ -215,11 +217,11 @@ public enum BatchConverter {
                 } else if tiles.isOn {  // tiles of page 1 only
                     pages = [try ImageDecoder.decode(url, maxPixelSize: limit)]
                 } else {
-                    pages = try ImageSaver.pages(of: url, for: format, options: options, maxPixelSize: limit)
+                    pages = try ImageSaver.pages(of: url, for: format, options: options, maxPixelSize: limit, pageCount: pageCount)
                 }
             } catch { return failed(String(localized: "Can't open \(name)")) }
             let hdr = wantsHDR && ImageDecoder.isHDR(pages[0].colorSpace,
-                                                     type: CGImageSourceCreateWithURL(url as CFURL, nil).flatMap(CGImageSourceGetType))
+                                                     type: source.flatMap(CGImageSourceGetType))
             if units == 1, pages.count == 1, pageCount > 1 {
                 note = String(localized: "page 1 of \(pageCount)", comment: "Batch log note: only the first page of a multi-page file was converted")
             }
