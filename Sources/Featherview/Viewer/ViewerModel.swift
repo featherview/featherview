@@ -573,8 +573,8 @@ final class ViewerModel {
             let shown = size.map { factor(for: $0) ?? ZoomSteps.fitFactor(image: $0, view: viewSize, displayScale: displayScale) } ?? 1
             setZoom(.factor(ZoomSteps.step(shown, by: multiplier)))
         }
-        // Page 0's prefetched read; a rotation drops it, so it never has the old orientation.
-        if page == 0, let size = knownInfo[url]?.pixelSize { return step(from: size) }
+        // Page 0's prefetched read; while a rotation or flip is pending it still has the old orientation.
+        if page == 0, pendingChanges.changes.isEmpty, let size = knownInfo[url]?.pixelSize { return step(from: size) }
         let from = zoom
         Task {
             let page = page
