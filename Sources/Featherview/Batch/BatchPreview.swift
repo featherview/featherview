@@ -245,7 +245,7 @@ final class BatchPreviewModel {
             try? await Task.sleep(for: .milliseconds(150))
             guard !Task.isCancelled else { return }
             let cache = self.cache
-            let result = await Task.detached(priority: .userInitiated) { Self.render(key, cache: cache) }.value
+            let result = await offPool { Self.render(key, cache: cache) }
             self.cache = result.cache
             guard !Task.isCancelled else { return }
             original = result.cache.image

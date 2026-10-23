@@ -164,9 +164,10 @@ import Testing
     }
 
     @Test(arguments: FormatRegistry.writable)
-    func everyFormatWritesSomethingReadable(format: OutputFormat) throws {
+    func everyFormatWritesSomethingReadable(format: OutputFormat) async throws {
         _ = Fixtures.jxl
-        let data = try ImageEncoder.encode([image()], as: format, options: format.defaultOptions)
+        // AVIF's encoder needs a free cooperative-pool thread: off the pool, as Save As and the batch run it.
+        let data = try await offPool { try ImageEncoder.encode([image()], as: format, options: format.defaultOptions) }
         #expect(data.count > 0)
         guard case .imageIO = format.writer else { return }  // own formats are checked by their codec tests
         let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
@@ -246,9 +247,9 @@ import Testing
         #expect(RGBAImage(back) == RGBAImage(original))
     }
 
-    @Test func avifAtQuality100StillWrites() throws {
+    @Test func avifAtQuality100StillWrites() async throws {
         let avif = try #require(FormatRegistry.format(id: "avif"))
-        let data = try ImageEncoder.encode([image()], as: avif, options: FormatOptions().with { $0.quality = 100 })
+        let data = try await offPool { try ImageEncoder.encode([image()], as: avif, options: FormatOptions().with { $0.quality = 100 }) }
         #expect(data.count > 0)
     }
 

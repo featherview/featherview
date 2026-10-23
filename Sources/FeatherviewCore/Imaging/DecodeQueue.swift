@@ -2,11 +2,13 @@ import Foundation
 import os
 
 /// Runs blocking ImageIO or encoder work on GCD, so it never ties up the cooperative pool the viewer's
-/// decode tasks need (Save As, the batch).
-public func offPool<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
-    await withCheckedContinuation { done in
-        DispatchQueue.global(qos: .userInitiated).async { done.resume(returning: work()) }
-    }
+/// decode tasks need (Save As, the batch). Required for AVIF encoding and auto adjust (Vision): both wait on
+/// work of their own that runs on the cooperative pool, so with every pool thread inside one of them nothing
+/// moves again (a 3-core Mac has 3 pool threads).
+public func offPool<T: Sendable, E: Error>(_ work: @escaping @Sendable () throws(E) -> T) async throws(E) -> T {
+    try await withCheckedContinuation { (done: CheckedContinuation<Result<T, E>, Never>) in
+        DispatchQueue.global(qos: .userInitiated).async { done.resume(returning: Result { () throws(E) -> T in try work() }) }
+    }.get()
 }
 
 /// Runs blocking decodes on its own threads, at most `width` at once, nearest to the image shown first.

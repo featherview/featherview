@@ -117,9 +117,7 @@ extension ViewerModel {
                                                window: window) else { return false }
         let target = choice.url
         do {
-            try await Task.detached(priority: .userInitiated) {
-                try ImageSaver.save(picture, to: target, as: choice.format, options: choice.options)
-            }.value
+            try await offPool { try ImageSaver.save(picture, to: target, as: choice.format, options: choice.options) }
         } catch {
             errorMessage = String(localized: "Couldn't save \(target.lastPathComponent)")
             return false

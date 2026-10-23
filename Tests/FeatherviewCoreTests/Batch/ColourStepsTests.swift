@@ -13,6 +13,11 @@ private func grey(_ v: Int, width: Int = 8, height: Int = 8) -> CIImage {
     return PipelineFixtures.solid(RGBAColor(red: c, green: c, blue: c), width: width, height: height)
 }
 
+/// Auto adjust runs Vision, which needs a free cooperative-pool thread: off the pool, as the batch runs it.
+private func autoAdjusted(_ image: @escaping @Sendable () -> CIImage) async throws -> RGBAImage {
+    try await offPool { try PipelineFixtures.pixels(ColourStep.apply(image(), colour { $0.autoAdjust = true }, scale: 1)) }
+}
+
 private func colour(_ configure: (inout ColourSettings) -> Void) -> ColourSettings {
     var s = ColourSettings()
     s.isOn = true
@@ -38,28 +43,29 @@ private func filter(_ configure: (inout FilterSettings) -> Void) -> FilterSettin
     }
 
     /// A 1x1 image (spacer GIF, tracking pixel) is auto-adjusted like a larger one of the same colour, not turned black.
-    @Test func autoAdjustOnOnePixelMatchesALargerImage() throws {
-        let auto = colour { $0.autoAdjust = true }
-        let big = try PipelineFixtures.pixels(ColourStep.apply(grey(128, width: 2, height: 2), auto, scale: 1))[0, 0]
-        var one = RGBAImage(width: 1, height: 1)
-        one[0, 0] = (128, 128, 128, 255)
-        for image in [grey(128, width: 1, height: 1), grey(128, width: 1, height: 100), PipelineFixtures.fromRGBA(one)] {
-            let out = try PipelineFixtures.pixels(ColourStep.apply(image, auto, scale: 1))[0, 0]
+    @Test func autoAdjustOnOnePixelMatchesALargerImage() async throws {
+        let big = try await autoAdjusted { grey(128, width: 2, height: 2) }[0, 0]
+        var pixel = RGBAImage(width: 1, height: 1)
+        pixel[0, 0] = (128, 128, 128, 255)
+        let one = pixel
+        let images: [@Sendable () -> CIImage] = [{ grey(128, width: 1, height: 1) }, { grey(128, width: 1, height: 100) },
+                                                 { PipelineFixtures.fromRGBA(one) }]
+        for image in images {
+            let out = try await autoAdjusted(image)[0, 0]
             #expect(near(out, (Int(big.r), Int(big.g), Int(big.b), 255)), "\(out) vs \(big)")
         }
     }
 
     /// A logo or cut-out gets the same correction as the same colours without transparency.
-    @Test func autoAdjustMeasuresColoursNotAlpha() throws {
-        func gradient(alpha: UInt8, height: Int = 16) -> CIImage {
+    @Test func autoAdjustMeasuresColoursNotAlpha() async throws {
+        @Sendable func gradient(alpha: UInt8, height: Int = 16) -> CIImage {
             var image = RGBAImage(width: 64, height: height, pixels: [UInt8](repeating: 0, count: 64 * height * 4))
             for y in 0..<16 { for x in 0..<64 { image[x, y] = (UInt8(40 + x), UInt8(200 - x), UInt8(90 + x / 2), alpha) } }
             return PipelineFixtures.fromRGBA(image)
         }
-        let auto = colour { $0.autoAdjust = true }
-        let opaque = try PipelineFixtures.pixels(ColourStep.apply(gradient(alpha: 255), auto, scale: 1))[10, 8]
-        let half = try PipelineFixtures.pixels(ColourStep.apply(gradient(alpha: 128), auto, scale: 1))[10, 8]
-        let padded = try PipelineFixtures.pixels(ColourStep.apply(gradient(alpha: 255, height: 64), auto, scale: 1))[10, 8]
+        let opaque = try await autoAdjusted { gradient(alpha: 255) }[10, 8]
+        let half = try await autoAdjusted { gradient(alpha: 128) }[10, 8]
+        let padded = try await autoAdjusted { gradient(alpha: 255, height: 64) }[10, 8]
         #expect(near(half, (Int(opaque.r), Int(opaque.g), Int(opaque.b), 128), 3), "\(half) vs \(opaque)")
         #expect(near(padded, (Int(opaque.r), Int(opaque.g), Int(opaque.b), 255), 3), "\(padded) vs \(opaque)")
     }

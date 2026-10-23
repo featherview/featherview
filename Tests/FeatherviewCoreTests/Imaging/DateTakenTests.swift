@@ -48,7 +48,7 @@ import UniformTypeIdentifiers
         #expect(exif(properties(data))[kCGImagePropertyExifDateTimeOriginal] as? String == "2024:07:01 12:00:00")
     }
 
-    @Test func heicSequenceAndOthersRefused() throws {
+    @Test func heicSequenceAndOthersRefused() async throws {
         let dir = try Fixtures.makeTempDir()
         var urls = [
             try Fixtures.writeAPNG(to: dir.appendingPathComponent("a.png"), delays: [0.1, 0.1]),
@@ -58,8 +58,9 @@ import UniformTypeIdentifiers
             urls.append(try Fixtures.writeImage(to: dir.appendingPathComponent("b.\(type.preferredFilenameExtension!)"),
                                                 width: 8, height: 8, type: type))
         }
-        let avif = UTType("public.avif")!
-        urls.append(try Fixtures.writeImage(to: dir.appendingPathComponent("c.avif"), width: 8, height: 8, type: avif))
+        // AVIF's encoder needs a free cooperative-pool thread: off the pool, as Save As and the batch run it.
+        let avif = dir.appendingPathComponent("c.avif")
+        urls.append(try await offPool { try Fixtures.writeImage(to: avif, width: 8, height: 8, type: UTType("public.avif")!) })
         for url in urls {
             #expect(throws: DateTakenError.unsupportedFormat, "\(url.lastPathComponent)") {
                 try DateTaken.rewritten(url, date: "2024:07:01 12:00:00")
