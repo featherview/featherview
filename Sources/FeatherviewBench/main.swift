@@ -13,6 +13,7 @@ let usage = """
       swift run -c release featherview-bench thumbnail <file or dir> [--out <dir>]
       swift run -c release featherview-bench grid <dir> [--points 128] [--scale 2] [--cells 40] [--width N]
                                                   [--json out.json] [--baseline in.json]
+      swift run -c release featherview-bench fuzz <seed dir or file> --out <dir> [--seconds 60] [--seed N]
 
     corpus  writes generated test images into <dir> (never commit them).
     decode  times the viewer's fit decode per file and screen, plus one full-size decode per file,
@@ -29,6 +30,10 @@ let usage = """
             (`ThumbnailSize.decodeSide` of --points at --scale) through one byte-budgeted cache and a
             --width-wide queue (default the app's: cores − 2, within 2…6). Prints the time until the last
             one is done, p50 / p95 per file and the cache's decoded bytes. Budgets: browse < 400 ms, grid-heic < 150 ms.
+    fuzz    mutates each seed (one valid file per own format, `FEATHERVIEW_FUZZ_SEEDS=<dir> swift test --filter
+            FuzzSeedTests` writes them) and runs it through the own decoder, until --seconds are up. Each input is
+            written to <out>/current.<ext> first, so a crash leaves it behind; an input taking over 5 s is copied to
+            <out>/hang-<n>.<ext> and exits 3. scripts/fuzz.sh runs it under AddressSanitizer, one format at a time.
     Screens are in pixels; default 3024x1964 3456x2234 5120x2880 (decode), 3024x1964 (browse).
     """
 
@@ -315,6 +320,7 @@ case "corpus":
 case "decode": runDecode()
 case "browse": await runBrowse()
 case "grid": await runGrid()
+case "fuzz": runFuzz()
 case "thumbnail": await runThumbnail(folder, out: option("--out").map { URL(fileURLWithPath: $0) })
 default: fail("Unknown mode \(mode).")
 }
