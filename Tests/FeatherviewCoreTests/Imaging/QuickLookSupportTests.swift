@@ -80,12 +80,11 @@ struct QuickLookSupportTests {
             for i in stride(from: 3, to: image.pixels.count, by: 4) { image.pixels[i] = 255 }
             return try PCXCodec.encode(image)
         }
-        func le32(_ value: Int) -> [UInt8] { (0..<4).map { UInt8((value >> (8 * $0)) & 0xFF) } }
         let header = 4 + 4 * (pages.count + 1)
-        var bytes = le32(0x3ADE_68B1)
+        var bytes = Fixtures.le32(0x3ADE_68B1)
         var offset = header
-        for page in pages { bytes += le32(offset); offset += page.count }
-        bytes += le32(0)
+        for page in pages { bytes += Fixtures.le32(offset); offset += page.count }
+        bytes += Fixtures.le32(0)
         for page in pages { bytes += page }
         let url = try Fixtures.makeTempDir().appending(path: "two.dcx")
         try Data(bytes).write(to: url)

@@ -8,16 +8,12 @@ import UniformTypeIdentifiers
 @Suite struct FrameSourceTests {
     static let screen = [PixelSize(width: 800, height: 600)]
 
-    /// A GIF of the given frames, for frames that aren't solid (`Fixtures.writeAnimatedGIF` only writes solid ones).
+    /// A looping GIF of the given frames, for frames that aren't solid (`Fixtures.writeAnimatedGIF` only writes solid ones).
     static func writeGIF(to url: URL, frames: [CGImage]) throws -> URL {
-        guard let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.gif.identifier as CFString, frames.count, nil)
-        else { throw CocoaError(.fileWriteUnknown) }
-        CGImageDestinationSetProperties(dest, [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFLoopCount: 0]] as CFDictionary)
-        for frame in frames {
-            CGImageDestinationAddImage(dest, frame, [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFDelayTime: 0.04]] as CFDictionary)
-        }
-        guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
-        return url
+        try Fixtures.writeSequence(to: url, type: UTType.gif.identifier, dictionary: kCGImagePropertyGIFDictionary,
+                                   delayKey: kCGImagePropertyGIFDelayTime, delays: Array(repeating: 0.04, count: frames.count),
+                                   frame: { frames[$0] },
+                                   fileProperties: [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFLoopCount: 0]])
     }
 
     static func solid(_ n: Int, width: Int, height: Int) -> CGImage {
@@ -27,16 +23,6 @@ import UniformTypeIdentifiers
         context.setFillColor(CGColor(red: CGFloat(40 * n) / 255, green: n == 1 ? 1 : 0, blue: n == 2 ? 1 : 0, alpha: 1))
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         return context.makeImage()!
-    }
-
-    /// RGBA of the pixel at (x, y), top-left origin.
-    static func pixel(_ image: CGImage, x: Int, y: Int) -> [UInt8] {
-        var bytes = [UInt8](repeating: 0, count: 4)
-        let context = CGContext(data: &bytes, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
-                                space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.draw(image, in: CGRect(x: -x, y: y - image.height + 1, width: image.width, height: image.height))
-        return bytes
     }
 
     @Test func frameZeroMatchesStillDecode() async throws {
@@ -69,8 +55,9 @@ import UniformTypeIdentifiers
         let one = try await source.frame(1)
         let two = try await source.frame(2)
         #expect(two.width == 40 && two.height == 30)
-        #expect(Self.pixel(two, x: 30, y: 25) == Self.pixel(one, x: 30, y: 25))
-        #expect(Self.pixel(two, x: 30, y: 25) != Self.pixel(two, x: 2, y: 2))
+        let (oneRGBA, twoRGBA) = (try #require(RGBAImage(one)), try #require(RGBAImage(two)))
+        #expect(twoRGBA[30, 25] == oneRGBA[30, 25])
+        #expect(twoRGBA[30, 25] != twoRGBA[2, 2])
     }
 
     @Test func stepTargetHalves() async throws {
@@ -116,7 +103,7 @@ import UniformTypeIdentifiers
         #expect(Animation.read(url)?.frameCount == 3)
         let source = try FrameSource(url: url, target: .fit(Self.screen), colorSpace: nil)
         let frame = try await source.frame(1)
-        #expect(Self.pixel(frame, x: 1, y: 1)[0] == 40)
+        #expect(try #require(RGBAImage(frame))[1, 1].r == 40)
         await #expect(throws: DecodeError.unreadable(url)) { try await source.frame(3) }
     }
 }

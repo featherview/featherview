@@ -14,7 +14,6 @@ import Testing
         key.padding(toLength: 8, withPad: " ", startingAt: 0) + "= " + String(repeating: " ", count: max(0, 20 - value.count)) + value
     }
 
-    static func be16(_ v: Int) -> [UInt8] { [UInt8(v >> 8 & 0xFF), UInt8(v & 0xFF)] }
 
     @Test func eightBitShowsAsStoredBottomRowFirst() throws {
         let bytes = Self.file([Self.card("SIMPLE", "T"), Self.card("BITPIX", "8"), Self.card("NAXIS", "2"),
@@ -30,7 +29,7 @@ import Testing
         let raw = [0, 1000, 2000, 3000].map { $0 - 32768 }
         let bytes = Self.file([Self.card("SIMPLE", "T"), Self.card("BITPIX", "16"), Self.card("NAXIS", "2"),
                                Self.card("NAXIS1", "4"), Self.card("NAXIS2", "1"), Self.card("BZERO", "32768"),
-                               Self.card("BSCALE", "1.0")], data: raw.flatMap { Self.be16($0 & 0xFFFF) })
+                               Self.card("BSCALE", "1.0")], data: raw.flatMap { Fixtures.be16($0 & 0xFFFF) })
         let image = try FITSDecoder.decode(Data(bytes))
         #expect(image[0, 0].r == 0 && image[1, 0].r == 85 && image[2, 0].r == 170 && image[3, 0].r == 255)
     }

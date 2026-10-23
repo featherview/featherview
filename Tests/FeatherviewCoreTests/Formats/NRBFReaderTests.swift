@@ -15,11 +15,10 @@ struct NRBFBytes {
         case null
     }
 
-    static func le32(_ v: Int) -> [UInt8] { (0..<4).map { UInt8(truncatingIfNeeded: v >> ($0 * 8)) } }
     static func le64(_ v: Int) -> [UInt8] { (0..<8).map { UInt8(truncatingIfNeeded: v >> ($0 * 8)) } }
 
     mutating func u8(_ v: UInt8) { bytes.append(v) }
-    mutating func i32(_ v: Int) { bytes += Self.le32(v) }
+    mutating func i32(_ v: Int) { bytes += Fixtures.le32(v) }
 
     /// Length-prefixed string: 7-bit variable-length count, then UTF-8.
     mutating func string(_ s: String) {

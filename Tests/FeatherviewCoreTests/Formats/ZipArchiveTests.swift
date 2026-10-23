@@ -7,8 +7,6 @@ import UniformTypeIdentifiers
 
 /// Builds zip archives byte by byte (PKWARE APPNOTE 4.3): local headers, central directory, end record.
 enum ZipFixture {
-    static func le16(_ v: Int) -> [UInt8] { [UInt8(v & 0xFF), UInt8(v >> 8 & 0xFF)] }
-    static func le32(_ v: Int) -> [UInt8] { le16(v & 0xFFFF) + le16(v >> 16 & 0xFFFF) }
 
     static func deflate(_ bytes: [UInt8]) -> [UInt8] {
         var out = [UInt8](repeating: 0, count: bytes.count + 64)
@@ -24,13 +22,13 @@ enum ZipFixture {
             let payload = method == 8 ? deflate(bytes) : bytes
             let nameBytes = Array(name.utf8)
             let offset = body.count
-            let common = le16(20) + le16(0) + le16(method) + le32(0) + le32(0)  // version, flags, method, time+date, crc
-                + le32(payload.count) + le32(bytes.count) + le16(nameBytes.count) + le16(0)
-            body += le32(0x0403_4B50) + common + nameBytes + payload
-            central += le32(0x0201_4B50) + le16(20) + common + le16(0) + le16(0) + le16(0) + le32(0) + le32(offset) + nameBytes
+            let common = Fixtures.le16(20) + Fixtures.le16(0) + Fixtures.le16(method) + Fixtures.le32(0) + Fixtures.le32(0)  // version, flags, method, time+date, crc
+                + Fixtures.le32(payload.count) + Fixtures.le32(bytes.count) + Fixtures.le16(nameBytes.count) + Fixtures.le16(0)
+            body += Fixtures.le32(0x0403_4B50) + common + nameBytes + payload
+            central += Fixtures.le32(0x0201_4B50) + Fixtures.le16(20) + common + Fixtures.le16(0) + Fixtures.le16(0) + Fixtures.le16(0) + Fixtures.le32(0) + Fixtures.le32(offset) + nameBytes
         }
-        let end = le32(0x0605_4B50) + le16(0) + le16(0) + le16(entries.count) + le16(entries.count)
-            + le32(central.count) + le32(body.count) + le16(0)
+        let end = Fixtures.le32(0x0605_4B50) + Fixtures.le16(0) + Fixtures.le16(0) + Fixtures.le16(entries.count) + Fixtures.le16(entries.count)
+            + Fixtures.le32(central.count) + Fixtures.le32(body.count) + Fixtures.le16(0)
         return Data(body + central + end)
     }
 
@@ -39,11 +37,7 @@ enum ZipFixture {
         var image = RGBAImage(width: 6, height: 4)
         for y in 0..<4 { for x in 0..<6 { image[x, y] = (255, 0, 0, 255) } }
         image[0, 0] = (0, 0, 0, 0)
-        let url = try Fixtures.makeTempDir().appendingPathComponent("m.png")
-        let dest = try #require(CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil))
-        CGImageDestinationAddImage(dest, try #require(image.makeCGImage()), nil)
-        #expect(CGImageDestinationFinalize(dest))
-        return Array(try Data(contentsOf: url))
+        return Array(Fixtures.encoded(try #require(image.makeCGImage()), as: .png))
     }
 }
 
@@ -64,7 +58,7 @@ enum ZipFixture {
         // An entry claiming 4 GiB unpacked with 3 bytes of data fails before allocating.
         var huge = [UInt8](good)
         let central = huge.count - 22 - 47
-        huge.replaceSubrange(central + 24..<central + 28, with: ZipFixture.le32(0xFFFF_FFFE))
+        huge.replaceSubrange(central + 24..<central + 28, with: Fixtures.le32(0xFFFF_FFFE))
         #expect(throws: OwnDecodeError.self) { try ZipArchive(Data(huge)).read("x") }
     }
 

@@ -5,24 +5,24 @@ import UniformTypeIdentifiers
 @testable import FeatherviewCore
 
 @Suite struct ThumbnailDecodeTests {
-    private func centre(_ image: CGImage) -> [UInt8] {
-        FrameSourceTests.pixel(image, x: image.width / 2, y: image.height / 2)
+    private func centre(_ image: CGImage) throws -> (r: UInt8, g: UInt8, b: UInt8, a: UInt8) {
+        try #require(RGBAImage(image))[image.width / 2, image.height / 2]
     }
 
     @Test func embeddedUsedWhenBigEnough() throws {
         let url = try Fixtures.writeJPEGWithForeignThumbnail(to: Fixtures.makeTempDir().appendingPathComponent("a.jpg"))
         let image = try ImageDecoder.thumbnail(url, side: 120, colorSpace: nil)
         #expect((image.width, image.height) == (120, 90))
-        let pixel = centre(image)
-        #expect(pixel[2] > 200 && pixel[0] < 50)
+        let pixel = try centre(image)
+        #expect(pixel.b > 200 && pixel.r < 50)
     }
 
     @Test func decodesWhenEmbeddedTooSmall() throws {
         let url = try Fixtures.writeJPEGWithForeignThumbnail(to: Fixtures.makeTempDir().appendingPathComponent("a.jpg"))
         let image = try ImageDecoder.thumbnail(url, side: 400, colorSpace: nil)
         #expect((image.width, image.height) == (400, 300))
-        let pixel = centre(image)
-        #expect(pixel[0] > 200 && pixel[2] < 50)
+        let pixel = try centre(image)
+        #expect(pixel.r > 200 && pixel.b < 50)
     }
 
     @Test func letterboxedEmbeddedIsSkipped() {
@@ -71,9 +71,9 @@ import UniformTypeIdentifiers
         let url = try Fixtures.writeAnimatedGIF(to: Fixtures.makeTempDir().appendingPathComponent("a.gif"),
                                                 delays: [0.1, 0.1, 0.1], width: 400, height: 300)
         let image = try ImageDecoder.thumbnail(url, side: 100, colorSpace: nil)
-        let frame0 = centre(Fixtures.animationFrame(0, width: 4, height: 4))
-        let pixel = centre(image)
-        #expect(abs(Int(pixel[0]) - Int(frame0[0])) < 10)
+        let frame0 = try centre(Fixtures.animationFrame(0, width: 4, height: 4))
+        let pixel = try centre(image)
+        #expect(abs(Int(pixel.r) - Int(frame0.r)) < 10)
     }
 
     @Test func multiPageTIFFShowsPageOne() throws {

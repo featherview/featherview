@@ -3,7 +3,6 @@ import Testing
 @testable import FeatherviewCore
 
 @Suite struct XWDDecoderTests {
-    static func be32(_ v: Int) -> [UInt8] { [24, 16, 8, 0].map { UInt8(v >> $0 & 0xFF) } }
 
     /// An XWD file version 7, Z pixmap: 25 header fields, the window name, the colormap, the pixels.
     static func file(width: Int, height: Int, depth: Int, bitsPerPixel: Int, bytesPerLine: Int, visualClass: Int,
@@ -15,9 +14,9 @@ import Testing
                       width, height, 0, 0, 0]
         let map: [UInt8] = colors.flatMap { c -> [UInt8] in
             let rgb: [UInt8] = [c.r, c.g, c.b].flatMap { [UInt8($0 >> 8), UInt8($0 & 0xFF)] }
-            return be32(c.pixel) + rgb + [7, 0]
+            return Fixtures.be32(c.pixel) + rgb + [7, 0]
         }
-        return fields.flatMap(be32) + name + map + pixels
+        return fields.flatMap(Fixtures.be32) + name + map + pixels
     }
 
     @Test func trueColor32BitUsesTheMasks() throws {

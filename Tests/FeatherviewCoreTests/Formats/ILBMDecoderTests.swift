@@ -3,22 +3,20 @@ import Testing
 @testable import FeatherviewCore
 
 @Suite struct ILBMDecoderTests {
-    static func be16(_ v: Int) -> [UInt8] { [UInt8(truncatingIfNeeded: v >> 8), UInt8(truncatingIfNeeded: v)] }
-    static func be32(_ v: Int) -> [UInt8] { be16(v >> 16) + be16(v) }
 
     static func chunk(_ id: String, _ bytes: [UInt8]) -> [UInt8] {
-        Array(id.utf8) + be32(bytes.count) + bytes + (bytes.count % 2 == 1 ? [0] : [])
+        Array(id.utf8) + Fixtures.be32(bytes.count) + bytes + (bytes.count % 2 == 1 ? [0] : [])
     }
 
     static func form(_ chunks: [[UInt8]], kind: String = "ILBM") -> Data {
         let content = Array(kind.utf8) + chunks.joined()
-        return Data(Array("FORM".utf8) + be32(content.count) + content)
+        return Data(Array("FORM".utf8) + Fixtures.be32(content.count) + content)
     }
 
     static func bmhd(width: Int, height: Int, planes: Int, masking: Int = 0, compression: Int = 0,
                      transparent: Int = 0) -> [UInt8] {
-        chunk("BMHD", be16(width) + be16(height) + [0, 0, 0, 0, UInt8(planes), UInt8(masking), UInt8(compression), 0]
-              + be16(transparent) + [10, 11] + be16(width) + be16(height))
+        chunk("BMHD", Fixtures.be16(width) + Fixtures.be16(height) + [0, 0, 0, 0, UInt8(planes), UInt8(masking), UInt8(compression), 0]
+              + Fixtures.be16(transparent) + [10, 11] + Fixtures.be16(width) + Fixtures.be16(height))
     }
 
     static func cmap(_ colors: [(UInt8, UInt8, UInt8)]) -> [UInt8] { chunk("CMAP", colors.flatMap { [$0.0, $0.1, $0.2] }) }
@@ -66,7 +64,7 @@ import Testing
     @Test func extraHalfBrite() throws {
         var colors = [(UInt8, UInt8, UInt8)](repeating: (0, 0, 0), count: 32)
         colors[1] = (200, 100, 50)
-        let data = Self.form([Self.bmhd(width: 2, height: 1, planes: 6), Self.cmap(colors), Self.chunk("CAMG", Self.be32(0x80)),
+        let data = Self.form([Self.bmhd(width: 2, height: 1, planes: 6), Self.cmap(colors), Self.chunk("CAMG", Fixtures.be32(0x80)),
                               Self.chunk("BODY", Self.planar([[1, 33]], planes: 6))])
         let image = try ILBMDecoder.decode(data)
         #expect(image[0, 0] == (200, 100, 50, 255))
@@ -78,7 +76,7 @@ import Testing
         colors[1] = (0x10, 0x20, 0x30)
         // Palette 1; red := 15×17; green := 0; blue := 5×17.
         let row = [0b00_0001, 0b10_1111, 0b11_0000, 0b01_0101]
-        let data = Self.form([Self.bmhd(width: 4, height: 1, planes: 6), Self.cmap(colors), Self.chunk("CAMG", Self.be32(0x800)),
+        let data = Self.form([Self.bmhd(width: 4, height: 1, planes: 6), Self.cmap(colors), Self.chunk("CAMG", Fixtures.be32(0x800)),
                               Self.chunk("BODY", Self.planar([row], planes: 6))])
         let image = try ILBMDecoder.decode(data)
         #expect(image[0, 0] == (0x10, 0x20, 0x30, 255))
@@ -91,7 +89,7 @@ import Testing
         var colors = [(UInt8, UInt8, UInt8)](repeating: (0, 0, 0), count: 64)
         colors[0] = (0x03, 0x03, 0x03)
         let row = [0b10_000001]  // modify red from the row's start colour 0: 1 << 2 | 3
-        let data = Self.form([Self.bmhd(width: 1, height: 1, planes: 8), Self.cmap(colors), Self.chunk("CAMG", Self.be32(0x800)),
+        let data = Self.form([Self.bmhd(width: 1, height: 1, planes: 8), Self.cmap(colors), Self.chunk("CAMG", Fixtures.be32(0x800)),
                               Self.chunk("BODY", Self.planar([row], planes: 8))])
         #expect(try ILBMDecoder.decode(data)[0, 0] == (0x07, 0x03, 0x03, 255))
     }

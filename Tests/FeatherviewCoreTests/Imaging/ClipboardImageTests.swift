@@ -18,28 +18,20 @@ import UniformTypeIdentifiers
         #expect(back.width == 2000 && back.height == 1000)
     }
 
-    private func encoded(_ image: CGImage, as type: UTType, orientation: Int = 1) throws -> Data {
-        let data = NSMutableData()
-        let dest = try #require(CGImageDestinationCreateWithData(data, type.identifier as CFString, 1, nil))
-        CGImageDestinationAddImage(dest, image, [kCGImagePropertyOrientation: orientation] as CFDictionary)
-        #expect(CGImageDestinationFinalize(dest))
-        return data as Data
-    }
-
     @Test func pngDataDecodes() throws {
-        let data = try encoded(Fixtures.animationFrame(0, width: 8, height: 6), as: .png)
+        let data = Fixtures.encoded(Fixtures.animationFrame(0, width: 8, height: 6), as: .png, orientation: 1)
         let image = try #require(ClipboardImage.image(from: data))
         #expect(image.width == 8 && image.height == 6)
     }
 
     @Test func tiffDataDecodes() throws {
-        let data = try encoded(Fixtures.animationFrame(0, width: 8, height: 6), as: .tiff)
+        let data = Fixtures.encoded(Fixtures.animationFrame(0, width: 8, height: 6), as: .tiff, orientation: 1)
         let image = try #require(ClipboardImage.image(from: data))
         #expect(image.width == 8 && image.height == 6)
     }
 
     @Test func jpegOrientationApplied() throws {
-        let data = try encoded(Fixtures.animationFrame(0, width: 4, height: 2), as: .jpeg, orientation: 6)
+        let data = Fixtures.encoded(Fixtures.animationFrame(0, width: 4, height: 2), as: .jpeg, orientation: 6)
         let image = try #require(ClipboardImage.image(from: data))
         #expect(image.width == 2 && image.height == 4)
     }

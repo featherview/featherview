@@ -31,15 +31,8 @@ struct PDNBuilder {
     /// Rewrites one block's chunks before they're gzipped (reorder, drop, duplicate, replace).
     var chunks: (_ layer: Int, _ chunks: [Chunk]) -> [Chunk] = { $1 }
 
-    static func be32(_ v: Int) -> [UInt8] { (0..<4).reversed().map { UInt8(truncatingIfNeeded: v >> ($0 * 8)) } }
 
-    static func png(_ image: RGBAImage) -> Data {
-        let data = NSMutableData()
-        let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil)!
-        CGImageDestinationAddImage(destination, image.makeCGImage()!, nil)
-        precondition(CGImageDestinationFinalize(destination))
-        return data as Data
-    }
+    static func png(_ image: RGBAImage) -> Data { Fixtures.encoded(image.makeCGImage()!, as: .png) }
 
     func xml() -> [UInt8] {
         let thumb = (thumbnailPNG ?? thumbnail.map(Self.png)).map { #"<custom><thumb png=""# + $0.base64EncodedString() + #"" /></custom>"# } ?? ""
@@ -100,9 +93,9 @@ struct PDNBuilder {
         let raw: [Chunk] = stride(from: 0, to: bytes.count, by: chunkSize).enumerated().map { index, start in
             (index, Array(bytes[start..<min(start + chunkSize, bytes.count)]))
         }
-        return [0] + Self.be32(chunkSize) + chunks(i, raw).flatMap { chunk -> [UInt8] in
+        return [0] + Fixtures.be32(chunkSize) + chunks(i, raw).flatMap { chunk -> [UInt8] in
             let packed = InflateTests.gzip(chunk.raw)
-            return Self.be32(chunk.index) + Self.be32(packed.count) + packed
+            return Fixtures.be32(chunk.index) + Fixtures.be32(packed.count) + packed
         }
     }
 
@@ -116,15 +109,11 @@ struct PDNBuilder {
 }
 
 @Suite struct PDNDecoderTests {
-    static func solid(_ w: Int, _ h: Int, _ p: (UInt8, UInt8, UInt8, UInt8)) -> RGBAImage {
-        RGBAImage(width: w, height: h, pixels: (0..<w * h).flatMap { _ in [p.0, p.1, p.2, p.3] })
-    }
-
-    static let red = solid(4, 3, (255, 0, 0, 255))
+    static let red = Fixtures.solid(4, 3, (255, 0, 0, 255))
 
     /// Blue on the left half, transparent on the right.
     static var halfBlue: RGBAImage {
-        var image = solid(4, 3, (0, 0, 0, 0))
+        var image = Fixtures.solid(4, 3, (0, 0, 0, 0))
         for y in 0..<3 { for x in 0..<2 { image[x, y] = (0, 0, 255, 255) } }
         return image
     }
@@ -146,13 +135,13 @@ struct PDNBuilder {
 
     @Test func usesCanvasSizedThumbnail() throws {
         var b = Self.builder([.init(pixels: Self.red)])
-        b.thumbnail = Self.solid(4, 3, (0, 255, 0, 255))
+        b.thumbnail = Fixtures.solid(4, 3, (0, 255, 0, 255))
         #expect(try PDNDecoder.decode(b.data)[1, 1] == (0, 255, 0, 255))
     }
 
     @Test func ignoresSmallThumbnailAndUsesLayers() throws {
         var b = Self.builder([.init(pixels: Self.red)])
-        b.thumbnail = Self.solid(2, 1, (0, 255, 0, 255))
+        b.thumbnail = Fixtures.solid(2, 1, (0, 255, 0, 255))
         #expect(try PDNDecoder.decode(b.data) == Self.red)
     }
 
@@ -163,12 +152,8 @@ struct PDNBuilder {
         let gray = CGImage(width: side, height: side, bitsPerComponent: 1, bitsPerPixel: 1, bytesPerRow: rowBytes,
                            space: CGColorSpaceCreateDeviceGray(), bitmapInfo: [], provider: provider,
                            decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
-        let png = NSMutableData()
-        let destination = CGImageDestinationCreateWithData(png, UTType.png.identifier as CFString, 1, nil)!
-        CGImageDestinationAddImage(destination, gray, nil)
-        #expect(CGImageDestinationFinalize(destination))
         var b = Self.builder([.init(pixels: Self.red)])
-        b.thumbnailPNG = png as Data
+        b.thumbnailPNG = Fixtures.encoded(gray, as: .png)
         let start = ContinuousClock.now
         #expect(try PDNDecoder.decode(b.data) == Self.red)
         #expect(ContinuousClock.now - start < .milliseconds(200))
@@ -191,7 +176,7 @@ struct PDNBuilder {
     }
 
     @Test func straightAlphaIsKept() throws {
-        let image = try PDNDecoder.decode(Self.builder([.init(pixels: Self.solid(4, 3, (200, 100, 50, 64)))]).data)
+        let image = try PDNDecoder.decode(Self.builder([.init(pixels: Fixtures.solid(4, 3, (200, 100, 50, 64)))]).data)
         #expect(image[0, 0] == (200, 100, 50, 64))
     }
 
@@ -254,7 +239,7 @@ struct PDNBuilder {
         var b = Self.builder([.init(pixels: Self.red)])
         b.width = 60000; b.height = 60000
         #expect(throws: OwnDecodeError.corrupt) { try PDNDecoder.decode(b.data) }
-        var small = Self.builder([.init(pixels: Self.solid(2, 2, (1, 2, 3, 255)))])
+        var small = Self.builder([.init(pixels: Fixtures.solid(2, 2, (1, 2, 3, 255)))])
         small.width = 4; small.height = 3
         #expect(throws: OwnDecodeError.corrupt) { try PDNDecoder.decode(small.data) }
     }
