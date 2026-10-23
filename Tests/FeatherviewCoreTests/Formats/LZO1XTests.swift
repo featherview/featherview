@@ -60,7 +60,7 @@ import Testing
         #expect(throws: OwnDecodeError.self) { try LZO1X.decompress(good, size: 11) }  // ends short
         #expect(throws: OwnDecodeError.self) { try LZO1X.decompress([17 + 1, 1, 0x80 | 7 << 2, 9] + Self.end, size: 7) }  // distance before start
         #expect(throws: OwnDecodeError.self) { try LZO1X.decompress([], size: 1) }
-        var rng = SystemRandomNumberGenerator()
+        var rng = SplitMix(state: 1)
         for _ in 0..<5_000 {
             let junk = (0..<Int.random(in: 0..<40, using: &rng)).map { _ in UInt8.random(in: 0...255, using: &rng) }
             if let out = try? LZO1X.decompress(junk, size: 64) { #expect(out.count == 64) }
@@ -72,5 +72,17 @@ import Testing
         var n = bytes.count - 3 - 15, ext: [UInt8] = [0]
         while n > 255 { ext.append(0); n -= 255 }
         return ext + [UInt8(n)] + bytes
+    }
+}
+
+/// A seeded generator, so the junk inputs are the same on every run.
+private struct SplitMix: RandomNumberGenerator {
+    var state: UInt64
+    mutating func next() -> UInt64 {
+        state &+= 0x9E37_79B9_7F4A_7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+        return z ^ (z >> 31)
     }
 }

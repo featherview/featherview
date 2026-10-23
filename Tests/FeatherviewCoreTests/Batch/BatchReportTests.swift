@@ -16,7 +16,13 @@ import Testing
         #expect(summary.contains("Out"))
         let beside = BatchReport.summary(results: results, seconds: 72, bytesIn: 0, bytesOut: 0, folder: "")
         #expect(beside.hasSuffix("Saved next to the originals."))
-        #expect(!beside.localizedCaseInsensitiveContains("zero"))
+    }
+
+    @Test func allFailedSaysZeroBytes() {
+        let results = [result("a.jpg", .failed, "Can't open a.jpg")]
+        let summary = BatchReport.summary(results: results, seconds: 1, bytesIn: 0, bytesOut: 0, folder: "")
+        #expect(summary.hasPrefix("0 of 1 "))
+        #expect(!summary.localizedCaseInsensitiveContains("zero"))
     }
 
     @Test func folderToShow() throws {
@@ -52,9 +58,8 @@ import Testing
         let results = [parts("a.gif", ["a-1.png", "a-2.png"]), parts("b.tiff", ["b-1.png", "b-2.png", "b-3.png"])]
         let summary = BatchReport.summary(results: results, seconds: 3, bytesIn: 0, bytesOut: 0, folder: "/Users/x/Out")
         #expect(summary.hasPrefix("2 of 2 images converted into 5 files in "))
-        #expect(summary.contains("Out"))
+        #expect(summary.hasSuffix("Saved to /Users/x/Out."))
         let beside = BatchReport.summary(results: results, seconds: 3, bytesIn: 0, bytesOut: 0, folder: "")
-        #expect(beside.hasPrefix("2 of 2 images converted into 5 files in "))
         #expect(beside.hasSuffix("Saved next to the originals."))
         // One output per input: the plain sentence.
         let plain = BatchReport.summary(results: [parts("a.jpg", ["a.png"])], seconds: 3, bytesIn: 0, bytesOut: 0, folder: "")

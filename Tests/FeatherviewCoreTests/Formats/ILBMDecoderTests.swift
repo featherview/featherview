@@ -120,15 +120,6 @@ import Testing
         #expect(image[0, 0] == (0, 255, 0, 255) && image[1, 0] == (0, 0, 0, 255) && image[2, 0] == (255, 0, 0, 255))
     }
 
-    @Test func decodesThroughImageDecoder() throws {
-        OwnDecoders.register(ILBMDecoder.format)
-        let url = try Fixtures.makeTempDir().appendingPathComponent("a.lbm")
-        try Self.form([Self.bmhd(width: 3, height: 1, planes: 2), Self.cmap(Self.fourColors),
-                       Self.chunk("BODY", Self.planar([[3, 1, 2]], planes: 2))]).write(to: url)
-        let image = try #require(RGBAImage(try ImageDecoder.decode(url)))
-        #expect(image.width == 3 && image[1, 0] == (255, 0, 0, 255))
-    }
-
     @Test func badFilesThrow() {
         let header = Self.bmhd(width: 16, height: 4, planes: 2)
         var cut = [UInt8](Self.form([header, Self.chunk("BODY", [UInt8](repeating: 0, count: 16))]))

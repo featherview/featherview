@@ -174,92 +174,86 @@ import Testing
         #expect(out.extent == CGRect(x: 0, y: 0, width: 20, height: 20))
     }
 
-    @Test func autoCropMapsBackFromTheSmallCopy() throws {
-        let image = framed(width: 2400, height: 1600, picture: CGRect(x: 600, y: 400, width: 1200, height: 800))
-        let out = AutoCropStep.apply(image)
-        #expect(out.extent.origin == .zero)
-        #expect(out.extent.size == CGSize(width: 1200, height: 800))
-    }
-
-    /// Large images take the shrunk path; noise of ±5 around the corner colour is still border.
-    @Test func autoCropToleratesNoiseAroundTheCornerOnLargeImages() throws {
-        let picture = CGRect(x: 600, y: 400, width: 1200, height: 800)
-        var image = RGBAImage(width: 2400, height: 1600)
-        for y in 0..<1600 {
-            for x in 0..<2400 {
+    /// Noise of ±5 around the corner colour is still border. Every border is wider than the 64 lines
+    /// scanned at a time.
+    @Test func autoCropToleratesNoiseAroundTheCorner() throws {
+        let picture = CGRect(x: 70, y: 70, width: 120, height: 60)
+        var image = RGBAImage(width: 280, height: 200)
+        for y in 0..<200 {
+            for x in 0..<280 {
                 let v = UInt8(245 + ((x * 7 + y * 3 + 5) % 11 - 5))  // 245 at the corners
                 image[x, y] = picture.contains(CGPoint(x: Double(x) + 0.5, y: Double(y) + 0.5)) ? (255, 0, 0, 255) : (v, v, v, 255)
             }
         }
-        #expect(AutoCropStep.apply(PipelineFixtures.fromRGBA(image)).extent == CGRect(x: 0, y: 0, width: 1200, height: 800))
+        #expect(AutoCropStep.apply(PipelineFixtures.fromRGBA(image)).extent == CGRect(x: 0, y: 0, width: 120, height: 60))
     }
 
-    /// The shrunk pass must judge against the corner pixel itself, or it can run past the real edge.
-    @Test func autoCropLargeImageUsesTheCornerPixel() throws {
-        var image = RGBAImage(width: 2400, height: 1600)
-        for y in 0..<1600 {
-            for x in 0..<2400 {
-                let v: UInt8 = y < 10 ? 200 : y < 400 ? 186 : UInt8((x * 13) % 256)
+    /// Borders are judged against the corner pixel itself, or the scan can run past the real edge.
+    @Test func autoCropUsesTheCornerPixel() throws {
+        var image = RGBAImage(width: 240, height: 160)
+        for y in 0..<160 {
+            for x in 0..<240 {
+                let v: UInt8 = y < 10 ? 200 : y < 40 ? 186 : UInt8((x * 13) % 256)
                 image[x, y] = (v, v, v, 255)
             }
         }
         image[1, 1] = (192, 192, 192, 255)  // darkens the corner block's minimum, not the corner pixel
-        #expect(AutoCropStep.apply(PipelineFixtures.fromRGBA(image)).extent == CGRect(x: 0, y: 0, width: 2400, height: 1590))
+        #expect(AutoCropStep.apply(PipelineFixtures.fromRGBA(image)).extent == CGRect(x: 0, y: 0, width: 240, height: 150))
     }
 
-    /// Shrinking must not average a thin, faint line near the edge into the border and cut it off.
-    @Test(arguments: [100, 104, 106])
+    /// A thin, faint line near the edge is picture, not border.
+    @Test(arguments: [10, 14, 16])
     func autoCropKeepsThinLineNearTheEdge(x: Int) throws {
         func box(_ v: CGFloat, _ r: CGRect) -> CIImage {
             CIImage(color: CIColor(red: v, green: v, blue: v, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)!).cropped(to: r)
         }
-        let image = box(230.0 / 255, CGRect(x: x, y: 0, width: 1, height: 400))
-            .composited(over: PipelineFixtures.solid(red, width: 3000, height: 400).transformed(by: .init(translationX: 1500, y: 0)))
-            .composited(over: box(1, CGRect(x: 0, y: 0, width: 6000, height: 400)))
+        let image = box(230.0 / 255, CGRect(x: x, y: 0, width: 1, height: 40))
+            .composited(over: PipelineFixtures.solid(red, width: 300, height: 40).transformed(by: .init(translationX: 150, y: 0)))
+            .composited(over: box(1, CGRect(x: 0, y: 0, width: 600, height: 40)))
         let out = AutoCropStep.apply(image)
-        #expect(out.extent == CGRect(x: 0, y: 0, width: 4500 - x, height: 400))
+        #expect(out.extent == CGRect(x: 0, y: 0, width: 450 - x, height: 40))
     }
 
     @Test func autoCropKeepsThinLineNearTheBottom() throws {
         let grey = CIColor(red: 0.9, green: 0.9, blue: 0.9, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)!
         // Core Image's y = 3 is the fourth row from the bottom.
-        let image = CIImage(color: grey).cropped(to: CGRect(x: 0, y: 3, width: 400, height: 1))
-            .composited(over: PipelineFixtures.solid(red, width: 400, height: 3000).transformed(by: .init(translationX: 0, y: 1500)))
-            .composited(over: PipelineFixtures.solid(.white, width: 400, height: 6000))
-        #expect(AutoCropStep.apply(image).extent == CGRect(x: 0, y: 0, width: 400, height: 4497))
+        let image = CIImage(color: grey).cropped(to: CGRect(x: 0, y: 3, width: 40, height: 1))
+            .composited(over: PipelineFixtures.solid(red, width: 40, height: 300).transformed(by: .init(translationX: 0, y: 150)))
+            .composited(over: PipelineFixtures.solid(.white, width: 40, height: 600))
+        #expect(AutoCropStep.apply(image).extent == CGRect(x: 0, y: 0, width: 40, height: 447))
     }
 
-    /// Content 9 to 13 levels off the border is kept on large images, as the full-size rule keeps it.
+    /// Content 10 or 13 levels off the border colour is kept.
     @Test(arguments: [245, 242])
-    func autoCropKeepsFaintRowOnLargeImages(grey: Int) throws {
+    func autoCropKeepsFaintRowInTheBorder(grey: Int) throws {
         let v = CGFloat(grey) / 255
         let image = CIImage(color: CIColor(red: v, green: v, blue: v, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)!)
-            .cropped(to: CGRect(x: 1500, y: 3333, width: 3000, height: 1))
-            .composited(over: PipelineFixtures.solid(red, width: 3000, height: 2500).transformed(by: .init(translationX: 1500, y: 500)))
-            .composited(over: PipelineFixtures.solid(.white, width: 6000, height: 4000))
-        #expect(AutoCropStep.apply(image).extent == CGRect(x: 0, y: 0, width: 3000, height: 2834))
+            .cropped(to: CGRect(x: 150, y: 333, width: 300, height: 1))
+            .composited(over: PipelineFixtures.solid(red, width: 300, height: 250).transformed(by: .init(translationX: 150, y: 50)))
+            .composited(over: PipelineFixtures.solid(.white, width: 600, height: 400))
+        #expect(AutoCropStep.apply(image).extent == CGRect(x: 0, y: 0, width: 300, height: 284))
     }
 
-    /// Top-left and bottom-right borders of different colours: the side borders still go on large images.
+    /// Top-left and bottom-right borders of different colours: the side borders still go.
     @Test func autoCropRemovesSidesWhenCornerColoursDiffer() throws {
-        var image = RGBAImage(width: 2400, height: 1600)
-        for y in 0..<1600 {
-            for x in 0..<2400 {
-                let v: UInt8 = y < 200 ? 255 : y >= 1400 ? 0 : x < 200 ? 255 : x >= 2200 ? 0 : 128
+        var image = RGBAImage(width: 240, height: 160)
+        for y in 0..<160 {
+            for x in 0..<240 {
+                let v: UInt8 = y < 20 ? 255 : y >= 140 ? 0 : x < 20 ? 255 : x >= 220 ? 0 : 128
                 image[x, y] = (v, v, v, 255)
             }
         }
-        #expect(AutoCropStep.apply(PipelineFixtures.fromRGBA(image)).extent == CGRect(x: 0, y: 0, width: 2000, height: 1200))
+        #expect(AutoCropStep.apply(PipelineFixtures.fromRGBA(image)).extent == CGRect(x: 0, y: 0, width: 200, height: 120))
     }
 
-    /// Content only near the top and bottom edges of a large image still bounds the sides.
+    /// Content only near the top and bottom edges still bounds the sides.
     @Test func autoCropSeesContentOnlyNearTopAndBottom() throws {
-        var pixels = RGBAImage(width: 2000, height: 1500)
+        var pixels = RGBAImage(width: 200, height: 150)
         for i in stride(from: 0, to: pixels.pixels.count, by: 4) { pixels.pixels.replaceSubrange(i..<i + 4, with: [255, 255, 255, 255]) }
-        for y in 0..<4 { for x in 100..<110 { pixels[x, y + 2] = (0, 0, 0, 255) } }       // near the top
-        for y in 0..<4 { for x in 1800..<1810 { pixels[x, 1494 + y] = (0, 0, 0, 255) } }  // near the bottom
+        for y in 0..<4 { for x in 10..<12 { pixels[x, y + 2] = (0, 0, 0, 255) } }    // near the top
+        for y in 0..<4 { for x in 180..<182 { pixels[x, 144 + y] = (0, 0, 0, 255) } }  // near the bottom
         let out = AutoCropStep.apply(PipelineFixtures.fromRGBA(pixels))
-        #expect(out.extent == CGRect(x: 0, y: 0, width: 1710, height: 1496))
+        #expect(out.extent == CGRect(x: 0, y: 0, width: 172, height: 146))
     }
 
     @Test func canvasRunsAutoCropFirst() throws {

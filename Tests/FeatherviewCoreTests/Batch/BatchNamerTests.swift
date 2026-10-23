@@ -2,7 +2,31 @@ import Foundation
 import Testing
 @testable import FeatherviewCore
 
-@Suite struct RenamePatternDateTests {
+@Suite struct RenamePatternTests {
+    @Test func nameAndPaddedCounterFillIn() {
+        #expect(RenamePattern("{name}_{n:3}").baseName(original: "IMG", index: 7) == "IMG_007")
+        #expect(RenamePattern("x{n}").baseName(original: "a", index: 12) == "x12")
+        #expect(RenamePattern("{n:2}").baseName(original: "a", index: 123) == "123")
+    }
+
+    @Test func padWidthIsCapped() {
+        // A typo like {n:200000000} must not build a huge string for every file.
+        #expect(RenamePattern("{n:20}").baseName(original: "a", index: 1) == "0000000001")
+        #expect(RenamePattern("{n:200000000}").baseName(original: "a", index: 1).count == 10)
+    }
+
+    @Test func cannotEscapeTheOutputFolder() {
+        #expect(RenamePattern("a/b:c").baseName(original: "z", index: 1) == "a-b-c")
+    }
+
+    @Test func emptyTemplateKeepsOriginal() {
+        #expect(RenamePattern("").baseName(original: "z", index: 1) == "z")
+    }
+
+    @Test func originalNameIsNeverTreatedAsATemplate() {
+        #expect(RenamePattern("{name}").baseName(original: "my{n}", index: 5) == "my{n}")
+    }
+
     @Test func dateIsISODay() {
         let date = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2024, month: 3, day: 5, hour: 23, minute: 59))!
         #expect(RenamePattern("{date}_{name}_{n:2}").baseName(original: "IMG", index: 4, date: date) == "2024-03-05_IMG_04")
@@ -41,7 +65,7 @@ import Testing
         #expect(namer.next(for: inputs[2], date: nil).lastPathComponent == "p002.jpg")
     }
 
-    @Test func patternAppliesWithoutMode() {
+    @Test func patternAppliesWhenChangingFormat() {
         let inputs = [input("/a/x.png")]
         var namer = BatchNamer(settings: settings(pattern: "p{n}"), inputs: inputs) { _ in false }
         #expect(namer.next(for: inputs[0], date: nil).path == "/out/p1.jpg")

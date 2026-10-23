@@ -82,8 +82,11 @@ import Testing
         #expect(!s.hasOperations)
         #expect(!s.crop.isOn && !s.resize.isOn && !s.orientation.isOn && !s.colour.isOn && !s.filters.isOn)
         #expect(!s.canvas.isOn && !s.border.isOn && !s.text.isOn && !s.watermark.isOn)
-        #expect(s.safety == SafetySettings())
         #expect(!s.safety.replaceExisting && !s.safety.trashOriginals)
+        #expect(!s.frames.isOn && !s.tiles.isOn && !s.dateTaken.isOn)
+        #expect(!s.splits)
+        #expect(s.tiles.columns == 2 && s.tiles.rows == 2 && s.tiles.overlap == 0)
+        #expect(s.dateTaken.mode == .shift && s.dateTaken.setTo == "" && s.dateTaken.shiftSeconds == 0)
     }
 
     @Test func emptyJSONDecodesToDefaults() throws {
@@ -103,14 +106,6 @@ import Testing
         #expect(s.frames != d.frames && s.tiles != d.tiles && s.dateTaken != d.dateTaken)
     }
 
-    @Test func newStepsDefaultOff() {
-        let s = BatchSettings()
-        #expect(!s.frames.isOn && !s.tiles.isOn && !s.dateTaken.isOn)
-        #expect(!s.splits)
-        #expect(s.tiles.columns == 2 && s.tiles.rows == 2 && s.tiles.overlap == 0)
-        #expect(s.dateTaken.mode == .shift && s.dateTaken.setTo == "" && s.dateTaken.shiftSeconds == 0)
-    }
-
     @Test func oldPresetLoadsWithStepsOff() throws {
         let s = try decode(#"{"changeFormat":false,"formatID":"png","crop":{"isOn":true}}"#)
         #expect(s.frames == FramesSettings() && s.tiles == TilesSettings() && s.dateTaken == DateTakenSettings())
@@ -123,18 +118,33 @@ import Testing
         #expect(s.dateTaken.isOn && s.dateTaken.mode == .shift && s.dateTaken.shiftSeconds == 60)
     }
 
-    @Test func splitsAreNotCopies() {
+    enum Step: Sendable { case none, frames, tiles, dateTaken, border }
+
+    /// Files are copied unchanged only when keeping the format with no step on; frames and tiles split
+    /// a file instead, and the date taken is rewritten losslessly on the copied bytes.
+    @Test(arguments: [
+        (changeFormat: true, step: Step.none, splits: false, copies: false, operations: false),
+        (changeFormat: false, step: Step.none, splits: false, copies: true, operations: false),
+        (changeFormat: false, step: Step.border, splits: false, copies: false, operations: true),
+        (changeFormat: false, step: Step.frames, splits: true, copies: false, operations: false),
+        (changeFormat: false, step: Step.tiles, splits: true, copies: false, operations: false),
+        (changeFormat: false, step: Step.dateTaken, splits: false, copies: true, operations: false),
+    ])
+    func copiesUnchangedOnlyWhenKeepingFormatWithNothingOn(
+        changeFormat: Bool, step: Step, splits: Bool, copies: Bool, operations: Bool
+    ) {
         var s = BatchSettings()
-        s.changeFormat = false
-        s.frames.isOn = true
-        #expect(s.splits && !s.copiesUnchanged && !s.hasOperations)
-        s.frames.isOn = false
-        s.tiles.isOn = true
-        #expect(s.splits && !s.copiesUnchanged)
-        s.tiles.isOn = false
-        // The date is rewritten losslessly on the copied bytes.
-        s.dateTaken.isOn = true
-        #expect(!s.splits && s.copiesUnchanged)
+        s.changeFormat = changeFormat
+        switch step {
+        case .none: break
+        case .frames: s.frames.isOn = true
+        case .tiles: s.tiles.isOn = true
+        case .dateTaken: s.dateTaken.isOn = true
+        case .border: s.border.isOn = true
+        }
+        #expect(s.splits == splits)
+        #expect(s.copiesUnchanged == copies)
+        #expect(s.hasOperations == operations)
     }
 
     @Test func missingNestedKeyKeepsDefault() throws {
@@ -197,15 +207,6 @@ import Testing
         #expect(try !decode(#"{"orientation":{"rotate":"none"}}"#).orientation.isOn)
         // Stored off with a rotation set stays off.
         #expect(try !decode(#"{"orientation":{"isOn":false,"rotate":"left"}}"#).orientation.isOn)
-    }
-
-    @Test func copiesUnchangedOnlyWhenKeepingFormatWithNothingOn() {
-        var s = BatchSettings()
-        #expect(!s.copiesUnchanged)
-        s.changeFormat = false
-        #expect(s.copiesUnchanged)
-        s.border.isOn = true
-        #expect(!s.copiesUnchanged)
     }
 
     @Test func unknownFormatFallsBackToJPEG() throws {

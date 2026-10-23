@@ -46,14 +46,6 @@ import Testing
         #expect(image[0, 1] == (255, 255, 255, 255) && image[1, 1] == (0, 0, 0, 255))
     }
 
-    @Test func decodesThroughImageDecoder() throws {
-        OwnDecoders.register(SunRasterDecoder.format)
-        let url = try Fixtures.makeTempDir().appendingPathComponent("a.ras")
-        try Self.ras(width: 2, height: 1, depth: 8, body: [0, 255]).write(to: url)
-        let image = try #require(RGBAImage(try ImageDecoder.decode(url)))
-        #expect(image.width == 2 && image[1, 0] == (255, 255, 255, 255))
-    }
-
     @Test func badFilesThrow() {
         #expect(throws: OwnDecodeError.truncated) {
             try SunRasterDecoder.decode(Self.ras(width: 4, height: 4, depth: 8, body: [1, 2]))

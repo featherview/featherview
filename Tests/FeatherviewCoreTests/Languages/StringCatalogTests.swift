@@ -35,18 +35,15 @@ import Testing
         #expect(problems(c, "de") == [])
     }
 
-    @Test func missingLanguageIsReported() throws {
-        let c = try catalog("Open…", "de", nil)
-        #expect(problems(c, "de").count == 1)
-    }
+    enum Gap: CaseIterable { case missingLanguage, emptyTranslation, needsReview, staleKey }
 
-    @Test func emptyTranslationIsReported() throws {
-        let c = try catalog("Open…", "de", unit(""))
-        #expect(problems(c, "de").count == 1)
-    }
-
-    @Test func untranslatedStateIsReported() throws {
-        let c = try catalog("Open…", "de", unit("Öffnen…", "needs_review"))
+    @Test(arguments: Gap.allCases) func unfinishedEntryIsReported(_ gap: Gap) throws {
+        let c = switch gap {
+        case .missingLanguage: try catalog("Open…", "de", nil)
+        case .emptyTranslation: try catalog("Open…", "de", unit(""))
+        case .needsReview: try catalog("Open…", "de", unit("Öffnen…", "needs_review"))
+        case .staleKey: try catalog("Open…", "de", unit("Öffnen…"), entry: ["extractionState": "stale"])
+        }
         #expect(problems(c, "de").count == 1)
     }
 
@@ -65,13 +62,6 @@ import Testing
     @Test func positionalArgumentUsedTwiceWithAnotherTypeIsReported() throws {
         let c = try catalog("%@ in %lld", "de", unit("%1$@ %2$@ in %2$lld"))
         #expect(problems(c, "de").count == 1)
-    }
-
-    @Test func percentSignInArgumentFreeSourceIsText() throws {
-        let hu = try catalog("% of the shorter side", "hu", unit("a rövidebb oldal %-a"))
-        #expect(problems(hu, "hu") == [])
-        let tr = try catalog("% of the shorter side", "tr", unit("kısa kenarın %'si"))
-        #expect(problems(tr, "tr") == [])
     }
 
     @Test func pluralOneMayOmitCount() throws {
@@ -116,21 +106,16 @@ import Testing
         #expect(problems(try catalog(key, "de", unit("Name: {Name}_{n:3}")), "de").count == 1)
     }
 
-    @Test func staleKeyIsReported() throws {
-        let c = try catalog("Open…", "de", unit("Öffnen…"), entry: ["extractionState": "stale"])
-        #expect(problems(c, "de").count == 1)
-    }
-
     @Test func untranslatableKeyWithLettersIsReported() throws {
         #expect(problems(try catalog("JPEG", "de", nil, entry: ["shouldTranslate": false]), "de").count == 1)
         #expect(problems(try catalog("%", "de", nil, entry: ["shouldTranslate": false]), "de") == [])
     }
 
-    @Test func percentSignBeforeAWordIsNotASpecifier() throws {
-        let key = "% of the shorter side"
-        #expect(problems(try catalog(key, "pl", unit("% krótszego boku")), "pl") == [])
-        #expect(problems(try catalog(key, "ru", unit("% от более короткой стороны")), "ru") == [])
-        #expect(problems(try catalog(key, "de", unit("% der kürzeren Seite")), "de") == [])
+    /// In a source without arguments a percent sign is text, wherever the translation puts it.
+    @Test(arguments: [("hu", "a rövidebb oldal %-a"), ("tr", "kısa kenarın %'si"), ("pl", "% krótszego boku"),
+                      ("ru", "% от более короткой стороны"), ("de", "% der kürzeren Seite")])
+    func percentSignInArgumentFreeSourceIsText(language: String, translation: String) throws {
+        #expect(problems(try catalog("% of the shorter side", language, unit(translation)), language) == [])
     }
 
     @Test func untranslatableKeyWithOnlySpecifiersIsAccepted() throws {
@@ -212,15 +197,10 @@ import Testing
         #expect(problems(try catalog("Open…", "de", device), "de").count == 1)
     }
 
-    @Test func shippedCatalogHasNoProblemsInItsLanguages() throws {
+    /// Every shipped language is complete, and so is any other language the catalog already has.
+    @Test func shippedCatalogIsComplete() throws {
         let catalog = try StringCatalog.load(StringCatalog.shippedURL)
-        #expect(catalog.problems(languages: catalog.presentLanguages) == [])
-    }
-
-    @Test
-    func shippedCatalogIsComplete() throws {
-        let catalog = try StringCatalog.load(StringCatalog.shippedURL)
-        #expect(catalog.problems(languages: StringCatalog.languages) == [])
+        #expect(catalog.problems(languages: catalog.presentLanguages.union(StringCatalog.languages)) == [])
     }
 
     @Test func infoPlistListsTheLanguages() throws {

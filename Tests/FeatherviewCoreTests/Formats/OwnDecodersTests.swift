@@ -71,6 +71,75 @@ import Testing
         #expect(OwnDecoders.all.filter { $0.extensions.contains("fvtoy") }.count == 1)
     }
 
+    @Test func builtInDecodersCoverTheSpec() {
+        let extensions = Set(OwnDecoders.builtIn.flatMap(\.extensions))
+        for ext in ["qoi", "pcx", "dcx", "xbm", "xpm", "wbmp", "ras", "sun", "iff", "lbm", "ilbm", "pcd", "jxr", "wdp", "hdp",
+                    "bpg", "pdf", "xcf", "psp", "pspimage", "pdn", "ff", "mac", "pntg", "pnt", "xwd", "fits", "fit", "fts",
+                    "ani", "ora", "kra", "procreate"] {
+            #expect(extensions.contains(ext), "\(ext)")
+        }
+    }
+
+    @Test func pixelCapIs256Megapixels() {
+        #expect((try? checkedSize(16384, 16384)) != nil)
+        #expect((try? checkedSize(65536, 4096)) != nil)
+        #expect(throws: OwnDecodeError.corrupt) { try checkedSize(65536, 4097) }
+    }
+
+    /// One small file per built-in format, so a format missing from `OwnDecoders.builtIn` fails here.
+    struct BuiltInFile: Sendable, CustomTestStringConvertible {
+        let name: String
+        let width: Int, height: Int
+        var pixel: (x: Int, y: Int, rgba: (UInt8, UInt8, UInt8, UInt8))? = nil
+        let bytes: @Sendable () throws -> Data
+        var testDescription: String { name }
+    }
+
+    static let builtInFiles: [BuiltInFile] = [
+        BuiltInFile(name: "t.bpg", width: 16, height: 16) { Data(BPGDecoderTests.gradient) },
+        BuiltInFile(name: "a.lbm", width: 3, height: 1, pixel: (1, 0, (255, 0, 0, 255))) {
+            ILBMDecoderTests.form([ILBMDecoderTests.bmhd(width: 3, height: 1, planes: 2), ILBMDecoderTests.cmap(ILBMDecoderTests.fourColors),
+                                   ILBMDecoderTests.chunk("BODY", ILBMDecoderTests.planar([[3, 1, 2]], planes: 2))])
+        },
+        BuiltInFile(name: "a.ras", width: 2, height: 1, pixel: (1, 0, (255, 255, 255, 255))) {
+            SunRasterDecoderTests.ras(width: 2, height: 1, depth: 8, body: [0, 255])
+        },
+        BuiltInFile(name: "a.ani", width: 32, height: 32) {
+            Data(ANIDecoderTests.ani(frames: [try ANIDecoderTests.ico(sizes: [32], colour: (0, 255, 0, 255))]))
+        },
+        BuiltInFile(name: "a.ff", width: 2, height: 1) { Data(FarbfeldDecoderTests.file) },
+        BuiltInFile(name: "a.qoi", width: 17, height: 9) { try QOICodec.encode(QOICodecTests.noise(width: 17, height: 9)) },
+        BuiltInFile(name: "t.wbmp", width: 3, height: 2) { Data(WBMPDecoderTests.file) },
+        BuiltInFile(name: "t.xpm", width: 3, height: 2) { Data(XPMDecoderTests.file.utf8) },
+        BuiltInFile(name: "t.xbm", width: 3, height: 2) { Data(XBMDecoderTests.file.utf8) },
+        BuiltInFile(name: "t.wdp", width: 2, height: 2) { JPEGXRDecoderTests.rgb },
+        BuiltInFile(name: "img0001.pcd", width: 768, height: 512) { PhotoCDDecoderTests.file },
+        BuiltInFile(name: "a.xwd", width: 1, height: 1) {
+            Data(XWDDecoderTests.file(width: 1, height: 1, depth: 24, bitsPerPixel: 32, bytesPerLine: 4, visualClass: 4,
+                                      masks: (0xFF0000, 0xFF00, 0xFF), pixels: [0, 1, 2, 3]))
+        },
+    ] + ["fits", "fit", "fts"].map { ext in
+        BuiltInFile(name: "a.\(ext)", width: 3, height: 1) {
+            Data(FITSDecoderTests.file([FITSDecoderTests.card("SIMPLE", "T"), FITSDecoderTests.card("BITPIX", "8"),
+                                        FITSDecoderTests.card("NAXIS", "2"), FITSDecoderTests.card("NAXIS1", "3"),
+                                        FITSDecoderTests.card("NAXIS2", "1")], data: [1, 2, 3]))
+        }
+    } + ["mac", "pntg", "pnt"].map { ext in
+        BuiltInFile(name: "a.\(ext)", width: 576, height: 720) { Data(MacPaintDecoderTests.file()) }
+    }
+
+    @Test(arguments: builtInFiles) func builtInFormatDecodesThroughImageDecoder(_ file: BuiltInFile) throws {
+        let url = try Fixtures.makeTempDir().appendingPathComponent(file.name)
+        try file.bytes().write(to: url)
+        #expect(ImageFormats.isDecodable(url))
+        #expect(ImageDecoder.displaySize(of: url) == CGSize(width: file.width, height: file.height))
+        let image = try #require(RGBAImage(try ImageDecoder.decode(url)))
+        #expect(image.width == file.width && image.height == file.height)
+        if let pixel = file.pixel { #expect(image[pixel.x, pixel.y] == pixel.rgba) }
+    }
+}
+
+@Suite struct RGBAImageAndByteReaderTests {
     @Test func rgbaImageRoundTripsThroughCGImage() throws {
         var image = RGBAImage(width: 2, height: 1)
         image[0, 0] = (255, 0, 0, 255)
@@ -111,18 +180,5 @@ import Testing
         var reader = ByteReader(Data([0, 1, 2, 3]).dropFirst(2))
         #expect(try reader.u16be() == 0x0203)
         #expect(reader.isAtEnd)
-    }
-
-    @Test func builtInDecodersCoverTheSpec() {
-        let extensions = Set(OwnDecoders.builtIn.flatMap(\.extensions))
-        for ext in ["qoi", "pcx", "dcx", "xbm", "xpm", "wbmp", "ras", "iff", "lbm", "pcd", "jxr", "wdp", "hdp", "bpg", "pdf", "xcf", "psp", "pspimage", "pdn"] {
-            #expect(extensions.contains(ext), "\(ext)")
-        }
-    }
-
-    @Test func pixelCapIs256Megapixels() {
-        #expect((try? checkedSize(16384, 16384)) != nil)
-        #expect((try? checkedSize(65536, 4096)) != nil)
-        #expect(throws: OwnDecodeError.corrupt) { try checkedSize(65536, 4097) }
     }
 }

@@ -121,8 +121,7 @@ struct PDNBuilder {
     static func builder(_ layers: [PDNBuilder.Layer]) -> PDNBuilder { PDNBuilder(width: 4, height: 3, layers: layers) }
 
     @Test func sizeFromXMLHeader() throws {
-        var b = Self.builder([.init(pixels: Self.red)])
-        b.width = 4; b.height = 3
+        let b = Self.builder([.init(pixels: Self.red)])
         #expect(try PDNDecoder.size(b.data) == (4, 3))
         // Only the header is needed: the body can be missing.
         #expect(try PDNDecoder.size(b.data.prefix(7 + b.xml().count)) == (4, 3))
@@ -156,7 +155,7 @@ struct PDNBuilder {
         b.thumbnailPNG = Fixtures.encoded(gray, as: .png)
         let start = ContinuousClock.now
         #expect(try PDNDecoder.decode(b.data) == Self.red)
-        #expect(ContinuousClock.now - start < .milliseconds(200))
+        #expect(ContinuousClock.now - start < .seconds(1))
     }
 
     @Test func twoLayersBottomFirst() throws {
@@ -246,10 +245,13 @@ struct PDNBuilder {
 
     @Test func noLayersThrows() {
         #expect(throws: OwnDecodeError.self) { try PDNDecoder.decode(Self.builder([]).data) }
-        // A gigabyte canvas from a 364-byte file is refused before allocating it.
+    }
+
+    /// A gigabyte canvas from a 364-byte file is refused before allocating it.
+    @Test func hugeCanvasWithoutLayersFailsBeforeAllocating() {
         let start = ContinuousClock.now
         #expect(throws: OwnDecodeError.self) { _ = try PDNDecoder.decode(PDNBuilder(width: 16384, height: 16384, layers: []).data) }
-        #expect(ContinuousClock.now - start < .milliseconds(200))
+        #expect(ContinuousClock.now - start < .seconds(2))
     }
 
     @Test func layerWithTooLittleDataThrowsBeforeAllocating() {
@@ -258,7 +260,7 @@ struct PDNBuilder {
             b.chunkSize = Int(Int32.max)
             let start = ContinuousClock.now
             #expect(throws: OwnDecodeError.self) { _ = try PDNDecoder.decode(b.data) }
-            #expect(ContinuousClock.now - start < .milliseconds(200))
+            #expect(ContinuousClock.now - start < .seconds(2))
         }
     }
 

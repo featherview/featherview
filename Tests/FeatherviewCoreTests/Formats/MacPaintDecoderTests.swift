@@ -31,15 +31,6 @@ import Testing
         #expect(image[2, 0].r == 0 && image[3, 0].r == 0 && image[4, 0].r == 255 && image[575, 719].r == 255)
     }
 
-    @Test func decodesThroughImageDecoder() throws {
-        for ext in ["mac", "pntg", "pnt"] {
-            let url = try Fixtures.makeTempDir().appendingPathComponent("a.\(ext)")
-            try Data(Self.file()).write(to: url)
-            #expect(ImageFormats.isDecodable(url))
-            #expect(ImageDecoder.displaySize(of: url) == CGSize(width: 576, height: 720))
-        }
-    }
-
     @Test func rejectsBadFiles() {
         let cut = Data(Self.file().dropLast(2)), tiny = Data(count: 100)
         #expect(throws: OwnDecodeError.truncated) { try MacPaintDecoder.decode(cut) }

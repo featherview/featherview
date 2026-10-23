@@ -13,13 +13,6 @@ import Testing
         #expect(image[0, 0] == (255, 0, 0, 255) && image[1, 0] == (255, 255, 255, 128))
     }
 
-    @Test func decodesThroughImageDecoder() throws {
-        let url = try Fixtures.makeTempDir().appendingPathComponent("a.ff")
-        try Data(Self.file).write(to: url)
-        #expect(ImageFormats.isDecodable(url))
-        #expect(try ImageDecoder.decode(url).width == 2)
-    }
-
     @Test func rejectsBadFiles() {
         #expect(throws: OwnDecodeError.notThisFormat) { try FarbfeldDecoder.decode(Data("farbfelt".utf8 + Self.file.dropFirst(8))) }
         #expect(throws: OwnDecodeError.truncated) { try FarbfeldDecoder.decode(Data(Self.file.dropLast())) }

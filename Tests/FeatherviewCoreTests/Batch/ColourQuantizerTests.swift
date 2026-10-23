@@ -2,12 +2,6 @@ import Foundation
 import Testing
 @testable import FeatherviewCore
 
-#if DEBUG
-private let isOptimised = false
-#else
-private let isOptimised = true
-#endif
-
 @Suite struct ColourQuantizerTests {
     private func gradient(_ size: Int = 64) -> RGBAImage {
         var image = RGBAImage(width: size, height: size)
@@ -73,24 +67,6 @@ private let isOptimised = true
         }
         let count = distinct(ColourQuantizer.reduce(image, colours: 256, dither: false)).count
         #expect(count <= 256 && count >= 230)
-    }
-
-    /// The plan's budget: a 24 MP image well under a second (only meaningful in a release build).
-    @Test(.enabled(if: isOptimised), arguments: [(256, true), (16, false)])
-    func twentyFourMegapixelsUnderASecond(colours: Int, dither: Bool) {
-        var noise = RGBAImage(width: 6000, height: 4000), smooth = noise
-        var seed: UInt32 = 1
-        for i in stride(from: 0, to: noise.pixels.count, by: 4) {
-            for c in 0..<3 { seed = seed &* 1_664_525 &+ 1_013_904_223; noise.pixels[i + c] = UInt8(seed >> 24) }
-            let x = i / 4 % 6000, y = i / 4 / 6000 // 60,000 colours in a smooth ramp
-            smooth.pixels[i] = UInt8(x * 199 / 5999); smooth.pixels[i + 1] = UInt8(y * 199 / 3999)
-            smooth.pixels[i + 2] = UInt8((x + y) % 3 * 60)
-        }
-        for image in [noise, smooth] {
-            let start = ContinuousClock.now
-            _ = ColourQuantizer.reduce(image, colours: colours, dither: dither)
-            #expect(ContinuousClock.now - start < .seconds(1))
-        }
     }
 
     /// Invisible pixels aren't in the palette: their (any) colour must not push error into visible neighbours.

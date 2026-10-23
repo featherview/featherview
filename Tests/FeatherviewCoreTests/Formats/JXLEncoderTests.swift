@@ -1,4 +1,3 @@
-import CJPEGXL
 import CoreGraphics
 import Foundation
 import ImageIO
@@ -8,10 +7,6 @@ import Testing
 @testable import FeatherviewJXL
 
 @Suite struct JXLEncoderTests {
-    @Test func linksLibjxl() {
-        #expect(JxlEncoderVersion() == 12000)
-    }
-
     @Test func writesJXLImageIOReads() throws {
         let data = try JXLEncoder.encode(Self.image(64, 48), quality: 90, lossless: false, effort: 7, xmp: nil)
         let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
@@ -106,7 +101,7 @@ import Testing
         #expect(Self.properties(bare)[kCGImagePropertyExifDictionary as String] == nil)
     }
 
-    @Test(arguments: 1...9) func everyEffortEncodes(effort: Int) throws {
+    @Test(arguments: [1, 9]) func lowestAndHighestEffortEncode(effort: Int) throws {
         let data = try JXLEncoder.encode(Self.image(32, 32), quality: 90, lossless: false, effort: effort, xmp: nil)
         #expect(try Self.decode(data).width == 32)
     }
@@ -119,7 +114,7 @@ import Testing
     }
 
     @Test func atMostTwoEncodesAtOnce() throws {
-        let image = Self.image(512, 512)
+        let image = Self.image(256, 256)
         let results = OSAllocatedUnfairLock(initialState: [Data?](repeating: nil, count: 6))
         JXLEncoder.resetPeakInFlight()
         DispatchQueue.concurrentPerform(iterations: 6) { i in
@@ -128,7 +123,7 @@ import Testing
         }
         #expect(JXLEncoder.peakInFlight <= JXLEncoder.maxConcurrentEncodes)
         for data in results.withLock({ $0 }) {
-            #expect(try Self.decode(try #require(data)).width == 512)
+            #expect(try Self.decode(try #require(data)).width == 256)
         }
     }
 

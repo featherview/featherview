@@ -251,7 +251,7 @@ struct PSPBuilder {
         #expect(image[0, 0] == (10, 10, 10, 255) && image[1, 0] == (128, 128, 128, 255) && image[2, 0] == (250, 250, 250, 255))
     }
 
-    @Test func format8BlockChunkLengths() throws {
+    @Test func longerChunksAndExtensionBlocksAreSkipped() throws {
         // Every chunk is longer than the fields we read, and each layer has an extension block before its bitmaps.
         var file = PSPBuilder(width: 4, height: 3)
         file.expansion = 6

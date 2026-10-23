@@ -53,13 +53,6 @@ import Testing
         #expect(image[0, 0].r == 0 && image[1, 0].r == 255 && image[2, 0].r == 0)
     }
 
-    @Test func decodesThroughImageDecoder() throws {
-        let url = try Fixtures.makeTempDir().appendingPathComponent("a.xwd")
-        try Data(Self.file(width: 1, height: 1, depth: 24, bitsPerPixel: 32, bytesPerLine: 4, visualClass: 4,
-                           masks: (0xFF0000, 0xFF00, 0xFF), pixels: [0, 1, 2, 3])).write(to: url)
-        #expect(ImageFormats.isDecodable(url) && ImageDecoder.displaySize(of: url) == CGSize(width: 1, height: 1))
-    }
-
     @Test func rejectsBadFiles() {
         let good = Self.file(width: 2, height: 1, depth: 24, bitsPerPixel: 32, bytesPerLine: 8, visualClass: 4,
                              masks: (0xFF0000, 0xFF00, 0xFF), pixels: [UInt8](repeating: 0, count: 8))

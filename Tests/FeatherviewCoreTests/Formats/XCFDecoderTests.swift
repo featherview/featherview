@@ -299,7 +299,7 @@ struct XCFBuilder {
         #expect(throws: OwnDecodeError.self) { try XCFDecoder.decode(header) }
     }
 
-    @Test func userUnitLengthQuirk() throws {
+    @Test func unitPropertyWithGIMPsShortLengthIsSkipped() throws {
         let payload = B.float(2.54) + Fixtures.be32(2) + ["centimeters", "cm", "cm", "centimeter", "centimeters"].flatMap(B.string)
         var file = B(width: 1, height: 1)
         file.extraProperties = Fixtures.be32(24) + Fixtures.be32(16) + payload  // the length GIMP wrote, shorter than the payload
@@ -437,18 +437,15 @@ struct XCFBuilder {
         #expect(Self.refused(Self.sharedLevel(layers: 50, tiles: 2000)))
     }
 
-    @Test func layersSharingAHierarchyThrow() throws {
-        #expect(Self.refused(Self.tiny(canvas: 8, layer: 8, records: 2, layers: [0, 1])))
+    @Test(arguments: [(canvas: 8, layers: 2), (canvas: 1024, layers: 100)])
+    func layersSharingAHierarchyThrow(canvas: Int, layers: Int) throws {
+        #expect(Self.refused(Self.tiny(canvas: canvas, layer: canvas, records: layers, layers: Array(0..<layers))))
     }
 
     @Test func repeatedLayerPointerThrows() throws {
         let built = Self.twoLayers.build()
         let data = Self.patched(built, slot: built.layerPointerSlots[1], to: built.layerOffsets[0])
         #expect(throws: OwnDecodeError.corrupt) { try XCFDecoder.decode(data) }
-    }
-
-    @Test func manyLayersSharingOneHierarchyThrow() throws {
-        #expect(Self.refused(Self.tiny(canvas: 1024, layer: 1024, records: 100, layers: Array(0..<100))))
     }
 
     @Test func unknownCompressionThrows() throws {
@@ -461,10 +458,6 @@ struct XCFBuilder {
         let data = Data("not an xcf file at all, just text".utf8)
         #expect(throws: OwnDecodeError.notThisFormat) { try XCFDecoder.decode(data) }
         #expect(throws: OwnDecodeError.notThisFormat) { try XCFDecoder.size(data) }
-    }
-
-    @Test func registeredForTheExtension() {
-        #expect(OwnDecoders.builtIn.contains { $0.name == "GIMP XCF" && $0.extensions == ["xcf"] })
     }
 
     // MARK: Sample corpus
