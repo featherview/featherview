@@ -1,3 +1,4 @@
+import AppKit
 import FeatherviewCore
 import SwiftUI
 
@@ -223,16 +224,40 @@ private struct WindowTitle: View {
                     .foregroundStyle(Theme.labelPrimary)
                     .truncationMode(.tail)
                     // A click on the name renames, as in Preview.
-                    .onTapGesture { model.beginRename() }
+                    .overlay { TitleDrag(onClick: model.beginRename) }
             }
             if let counter = model.titleCounter {
                 Text(verbatim: counter)
                     .font(Theme.counter)
                     .foregroundStyle(Theme.labelSecondary)
                     .fixedSize()
+                    .overlay { TitleDrag() }
             }
         }
         .lineLimit(1)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The title moves the window when dragged, as any title does; SwiftUI views in the toolbar keep the mouse otherwise.
+private struct TitleDrag: NSViewRepresentable {
+    var onClick: (() -> Void)?
+
+    func makeNSView(context: Context) -> DragView { DragView() }
+    func updateNSView(_ view: DragView, context: Context) { view.onClick = onClick }
+
+    final class DragView: NSView {
+        var onClick: (() -> Void)?
+
+        override func mouseDown(with event: NSEvent) {
+            guard let window else { return }
+            let start = event.locationInWindow
+            while let next = window.nextEvent(matching: [.leftMouseUp, .leftMouseDragged]) {
+                if next.type == .leftMouseUp { return onClick?() ?? () }
+                if hypot(next.locationInWindow.x - start.x, next.locationInWindow.y - start.y) > 3 {
+                    return window.performDrag(with: event)
+                }
+            }
+        }
     }
 }
