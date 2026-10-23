@@ -45,3 +45,38 @@ public struct RecentList: Sendable {
         return Array((first + rest).filter { seen.insert($0.standardizedFileURL.path).inserted }.prefix(limit))
     }
 }
+
+/// When Open Recent's check reads the system's list. Reading it resolves every bookmark on the main thread, which a
+/// stale entry on a dropped share can make slow: so only the first check reads it, and a check whose own-list stat
+/// found an entry missing (its bookmark follows a moved or renamed file); a plain ⌘-Tab never does. At most one
+/// check runs; requests meanwhile make it run once more.
+public struct RecentCheck: Sendable {
+    public enum Source: Sendable { case system, ownList }
+
+    private var started = false
+    private var running: Source?
+    private var rerun = false
+
+    public init() {}
+
+    /// The source to check now, or nil while one runs.
+    public mutating func request() -> Source? {
+        guard running == nil else { rerun = true; return nil }
+        running = started ? .ownList : .system
+        started = true
+        return running
+    }
+
+    /// `missing`: the check left out an entry. The source to check next, or nil when done.
+    public mutating func finished(missing: Bool) -> Source? {
+        if missing && running == .ownList {
+            running = .system
+        } else if rerun {
+            rerun = false
+            running = .ownList
+        } else {
+            running = nil
+        }
+        return running
+    }
+}
