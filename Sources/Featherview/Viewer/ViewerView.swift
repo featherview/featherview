@@ -509,6 +509,7 @@ struct ViewerView: View {
     private static let backspace = KeyEquivalent("\u{7F}")
     private static let f7 = KeyEquivalent(Character(UnicodeScalar(NSF7FunctionKey)!))
     private static let f8 = KeyEquivalent(Character(UnicodeScalar(NSF8FunctionKey)!))
+    private static let f5 = KeyEquivalent(Character(UnicodeScalar(NSF5FunctionKey)!))
     private static let f2 = KeyEquivalent(Character(UnicodeScalar(NSF2FunctionKey)!))
 
     /// Where the next window goes when frames aren't remembered: the first is centred, the rest cascade from it.
@@ -583,6 +584,7 @@ struct ViewerView: View {
             case .deleteForward: model.moveCurrentToTrash(); return .handled
             case Self.f7: model.showDestinations(.move); return .handled
             case Self.f8: model.showDestinations(.copy); return .handled
+            case Self.f5: model.refreshFolder(); return .handled
             case Self.f2: model.beginRename(); return .handled
             case .return: model.toggleFullScreen(); return .handled
             case .escape:
@@ -652,6 +654,7 @@ struct ViewerView: View {
         case .trash: model.moveCurrentToTrash()
         case .move: model.showDestinations(.move)
         case .copy: model.showDestinations(.copy)
+        case .refresh: model.refreshFolder()
         case .batch:
             guard !model.gridSelection.isEmpty else { return true }
             model.batchSelection()
@@ -1108,6 +1111,9 @@ struct ViewerCommands: Commands {
             Toggle("Keep Zoom  (⇧L)", isOn: $keepZoom)
             Divider()
             SortMenu()
+            Button("Refresh  (F5)") { model?.refreshFolder() }
+                .keyboardShortcut("r")
+                .disabled(model?.availability.canRefresh != true)
             FollowToggle(model: model)
             Divider()
             let playing = model?.slideshowState != nil

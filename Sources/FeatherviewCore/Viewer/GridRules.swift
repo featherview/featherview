@@ -71,7 +71,7 @@ public enum GridSelection {
 
 /// The grid's keys. Arrows belong to the collection view, other ⌘ keys to the menus.
 public enum GridKey: Equatable, Sendable {
-    case view, leave, quickLook, trash, move, copy, batch, larger, smaller, first, last, toggle
+    case view, leave, quickLook, trash, move, copy, batch, larger, smaller, first, last, toggle, refresh
     case passOn(ViewerKey)
 
     /// `characters` is AppKit's `charactersIgnoringModifiers`.
@@ -85,6 +85,7 @@ public enum GridKey: Equatable, Sendable {
             case "\u{F728}": return .trash  // ⌦
             case "\u{F70A}": return .move  // F7
             case "\u{F70B}": return .copy  // F8
+            case "\u{F708}": return .refresh  // F5
             case "\u{F729}": return .first  // Home
             case "\u{F72B}": return .last  // End
             default: break

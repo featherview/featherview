@@ -97,6 +97,8 @@ public struct ViewerAvailability: Equatable, Sendable {
     public var canToggleSlideshow = false
     /// Follow New Files: a folder is known.
     public var canFollow = false
+    /// Refresh (F5, ⌘R): a folder is known, in the grid too (it shows the refreshed list).
+    public var canRefresh = false
 
     public init() {}
 
@@ -132,5 +134,6 @@ public struct ViewerAvailability: Equatable, Sendable {
         canToggleDifference = canShowDifference || s.showsDifference
         canToggleSlideshow = s.isSlideshow || canStartSlideshow
         canFollow = s.hasFolder
+        canRefresh = s.hasFolder
     }
 }
