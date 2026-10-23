@@ -107,6 +107,16 @@ struct SortMenu: View {
     }
 }
 
+/// View › Follow New Files: per window, off at launch, not stored.
+struct FollowToggle: View {
+    let model: ViewerModel?
+
+    var body: some View {
+        Toggle("Follow New Files", isOn: Binding(get: { model?.followsNewFiles == true }, set: { model?.followsNewFiles = $0 }))
+            .disabled(model?.folder == nil)
+    }
+}
+
 /// File › Open Recent: the system's recent files and folders, newest first (plan M11 Decision 1).
 struct RecentMenu: View {
     private let recents = RecentFiles.shared

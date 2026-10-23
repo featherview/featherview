@@ -177,7 +177,7 @@ final class ViewerModel {
     static let lastActive = LastUsed(fallback: main)
 
     /// A folder opened directly that has no images: the view says so, ← / → still leave it.
-    private(set) var emptyFolder: URL? { didSet { updateAvailability() } }
+    var emptyFolder: URL? { didSet { updateAvailability() } }
     /// Shown past either end of the folder (spec "Moving past the end of a folder").
     private let chooserSession = ChooserSession()
     var chooser: FolderChooser? { chooserSession.chooser }
@@ -200,7 +200,13 @@ final class ViewerModel {
     /// A rename being committed: losing focus while Return's commit waits must not commit twice.
     @ObservationIgnored var renameBusy = false
     /// ⌘N's image from the clipboard, not saved yet; it covers `coveredList`, which shows again once it's left.
-    var unsaved: CGImage? { didSet { updateAvailability() } }
+    var unsaved: CGImage? {
+        didSet {
+            updateAvailability()
+            // Arrivals held back while it covered the list (ViewerModel+Follow).
+            if unsaved == nil, pendingRescan { pendingRescan = false; folderChanged() }
+        }
+    }
     var coveredList: ImageList?
     /// Every viewer, so quitting can ask about each unsaved image.
     static let all = NSHashTable<ViewerModel>.weakObjects()
@@ -211,6 +217,13 @@ final class ViewerModel {
     @ObservationIgnored var sortedOrder = SortOrder.finder
     /// The re-sort running (Date Taken after an open, a new sort order); the next open cancels it.
     @ObservationIgnored var sortTask: Task<Void, Never>?
+    /// View › Follow New Files: per window, off at launch, not stored (ViewerModel+Follow).
+    var followsNewFiles = false { didSet { if followsNewFiles != oldValue { watchFolder() } } }
+    @ObservationIgnored var folderWatch: FolderWatch?
+    /// Waits for the newest arrival to be complete before showing it; the next change or open cancels it.
+    @ObservationIgnored var followTask: Task<Void, Never>?
+    /// A change came while an unsaved image covered the list: rescanned once it's left.
+    @ObservationIgnored var pendingRescan = false
 
     /// Fit mode decodes to fit every screen, per axis (rounded up to a halving step): enough for any window,
     /// less memory than full size.
@@ -233,7 +246,7 @@ final class ViewerModel {
     let cache: ImageCache
     /// Zoom decodes larger than the fit decode: one kept, and ones nobody waits for any more are skipped.
     /// Zoom steps at or below fit size go in `cache`, as large as fit decodes.
-    private let fullSizeCache: ImageCache
+    let fullSizeCache: ImageCache
     /// The way the user last browsed: the neighbours ahead of it are decoded first.
     @ObservationIgnored private var forward = true
     /// The halving step the image on screen was decoded at while zoomed (page 0), with the longest side it was
@@ -335,6 +348,7 @@ final class ViewerModel {
         let isFolder = isFolderPath(url)
         openingFile = isFolder ? nil : url
         openedFolder = isFolder ? url : url.deletingLastPathComponent()
+        if followsNewFiles { watchFolder() }
         if !AppSettings.keepZoom.value() { zoom = Zoom(Self.fitMode) }
         // Off the main actor: at launch the main thread is busy building the window, the decode needn't wait.
         let prefetch: DecodeTarget? = zoom != .fit ? nil : .fit(screens)
