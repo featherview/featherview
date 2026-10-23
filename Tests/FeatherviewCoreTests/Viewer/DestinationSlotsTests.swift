@@ -21,6 +21,9 @@ import Testing
         let loaded = DestinationSlots(defaults: defaults)
         #expect(loaded == slots)
         #expect(loaded[2]?.path == "/Users/x/Pictures/Keep")
+    }
+
+    @Test func lastUsedClampsToTheLastSlot() {
         #expect(DestinationSlots(lastUsed: 99).lastUsed == 13)
     }
 

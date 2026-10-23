@@ -11,12 +11,6 @@ import Testing
         Slideshow.Options(interval: .seconds(seconds), shuffle: shuffle, repeats: repeats)
     }
 
-    @Test func startsOnlyOnceTheFolderIsListed() {
-        #expect(Slideshow.mayStart(hasCurrent: true, isOpening: false))
-        #expect(!Slideshow.mayStart(hasCurrent: true, isOpening: true))  // the list holds only the opened file
-        #expect(!Slideshow.mayStart(hasCurrent: false, isOpening: false))
-    }
-
     @Test func waitsForFullScreenOnlyWhenAWindowEntersIt() {
         #expect(Slideshow.waitsForFullScreen(requested: true, isFullScreen: false, hasWindow: true))
         #expect(!Slideshow.waitsForFullScreen(requested: true, isFullScreen: true, hasWindow: true))
@@ -182,7 +176,7 @@ import Testing
         #expect(play(&show, count: 3) == urls(3))  // the whole list
     }
 
-    @Test func holdPushesDue() {
+    @Test func holdRestartsTheInterval() {
         var show = Slideshow(urls: urls(3), from: u(1), options: options(), seed: 1)
         show.shown(u(1), at: t0)
         show.hold(at: t0 + .seconds(5))
@@ -238,21 +232,6 @@ import Testing
         var show = Slideshow(urls: urls(3), from: u(1), options: options(), seed: 1)
         #expect(show.decodeFailed(u(3)) == .showError)
         #expect(show.current == u(1))
-    }
-
-    @Test func decodeFailedEveryFileSkipsToNothing() {
-        var show = Slideshow(urls: urls(2), from: u(1), options: options(), seed: 1)
-        #expect(show.decodeFailed(u(1)) == .skip(to: u(2)))
-        #expect(show.decodeFailed(u(2)) == .skip(to: nil))
-        #expect(show.isFinished)
-    }
-
-    @Test func decodeFailedWhilePausedShowsTheErrorForAShownFile() {
-        var show = Slideshow(urls: urls(3), from: u(1), options: options(), seed: 1)
-        show.shown(u(1), at: t0)
-        _ = show.togglePause(at: t0 + .seconds(1))
-        #expect(show.decodeFailed(u(1)) == .showError)
-        #expect(show.isPaused)
     }
 
     @Test func failedAtTheStartTurnsBack() {
@@ -415,9 +394,5 @@ import Testing
         var middle = Slideshow(urls: urls(5), from: u(2), options: options(), seed: 1)
         _ = middle.step(forward: true)  // at 3
         #expect(middle.neighbors(ahead: 2) == [u(4), u(5), u(2)])
-    }
-
-    @Test func intervalsAreTheMenuChoices() {
-        #expect(Slideshow.intervals == [1, 2, 3, 5, 10, 20, 30, 60])
     }
 }

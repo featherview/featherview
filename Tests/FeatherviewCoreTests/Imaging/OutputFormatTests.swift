@@ -40,21 +40,20 @@ import Testing
         #expect(webp.type?.identifier == "org.webmproject.webp")
     }
 
-    // A newer macOS that writes WebP itself must not add a second "WebP" entry.
-    @Test func onlyOneWebPEntry() {
-        #expect(FormatRegistry.writable.filter { $0.fileExtension == "webp" }.count == 1)
-        #expect(FormatRegistry.hidden.contains("org.webmproject.webp"))
+    // A newer macOS that writes WebP or JPEG XL itself must not add a second entry.
+    @Test(arguments: [("webp", "org.webmproject.webp"), ("jxl", "public.jpeg-xl")])
+    func ownEncoderReplacesImageIOEntry(ext: String, type: String) {
+        #expect(FormatRegistry.writable.filter { $0.fileExtension == ext }.count == 1)
+        #expect(FormatRegistry.hidden.contains(type))
     }
 
-    @Test func jxlFollowsThePlan() throws {
+    @Test func jxlDefaultsFollowTheSpec() throws {
         let jxl = try #require(FormatRegistry.format(id: "jxl"))
         #expect(jxl.name == "JPEG XL" && jxl.fileExtension == "jxl" && jxl.writer == .jxl)
         #expect(jxl.optionFields == [.lossless, .quality, .effort, .keepMetadata])
         let d = jxl.defaultOptions
         #expect(d.quality == 90 && d.effort == 7 && !d.lossless && d.keepMetadata)
         #expect(jxl.type?.identifier == "public.jpeg-xl")
-        #expect(FormatRegistry.writable.filter { $0.fileExtension == "jxl" }.count == 1)
-        #expect(FormatRegistry.hidden.contains("public.jpeg-xl"))
         #expect(jxl.effortRange == 1...9)
         #expect(try #require(FormatRegistry.format(id: "webp")).effortRange == 0...6)
     }
@@ -73,6 +72,7 @@ import Testing
     @Test func readableNamesListMacOSAndOwnFormats() {
         let names = FormatRegistry.readableNames
         #expect(names.macOS.contains("JPEG") && names.macOS.contains("HEIC"))
+        #expect(names.own.contains("QOI") && names.own.contains("PCX"))
     }
 }
 
@@ -287,8 +287,12 @@ import Testing
     }
 }
 
-@Suite struct FormatSettingsTests {
-    let defaults = UserDefaults(suiteName: "FormatSettingsTests-\(UUID().uuidString)")!
+@Suite final class FormatSettingsTests {
+    let name = "FormatSettingsTests-\(UUID().uuidString)"
+    let defaults: UserDefaults
+
+    init() { defaults = UserDefaults(suiteName: name)! }
+    deinit { defaults.removePersistentDomain(forName: name) }
 
     @Test func optionsAreRememberedPerFormat() {
         #expect(FormatSettings.options(for: .jpeg, in: defaults) == OutputFormat.jpeg.defaultOptions)

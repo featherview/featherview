@@ -52,7 +52,7 @@ import UniformTypeIdentifiers
 
     @Test func orientationApplied() throws {
         let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("a.jpg"),
-                                          width: 4000, height: 3000, orientation: 6)
+                                          width: 400, height: 300, orientation: 6)
         let image = try ImageDecoder.thumbnail(url, side: 200, colorSpace: nil)
         #expect((image.width, image.height) == (150, 200))
     }

@@ -10,7 +10,8 @@ import Testing
     @Test func gridOptionsParse() throws {
         let options = try parseOptions(["--points", "128", "--scale", "2", "--cells", "40", "--width", "6",
                                         "--json", "a.json", "--baseline", "b.json"], mode: "grid")
-        #expect(options.count == 6)
+        #expect(options == ["--points": ["128"], "--scale": ["2"], "--cells": ["40"], "--width": ["6"],
+                            "--json": ["a.json"], "--baseline": ["b.json"]])
     }
 
     @Test func misspelledOptionFails() {

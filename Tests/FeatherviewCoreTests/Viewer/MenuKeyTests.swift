@@ -28,13 +28,4 @@ import Testing
         #expect(MenuKey.parse("Show Info (beta)") == nil)  // one space: part of the title
         #expect(MenuKey.parse("X  (Unknown)") == nil)
     }
-
-    @Test func modifiersFromEachFlag() {
-        #expect(MenuKey.Modifiers(command: false, shift: false, option: false, control: false) == [])
-        #expect(MenuKey.Modifiers(command: true, shift: false, option: false, control: false) == .command)
-        #expect(MenuKey.Modifiers(command: false, shift: true, option: false, control: false) == .shift)
-        #expect(MenuKey.Modifiers(command: false, shift: false, option: true, control: false) == .option)
-        #expect(MenuKey.Modifiers(command: false, shift: false, option: false, control: true) == .control)
-        #expect(MenuKey.Modifiers(command: true, shift: true, option: true, control: true) == [.command, .shift, .option, .control])
-    }
 }

@@ -36,6 +36,7 @@ import Testing
     private var releases: [Release] { UpdateCheck.releases(from: Data(Self.appcast.utf8)) }
 
     @Test func parsesEveryItem() {
+        // 1.9.0's enclosure is plain http: no download, Download falls back to the release page.
         #expect(releases == [
             Release(version: "1.10.0", minimumSystemVersion: "15.0",
                     link: URL(string: "https://featherview.mynetx.net/releases/1.10.0")!,
@@ -44,11 +45,6 @@ import Testing
             Release(version: "1.9.0", minimumSystemVersion: "14.0",
                     link: URL(string: "https://featherview.mynetx.net/releases/1.9.0")!, notes: "Plain notes."),
         ])
-    }
-
-    @Test func downloadIsTheEnclosureOnlyOverHTTPS() {
-        // 1.9.0's enclosure is plain http: Download falls back to the release page.
-        #expect(releases.map(\.download?.lastPathComponent) == ["Featherview-1.10.0.dmg", nil])
     }
 
     @Test func malformedOrEmptyFeedHasNoReleases() {

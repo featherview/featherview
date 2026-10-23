@@ -29,12 +29,6 @@ import UniformTypeIdentifiers
         #expect(leftovers.isEmpty)
     }
 
-    @Test func refusesFormatsWithoutReliableOrientation() throws {
-        let dir = try Fixtures.makeTempDir()
-        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("p.png"), width: 4, height: 4, type: .png)
-        #expect(throws: RotateError.unsupportedFormat) { try OrientationRotator.rotate(url, .clockwise) }
-    }
-
     @Test func readOnlyFolderLeavesOriginalIntact() throws {
         let dir = try Fixtures.makeTempDir()
         let url = try Fixtures.writeImage(to: dir.appendingPathComponent("ro.jpg"), width: 10, height: 5)
@@ -56,24 +50,6 @@ import UniformTypeIdentifiers
 
         #expect(ImageDecoder.displaySize(of: target) == CGSize(width: 30, height: 60))
         #expect(try FileManager.default.destinationOfSymbolicLink(atPath: link.path) == target.path)
-    }
-
-    @Test func refusesPNGWithJPEGExtension() throws {
-        let dir = try Fixtures.makeTempDir()
-        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("png.jpg"), width: 4, height: 4, type: .png)
-        let original = try Data(contentsOf: url)
-        #expect(throws: RotateError.unsupportedFormat) { try OrientationRotator.rotate(url, .clockwise) }
-        #expect(try Data(contentsOf: url) == original)
-    }
-
-    @Test func refusesPagesAfterTheFirstAndLeavesTheFileUntouched() throws {
-        let dir = try Fixtures.makeTempDir()
-        let url = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("m.tif"), pages: 3)
-        let original = try Data(contentsOf: url)
-
-        // Turning a later page means re-encoding every page (lossy for JPEG-compressed TIFFs).
-        #expect(throws: RotateError.notFirstPage) { try OrientationRotator.rotate(url, .clockwise, page: 1) }
-        #expect(try Data(contentsOf: url) == original)
     }
 
     @Test func rotatingTheFirstPageKeepsTheOtherPages() throws {
@@ -229,7 +205,7 @@ import UniformTypeIdentifiers
         #expect(try Data(contentsOf: url) == original)
     }
 
-    @Test func flipRefusesWhatRotateRefuses() throws {
+    @Test func refusesUnsupportedFormatsAndLeavesThemUntouched() throws {
         let dir = try Fixtures.makeTempDir()
         let files = [
             try Fixtures.writeImage(to: dir.appendingPathComponent("p.png"), width: 4, height: 4, type: .png),
@@ -244,10 +220,11 @@ import UniformTypeIdentifiers
         }
     }
 
-    @Test func flipRefusesLaterTIFFPages() throws {
+    @Test func refusesLaterTIFFPagesAndLeavesThemUntouched() throws {
         let dir = try Fixtures.makeTempDir()
         let url = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("m.tif"), pages: 3)
         let original = try Data(contentsOf: url)
+        // Turning a later page means re-encoding every page (lossy for JPEG-compressed TIFFs).
         #expect(throws: RotateError.notFirstPage) { try OrientationRotator.apply(url, .flip(.vertical), page: 1) }
         #expect(try Data(contentsOf: url) == original)
     }

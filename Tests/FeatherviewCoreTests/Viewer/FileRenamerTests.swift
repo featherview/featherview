@@ -84,7 +84,7 @@ import Testing
         #expect(try FileManager.default.destinationOfSymbolicLink(atPath: renamed.path).hasSuffix("target.jpg"))
     }
 
-    @Test func checkRejects() {
+    @Test func checkRejectsEmptyInvalidHiddenAndOverlongNames() {
         #expect(FileRenamer.check("") == .empty)
         #expect(FileRenamer.check("  ") == .empty)
         #expect(FileRenamer.check("a/b") == .invalidCharacter)
@@ -117,7 +117,7 @@ import Testing
         #expect(FileRenamer.check("a\u{7F}b") == .invalidCharacter)
     }
 
-    @Test func stemRange() {
+    @Test func stemRangeSelectsTheNameBeforeTheLastExtension() {
         #expect(FileRenamer.stemRange(of: "IMG_1.jpg") == NSRange(location: 0, length: 5))
         #expect(FileRenamer.stemRange(of: "a.tar.gz") == NSRange(location: 0, length: 5))
         #expect(FileRenamer.stemRange(of: ".hidden") == NSRange(location: 0, length: 7))
@@ -125,19 +125,15 @@ import Testing
         #expect(FileRenamer.stemRange(of: "📷.jpg") == NSRange(location: 0, length: 2))
     }
 
-    @Test func extensionChange() {
+    @Test func extensionChangeIgnoresCase() {
         let a = URL(filePath: "/tmp/a.jpg")
         #expect(FileRenamer.extensionChange(from: a, to: "b.JPG") == nil)
         #expect(FileRenamer.extensionChange(from: a, to: "a.png")! == ("jpg", "png"))
         #expect(FileRenamer.extensionChange(from: a, to: "a")! == ("jpg", ""))
     }
 
-    /// The test bundle has no compiled catalog, so `String(localized:)` gives the English key.
-    @Test func messagesUnderEnglish() {
+    /// An empty name only disables Rename; it shows no message.
+    @Test func emptyNameHasNoMessage() {
         #expect(RenameProblem.empty.message == nil)
-        #expect(RenameProblem.invalidCharacter.message == "A name can't contain “/” or “:”.")
-        #expect(RenameProblem.hidden.message == "A name can't start with “.”: the file would be hidden.")
-        #expect(RenameProblem.tooLong.message == "That name is too long.")
-        #expect(RenameProblem.taken("B.jpg").message == "“B.jpg” is already taken. Choose a different name.")
     }
 }

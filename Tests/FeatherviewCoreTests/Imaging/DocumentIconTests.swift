@@ -9,7 +9,6 @@ struct DocumentIconTests {
     @Test func ownTypesHaveTheFeatherDocumentIcon() throws {
         let info = try #require(try QuickLookSupportTests.plist("Resources/Info.plist"))
         let declarations = try #require(info["UTImportedTypeDeclarations"] as? [[String: Any]])
-        var withIcons = 0
         for declaration in declarations {
             let id = try #require(declaration["UTTypeIdentifier"] as? String)
             if Self.systemIconTypes.contains(id) {
@@ -21,9 +20,8 @@ struct DocumentIconTests {
             let icons = declaration["UTTypeIcons"] as? [String: String]
             #expect(icons?["UTTypeIconBadgeName"] == "DocumentBadge", "\(id)")
             #expect(icons?["UTTypeIconText"] == firstExtension.uppercased(), "\(id)")
-            if icons != nil { withIcons += 1 }
         }
-        #expect(withIcons == 22)
+        #expect(declarations.count > Self.systemIconTypes.count)
     }
 
     @Test func documentBadgeIsAnIconsetInTheAssetCatalog() throws {

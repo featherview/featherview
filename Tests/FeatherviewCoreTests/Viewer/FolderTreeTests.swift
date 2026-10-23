@@ -112,18 +112,17 @@ private func makeTree() throws -> URL {
         #expect(chooser.selected.url.lastPathComponent == "link")
     }
 
-    /// Needs a case-sensitive volume to hold both folders; on the default APFS it checks nothing.
     @Test func upTellsFoldersApartThatDifferOnlyInCase() throws {
-        let base = try Fixtures.makeTempDir(), manager = FileManager.default
+        let volume = try CaseSensitiveVolume()
+        defer { volume.detach() }
+        let base = volume.root
         for name in ["Photos", "photos"] {
-            try? manager.createDirectory(at: base.appendingPathComponent(name), withIntermediateDirectories: false)
+            try FileManager.default.createDirectory(at: base.appendingPathComponent(name), withIntermediateDirectories: false)
         }
-        guard try manager.contentsOfDirectory(atPath: base.path).count == 2 else { return }
         let names = FolderChooser(folder: base).entries.map(\.url.lastPathComponent)
-        #expect(FolderChooser(folder: base).entries.map(\.url.lastPathComponent) == names)
         for name in ["Photos", "photos"] {
             var chooser = FolderChooser(folder: base)
-            chooser.moveSelection(by: names.firstIndex(of: name)! - chooser.selection)
+            chooser.moveSelection(by: try #require(names.firstIndex(of: name)) - chooser.selection)
             chooser.enter()
             chooser.up()
             #expect(chooser.selected.url.lastPathComponent == name)

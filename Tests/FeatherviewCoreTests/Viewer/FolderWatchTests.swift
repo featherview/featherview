@@ -26,29 +26,31 @@ import os
         let watch = try #require(made)
         defer { watch.cancel() }
         try write("a.jpg", in: dir)
-        #expect(await yields(stream, within: .seconds(1)))
+        #expect(await yields(stream, within: .seconds(10)))
     }
 
     @Test func burstReportsFew() async throws {
         let dir = try Fixtures.makeTempDir()
         let reports = OSAllocatedUnfairLock(initialState: 0)
-        let made = FolderWatch(folder: dir, onChange: { reports.withLock { $0 += 1 } }, onGone: {})
+        let (stream, continuation) = AsyncStream<Void>.makeStream()
+        let made = FolderWatch(folder: dir, onChange: { reports.withLock { $0 += 1 }; continuation.yield() }, onGone: {})
         let watch = try #require(made)
         defer { watch.cancel() }
         for index in 0..<50 { try write("\(index).jpg", in: dir) }
-        try await Task.sleep(for: .seconds(1))
+        #expect(await yields(stream, within: .seconds(10)))
+        try await Task.sleep(for: .milliseconds(400))  // twice the quiet time: room for a stray second report
         #expect((1...2).contains(reports.withLock { $0 }))
     }
 
     @Test func cancelStopsReports() async throws {
         let dir = try Fixtures.makeTempDir()
         let reports = OSAllocatedUnfairLock(initialState: 0)
-        let made = FolderWatch(folder: dir, onChange: { reports.withLock { $0 += 1 } }, onGone: {})
+        let made = FolderWatch(folder: dir, quiet: .milliseconds(10), onChange: { reports.withLock { $0 += 1 } }, onGone: {})
         let watch = try #require(made)
         watch.cancel()
         watch.cancel()  // idempotent
         try write("a.jpg", in: dir)
-        try await Task.sleep(for: .milliseconds(600))
+        try await Task.sleep(for: .milliseconds(100))
         #expect(reports.withLock { $0 } == 0)
     }
 
@@ -61,7 +63,7 @@ import os
         let watch = try #require(made)
         defer { watch.cancel() }
         try FileManager.default.moveItem(at: dir, to: parent.appendingPathComponent("moved"))
-        #expect(await yields(stream, within: .seconds(1)))
+        #expect(await yields(stream, within: .seconds(10)))
     }
 
     @Test func missingFolderIsNil() throws {
@@ -101,39 +103,29 @@ import os
     @Test func settledTrueForCompleteFile() async throws {
         let file = try Fixtures.makeTempDir().appendingPathComponent("a.jpg")
         try Data("complete".utf8).write(to: file)
-        #expect(await Arrivals.settled(file))
+        #expect(await Arrivals.settled(file, interval: .milliseconds(10)))
     }
 
     @Test func settledWaitsForGrowth() async throws {
         let file = try Fixtures.makeTempDir().appendingPathComponent("a.jpg")
-        try Data("first".utf8).write(to: file)
-        let appended = OSAllocatedUnfairLock(initialState: false)
-        // Its own thread, not a Task or GCD: under the full suite's load both start seconds late.
-        Thread.detachNewThread {
-            Thread.sleep(forTimeInterval: 0.15)
-            let handle = try! FileHandle(forWritingTo: file)
-            try! handle.seekToEnd()
-            try! handle.write(contentsOf: Data("second".utf8))
-            try! handle.close()
-            appended.withLock { $0 = true }
-        }
-        // A sleep can overrun 30 s while the full suite fills every core; the growth is what this tests.
-        let settled = await Arrivals.settled(file, timeout: .seconds(600))
-        let appendedBefore = appended.withLock { $0 }
-        #expect(settled)
-        #expect(appendedBefore)
+        try Data().write(to: file)
+        // An empty file never settles, so `settled` can only answer true once the content below arrived.
+        let settled = Task { await Arrivals.settled(file, interval: .milliseconds(10), timeout: .seconds(600)) }
+        try await Task.sleep(for: .milliseconds(30))
+        try Data("content".utf8).write(to: file)
+        #expect(await settled.value)
     }
 
     @Test func settledFalseForEmptyFileAtTimeout() async throws {
         let file = try Fixtures.makeTempDir().appendingPathComponent("a.jpg")
         try Data().write(to: file)
-        #expect(await Arrivals.settled(file, timeout: .milliseconds(300)) == false)
+        #expect(await Arrivals.settled(file, interval: .milliseconds(10), timeout: .milliseconds(300)) == false)
     }
 
     @Test func settledFalseWhenFileVanishes() async throws {
         let file = try Fixtures.makeTempDir().appendingPathComponent("a.jpg")
         try Data("complete".utf8).write(to: file)
-        let settled = Task { await Arrivals.settled(file) }
+        let settled = Task { await Arrivals.settled(file, interval: .milliseconds(10)) }
         try FileManager.default.removeItem(at: file)  // before the second read, however late the first one runs
         #expect(await settled.value == false)
     }

@@ -64,7 +64,7 @@ import Testing
         #expect(list.index == 3)
     }
 
-    @Test func neighborsAheadOfTheRunFirst() {
+    @Test func neighborsPutTheBrowsingDirectionFirstWithoutWrapping() {
         let list = ImageList(urls: urls, current: urls[1])
         #expect(list.neighbors(radius: 2, forward: true) == [urls[2], urls[3], urls[0]])
         #expect(list.neighbors(radius: 2, forward: false) == [urls[0], urls[2], urls[3]])
@@ -140,33 +140,43 @@ import Testing
         #expect(moved)
         #expect(list.current == urls[1])
         #expect(!list.isHolding)
+    }
 
+    @Test func previousFromAHeldImageGoesToTheOneBefore() {
         var back = ImageList(urls: urls, current: urls[2])
         back.remove(urls[2], hold: true)
         back.previous()
         #expect(back.current == urls[1])
+    }
 
-        // ← from a held first image is the start: it keeps holding, so ⌦ can't reach an unseen file.
+    /// ← from a held first image is the start: it keeps holding, so ⌦ can't reach an unseen file.
+    @Test func previousFromAHeldFirstImageKeepsHolding() {
         var start = ImageList(urls: urls, current: urls[0])
         start.remove(urls[0], hold: true)
         let movedBack = start.previous()
         #expect(!movedBack)
         #expect(start.current == urls[0])
         #expect(start.isHolding)
+    }
 
+    @Test func releaseMovesToTheImageAfterTheHeldOne() {
         var released = ImageList(urls: urls, current: urls[1])
         released.remove(urls[1], hold: true)
         released.release()
         #expect(released.current == urls[2])
+    }
 
-        // A slideshow started on a held image plays on from the one after it.
+    /// A slideshow started on a held image plays on from the one after it.
+    @Test func listedCurrentSkipsTheHeldImage() {
         var playing = ImageList(urls: urls, current: urls[1])
         #expect(playing.listedCurrent == urls[1])
         playing.remove(urls[1], hold: true)
         #expect(playing.listedCurrent == urls[2])
+    }
 
+    @Test func removingAnotherImageHoldsNothing() {
         var other = ImageList(urls: urls, current: urls[1])
-        other.remove(urls[3], hold: true)  // not current: nothing to hold
+        other.remove(urls[3], hold: true)
         #expect(!other.isHolding)
     }
 

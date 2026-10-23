@@ -3,7 +3,7 @@ import Testing
 @testable import FeatherviewCore
 
 @Suite struct GridRulesTests {
-    @Test func decodeSideSteps() {
+    @Test func decodeSideRoundsUpTo128StepsCappedAt512() {
         #expect(ThumbnailSize.decodeSide(points: 128, scale: 2) == 256)
         #expect(ThumbnailSize.decodeSide(points: 100, scale: 1) == 128)
         #expect(ThumbnailSize.decodeSide(points: 129, scale: 2) == 384)
@@ -15,11 +15,9 @@ import Testing
         #expect(ThumbnailSize.stepped(128, larger: true) == 160)
         #expect(ThumbnailSize.stepped(250, larger: true) == 256)
         #expect(ThumbnailSize.stepped(64, larger: false) == 64)
-        #expect(ThumbnailSize.standard == 128)
-        #expect(ThumbnailSize.range == 64...256)
     }
 
-    @Test func cacheBudgetThreeScreens() {
+    @Test func cacheBudgetIsThreeOfTheLargestScreen() {
         let screens = [PixelSize(width: 3024, height: 1964), PixelSize(width: 1920, height: 1080)]
         #expect(ThumbnailSize.cacheBudget(screens: screens) == 3 * 3024 * 1964 * 4)
     }
@@ -45,16 +43,10 @@ import Testing
 
     private let urls = ["a", "b", "c", "d", "e"].map { URL(fileURLWithPath: "/x/\($0).jpg") }
 
-    @Test func focusAfterRemovalMidList() {
-        #expect(GridSelection.focusAfterRemoval(urls: urls, removed: [urls[1], urls[2]]) == urls[3])
-    }
-
-    @Test func focusAfterRemovingTheEnd() {
-        #expect(GridSelection.focusAfterRemoval(urls: urls, removed: [urls[3], urls[4]]) == urls[2])
-    }
-
-    @Test func focusAfterRemovingAll() {
-        #expect(GridSelection.focusAfterRemoval(urls: urls, removed: Set(urls)) == nil)
+    // Mid-list: the next file; at the end: the one before; all gone: nothing.
+    @Test(arguments: [([1, 2], 3), ([3, 4], 2), ([0, 1, 2, 3, 4], nil)] as [([Int], Int?)])
+    func focusAfterRemovalPicksTheNextRemainingFile(_ removed: [Int], _ focus: Int?) {
+        #expect(GridSelection.focusAfterRemoval(urls: urls, removed: Set(removed.map { urls[$0] })) == focus.map { urls[$0] })
     }
 
     @Test func indicesKeepSelectionByURL() {

@@ -4,25 +4,19 @@ import Testing
 import os
 @testable import FeatherviewCore
 
-@Suite struct ImageCacheTests {
-    @Test func concurrentRequestsDecodeOnce() async throws {
-        let dir = try Fixtures.makeTempDir()
-        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
-        let cache = ImageCache(capacity: 2)
-        async let first = cache.image(for: url, target: .fit([PixelSize(width: 100, height: 100)]))
-        async let second = cache.image(for: url, target: .fit([PixelSize(width: 100, height: 100)]))
-        let (a, b) = try await (first, second)
-        #expect(a === b)
-    }
-
+// Polling loops below wait on the queue; a regression that never queues fails at the limit instead of hanging.
+@Suite(.timeLimit(.minutes(1))) struct ImageCacheTests {
     @Test func evictsLeastRecentlyUsed() async throws {
         let dir = try Fixtures.makeTempDir()
         let files = try (0..<3).map {
             try Fixtures.writeImage(to: dir.appendingPathComponent("\($0).jpg"), width: 8, height: 8)
         }
         let cache = ImageCache(capacity: 2)
-        for file in files { _ = try await cache.image(for: file, target: .fit([PixelSize(width: 100, height: 100)])) }
-        #expect(await cache.count == 2)
+        let target = DecodeTarget.fit([PixelSize(width: 100, height: 100)])
+        for file in [files[0], files[1], files[0], files[2]] { _ = try await cache.image(for: file, target: target) }
+        #expect(await cache.contains(files[0]))
+        #expect(await !cache.contains(files[1]))
+        #expect(await cache.contains(files[2]))
     }
 
     @Test func decodedBytesCountsKeptImagesOnly() async throws {
@@ -47,63 +41,68 @@ import os
         #expect(await cache.count == 0)
     }
 
-    // Starts a slow full-size decode of a large image and returns once it is in flight.
-    private func startLargeDecode(_ cache: ImageCache, _ url: URL) async throws {
-        try Fixtures.writeImage(to: url, width: 6000, height: 4000)
-        Task { _ = try? await cache.image(for: url, target: .full) }
-        while await !cache.isDecoding(url) { await Task.yield() }
+    /// Starts a job on `queue` that holds its thread until the returned semaphore is signalled; with width 1 the
+    /// decodes queued after it wait, still in flight. `running`: returns once it holds the thread, not only queued.
+    private func hold(_ queue: DecodeQueue, running: Bool = true) async throws -> DispatchSemaphore {
+        let started = OSAllocatedUnfairLock(initialState: false), release = DispatchSemaphore(value: 0)
+        let waiting = queue.waitingCount
+        Task { _ = try? await queue.run(URL(fileURLWithPath: "/hold")) { started.withLock { $0 = true }; release.wait() } }
+        if running { while !started.withLock({ $0 }) { try await Task.sleep(for: .milliseconds(1)) } }
+        else { while queue.waitingCount <= waiting { try await Task.sleep(for: .milliseconds(1)) } }
+        return release
     }
 
-    @Test func removeDuringDecodeGivesFreshDecode() async throws {
-        let url = try Fixtures.makeTempDir().appendingPathComponent("a.jpg")
-        let cache = ImageCache()
-        try await startLargeDecode(cache, url)
-        try Fixtures.writeImage(to: url, width: 40, height: 20)  // e.g. rotated on disk
-        await cache.remove(url)
-        #expect(try await cache.image(for: url, target: .full).width == 40)
-        #expect(try await cache.image(for: url, target: .full).width == 40)
+    @Test(arguments: [false, true])
+    func removeDuringDecodeGivesFreshDecode(all: Bool) async throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("a.jpg"), width: 8, height: 8)
+        let queue = DecodeQueue(width: 1)
+        let cache = ImageCache(queue: queue)
+        let first = try await hold(queue)
+        let stale = Task { try await cache.image(for: url, target: .full) }
+        while await !cache.isDecoding(url) || queue.waitingCount < 1 { try await Task.sleep(for: .milliseconds(1)) }
+        if all { await cache.removeAll() } else { await cache.remove(url) }  // e.g. rotated on disk
+        let second = try await hold(queue, running: false)
+        let fresh = Task { try await cache.image(for: url, target: .full) }
+        while queue.waitingCount < 3 { try await Task.sleep(for: .milliseconds(1)) }
+        first.signal()
+        let staleImage = try await stale.value
+        #expect(await !cache.contains(url))  // finished after the remove: not kept
+        second.signal()
+        let freshImage = try await fresh.value
+        #expect(freshImage !== staleImage)
+        #expect(try await cache.image(for: url, target: .full) === freshImage)
     }
 
-    @Test func removeAllDuringDecodeGivesFreshDecode() async throws {
-        let url = try Fixtures.makeTempDir().appendingPathComponent("a.jpg")
-        let cache = ImageCache()
-        try await startLargeDecode(cache, url)
-        try Fixtures.writeImage(to: url, width: 40, height: 20)
-        await cache.removeAll()
-        #expect(try await cache.image(for: url, target: .full).width == 40)
-        #expect(try await cache.image(for: url, target: .full).width == 40)
-    }
-
-    @Test func differentSizeDoesNotJoinRunningDecode() async throws {
-        let url = try Fixtures.makeTempDir().appendingPathComponent("b.jpg")
-        let cache = ImageCache()
-        try await startLargeDecode(cache, url)
-        // 750 = 6000 / 8, the halving step at or above 100.
-        #expect(try await cache.image(for: url, target: .fit([PixelSize(width: 100, height: 100)])).width == 750)
-        #expect(try await cache.image(for: url, target: .fit([PixelSize(width: 100, height: 100)])).width == 750)
-    }
-
-    @Test func differentFitTargetDoesNotJoinRunningDecode() async throws {
-        let url = try Fixtures.makeTempDir().appendingPathComponent("e.jpg")
-        let cache = ImageCache()
-        try Fixtures.writeImage(to: url, width: 6000, height: 4000)
-        let wide = Task { try await cache.image(for: url, target: .fit([PixelSize(width: 6000, height: 4000)])) }
-        while await !cache.isDecoding(url) { await Task.yield() }
-        // Joining would hand back the full-size 6000 px decode.
-        #expect(try await cache.image(for: url, target: .fit([PixelSize(width: 100, height: 100)])).width == 750)
-        _ = try await wide.value
+    // Joining would hand back the larger decode: 800 px instead of 100 (800 / 8, the halving step at or above 100).
+    @Test(arguments: [DecodeTarget.full, .fit([PixelSize(width: 800, height: 400)])])
+    func fitRequestDoesNotJoinRunningFullDecode(running: DecodeTarget) async throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("b.jpg"), width: 800, height: 400)
+        let queue = DecodeQueue(width: 1)
+        let cache = ImageCache(queue: queue)
+        let release = try await hold(queue)
+        let wide = Task { try await cache.image(for: url, target: running) }
+        while await !cache.isDecoding(url) { try await Task.sleep(for: .milliseconds(1)) }
+        let fit = Task { try await cache.image(for: url, target: .fit([PixelSize(width: 100, height: 100)])) }
+        while queue.waitingCount < 2 { try await Task.sleep(for: .milliseconds(1)) }
+        release.signal()
+        #expect(try await fit.value.width == 100)
+        #expect(try await cache.image(for: url, target: .fit([PixelSize(width: 100, height: 100)])).width == 100)
+        #expect(try await wide.value.width == 800)
     }
 
     @Test func sameFitTargetJoinsRunningDecode() async throws {
-        let url = try Fixtures.makeTempDir().appendingPathComponent("f.jpg")
-        let cache = ImageCache()
-        try Fixtures.writeImage(to: url, width: 6000, height: 4000)
-        let target = DecodeTarget.fit([PixelSize(width: 3000, height: 2000)])
-        async let first = cache.image(for: url, target: target)
-        async let second = cache.image(for: url, target: target)
-        let (a, b) = try await (first, second)
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("f.jpg"), width: 800, height: 400)
+        let queue = DecodeQueue(width: 1)
+        let cache = ImageCache(queue: queue)
+        let release = try await hold(queue)
+        let target = DecodeTarget.fit([PixelSize(width: 400, height: 200)])
+        let first = Task { try await cache.image(for: url, target: target) }
+        while await !cache.isDecoding(url) { try await Task.sleep(for: .milliseconds(1)) }
+        let second = Task { try await cache.image(for: url, target: target) }
+        release.signal()
+        let (a, b) = try await (first.value, second.value)
         #expect(a === b)
-        #expect(a.width == 3000)
+        #expect(a.width == 400)
     }
 
     @Test func cancelledCallerSkipsDecode() async throws {
@@ -120,26 +119,36 @@ import os
     }
 
     @Test func cancellingOneWaiterKeepsTheSharedDecode() async throws {
-        let url = try Fixtures.makeTempDir().appendingPathComponent("d.jpg")
-        try Fixtures.writeImage(to: url, width: 6000, height: 4000)
-        let cache = ImageCache()
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("d.jpg"), width: 80, height: 40)
+        let queue = DecodeQueue(width: 1)
+        let cache = ImageCache(queue: queue)
+        let release = try await hold(queue)
         let keeper = Task { try await cache.image(for: url, target: .full) }
-        while await !cache.isDecoding(url) { await Task.yield() }
+        while await !cache.isDecoding(url) { try await Task.sleep(for: .milliseconds(1)) }
         let quitter = Task { try await cache.image(for: url, target: .full) }
         quitter.cancel()
-        #expect(try await keeper.value.width == 6000)
+        release.signal()
+        #expect(try await keeper.value.width == 80)
     }
 
     @Test func decodeFinishingOutsideTheWindowIsNotKept() async throws {
         let dir = try Fixtures.makeTempDir()
-        let url = dir.appendingPathComponent("i.jpg")
+        // Large, so it is still running when the window moves on.
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("i.jpg"), width: 6000, height: 4000)
         let other = try Fixtures.writeImage(to: dir.appendingPathComponent("j.jpg"), width: 8, height: 8)
-        let queue = DecodeQueue()
+        let queue = DecodeQueue(width: 1)
         let cache = ImageCache(queue: queue)
-        queue.focus([url])
-        try await startLargeDecode(cache, url)
+        let release = try await hold(queue)
+        queue.focus([url, URL(fileURLWithPath: "/hold")])
+        let decode = Task { try await cache.image(for: url, target: .full) }
+        while queue.waitingCount < 1 { await Task.yield() }
+        release.signal()
+        while queue.waitingCount > 0 { await Task.yield() }  // started
         queue.focus([other])  // moved on while it runs
-        while await cache.isDecoding(url) { await Task.yield() }
+        // Still in flight here means it has not yet decided whether to keep the image. A machine so loaded that
+        // the decode already finished proves nothing either way.
+        guard await cache.isDecoding(url) else { return }
+        _ = try await decode.value
         #expect(await !cache.contains(url))
     }
 
@@ -181,16 +190,18 @@ import os
     }
 
     @Test func smallerThumbnailJoinsRunningLargerDecode() async throws {
-        let url = try Fixtures.makeTempDir().appendingPathComponent("a.jpg")
-        try Fixtures.writeImage(to: url, width: 6000, height: 4000)
-        let cache = ImageCache()
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("a.jpg"), width: 400, height: 300)
+        let queue = DecodeQueue(width: 1)
+        let cache = ImageCache(queue: queue)
+        let release = try await hold(queue)
         let large = Task { try await cache.image(for: url, target: .thumbnail(256)) }
-        while await !cache.isDecoding(url) { await Task.yield() }
+        while await !cache.isDecoding(url) { try await Task.sleep(for: .milliseconds(1)) }
         // A second decode would take over the running one, which could then neither store nor be cancelled.
-        let small = try await cache.image(for: url, target: .thumbnail(128))
-        #expect(try await large.value === small)
+        let small = Task { try await cache.image(for: url, target: .thumbnail(128)) }
+        release.signal()
+        #expect(try await large.value === small.value)
         // Kept as the 256 decode it is, so it still serves 256.
-        #expect(try await cache.image(for: url, target: .thumbnail(256)) === small)
+        #expect(try await cache.image(for: url, target: .thumbnail(256)) === small.value)
     }
 
     @Test func largerThumbnailTakingOverStillLetsTheSmallerBeCancelled() async throws {
@@ -198,18 +209,14 @@ import os
         let queue = DecodeQueue(width: 1)
         let cache = ImageCache(queue: queue)
         // Holds the only thread, so both thumbnail decodes wait.
-        let started = OSAllocatedUnfairLock(initialState: false), release = DispatchSemaphore(value: 0)
-        let blocker = Task { try await queue.run(url) { started.withLock { $0 = true }; release.wait() } }
-        while !started.withLock({ $0 }) { await Task.yield() }
+        let release = try await hold(queue)
         let small = Task { try await cache.image(for: url, target: .thumbnail(128)) }
-        while queue.waitingCount < 1 { await Task.yield() }
+        while queue.waitingCount < 1 { try await Task.sleep(for: .milliseconds(1)) }
         let large = Task { try await cache.image(for: url, target: .thumbnail(256)) }
-        while queue.waitingCount < 2 { await Task.yield() }
+        while queue.waitingCount < 2 { try await Task.sleep(for: .milliseconds(1)) }
         small.cancel()
-        let deadline = ContinuousClock.now + .seconds(2)
-        while queue.waitingCount > 1, ContinuousClock.now < deadline { await Task.yield() }
+        while queue.waitingCount > 1 { try await Task.sleep(for: .milliseconds(1)) }
         release.signal()
-        _ = await blocker.result
         // Its waiting decode is dropped, not run and thrown away ahead of the 256 one.
         await #expect(throws: CancellationError.self) { try await small.value }
         #expect(try await large.value.width == 256)

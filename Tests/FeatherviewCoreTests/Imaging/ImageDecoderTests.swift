@@ -16,16 +16,16 @@ import UniformTypeIdentifiers
 
     @Test func downsamplesLargeImages() throws {
         let dir = try Fixtures.makeTempDir()
-        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("big.png"), width: 4000, height: 2000, type: .png)
-        let image = try ImageDecoder.decode(url, maxPixelSize: 600)
-        #expect(max(image.width, image.height) == 600)
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("big.png"), width: 400, height: 200, type: .png)
+        let image = try ImageDecoder.decode(url, maxPixelSize: 60)
+        #expect(max(image.width, image.height) == 60)
     }
 
     @Test func downsamplesForDisplayByHalvingSteps() throws {
         let dir = try Fixtures.makeTempDir()
-        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("big.jpg"), width: 4000, height: 2000)
-        let image = try ImageDecoder.decode(url, maxPixelSize: 600, halvingSteps: true)
-        #expect(max(image.width, image.height) == 1000)
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("big.jpg"), width: 400, height: 200)
+        let image = try ImageDecoder.decode(url, maxPixelSize: 60, halvingSteps: true)
+        #expect(max(image.width, image.height) == 100)
     }
 
     @Test(arguments: [
@@ -47,17 +47,12 @@ import UniformTypeIdentifiers
         (8688, 5792, [(5120, 2880)], 4344),
         (5792, 8688, [(5120, 2880)], 4344),
         (40, 20, [(5120, 2880)], 40),        // never upscales
+        (3024, 4032, [(3024, 2016)], 2016),  // exactly 2016: floating point must not round it up to full size
     ])
     func fitDecodeSizePerAxis(width: Int, height: Int, screens: [(Int, Int)], expected: Int) {
         let size = ImageDecoder.fitDecodeSize(image: PixelSize(width: width, height: height),
                                               screens: screens.map { PixelSize(width: $0.0, height: $0.1) })
         #expect(size == expected)
-    }
-
-    /// 4032 × 2016 / 4032 is exactly 2016; floating point can give 2016.0000001 and round up to full size.
-    @Test func fitDecodeSizeExactBoundary() {
-        #expect(ImageDecoder.fitDecodeSize(image: PixelSize(width: 3024, height: 4032),
-                                           screens: [PixelSize(width: 3024, height: 2016)]) == 2016)
     }
 
     @Test func fitDecodeSizeTakesTheMostDemandingScreen() {
@@ -80,22 +75,22 @@ import UniformTypeIdentifiers
     @Test func ownFormatsDecodeAtTheExactFitSize() throws {
         let dir = try Fixtures.makeTempDir()
         let url = dir.appendingPathComponent("big.qoi")
-        try QOICodec.encode(RGBAImage(width: 4000, height: 3000)).write(to: url)
-        let image = try ImageDecoder.decode(url, halvingSteps: true, fitting: [PixelSize(width: 3024, height: 1964)])
-        #expect(image.width == 2619)
-        #expect(image.height == 1964)
+        try QOICodec.encode(RGBAImage(width: 400, height: 300)).write(to: url)
+        let image = try ImageDecoder.decode(url, halvingSteps: true, fitting: [PixelSize(width: 320, height: 240)])
+        #expect(image.width == 320)
+        #expect(image.height == 240)
     }
 
     /// HEIC decodes no slower at the exact size and keeps ~60 % fewer bytes (performance plan, Task 7);
     /// PNG was 10–18 % slower, so it and the other ImageIO types stay at the halving step.
     @Test func heicDecodesAtTheExactFitSize() throws {
         let dir = try Fixtures.makeTempDir()
-        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("big.heic"), width: 4000, height: 3000, type: .heic)
-        let image = try ImageDecoder.decode(url, halvingSteps: true, fitting: [PixelSize(width: 3024, height: 1964)])
-        #expect(image.width == 2619)
-        #expect(image.height == 1964)
-        let png = try Fixtures.writeImage(to: dir.appendingPathComponent("big.png"), width: 4000, height: 3000, type: .png)
-        #expect(try ImageDecoder.decode(png, halvingSteps: true, fitting: [PixelSize(width: 3024, height: 1964)]).width == 4000)
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("big.heic"), width: 400, height: 300, type: .heic)
+        let image = try ImageDecoder.decode(url, halvingSteps: true, fitting: [PixelSize(width: 320, height: 240)])
+        #expect(image.width == 320)
+        #expect(image.height == 240)
+        let png = try Fixtures.writeImage(to: dir.appendingPathComponent("big.png"), width: 400, height: 300, type: .png)
+        #expect(try ImageDecoder.decode(png, halvingSteps: true, fitting: [PixelSize(width: 320, height: 240)]).width == 400)
     }
 
     /// A zoom at full size is above an exact fit decode, though not above the halving step's (also full size).
@@ -109,10 +104,10 @@ import UniformTypeIdentifiers
 
     @Test func fitDecodeUsesDisplayedOrientation() throws {
         let dir = try Fixtures.makeTempDir()
-        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("r.jpg"), width: 4000, height: 2000, orientation: 6)
-        let image = try ImageDecoder.decode(url, halvingSteps: true, fitting: [PixelSize(width: 3000, height: 1000)])
-        #expect(image.width == 500)
-        #expect(image.height == 1000)
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("r.jpg"), width: 400, height: 200, orientation: 6)
+        let image = try ImageDecoder.decode(url, halvingSteps: true, fitting: [PixelSize(width: 300, height: 100)])
+        #expect(image.width == 50)
+        #expect(image.height == 100)
     }
 
     @Test(arguments: [
@@ -136,6 +131,8 @@ import UniformTypeIdentifiers
         (5792, 8688, 0.5, 1, false),   // 50 MP portrait at 50 %: 4344 px, fit is 2172
         (4032, 3024, 0.5, 1, true),    // 12 MP at 50 %: 2016 px is at or below fit
         (8688, 5792, 0.25, 2, true),   // 2172 px: exactly its fit size
+        (4000, 3000, 0.7, 0, true),    // Zoom to Width of a landscape on a landscape screen: within its fit decode
+        (3024, 4032, 0.93, 0, false),  // Zoom to Width of a portrait: full size, the one-image fullSizeCache
     ])
     func zoomDecodeKeepsStepsAboveFitOutOfTheFitCache(width: Int, height: Int, factor: Double, step: Int, withinFit: Bool) {
         let decision = ImageDecoder.zoomDecode(size: PixelSize(width: width, height: height), factor: factor,
@@ -144,27 +141,12 @@ import UniformTypeIdentifiers
         #expect(decision.withinFit == withinFit)
     }
 
-    /// Zoom to Width of a landscape photo on a landscape screen stays within its fit decode.
-    @Test func widthFillOfLandscapeStaysInCache() {
-        let decision = ImageDecoder.zoomDecode(size: PixelSize(width: 4000, height: 3000), factor: 0.7,
-                                               screens: [PixelSize(width: 3024, height: 1964)])
-        #expect(decision.withinFit)
-    }
-
-    /// Zoom to Width of a portrait needs full size, above its fit decode: the one-image fullSizeCache.
-    @Test func widthFillOfPortraitGoesToFullSizeCache() {
-        let decision = ImageDecoder.zoomDecode(size: PixelSize(width: 3024, height: 4032), factor: 0.93,
-                                               screens: [PixelSize(width: 3024, height: 1964)])
-        #expect(decision.step == 0)
-        #expect(!decision.withinFit)
-    }
-
     @Test func decodesAtAHalvingStep() throws {
         let dir = try Fixtures.makeTempDir()
-        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("z.jpg"), width: 4000, height: 2000, orientation: 6)
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("z.jpg"), width: 400, height: 200, orientation: 6)
         let image = try ImageDecoder.decode(url, halvingSteps: true, step: 2)
-        #expect(image.width == 500)
-        #expect(image.height == 1000)
+        #expect(image.width == 50)
+        #expect(image.height == 100)
     }
 
     /// Core Animation colour-converts an image on the main thread when it's first shown (≈18 ms for
@@ -221,6 +203,9 @@ import UniformTypeIdentifiers
         #expect(ImageDecoder.displaySize(of: tiff, page: 1)?.width == 9)
         #expect(throws: DecodeError.unreadable(tiff)) { try ImageDecoder.decode(tiff, page: 3) }
     }
+}
+
+@Suite struct DecodeDepthTests {
     @Test func hdrImagesDecodeDeeperOnlyWhenAsked() throws {
         guard #available(macOS 15, *) else { return }
         let dir = try Fixtures.makeTempDir()

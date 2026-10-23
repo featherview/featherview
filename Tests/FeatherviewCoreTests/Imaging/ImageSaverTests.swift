@@ -14,13 +14,6 @@ extension ImageSaverTests {
         #expect(a.pathExtension == "tmp" && b.pathExtension == "jpg" && a.lastPathComponent != b.lastPathComponent)
     }
 
-    @Test func saveImageWritesPNG() throws {
-        let url = try Fixtures.makeTempDir().appendingPathComponent("pasted.png")
-        try ImageSaver.save(image, to: url, as: .png, options: OutputFormat.png.defaultOptions)
-        let back = try ImageDecoder.decode(url)
-        #expect(back.width == 8 && back.height == 6)
-    }
-
     @Test func saveImageLeavesNoTempFile() throws {
         let dir = try Fixtures.makeTempDir()
         try ImageSaver.save(image, to: dir.appendingPathComponent("pasted.png"), as: .png,

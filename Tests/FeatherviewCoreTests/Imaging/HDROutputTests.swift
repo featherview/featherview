@@ -42,16 +42,9 @@ import UniformTypeIdentifiers
         return try Fixtures.writeHDRGainMap(to: try Fixtures.makeTempDir().appendingPathComponent("gm.heic"))
     }
 
-    @Test(.enabled(if: ImageDecoder.supportsHDR)) func hdrInputIsHDR() throws {
-        #expect(try isHDR(try hdrInput()))  // the check itself works
-    }
-
-    @Test(.enabled(if: ImageDecoder.supportsHDR)) func hdrHEICStaysHDR() async throws {
-        #expect(try isHDR(try await convert(try hdrInput(), to: "heic")))
-    }
-
-    @Test(.enabled(if: ImageDecoder.supportsHDR)) func hdrToAVIFStaysHDR() async throws {
-        #expect(try isHDR(try await convert(try hdrInput(), to: "avif")))
+    @Test(.enabled(if: ImageDecoder.supportsHDR), arguments: ["heic", "avif"])
+    func hdrStaysHDRIn(format: String) async throws {
+        #expect(try isHDR(try await convert(try hdrInput(), to: format)))
     }
 
     @Test(.enabled(if: ImageDecoder.supportsHDR)) func hdrToJPEGIsSDR() async throws {
@@ -137,7 +130,7 @@ import UniformTypeIdentifiers
         #expect(try !hasGainMap(saved))
     }
 
-    @Test(.enabled(if: ImageDecoder.supportsHDR)) func hdrHEICHasGainMap() async throws {
-        #expect(try hasGainMap(try await convert(try hdrInput(), to: "heic")))  // the check itself works
+    @Test(.enabled(if: ImageDecoder.supportsHDR)) func hdrToHEICWritesAGainMap() async throws {
+        #expect(try hasGainMap(try await convert(try hdrInput(), to: "heic")))
     }
 }
