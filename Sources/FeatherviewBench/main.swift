@@ -9,7 +9,7 @@ let usage = """
       swift run -c release featherview-bench corpus <dir>
       swift run -c release featherview-bench decode <dir> [--raw <dir>] [--screen WxH ...] [--runs 10]
                                                     [--json out.json] [--baseline in.json]
-      swift run -c release featherview-bench browse <dir>/browse [--interval-ms 300] [--screen WxH]
+      swift run -c release featherview-bench browse <dir>/browse [--interval-ms 300] [--screen WxH] [--loops 1]
       swift run -c release featherview-bench thumbnail <file or dir> [--out <dir>]
       swift run -c release featherview-bench grid <dir> [--points 128] [--scale 2] [--cells 40] [--width N]
                                                   [--json out.json] [--baseline in.json]
@@ -22,6 +22,8 @@ let usage = """
             before (the bench never does). --baseline exits 1 if a median is > 10 % slower or a row is gone.
     browse  steps through the folder like a held arrow key: one step every --interval-ms, whether
             or not the last one finished, through an 8-image cache with 2 neighbours prefetched each way.
+            --loops N steps through the folder N times, prints each loop's peak footprint and exits 1 if
+            the last loop's peak is more than 10 % above the first's (a leak).
     thumbnail  asks Finder's thumbnail service (256 × 256 points at 2×) for each file, as Finder does, and
             exits 1 if one gets no thumbnail; --out also writes them as PNG. It doesn't say which extension
             drew a thumbnail: for formats only Featherview reads, any thumbnail at all is ours. macOS uses the
@@ -202,6 +204,7 @@ struct Step: Sendable {
 @MainActor func runBrowse() async {
     let screen = screens(default: ["3024x1964"])
     let interval = number("--interval-ms", default: 300)
+    let loops = max(1, number("--loops", default: 1))
     let urls = imageFiles(in: folder)
     guard !urls.isEmpty else { fail("No images in \(folder.path). Run `corpus` first.") }
     let target = DecodeTarget.fit(pixelSizes(screen))
@@ -210,14 +213,15 @@ struct Step: Sendable {
     let cache = ImageCache(capacity: 8, hdr: ImageDecoder.supportsHDR, colorSpace: displayP3, queue: decodes)
     var list = ImageList(urls: urls)
     var steps: [Task<Step, Never>] = []
-    var peak: UInt64 = 0, peakCache = 0
+    var peaks: [UInt64] = [0], peakCache = 0
     func sample() async {
-        peak = max(peak, memoryFootprint())
+        peaks[peaks.count - 1] = max(peaks[peaks.count - 1], memoryFootprint())
         peakCache = max(peakCache, await cache.decodedBytes)
     }
 
     // As ViewerModel.show(): cancel the last step, focus the queue, await the image, then prefetch the neighbours.
-    for index in urls.indices {
+    for index in 0..<loops * urls.count {
+        if index > 0, index % urls.count == 0 { peaks.append(0) }
         let start = ContinuousClock.now
         steps.last?.cancel()
         guard let url = list.current else { break }
@@ -235,7 +239,7 @@ struct Step: Sendable {
         })
         await sample()
         try? await Task.sleep(until: start + .milliseconds(interval), clock: .continuous)
-        list.next()
+        if !list.next() { list.first() }  // the next loop starts over
     }
     var results: [Step] = []
     for step in steps { results.append(await step.value) }
@@ -257,7 +261,13 @@ struct Step: Sendable {
     summary("not cached", results.filter { !$0.cached })
     print("superseded: \(results.filter { $0.ms == nil }.count) of \(results.count)")
     // The footprint leaves out the cache's decoded images (purgeable volatile), so both are reported.
-    print("peak cache: \(peakCache / 1_000_000) MB decoded, peak footprint: \(peak / 1_000_000) MB (screen \(screen[0]), every \(interval) ms)")
+    print("peak cache: \(peakCache / 1_000_000) MB decoded, peak footprint: \(peaks.max()! / 1_000_000) MB (screen \(screen[0]), every \(interval) ms)")
+    guard loops > 1 else { return }
+    for (loop, peak) in peaks.enumerated() { print("loop \(loop + 1): peak footprint \(peak / 1_000_000) MB") }
+    if Double(peaks.last!) > Double(peaks[0]) * 1.1 {
+        print("leak: the last loop's peak is more than 10 % above the first's")
+        exit(1)
+    }
 }
 
 // MARK: - grid
