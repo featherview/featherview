@@ -164,8 +164,7 @@ public enum BatchConverter {
         } else {
             // Its own format, by extension first (.pbm, .pgm and .ppm share one UTType), then by type
             // (.jpeg, .tif): a CR3 that ImageIO reads still fails.
-            var ext = url.pathExtension.lowercased()
-            ext = ["jfif": "jpg", "jif": "jpg", "jfi": "jpg", "heif": "heic", "hif": "heic", "apng": "png"][ext] ?? ext
+            let ext = ImageFormats.canonicalExtension(url.pathExtension)
             let type = UTType(filenameExtension: ext)
             guard let own = FormatRegistry.format(id: ext) ?? FormatRegistry.writable.first(where: { type != nil && $0.type == type }),
                   // With Frames and Pages each output is one page.
@@ -305,7 +304,7 @@ public enum BatchConverter {
         if let dateTaken = prepared.dateTaken {
             for output in outputs { DateTaken.setFileDates(output, date: dateTaken, offset: prepared.offset) }
         } else if settings.safety.keepDates,
-           let date = (try? fm.attributesOfItem(atPath: url.resolvingSymlinksInPath().path))?[.modificationDate] as? Date {
+           let date = url.modificationDate {
             for output in outputs { try? fm.setAttributes([.modificationDate: date], ofItemAtPath: output.path) }
         }
         var message = prepared.note

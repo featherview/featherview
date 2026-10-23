@@ -15,6 +15,20 @@ public struct PixelSize: Hashable, Sendable {
         self.width = width
         self.height = height
     }
+
+    /// A screen's `points` at its backing `scale`, rounded: a scaled display's fractional points land between pixels.
+    public init(points: CGSize, scale: CGFloat) {
+        self.init(width: Int((points.width * scale).rounded()), height: Int((points.height * scale).rounded()))
+    }
+
+    /// The screen a decode fits when none is seen (no display, an extension): a common Retina size, so a huge
+    /// image never decodes at full size.
+    public static let fallbackScreen = PixelSize(width: 3024, height: 1964)
+
+    /// The screens' pixel sizes from their points and backing scales, `fallbackScreen` when there are none.
+    public static func screens(_ screens: [(points: CGSize, scale: CGFloat)]) -> [PixelSize] {
+        screens.isEmpty ? [fallbackScreen] : screens.map { PixelSize(points: $0.points, scale: $0.scale) }
+    }
 }
 
 public enum ImageDecoder {

@@ -45,9 +45,7 @@ extension ViewerModel {
                 guard let scanned = try? FolderScanner.images(around: around, includeHidden: includeHidden, sorted: false)
                 else { return nil }
                 let (added, removed) = Arrivals.diff(listed: listed, scanned: scanned)
-                let newest = Arrivals.newest(added) {
-                    (try? $0.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
-                }
+                let newest = Arrivals.newest(added) { $0.modificationDate }
                 return (scanned, added, removed, newest)
             }.value
             guard let found, followsNewFiles, openTask == scan, unsaved == nil else { return }

@@ -214,7 +214,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { !isBusy() }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        let unsaved = ViewerModel.all.allObjects.filter { UnsavedRules.asksFirst(.quit, hasUnsaved: $0.unsaved != nil) }
+        let unsaved = ViewerModel.all.allObjects.filter { $0.unsaved != nil }
         if !unsaved.isEmpty {
             Task {
                 for model in unsaved {

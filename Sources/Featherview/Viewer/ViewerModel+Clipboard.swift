@@ -35,7 +35,7 @@ extension ViewerModel {
                 }
                 // Asked here, not before queuing: a cover still queued has no `unsaved` yet, so a ⌘N after it
                 // would replace its image unasked.
-                if UnsavedRules.asksFirst(.newFromClipboard, hasUnsaved: unsaved != nil), !(await confirmDiscard()) { return }
+                if unsaved != nil, !(await confirmDiscard()) { return }
                 cover(with: image)
             }
         }
@@ -68,10 +68,10 @@ extension ViewerModel {
         coveredList = nil
     }
 
-    /// True when `command` waits on the question about the unsaved image (`UnsavedRules`); `action` then runs once
-    /// it's saved or dropped (Cancel: never). False: the caller goes on.
-    func guardUnsaved(_ command: ViewerCommand, then action: @escaping @MainActor () -> Void) -> Bool {
-        guard UnsavedRules.asksFirst(command, hasUnsaved: unsaved != nil) else { return false }
+    /// True when an unsaved image from the clipboard waits on the question first, because leaving drops it; `action`
+    /// then runs once it's saved or dropped (Cancel: never). False: the caller goes on.
+    func guardUnsaved(then action: @escaping @MainActor () -> Void) -> Bool {
+        guard unsaved != nil else { return false }
         Task { if await confirmDiscard() { action() } }
         return true
     }

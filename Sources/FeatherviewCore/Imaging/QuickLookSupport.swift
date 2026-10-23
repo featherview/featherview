@@ -30,12 +30,8 @@ public enum QuickLookSupport {
         return (image, thumbnailSize(image: CGSize(width: image.width, height: image.height), maximum: maximum))
     }
 
-    /// The screen a preview fits when the extension sees none: a common Retina size, so a huge image
-    /// never decodes at full size.
-    public static let fallbackScreen = PixelSize(width: 3024, height: 1964)
-
     /// Page 1 decoded to fit the screens, as the viewer shows it.
     public static func preview(_ url: URL, screens: [PixelSize]) throws -> CGImage {
-        try ImageDecoder.decode(url, fitting: screens.isEmpty ? [fallbackScreen] : screens)
+        try ImageDecoder.decode(url, fitting: screens.isEmpty ? [PixelSize.fallbackScreen] : screens)
     }
 }

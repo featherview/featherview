@@ -178,7 +178,7 @@ struct BatchWrittenPreview: View {
             let loaded = await Task.detached(priority: .userInitiated) {
                 Shown(url: url, image: try? ImageDecoder.decode(url, halvingSteps: true, fitting: [area]),
                       size: ImageDecoder.displaySize(of: url),
-                      bytes: try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize)
+                      bytes: url.fileSize)
             }.value
             guard !Task.isCancelled else { return }
             shown = loaded

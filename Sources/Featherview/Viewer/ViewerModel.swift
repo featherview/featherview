@@ -185,12 +185,7 @@ final class ViewerModel {
     /// less memory than full size.
     /// shortcut: screens are read at launch; a display plugged in later decodes for the old set, re-read on
     /// `NSApplication.didChangeScreenParametersNotification` if that comes up.
-    let screens: [PixelSize] = {
-        let screens = NSScreen.screens.map {
-            PixelSize(width: Int($0.frame.width * $0.backingScaleFactor), height: Int($0.frame.height * $0.backingScaleFactor))
-        }
-        return screens.isEmpty ? [PixelSize(width: 2560, height: 1600)] : screens
-    }()
+    let screens = PixelSize.screens(NSScreen.screens.map { ($0.frame.size, $0.backingScaleFactor) })
     /// Display decodes come in it, so Core Animation doesn't colour-convert each image on the main thread.
     /// shortcut: the main screen's at launch; on another display CA converts again (slower, and clipped to the first
     /// display's gamut), follow the window's screen if people browse on two displays.
@@ -281,7 +276,7 @@ final class ViewerModel {
     /// `keepingCompare`: pane 1 changes folder (a swap or a compare start), pane 2 stays.
     /// `remember`: listed in File › Open Recent (not for browsing into another folder).
     func open(_ url: URL, keepingCompare: Bool = false, remember: Bool = true) {
-        if guardUnsaved(.open, then: { [weak self] in self?.open(url, keepingCompare: keepingCompare, remember: remember) }) {
+        if guardUnsaved(then: { [weak self] in self?.open(url, keepingCompare: keepingCompare, remember: remember) }) {
             return
         }
         if remember { RecentFiles.shared.note(url) }
@@ -419,7 +414,7 @@ final class ViewerModel {
     }
 
     func next() {
-        if guardUnsaved(.next, then: { [weak self] in self?.show() }) { return }
+        if guardUnsaved(then: { [weak self] in self?.show() }) { return }
         guard !isGrid else { return }
         forward = true
         if slideshow != nil { return slideshowStep(forward: true) }
@@ -427,7 +422,7 @@ final class ViewerModel {
     }
 
     func previous() {
-        if guardUnsaved(.previous, then: { [weak self] in self?.show() }) { return }
+        if guardUnsaved(then: { [weak self] in self?.show() }) { return }
         guard !isGrid else { return }
         forward = false
         if slideshow != nil { return slideshowStep(forward: false) }
@@ -436,12 +431,12 @@ final class ViewerModel {
     /// Home / End: nothing during a slideshow, a shuffled round has no first or last.
     func first() {
         guard slideshow == nil else { return }
-        if guardUnsaved(.first, then: { [weak self] in self?.first() }) { return }
+        if guardUnsaved(then: { [weak self] in self?.first() }) { return }
         list.first(); show()
     }
     func last() {
         guard slideshow == nil else { return }
-        if guardUnsaved(.last, then: { [weak self] in self?.last() }) { return }
+        if guardUnsaved(then: { [weak self] in self?.last() }) { return }
         list.last(); show()
     }
 
@@ -667,10 +662,15 @@ final class ViewerModel {
                 guard !Task.isCancelled else { return }
                 if prefetched == nil { shown(decoded, url: url, page: page, started: started) }
                 if page == 0 { play(url, target: target, first: decoded) }
-                // Read again on every show: a rotation changes both size and date. Not awaited, so the
-                // prefetch below doesn't wait for another file read (slow on network or USB disks).
+                // Read again unless the prefetch's read is still current: our own rewrites drop it, and a stat
+                // catches an app that changed the file elsewhere (the folder watch sees only entries come and go).
+                // Not awaited, so the prefetch below doesn't wait for a file read (slow on network or USB disks).
+                let known = page == 0 ? knownInfo[url] : nil
                 Task {
-                    let info = await Task.detached { FileInfo.read(url: url, page: page) }.value
+                    let info = await Task.detached {
+                        if let known, known.isCurrent { return known }
+                        return FileInfo.read(url: url, page: page)
+                    }.value
                     if page == 0 { knownInfo[url] = info }
                     // A slower read for another page of this file may finish last. Unchanged: no second redraw.
                     if info.isFor(list.current, page: self.page), info != fileInfo { fileInfo = info }

@@ -27,7 +27,7 @@ final class CloseGuard: NSObject, NSWindowDelegate {
     override func forwardingTarget(for selector: Selector!) -> Any? { original }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        guard let model, UnsavedRules.asksFirst(.close, hasUnsaved: model.unsaved != nil) else { return original?.windowShouldClose?(sender) ?? true }
+        guard let model, model.unsaved != nil else { return original?.windowShouldClose?(sender) ?? true }
         Task {
             guard await model.confirmDiscard() else { return }
             model.show()  // the covered image, for a reopened window

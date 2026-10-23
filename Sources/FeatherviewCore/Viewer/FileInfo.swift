@@ -12,19 +12,23 @@ public struct FileInfo: Equatable, Sendable {
 
     /// Reads the file; call off the main thread (it touches the disk).
     public static func read(url: URL, page: Int) -> FileInfo {
-        let resources = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+        let modified = url.modificationDate
         let size = ImageDecoder.displaySize(of: url, page: page)
         // `{size}` is page 0's on every page.
         let fileSize = page == 0 ? size : ImageDecoder.displaySize(of: url)
         return FileInfo(url: url, page: page, pixelSize: size,
-                        bytes: resources?.fileSize, modified: resources?.contentModificationDate,
-                        values: OverlayTemplate.fileValues(size: fileSize, modified: resources?.contentModificationDate))
+                        bytes: url.fileSize, modified: modified,
+                        values: OverlayTemplate.fileValues(size: fileSize, modified: modified))
     }
 
     /// The same values under a new URL: after a rename the picture stays without a new read.
     public func moved(to url: URL) -> FileInfo {
         FileInfo(url: url, page: page, pixelSize: pixelSize, bytes: bytes, modified: modified, values: values)
     }
+
+    /// True while the file has the size and date this read saw, so nothing rewrote it since: one stat, where a read
+    /// opens the file's header too.
+    public var isCurrent: Bool { url.modificationDate == modified && url.fileSize == bytes }
 
     /// A read for another page of the same file has another pixel size.
     public func isFor(_ url: URL?, page: Int) -> Bool { self.url == url && self.page == page }

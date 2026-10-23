@@ -42,8 +42,7 @@ public enum DateTaken {
 
     /// The file's modification date as a wall time in the Mac's time zone.
     public static func fileDate(of url: URL) -> String? {
-        guard let modified = (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
-        else { return nil }
+        guard let modified = url.modificationDate else { return nil }
         let local = Calendar(identifier: .gregorian)
         let parts = local.dateComponents([.year, .month, .day, .hour, .minute, .second], from: modified)
         return gmt.date(from: parts).map(exif)

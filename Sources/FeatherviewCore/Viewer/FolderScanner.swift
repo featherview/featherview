@@ -36,18 +36,29 @@ public enum FolderScanner {
         return sorted ? inFinderOrder(images) : images
     }
 
-    /// Finder's name order (numbers by value). 45 ms for 10,000 names.
+    /// Finder's name order (numbers by value), the one every list of names uses. Names it calls equal fall back to
+    /// a plain compare, so no list depends on the order it got them in; the same name twice (the batch's files from
+    /// two folders) keeps its order, as the sorts are stable.
+    public static func finderPrecedes(_ a: String, _ b: String) -> Bool {
+        switch a.localizedStandardCompare(b) {
+        case .orderedAscending: true
+        case .orderedDescending: false
+        case .orderedSame: a < b
+        }
+    }
+
+    /// `finderPrecedes` order. 45 ms for 10,000 names.
     public static func inFinderOrder(_ urls: [URL]) -> [URL] {
         // Names taken once: lastPathComponent inside the comparator made it 190 ms.
         urls.map { ($0.lastPathComponent, $0) }
-            .sorted { $0.0.localizedStandardCompare($1.0) == .orderedAscending }
+            .sorted { finderPrecedes($0.0, $1.0) }
             .map(\.1)
     }
 
     /// The first of `inFinderOrder(urls)`, in 2.5 ms for 10,000 names.
     public static func firstInFinderOrder(_ urls: [URL]) -> URL? {
         urls.map { ($0.lastPathComponent, $0) }
-            .min { $0.0.localizedStandardCompare($1.0) == .orderedAscending }?.1
+            .min { finderPrecedes($0.0, $1.0) }?.1
     }
 
     /// Names and types straight from the directory: 11 ms for 10,000 files, where FileManager took
