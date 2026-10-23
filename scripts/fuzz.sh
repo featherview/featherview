@@ -36,7 +36,7 @@ for seed in "$SEEDS"/*; do
         case $status in
             0) ;;
             3) hangs=$((hangs + 1)); rm -f "$OUT/current.$ext" ;;
-            2) cat "$log" >&2; exit 2 ;;
+            2) echo "$name: skipped, $(head -1 "$log")" >&2; rm -f "$log"; continue 2 ;;  # not an own format (.psb goes to ImageIO)
             *)
                 crashes=$((crashes + 1))
                 crash="$(next_name crash "$ext")"
