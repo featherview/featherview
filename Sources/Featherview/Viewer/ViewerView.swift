@@ -1026,6 +1026,8 @@ struct ViewerCommands: Commands {
                 .disabled(model?.availability.canGoForward != true)
             Button("Previous  (← or ⌫)") { model?.previous() }
                 .disabled(model?.availability.canGoBack != true)
+            Button("Random Image") { model?.randomImage() }
+                .disabled(model.map { $0.isGrid || $0.slideshowState != nil || $0.list.urls.count < 2 } ?? true)
             Group {
                 if model?.isAnimation == true {
                     Button("Next Frame  (⌥→)") { model?.nextPage() }

@@ -51,6 +51,20 @@ public struct ImageList: Equatable, Sendable {
     /// Stops holding a removed image; the one after it becomes current.
     public mutating func release() { held = nil }
 
+    /// Makes a random other image current (drops a held image); false and unchanged with fewer than two.
+    public mutating func selectRandom<G: RandomNumberGenerator>(using generator: inout G) -> Bool {
+        guard urls.count > 1 else { return false }
+        // A held image isn't listed, so any listed one may follow it.
+        if held != nil {
+            index = Int.random(in: 0..<urls.count, using: &generator)
+            held = nil
+            return true
+        }
+        let pick = Int.random(in: 0..<urls.count - 1, using: &generator)
+        index = pick >= index ? pick + 1 : pick
+        return true
+    }
+
     /// Makes `url` current (drops a held image); false and unchanged when it isn't listed.
     public mutating func select(_ url: URL) -> Bool {
         guard let found = urls.firstIndex(of: url) else { return false }
