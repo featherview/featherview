@@ -72,6 +72,7 @@ import Testing
     @Test func everyPrefixOfASeedThrowsOrDecodes() throws {
         let seeds = try Self.seeds()
         for format in OwnDecoders.builtIn {
+            if format.name == "PDF" && Fixtures.underRosetta { continue }  // Core Graphics, not ours: see underRosetta
             let data = try #require(seeds[format.name], "no seed for \(format.name)")
             for n in Array(0..<min(512, data.count)) + Array(stride(from: 512, to: data.count, by: 64)) {
                 let prefix = data.prefix(n)

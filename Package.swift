@@ -1,8 +1,10 @@
 // swift-tools-version:6.0
 import PackageDescription
 
-// libjxl's build settings, for its C (brotli) and C++ files alike.
-let cjpegxlDefines = [("JPEGXL_ENABLE_SKCMS", "1"), ("JPEGXL_ENABLE_TRANSCODE_JPEG", "0"), ("JPEGXL_ENABLE_BOXES", "1")]
+// libjxl's build settings, for its C (brotli) and C++ files alike. skcms's AVX2 and AVX-512 paths don't compile for
+// x86_64 with Xcode's clang (target features missing); Intel Macs use its baseline (SSE) path.
+let cjpegxlDefines = [("JPEGXL_ENABLE_SKCMS", "1"), ("JPEGXL_ENABLE_TRANSCODE_JPEG", "0"), ("JPEGXL_ENABLE_BOXES", "1"),
+                      ("SKCMS_DISABLE_SKX", "1"), ("SKCMS_DISABLE_HSW", "1")]
 let cjpegxlHeaderPaths = ["libjxl", "libjxl/lib", "highway", "brotli/include", "skcms"]
 
 let package = Package(
