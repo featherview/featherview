@@ -86,7 +86,8 @@ private final class FocusingField: NSTextField {
         guard window != nil else { return }
         // After SwiftUI's own focus pass for this update, which would otherwise keep the viewer focused.
         Task { @MainActor [weak self] in
-            guard let self, let window = self.window else { return }
+            // A sheet focuses the field itself; making it first responder again would end the editing.
+            guard let self, let window = self.window, self.currentEditor() == nil else { return }
             window.makeFirstResponder(self)
         }
     }

@@ -295,12 +295,14 @@ struct ViewerView: View {
         .onChange(of: hideBars, initial: true) { feedAutoHide(.enabled($1)) }
         .onChange(of: model.isFullScreen, initial: true) { feedAutoHide(.fullScreen($1)) }
         .onChange(of: model.image != nil, initial: true) { feedAutoHide(.pictureShown($1)) }
-        // The grid keeps its bars like a panel does: the strip holds its slider.
-        .onChange(of: model.chooser != nil || model.destinationPanel != nil || model.showInfo || model.isGrid, initial: true) {
+        // The grid keeps its bars like a panel does: the strip holds its slider; the rename field is in the title.
+        .onChange(of: model.chooser != nil || model.destinationPanel != nil || model.showInfo || model.isGrid || model.renaming, initial: true) {
             feedAutoHide(.panelOpen($1))
         }
         // The grid's collection view takes the keyboard; while SwiftUI's focus stays on, it takes it back.
         .onChange(of: model.isGrid) { focused = !$1 }
+        // The rename field takes the keyboard from AppKit behind SwiftUI's back; it comes back once the field goes.
+        .onChange(of: model.renaming) { if !model.isGrid { focused = !$1 } }
         // The F7 / F8 panel's keys go through `handle`, not the grid's collection view.
         .onChange(of: model.destinationPanel != nil) { if $1, model.isGrid { focused = true } }
         .onChange(of: barsVisible) { fadeBars(visible: $1) }
