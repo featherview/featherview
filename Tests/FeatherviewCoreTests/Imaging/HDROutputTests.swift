@@ -133,4 +133,21 @@ import UniformTypeIdentifiers
     @Test(.enabled(if: ImageDecoder.supportsHDR)) func hdrToHEICWritesAGainMap() async throws {
         #expect(try hasGainMap(try await convert(try hdrInput(), to: "heic")))
     }
+
+    @Test(.enabled(if: ImageDecoder.supportsHDR), arguments: ["heic", "avif"])
+    func saveAsKeepsHDRIn(format: String) async throws {
+        let input = try hdrInput()
+        let saved = try Fixtures.makeTempDir().appendingPathComponent("gm.\(format)")
+        let output = try #require(FormatRegistry.format(id: format))
+        try await offPool { try ImageSaver.save(input, page: 0, to: saved, as: output, options: FormatOptions()) }
+        #expect(try hasGainMap(saved))
+        #expect(try isHDR(saved))
+    }
+
+    @Test(.enabled(if: ImageDecoder.supportsHDR)) func saveAsHDRToJPEGIsSDR() throws {
+        let saved = try Fixtures.makeTempDir().appendingPathComponent("gm.jpg")
+        try ImageSaver.save(try hdrInput(), page: 0, to: saved, as: .jpeg, options: FormatOptions())
+        #expect(try !isHDR(saved))
+        #expect(try ImageDecoder.decode(saved).bitsPerComponent == 8)
+    }
 }

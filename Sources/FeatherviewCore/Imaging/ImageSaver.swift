@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 
 /// Save As from the viewer (spec "Menu commands"), and the pages both it and the batch write.
 public enum ImageSaver {
@@ -18,6 +19,14 @@ public enum ImageSaver {
     /// written, so a failure leaves it as it was. Reads and writes files: call it off the main thread.
     public static func save(_ source: URL, page: Int, to destination: URL, as format: OutputFormat,
                             options: FormatOptions) throws {
+        // HEIC and AVIF keep an HDR photo's HDR (spec "Formats"); both write one page.
+        if ImageDecoder.supportsHDR, ["heic", "avif"].contains(format.id) {
+            let image = try ImageDecoder.decode(source, page: page, hdr: true)
+            let type = CGImageSourceCreateWithURL(source as CFURL, nil).flatMap(CGImageSourceGetType)
+            let hdr = ImageDecoder.isHDR(image.colorSpace, type: type)
+            try write(ImageEncoder.encode([image], as: format, options: options, metadataFrom: source, hdr: hdr), to: destination)
+            return
+        }
         try write(ImageEncoder.encode(pages(of: source, page: page, for: format, options: options),
                                       as: format, options: options, metadataFrom: source), to: destination)
     }
