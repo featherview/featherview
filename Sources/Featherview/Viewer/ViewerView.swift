@@ -625,7 +625,7 @@ struct ViewerView: View {
         case .toggleThumbnails: model.toggleGrid()
         case .zoomToWidth: model.setFitMode(.width)
         case .zoomToHeight: model.setFitMode(.height)
-        case .toggleKeepZoom: UserDefaults.standard.set(!AppSettings.keepZoom.value(), forKey: AppSettings.keepZoom.key)
+        case .toggleKeepZoom: AppSettings.keepZoom.set(!AppSettings.keepZoom.value())
         case .swapImages:
             guard model.compareSession != nil else { return false }
             model.swapCompared()

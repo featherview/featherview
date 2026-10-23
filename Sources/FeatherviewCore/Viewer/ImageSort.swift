@@ -25,8 +25,8 @@ public struct SortOrder: Equatable, Sendable {
     }
 
     public func store(in defaults: UserDefaults = .standard) {
-        defaults.set(key.rawValue, forKey: AppSettings.sortKey.key)
-        defaults.set(ascending, forKey: AppSettings.sortAscending.key)
+        AppSettings.sortKey.set(key.rawValue, in: defaults)
+        AppSettings.sortAscending.set(ascending, in: defaults)
     }
 
     /// Date Taken reads every file's header: too slow for the open budget, so it sorts after the first image.

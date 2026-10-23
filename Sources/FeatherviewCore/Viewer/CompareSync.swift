@@ -13,7 +13,7 @@ public enum CompareSync {
     /// The second pane's zoom factor for the first pane's `firstFactor`.
     public static func matchedFactor(_ firstFactor: Double, first: CGSize, second: CGSize) -> Double {
         // shortcut: at the clamp the panes stop lining up, clamp pane 1's zoom to the pair's range if people zoom that far
-        min(max(firstFactor * scale(first: first, second: second), ZoomSteps.range.lowerBound), ZoomSteps.range.upperBound)
+        ZoomSteps.clamped(firstFactor * scale(first: first, second: second))
     }
 
     /// The leader's clear-area centre in its document (points) mapped to the follower's: both

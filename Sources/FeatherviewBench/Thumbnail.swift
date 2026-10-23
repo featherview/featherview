@@ -18,7 +18,7 @@ func runThumbnail(_ path: URL, out: URL?) async {
         do {
             let representation = try await QLThumbnailGenerator.shared.generateBestRepresentation(for: request)
             let image = representation.cgImage
-            print("\(file.lastPathComponent): thumbnail \(image.width)x\(image.height) \(Int(ms(.now - start))) ms")
+            print("\(file.lastPathComponent): thumbnail \(image.width)x\(image.height) \(Int((.now - start).milliseconds)) ms")
             if let out, let destination = CGImageDestinationCreateWithURL(
                 out.appending(path: file.lastPathComponent + ".png") as CFURL, UTType.png.identifier as CFString, 1, nil) {
                 CGImageDestinationAddImage(destination, image, nil)

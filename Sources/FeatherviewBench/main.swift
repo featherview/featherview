@@ -104,10 +104,6 @@ do { options = try parseOptions(arguments, mode: mode) } catch { fail(error.mess
     return number
 }
 
-func ms(_ duration: Duration) -> Double {
-    Double(duration.components.seconds) * 1000 + Double(duration.components.attoseconds) / 1e15
-}
-
 func percentile(_ sorted: [Double], _ p: Double) -> Double {
     sorted.isEmpty ? 0 : sorted[min(sorted.count - 1, Int((Double(sorted.count) * p).rounded(.up)) - 1)]
 }
@@ -140,7 +136,7 @@ func imageFiles(in dir: URL) -> [URL] {
                 print("Can't decode \(file.lastPathComponent)")
                 return nil
             }
-            times.append(ms(start.duration(to: .now)))
+            times.append(start.duration(to: .now).milliseconds)
             last = image
         }
         let first = times.removeFirst()
@@ -225,7 +221,7 @@ struct Step: Sendable {
         let cached = await cache.contains(url)
         steps.append(Task {
             let image = try? await cache.image(for: url, target: target)
-            let elapsed = ms(start.duration(to: .now))
+            let elapsed = start.duration(to: .now).milliseconds
             guard image != nil, !Task.isCancelled else {
                 return Step(index: index, file: url.lastPathComponent, cached: cached, ms: nil)
             }
@@ -282,14 +278,14 @@ struct Step: Sendable {
         for url in urls {
             group.addTask {
                 let image = try? await cache.image(for: url, target: target)
-                return (url.lastPathComponent, image.map { _ in ms(start.duration(to: .now)) })
+                return (url.lastPathComponent, image.map { _ in start.duration(to: .now).milliseconds })
             }
         }
         var times: [(String, Double?)] = []
         for await time in group { times.append(time) }
         return times
     }
-    let total = ms(start.duration(to: .now))
+    let total = start.duration(to: .now).milliseconds
     let failed = times.filter { $0.1 == nil }.map(\.0)
     failed.forEach { print("Can't decode \($0)") }
     let sorted = times.compactMap(\.1).sorted()

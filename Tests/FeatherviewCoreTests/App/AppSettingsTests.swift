@@ -42,6 +42,15 @@ import Testing
         #expect(defaults.object(forKey: AppSettings.slideshowRepeat.key) as? Bool == false)
     }
 
+    @Test func setStoresUnderTheKey() {
+        let defaults = freshDefaults()
+        AppSettings.keepZoom.set(true, in: defaults)
+        AppSettings.thumbnailSize.set(160, in: defaults)
+        AppSettings.skippedVersion.set("1.2", in: defaults)
+        #expect(defaults.bool(forKey: "keepZoom") && defaults.double(forKey: "thumbnailSize") == 160)
+        #expect(defaults.object(forKey: "keepZoom") as? Bool == true && AppSettings.skippedVersion.value(in: defaults) == "1.2")
+    }
+
     @Test func compareInStepDefaultsOn() {
         let defaults = freshDefaults()
         #expect(AppSettings.compareInStep.value(in: defaults) == true)

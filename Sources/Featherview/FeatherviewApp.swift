@@ -119,7 +119,7 @@ enum DefaultViewerOffer {
                                             offeredBefore: AppSettings.offeredDefaultViewer.value(),
                                             jpegHandler: handler(for: .jpeg)) else { return }
             // Set before asking, so a crash or quit never asks twice.
-            UserDefaults.standard.set(true, forKey: AppSettings.offeredDefaultViewer.key)
+            AppSettings.offeredDefaultViewer.set(true)
             let alert = NSAlert()
             alert.alertStyle = .informational
             alert.messageText = String(localized: "Open JPEG images with Featherview?")

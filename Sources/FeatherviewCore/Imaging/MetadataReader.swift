@@ -116,7 +116,8 @@ public enum MetadataReader {
             width: .abbreviated, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0...1))))
     }
 
-    static func format(bytes: Int) -> String {
+    /// A file size the way Finder shows it.
+    public static func format(bytes: Int) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
     }
 }
