@@ -202,4 +202,11 @@ import Testing
         #expect(throws: OwnDecodeError.unsupported) { try PCXCodec.encode(RGBAImage(width: 1, height: 65537)) }
         #expect(try PCXCodec.decode(PCXCodec.encode(RGBAImage(width: 65534, height: 1))).width == 65534)
     }
+
+    /// 65536 × 65536 claimed in the header: refused as corrupt before anything is allocated.
+    @Test func hugeHeaderIsRefused() {
+        let data = Data(header(bitsPerPixel: 8, planes: 1, width: 65536, height: 65536, bytesPerLine: 65535) + [0xFF])
+        #expect(throws: OwnDecodeError.corrupt) { try PCXCodec.size(data) }
+        #expect(throws: OwnDecodeError.corrupt) { try PCXCodec.decode(data) }
+    }
 }

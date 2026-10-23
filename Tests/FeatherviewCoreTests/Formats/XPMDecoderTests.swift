@@ -71,4 +71,11 @@ import Testing
         #expect(try XPMDecoder.size(data) == (4096, 4096))
         #expect(ContinuousClock.now - start < .milliseconds(500))
     }
+
+    /// 65536 × 65536 claimed in the header: refused as corrupt before anything is allocated.
+    @Test func hugeHeaderIsRefused() {
+        let data = Data(#"/* XPM */ static char *t[] = { "65536 65536 1 1", "a c black", "a" };"#.utf8)
+        #expect(throws: OwnDecodeError.corrupt) { try XPMDecoder.size(data) }
+        #expect(throws: OwnDecodeError.corrupt) { try XPMDecoder.decode(data) }
+    }
 }

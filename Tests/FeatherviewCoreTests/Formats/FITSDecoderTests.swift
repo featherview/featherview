@@ -58,4 +58,12 @@ import Testing
             try FITSDecoder.decode(Data(Self.file(Array(cards.prefix(3)) + [Self.card("NAXIS1", "65536"), Self.card("NAXIS2", "4096")], data: [])))
         }
     }
+
+    /// 65536 × 65536 claimed in the header: refused as corrupt before anything is allocated.
+    @Test func hugeHeaderIsRefused() {
+        let data = Data(Self.file([Self.card("SIMPLE", "T"), Self.card("BITPIX", "8"), Self.card("NAXIS", "2"),
+                                    Self.card("NAXIS1", "65536"), Self.card("NAXIS2", "65536")], data: []))
+        #expect(throws: OwnDecodeError.corrupt) { try FITSDecoder.size(data) }
+        #expect(throws: OwnDecodeError.corrupt) { try FITSDecoder.decode(data) }
+    }
 }

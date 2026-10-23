@@ -381,4 +381,11 @@ struct PSPBuilder {
             }
         }
     }
+
+    /// 65536 × 65536 claimed in the header: refused as corrupt before anything is allocated.
+    @Test func hugeHeaderIsRefused() {
+        let data = PSPBuilder(width: 65536, height: 65536).data
+        #expect(throws: OwnDecodeError.corrupt) { try PSPDecoder.size(data) }
+        #expect(throws: OwnDecodeError.corrupt) { try PSPDecoder.decode(data) }
+    }
 }

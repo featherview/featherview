@@ -58,4 +58,11 @@ import Testing
         #expect(throws: OwnDecodeError.unsupported) { try SunRasterDecoder.decode(Self.ras(width: 1, height: 1, depth: 8, type: 5, body: [0, 0])) }
         #expect(throws: OwnDecodeError.notThisFormat) { try SunRasterDecoder.decode(Data(repeating: 0, count: 64)) }
     }
+
+    /// 65536 × 65536 claimed in the header: refused as corrupt before anything is allocated.
+    @Test func hugeHeaderIsRefused() {
+        let data = Self.ras(width: 65536, height: 65536, depth: 8, body: [0])
+        #expect(throws: OwnDecodeError.corrupt) { try SunRasterDecoder.size(data) }
+        #expect(throws: OwnDecodeError.corrupt) { try SunRasterDecoder.decode(data) }
+    }
 }

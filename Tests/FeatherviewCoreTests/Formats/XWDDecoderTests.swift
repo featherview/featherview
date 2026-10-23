@@ -66,4 +66,12 @@ import Testing
                              visualClass: 4, masks: (0xFF0000, 0xFF00, 0xFF), pixels: [])
         #expect(throws: OwnDecodeError.truncated) { try XWDDecoder.decode(Data(huge)) }
     }
+
+    /// 65536 × 65536 claimed in the header: refused as corrupt before anything is allocated.
+    @Test func hugeHeaderIsRefused() {
+        let data = Data(Self.file(width: 65536, height: 65536, depth: 24, bitsPerPixel: 32, bytesPerLine: 262_144, visualClass: 4,
+                                  masks: (0xFF0000, 0x00FF00, 0x0000FF), pixels: []))
+        #expect(throws: OwnDecodeError.corrupt) { try XWDDecoder.size(data) }
+        #expect(throws: OwnDecodeError.corrupt) { try XWDDecoder.decode(data) }
+    }
 }

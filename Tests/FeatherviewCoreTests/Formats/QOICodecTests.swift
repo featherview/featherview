@@ -89,4 +89,11 @@ import Testing
         bytes.replaceSubrange(4..<8, with: [24, 16, 8, 0].map { UInt8(truncatingIfNeeded: width >> $0) })
         #expect(throws: OwnDecodeError.corrupt) { try QOICodec.size(Data(bytes)) }
     }
+
+    /// 65536 × 65536 claimed in the header: refused as corrupt before anything is allocated.
+    @Test func hugeHeaderIsRefused() {
+        let data = Data(Array("qoif".utf8) + [0, 1, 0, 0, 0, 1, 0, 0, 4, 0, 0xFD, 0xFD])
+        #expect(throws: OwnDecodeError.corrupt) { try QOICodec.size(data) }
+        #expect(throws: OwnDecodeError.corrupt) { try QOICodec.decode(data) }
+    }
 }

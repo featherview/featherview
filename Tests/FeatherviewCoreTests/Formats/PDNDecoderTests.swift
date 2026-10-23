@@ -325,4 +325,11 @@ struct PDNBuilder {
             #expect(difference < 7, "\(file.lastPathComponent) vs thumbnail: \(difference)")
         }
     }
+
+    /// 65536 × 65536 claimed in the header: refused as corrupt before anything is allocated.
+    @Test func hugeHeaderIsRefused() {
+        let data = PDNBuilder(width: 65536, height: 65536, layers: []).data
+        #expect(throws: OwnDecodeError.corrupt) { try PDNDecoder.size(data) }
+        #expect(throws: OwnDecodeError.corrupt) { try PDNDecoder.decode(data) }
+    }
 }
