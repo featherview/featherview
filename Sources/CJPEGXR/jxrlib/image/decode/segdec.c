@@ -362,7 +362,7 @@ Int _FORCEINLINE DecodeSignificantRun (Int iMaxRun, struct CAdaptiveHuffman *pAH
     Int iBin;
     Int iRun = 0, iFLC = 0;
 
-    // featherview: runs are 1 to 14 in a valid stream; a damaged one ends the block instead of reading
+    // featherview patch: runs are 1 to 14 in a valid stream; a damaged one ends the block instead of reading
     // past gSignificantRunBin.
     if (iMaxRun > 14)
         return 16;

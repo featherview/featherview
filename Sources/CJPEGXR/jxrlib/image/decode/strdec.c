@@ -2872,7 +2872,7 @@ Int ReadImagePlaneHeader(CWMImageInfo* pII, CWMIStrCodecParam *pSCP,
             pSC->cNumChannels = 4;
             break;
         default:
-            // featherview: 5 (CMYKDIRECT) isn't decoded; with no channels no row buffers are made.
+            // featherview patch: 5 (CMYKDIRECT) isn't decoded; with no channels no row buffers are made.
             FailIf(TRUE, WMP_errUnsupportedFormat);
             break;
     }
@@ -2964,7 +2964,7 @@ Int ReadWMIHeader(
 // 0
     /** signature **/
     Call(pWS->Read(pWS, szMS, sizeof(szMS)));
-    // featherview: memcmp, not strstr: szMS has no terminating zero when the file has none there.
+    // featherview patch: memcmp, not strstr: szMS has no terminating zero when the file has none there.
     FailIf(memcmp(szMS, "WMPHOTO", 7) != 0, WMP_errUnsupportedFormat);
     //================================
     Call(attach_SB(pSB, pWS));
@@ -3015,7 +3015,7 @@ pSCP->bdBitDepth = BD_LONG; // remove when optimization is done
         pII->bdBitDepth = BD_1;
         pSCP->bBlackWhite = 1;
     }
-    // featherview: later code indexes tables with both.
+    // featherview patch: later code indexes tables with both.
     FailIf(pII->cfColorFormat >= CFT_MAX || pII->bdBitDepth >= BDB_MAX, WMP_errUnsupportedFormat);
 
 // 12 - Variable length fields
@@ -3146,7 +3146,7 @@ EXTERN_C Int WMPhotoValidate(
         pII->cfColorFormat = cII.cfColorFormat;
     if(cII.cfColorFormat == CF_RGBE)
         pII->cfColorFormat = CF_RGBE;
-    // featherview: outputMBRow writes 1-bit pixels for grey only.
+    // featherview patch: outputMBRow writes 1-bit pixels for grey only.
     if(pII->bdBitDepth == BD_1 && (pII->cfColorFormat != Y_ONLY || pSCP->cfColorFormat != Y_ONLY))
         return ICERR_ERROR;
 
@@ -3354,7 +3354,7 @@ Int ImageStrDecInit(
         // read plane header of second image plane
         Call(attach_SB(&SB, pSCP->pWStream));
         InitializeStrDec(pNextSC, &SC.m_param, &SC);
-        // featherview: a damaged alpha plane header fails the decode (detach_SB asserts on it otherwise).
+        // featherview patch: a damaged alpha plane header fails the decode (detach_SB asserts on it otherwise).
         if (ReadImagePlaneHeader(&pNextSC->WMII, &pNextSC->WMISCP, &pNextSC->m_param, &SB) != ICERR_OK) {
             free(pNextSC);
             free(pSC);

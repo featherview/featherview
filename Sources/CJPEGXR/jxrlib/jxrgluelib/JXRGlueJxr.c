@@ -1570,7 +1570,7 @@ ERR ParsePFDEntry(
 
         case WMP_tagTransformation:
             FailIf(1 != uCount, WMP_errUnsupportedFormat);
-            FailIf(uValue >= O_MAX, WMP_errUnsupportedFormat);  // featherview: an error, not an assert
+            FailIf(uValue >= O_MAX, WMP_errUnsupportedFormat);  // featherview patch: an error, not an assert
             pID->WMP.fOrientationFromContainer = TRUE;
             pID->WMP.oOrientationFromContainer = uValue;
             break;
@@ -1652,7 +1652,7 @@ ERR ParsePFDEntry(
             break;
 
         // Descriptive Metadata
-        // featherview: an entry ReadPropvar can't read, or of another type, is kept as it is (Featherview
+        // featherview patch: an entry ReadPropvar can't read, or of another type, is kept as it is (Featherview
         // never reads these), without asserting on its type.
         case WMP_tagImageDescription:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
@@ -1702,7 +1702,7 @@ ERR ParsePFDEntry(
         case WMP_tagCaption:
             CallIgnoreError(errTmp, ReadPropvar(pWS, uType, uCount, uValue,
                 &pID->WMP.sDescMetadata.pvarCaption));
-            // featherview: converted only when it was read as bytes (otherwise pwszVal may be NULL)
+            // featherview patch: converted only when it was read as bytes (otherwise pwszVal may be NULL)
             if ((DPKVT_BYREF | DPKVT_UI1) == pID->WMP.sDescMetadata.pvarCaption.vt && pID->WMP.sDescMetadata.pvarCaption.VT.pbVal != NULL) {
                 // Change type from C-style byte array to LPWSTR
                 //  make sure null term (ReadPropvar allocated enough space for this)

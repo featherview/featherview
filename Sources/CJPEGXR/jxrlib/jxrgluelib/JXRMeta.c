@@ -721,7 +721,7 @@ ERR ReadPropvar(__in_ecount(1) struct WMPStream* pWS,
         case WMP_typASCII:
             pvar->vt = DPKVT_LPSTR;
             Call(ReadBinaryData(pWS, uCount, uValue, (U8 **) &pvar->VT.pszVal));
-            // featherview: the file needn't end the string with a null; the next line adds one
+            // featherview patch: the file needn't end the string with a null; the next line adds one
             // make sure (ReadBinaryData allocated uCount + 2 so this and unicode can have forced nulls)
             pvar->VT.pszVal[uCount] = 0;
             break;
@@ -748,12 +748,12 @@ ERR ReadPropvar(__in_ecount(1) struct WMPStream* pWS,
             }
             else
             {
-                FailIf(TRUE, WMP_errNotYetImplemented);  // featherview: an error, not an assert
+                FailIf(TRUE, WMP_errNotYetImplemented);  // featherview patch: an error, not an assert
             }
             break;
 
         default:
-            FailIf(TRUE, WMP_errNotYetImplemented);  // featherview: an error, not an assert
+            FailIf(TRUE, WMP_errNotYetImplemented);  // featherview patch: an error, not an assert
             break;
     }
 
