@@ -114,9 +114,9 @@ struct ViewerView: View {
             if model.isFullScreen, showOverlay, !model.isGrid, let url = model.list.current {
                 Text(OverlayTemplate.render(overlayTemplate, values: overlayValues(url)))
                     .font(.callout)
-                    .foregroundStyle(.white)
-                    .padding(6)
-                    .background(.black.opacity(0.5), in: .rect(cornerRadius: 4))
+                    .foregroundStyle(Theme.overlayText)
+                    .padding(Theme.overlayPadding)
+                    .background(Theme.overlayFill, in: .rect(cornerRadius: Theme.Radius.overlay))
                     .padding()
             }
         }

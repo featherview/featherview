@@ -109,6 +109,21 @@ enum Theme {
     static let previewRing = 3.0
     static let previewGap = 20.0
 
+    /// Full-screen overlay text (Settings › Full Screen): white on a half-black box, 6 pt padding.
+    static let overlayText = Color.white
+    static let overlayFill = Color.black.opacity(0.5)
+    static let overlayPadding = 6.0
+
+    /// Transparent pictures sit on grey and white 8 pt squares.
+    static let checkerDark = NSColor(white: 0.8, alpha: 1)
+    static let checkerLight = NSColor.white
+    static let checkerTile = 8.0
+
+    /// Batch: a selected image row's fill; a finished image's and a failed one's status colour.
+    static let batchSelection = Color.accentColor.opacity(0.15)
+    static let success = Color.green
+    static let failure = Color.red
+
     /// Feather mark colours, #FFC766 and #FF7A59: the About glow is made from them.
     static let featherStart = rgb(0xFF, 0xC7, 0x66, 1)
     static let featherEnd = rgb(0xFF, 0x7A, 0x59, 1)
@@ -354,6 +369,11 @@ enum Theme {
         static let gridCell = 8.0
         /// Slideshow capsule: half of its 36 pt height.
         static let slideshowControls = 18.0
+        /// Full-screen overlay text box.
+        static let overlay = 4.0
+        /// Batch images list: the selected row and the drop outline; a row's thumbnail placeholder.
+        static let batchRow = 6.0
+        static let batchThumbnail = 3.0
     }
 
     // MARK: Motion
