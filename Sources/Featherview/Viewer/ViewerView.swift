@@ -299,8 +299,8 @@ struct ViewerView: View {
         .onChange(of: model.chooser != nil || model.destinationPanel != nil || model.showInfo || model.isGrid, initial: true) {
             feedAutoHide(.panelOpen($1))
         }
-        // The grid's collection view had the keyboard.
-        .onChange(of: model.isGrid) { if !$1 { focused = true } }
+        // The grid's collection view takes the keyboard; while SwiftUI's focus stays on, it takes it back.
+        .onChange(of: model.isGrid) { focused = !$1 }
         // The F7 / F8 panel's keys go through `handle`, not the grid's collection view.
         .onChange(of: model.destinationPanel != nil) { if $1, model.isGrid { focused = true } }
         .onChange(of: barsVisible) { fadeBars(visible: $1) }
