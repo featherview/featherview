@@ -56,6 +56,8 @@ swift build                      # debug build of everything
 swift test                       # all tests
 swift test --filter ImageListTests   # one suite
 scripts/bundle.sh debug          # build/Featherview.app (ad-hoc signed)
+swift build --build-tests --triple x86_64-apple-macosx14.0 --scratch-path .build/x86   # Intel tests, then run under Rosetta:
+arch -x86_64 xcrun xctest .build/x86/out/Products/Debug/FeatherviewCoreTests.xctest   # (arch -x86_64 swift test runs arm64; firstEncodesInAFreshProcess… needs swift test's runner, fails here only)
 scripts/strings.sh               # after changing UI text: extract strings into Resources/Localizable.xcstrings, then translate the new keys
 scripts/merge-strings.py         # catalog merge conflict: resolves it, then git add Resources/Localizable.xcstrings
 open build/Featherview.app

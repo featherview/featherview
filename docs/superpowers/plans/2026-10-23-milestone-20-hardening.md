@@ -146,7 +146,7 @@ DMG step only if it builds separately (`.claude/agents/release.md`).
 - [ ] **Step 1:** `scripts/bundle.sh release` builds with `--arch arm64 --arch x86_64` (debug stays native),
   for the app and both extensions; the script fails unless `lipo -archs` lists both for every Mach-O in the
   bundle.
-- [ ] **Step 2:** `arch -x86_64 swift test` (Rosetta) passes; failures that are x86-only (SIMD paths in
+- [ ] **Step 2:** the x86_64 test bundle passes under Rosetta (commands in AGENTS.md; `arch -x86_64 swift test` runs arm64); failures that are x86-only (SIMD paths in
   vendored C, float rounding) get fixed or, for a tolerance, a commented test change.
 - [ ] **Step 3:** `arch -x86_64 build/Featherview.app/Contents/MacOS/Featherview <a jpg>` opens and logs the
   first-image line; `swift run -c release featherview-bench decode` under `arch -x86_64` runs.
