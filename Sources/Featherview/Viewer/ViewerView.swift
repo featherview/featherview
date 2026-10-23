@@ -228,6 +228,7 @@ struct ViewerView: View {
             // The main window's model outlives it: the slideshow ends (and lets the display sleep), a reopened
             // window's animation plays on.
             model.endSlideshow()
+            model.followsNewFiles = false
             model.setWindowVisible(false)
             model.closeWindow()
             if let monitor = autoHide.keyMonitor { NSEvent.removeMonitor(monitor) }
@@ -1117,6 +1118,7 @@ struct ViewerCommands: Commands {
                 .disabled(model?.isGrid == true)
             Divider()
             SortMenu()
+            FollowToggle(model: model)
             Divider()
             let playing = model?.slideshowState != nil
             Group {
