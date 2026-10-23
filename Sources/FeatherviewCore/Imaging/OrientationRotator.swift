@@ -74,14 +74,33 @@ public enum OrientationRotator {
         guard let dest = CGImageDestinationCreateWithURL(temp as CFURL, sourceType, 1, nil) else {
             throw RotateError.writeFailed
         }
+        let target = next(current, change)
         let options: [CFString: Any] = [
-            kCGImageDestinationOrientation: next(current, change),
+            kCGImageDestinationOrientation: target,
             kCGImageDestinationMergeMetadata: true,
         ]
-        guard CGImageDestinationCopyImageSource(dest, source, options as CFDictionary, nil) else {
-            throw RotateError.writeFailed
-        }
+        guard CGImageDestinationCopyImageSource(dest, source, options as CFDictionary, nil)
+            || (type.conforms(to: .heic) && rewriteHEIF(url, source, to: temp, orientation: target))
+        else { throw RotateError.writeFailed }
         do { _ = try FileManager.default.replaceItemAt(url, withItemAt: temp) }
         catch { throw RotateError.writeFailed }
+    }
+
+    /// ImageIO refuses to change the orientation of a HEIC with an ISO gain map; `HEIFOrientation` can.
+    /// The result must read back with the new orientation, decode, and keep its gain map, or it isn't used.
+    static func rewriteHEIF(_ url: URL, _ source: CGImageSource, to temp: URL, orientation: Int) -> Bool {
+        guard let data = try? Data(contentsOf: url),
+              let rewritten = HEIFOrientation.setting(orientation, in: data),
+              (try? rewritten.write(to: temp)) != nil,
+              let check = CGImageSourceCreateWithURL(temp as CFURL, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(check, 0, nil) as? [CFString: Any],
+              props[kCGImagePropertyOrientation] as? Int ?? 1 == orientation,
+              CGImageSourceCreateImageAtIndex(check, 0, nil) != nil
+        else { return false }
+        guard #available(macOS 15, *) else { return true }
+        return [kCGImageAuxiliaryDataTypeISOGainMap, kCGImageAuxiliaryDataTypeHDRGainMap].allSatisfy {
+            (CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, $0) == nil)
+                == (CGImageSourceCopyAuxiliaryDataInfoAtIndex(check, 0, $0) == nil)
+        }
     }
 }
