@@ -432,10 +432,13 @@ final class ThumbnailCell: NSCollectionViewItem {
         load()
     }
 
-    /// The tooltip's details: read off the main thread on the first hover; until then the tooltip is the name.
+    /// The tooltip's details: read off the main thread once the pointer rests on the cell; until then the tooltip is
+    /// the name. Cells scrolling under a still pointer enter and exit within the rest, which cancels the read unstarted.
     override func mouseEntered(with event: NSEvent) {
         guard let url, cell.info == nil, reading == nil else { return }
         reading = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Theme.Motion.hoverRest))
+            guard !Task.isCancelled else { return }
             let info = await Task.detached { FileInfo.read(url: url, page: 0) }.value
             guard !Task.isCancelled, let self, self.url == url else { return }
             self.reading = nil
