@@ -77,7 +77,7 @@ Featherview tells you when a newer version is out; it never downloads or install
   notice for that version (a later one shows again); **Later** asks again at the next check.
 - **By hand:** Featherview › Check for Updates… checks right away and also tells you when you're up
   to date.
-- **Turn it off:** Preferences › Browsing › "Check for updates automatically".
+- **Turn it off:** Settings › Browsing › "Check for updates automatically".
 
 ## Build
 

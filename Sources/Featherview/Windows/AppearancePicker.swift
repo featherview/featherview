@@ -1,7 +1,7 @@
 import FeatherviewCore
 import SwiftUI
 
-/// Preferences › Viewer › Appearance: three miniature Featherview windows, light, dark and System split
+/// Settings › Viewer › Appearance: three miniature Featherview windows, light, dark and System split
 /// corner to corner. A click sets the whole app's appearance.
 struct AppearancePicker: View {
     @Binding var selection: String

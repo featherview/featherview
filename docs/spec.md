@@ -33,7 +33,7 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
   TIFF, GIF (animations play, see "Animation"), BMP, camera RAW, …), plus PDF (see "Formats").
 - Window title: `filename — 3 / 120`; for a multi-page file `filename — page 2 / 3 — 3 / 120`.
   A multi-page file always opens on page 1.
-- The whole app is light or dark: Appearance in Preferences is System (the default), Light or Dark.
+- The whole app is light or dark: Appearance in Settings is System (the default), Light or Dark.
   The background is Graphite (#1c1c20, the app icon's tile) in dark and Grey (#e7e7ec) in light; no
   other colours. Fit mode shrinks large images to the window and never enlarges small ones.
 - The canvas fills the whole window, under the toolbar and the status strip. Fit mode keeps the
@@ -73,7 +73,7 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 | F7 / F8 | move / copy the current file to a folder (see below) |
 | ⌦ (forward delete) | Move to Trash, like ⌘⌫ |
 | O / B / M | Open… / Batch Convert… / minimise the window (as ⌘O / ⌘B / ⌘M) |
-| P / A / S | Preferences / About / Save As…, each added with its feature (milestones 2–3) |
+| P / A / S | Settings / About / Save As…, each added with its feature (milestones 2–3) |
 
 Single keys for commands match the reference viewer, for people switching over; the ⌘ shortcuts stay for Mac users.
 
@@ -98,7 +98,7 @@ next, rotate left, rotate right, zoom out, zoom to fit, zoom in, info panel, Mov
 for a multi-page file only. Each button does what its key does and has a tooltip naming that key. View › Hide Toolbar hides it
 (remembered), and View › Customize Toolbar… changes it, as in any Mac app. Hidden in full screen; it slides in with the menu bar when the pointer is at the top (macOS 15 and later).
 
-"Hide toolbar and status bar while viewing" (Preferences › Viewer, off): in a window, once the
+"Hide toolbar and status bar while viewing" (Settings › Viewer, off): in a window, once the
 pointer has rested over the picture for 2 s, the toolbar and status strip fade out (200 ms). Moving
 the pointer, reaching the window's top edge, or any key except the browsing keys (← → Space
 Backspace Page Up/Down Home End) brings them back at once; browsing keys keep them hidden. Every
@@ -113,6 +113,12 @@ orientation applied), ⌘Q Quit. Menus also list the single-key commands
 (the single key in the shortcut column, also for commands that have a ⌘ shortcut, which keeps
 working) so they are discoverable. Single keys are menu shortcuts only while a
 menu is open, so typing in the batch window's text fields never triggers viewer actions.
+
+Like Finder and Preview, File holds what acts on the file (Open, Open Recent, Save As…, Rename…, Share, Move /
+Copy to Folder…, Move to Trash, Show in Finder, Open With, Always Open with Featherview, Batch Convert…) and Image
+what moves through or changes the picture (Next / Previous, pages and frames, rotate and flip, Adjust Date
+Taken…, Set as Desktop Picture, Show Info). The Window menu lists only the viewer windows: Batch and About open
+from their own commands.
 
 The app menu has Check for Updates… below About (see "Updates"). The Help menu repeats About's links:
 Featherview Website and Source Code (browser); Supported Formats, MIT License and Acknowledgements
@@ -172,18 +178,18 @@ the user makes claims one type: never more than one macOS prompt per click.
 - Once, at the first launch from an Applications folder (`/Applications` or `~/Applications`, not
   from the disk image, `build/` or a translocated copy), and only while Preview or no app opens
   JPEG: a dialog "Open JPEG images with Featherview?", "Featherview can open them instead of
-  Preview. Other image types can follow in Preferences › Browsing.", buttons "Use Featherview"
+  Preview. Other image types can follow in Settings › Browsing.", buttons "Use Featherview"
   (default) and "Not Now". "Use Featherview" makes it the default for JPEG only. Either answer ends
   the asking; it never comes back by itself.
-- Preferences › Browsing, group "Default app": one row each for JPEG, PNG, HEIC, GIF, TIFF and
+- Settings › Browsing, group "Default app": one row each for JPEG, PNG, HEIC, GIF, TIFF and
   WebP (the system's name for the type), the app that opens it now, and a "Use Featherview" button
   (off while Featherview opens it). Footer: "For any other type, open an image of it and choose
-  Image › Always Open with Featherview."
-- Image › "Always Open .png Files with Featherview" (the current file's extension): the same for
+  File › Always Open with Featherview."
+- File › "Always Open .png Files with Featherview" (the current file's extension): the same for
   the current file's type, whichever app opens it now (off while Featherview opens it). Never offered for PDF or anything conforming
   to it: Featherview shows PDFs as images, it isn't a PDF reader.
 - Choosing Keep in macOS's prompt, or macOS refusing the change, changes nothing and shows no
-  message (the two look alike to the app; the Preferences row shows which app opens the type).
+  message (the two look alike to the app; the Settings row shows which app opens the type).
   Undo is Finder's Get Info › Open with › Change All.
 
 ## Look
@@ -219,7 +225,7 @@ Two columns and a bottom bar, titled "Batch Convert":
 - One card is open at a time; opening one folds the others. A folded card is one line: its name
   and a summary in words ("JPEG · 85", "Longest side 2048", "trip-{n:3} · Out", "Brightness
   +10"). ⌘2, ⌘3 and ⌘4 open Format, Size and Name. Cards use the same grouped form as
-  Preferences (labels leading, controls trailing).
+  Settings (labels leading, controls trailing).
 - Under the cards a live preview of the selected input (original and output side by side with
   their pixel sizes, small, rendered off the main thread, never blocking typing), the first
   output names, and one line naming the steps that are on in their processing order ("Applied:
@@ -320,9 +326,9 @@ Settings can be saved as named presets and loaded later.
   flight, starts no more) and Pause/Resume.
 - A failing file never stops the batch and never leaves a partial output file.
 
-## Preferences (⌘,)
+## Settings (⌘,)
 
-The menu calls it "Preferences…", not macOS's "Settings…", so it matches its single key P.
+The menu calls it "Settings…", macOS's name since macOS 13; the single key P stays for people switching over.
 
 A standard Mac settings window with symbol tabs in its toolbar; the window changes height to fit
 each tab. Each tab is a grouped form: settings in titled groups of rounded cards, labels leading,
@@ -536,7 +542,7 @@ never downloads or installs anything itself.
 - Versions compare numerically by dotted parts (1.10 is newer than 1.9; missing parts count as 0).
   The update offered is the newest release that is newer than the running one, runs on this
   macOS version, and is newer than a skipped version.
-- Automatic check: about 10 s after launch, off the main thread, when Preferences › Browsing ›
+- Automatic check: about 10 s after launch, off the main thread, when Settings › Browsing ›
   "Check for updates automatically" is on (default) and the last successful check is at least
   24 hours ago. Any failure is silent; it tries again at the next launch.
 - Check for Updates… (app menu) ignores the schedule and the skipped version and always answers:

@@ -101,13 +101,13 @@ enum Theme {
     static let cardFill = colour(dark: white(0.04), light: black(0.04))
     static let cardLine = colour(dark: white(0.06), light: black(0.06))
 
-    /// Preferences tab pill, selected.
+    /// Settings tab pill, selected.
     static let tabPill = colour(dark: white(0.10), light: black(0.07))
 
     /// Accent: selections and toggled glyphs; the app's AccentColor (feather coral in dark, brown in light).
     static let accent = Color.accentColor
 
-    /// Appearance tiles in Preferences: the miniature picture is a dusk landscape, sky over two hills.
+    /// Appearance tiles in Settings: the miniature picture is a dusk landscape, sky over two hills.
     static let previewSky = LinearGradient(colors: [Color(nsColor: rgb(0x8E, 0xB8, 0xF0, 1)), Color(nsColor: rgb(0xC9, 0xB8, 0xF2, 1))],
                                            startPoint: .top, endPoint: .bottom)
     static let previewHillBack = Color(nsColor: rgb(0x6A, 0x86, 0xC8, 1))
@@ -200,7 +200,7 @@ enum Theme {
 
     /// Window title: 13 Semibold.
     static let windowTitle = Font.system(size: 13, weight: .semibold)
-    /// Appearance tile name in Preferences; the chosen one semibold in the accent.
+    /// Appearance tile name in Settings; the chosen one semibold in the accent.
     static let previewLabel = Font.system(size: 11)
     static let previewLabelSelected = Font.system(size: 11, weight: .semibold)
     /// Title counter " — n / N": 13 Regular, tabular.
@@ -350,7 +350,7 @@ enum Theme {
         static let panel = 16.0
         /// Toolbar items, toggled pill, strip (half of 28).
         static let item = 14.0
-        /// Preferences cards, grouped rows in the info panel.
+        /// Settings cards, grouped rows in the info panel.
         static let group = 10.0
         /// Chooser rows.
         static let chooserRow = 9.0
@@ -358,7 +358,7 @@ enum Theme {
         static let moveRow = 8.0
         /// Push buttons.
         static let pushButton = 7.0
-        /// Appearance tile in Preferences.
+        /// Appearance tile in Settings.
         static let preview = 8.0
         /// F7 slot key, small button.
         static let slotKey = 6.0

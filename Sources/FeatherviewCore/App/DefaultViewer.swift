@@ -7,7 +7,7 @@ public enum DefaultViewer {
     /// Apps whose image types Featherview may take over: Preview.
     public static let replaceable: Set<String> = ["com.apple.Preview"]
 
-    /// The types Preferences › Browsing lists, each with its own button. macOS asks once per type
+    /// The types Settings › Browsing lists, each with its own button. macOS asks once per type
     /// it hands to another app, so each click claims one type and costs at most one prompt.
     public static let commonTypes: [UTType] = [.jpeg, .png, .heic, .gif, .tiff, .webP]
 

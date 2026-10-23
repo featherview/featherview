@@ -921,7 +921,7 @@ final class ViewerModel {
 
     /// Called when this viewer's window becomes key: now its neighbours are worth decoding.
     func becameActive() {
-        updateAvailability()  // "Past the end of a folder" may have changed in Preferences
+        updateAvailability()  // "Past the end of a folder" may have changed in Settings
         // View › Sort By may have changed while this window was closed (its onChange didn't run).
         if sortedOrder != .stored() { applySortOrder() }
         // Pane 2's file may have been trashed or moved in Finder meanwhile.

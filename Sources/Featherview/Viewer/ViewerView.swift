@@ -977,6 +977,36 @@ struct ViewerCommands: Commands {
                 .disabled(model?.availability.canChangeFile != true)
             Divider()
             ShareMenu(model: model)
+            Divider()
+            Group {
+                // ⌘⌫ is handled by the viewer, not as a menu shortcut (see ViewerView.handle).
+                Button("Move to Folder…  (F7)") { model?.showDestinations(.move) }
+                Button("Copy to Folder…  (F8)") { model?.showDestinations(.copy) }
+                Button("Move to Trash  (⌘⌫ or ⌦)") { model?.moveCurrentToTrash() }
+            }
+            // The viewed image, or the grid's selection.
+            .disabled(model?.operationTargets.isEmpty != false)
+            Divider()
+            // In the grid these would act on the image viewed before T, not the cells (Decision 13).
+            Button("Show in Finder") { model?.showInFinder() }
+                .disabled(model?.availability.hasCurrent != true || model?.isGrid == true)
+            OpenWithMenu(model: model)
+            if let url = model?.list.current, model?.isGrid != true, let type = DefaultViewer.claimableType(for: url) {
+                Button("Always Open .\(url.pathExtension.lowercased()) Files with Featherview") {
+                    Task { await DefaultViewerOffer.claim(type); claims += 1 }
+                }
+                .disabled(claims >= 0 && DefaultViewerOffer.opensWithFeatherview(type))
+            } else {
+                Button("Always Open with Featherview") {}.disabled(true)
+            }
+            Divider()
+            Button("Batch Convert…  (B)") {
+                // In the grid the selection joins the batch's list.
+                if model?.isGrid == true { model?.batchSelection() }
+                openWindow(id: "batch")
+            }
+            .keyboardShortcut("b")
+            .disabled(model?.isGrid == true && model?.gridSelection.isEmpty == true)
         }
         CommandGroup(replacing: .pasteboard) {
             // Text fields and selected text (batch window, Info panel) keep their own Copy and Paste.
@@ -1028,28 +1058,8 @@ struct ViewerCommands: Commands {
             Button("Adjust Date Taken…") { model?.showAdjustDate() }
                 .disabled(model?.canAdjustDate != true)
             Divider()
-            Group {
-                // ⌘⌫ is handled by the viewer, not as a menu shortcut (see ViewerView.handle).
-                Button("Move to Folder…  (F7)") { model?.showDestinations(.move) }
-                Button("Copy to Folder…  (F8)") { model?.showDestinations(.copy) }
-                Button("Move to Trash  (⌘⌫ or ⌦)") { model?.moveCurrentToTrash() }
-            }
-            // The viewed image, or the grid's selection.
-            .disabled(model?.operationTargets.isEmpty != false)
-            // In the grid these would act on the image viewed before T, not the cells (Decision 13).
-            Button("Show in Finder") { model?.showInFinder() }
-                .disabled(model?.availability.hasCurrent != true || model?.isGrid == true)
-            OpenWithMenu(model: model)
             Button("Set as Desktop Picture") { model?.setDesktopPicture() }
                 .disabled(model?.availability.canSetDesktop != true)
-            if let url = model?.list.current, model?.isGrid != true, let type = DefaultViewer.claimableType(for: url) {
-                Button("Always Open .\(url.pathExtension.lowercased()) Files with Featherview") {
-                    Task { await DefaultViewerOffer.claim(type); claims += 1 }
-                }
-                .disabled(claims >= 0 && DefaultViewerOffer.opensWithFeatherview(type))
-            } else {
-                Button("Always Open with Featherview") {}.disabled(true)
-            }
             Button("Show Info  (I)") { model?.showInfo.toggle() }
                 .disabled(model?.canShowInfo != true)
             if model?.isGrid == true {
@@ -1059,14 +1069,6 @@ struct ViewerCommands: Commands {
                 }
                 .disabled(model?.gridSelection.count != 2)
             }
-            Divider()
-            Button("Batch Convert…  (B)") {
-                // In the grid the selection joins the batch's list.
-                if model?.isGrid == true { model?.batchSelection() }
-                openWindow(id: "batch")
-            }
-            .keyboardShortcut("b")
-            .disabled(model?.isGrid == true && model?.gridSelection.isEmpty == true)
         }
         // Not ToolbarCommands: SwiftUI shows its toolbar at every launch, so whether it's hidden is kept here.
         CommandGroup(replacing: .toolbar) {

@@ -100,7 +100,7 @@ private struct BrowsingSettings: View {
             } header: {
                 Text("Default app")
             } footer: {
-                Text("For any other type, open an image of it and choose Image › Always Open with Featherview.")
+                Text("For any other type, open an image of it and choose File › Always Open with Featherview.")
             }
             Section("Folders") {
                 Picker("Past the end of a folder:", selection: $pastEnd) {

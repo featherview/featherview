@@ -81,7 +81,7 @@ struct OpensViewerWindows: ViewModifier {
 }
 
 /// Making Featherview the default app for images (spec "Viewer › Default viewer"): the launch offer,
-/// and the action Preferences › Browsing shares with it.
+/// and the action Settings › Browsing shares with it.
 @MainActor
 enum DefaultViewerOffer {
     private static var scheduled = false
@@ -100,7 +100,7 @@ enum DefaultViewerOffer {
 
     /// Makes Featherview the default for `type`. From macOS 26.4 macOS confirms it in a prompt of its own,
     /// one per type, which is why every click claims a single type. No message afterwards: Keep in that
-    /// prompt and a refusal look alike, and Preferences › Browsing shows which app opens the type.
+    /// prompt and a refusal look alike, and Settings › Browsing shows which app opens the type.
     static func claim(_ type: UTType) async {
         try? await NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpen: type)
     }
@@ -121,7 +121,7 @@ enum DefaultViewerOffer {
             let alert = NSAlert()
             alert.alertStyle = .informational
             alert.messageText = String(localized: "Open JPEG images with Featherview?")
-            alert.informativeText = String(localized: "Featherview can open them instead of Preview. Other image types can follow in Preferences › Browsing.")
+            alert.informativeText = String(localized: "Featherview can open them instead of Preview. Other image types can follow in Settings › Browsing.")
             alert.addButton(withTitle: String(localized: "Use Featherview"))
             alert.addButton(withTitle: String(localized: "Not Now")).keyEquivalent = "\u{1b}"
             if alert.runModal() == .alertFirstButtonReturn { await claim(.jpeg) }
