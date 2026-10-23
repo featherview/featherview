@@ -334,6 +334,13 @@ enum Theme {
     static let gridOnAccent = NSColor(onAccent)
     /// The app's AccentColor (feather), never the system's.
     static let gridAccent = NSColor(named: "AccentColor") ?? .controlAccentColor
+    /// Rename (F2): the field in the title has the title's font and colour, as wide as the name plus its insets.
+    @MainActor static let renameFont = NSFont.systemFont(ofSize: 13, weight: .semibold)
+    static let renameText = NSColor(labelPrimary)
+    static let renameFieldInset = 16.0
+    static let renameFieldMinWidth = 60.0
+    /// The rename sheet's field (toolbar hidden or full screen).
+    static let renameSheetWidth = 320.0
 
     /// Corner radii, from the outside in.
     enum Radius {

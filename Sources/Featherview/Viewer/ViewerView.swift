@@ -99,6 +99,9 @@ struct ViewerView: View {
         }
         .overlay { sheets }
         .sheet(item: Binding { model.dateSheet } set: { model.dateSheet = $0 }) { AdjustDateSheet(model: model, sheet: $0) }
+        .sheet(isPresented: Binding { model.renaming && model.renamingInSheet } set: { if !$0 { model.cancelRename() } }) {
+            RenameSheet(model: model)
+        }
         .overlay(alignment: .bottom) {
             if let message = model.errorMessage, model.image != nil || model.isGrid {
                 Text(message)
@@ -505,6 +508,7 @@ struct ViewerView: View {
     private static let backspace = KeyEquivalent("\u{7F}")
     private static let f7 = KeyEquivalent(Character(UnicodeScalar(NSF7FunctionKey)!))
     private static let f8 = KeyEquivalent(Character(UnicodeScalar(NSF8FunctionKey)!))
+    private static let f2 = KeyEquivalent(Character(UnicodeScalar(NSF2FunctionKey)!))
 
     /// Where the next window goes when frames aren't remembered: the first is centred, the rest cascade from it.
     private static var cascadePoint: NSPoint?
@@ -520,6 +524,8 @@ struct ViewerView: View {
     }
 
     private func handle(_ press: KeyPress) -> KeyPress.Result {
+        // The rename field has the keyboard.
+        if model.renaming { return .ignored }
         // Arrow keys carry the numeric-pad/function flags and Caps Lock changes nothing here,
         // so only these modifiers count.
         let modifiers = press.modifiers.intersection([.command, .control, .option, .shift])
@@ -579,6 +585,7 @@ struct ViewerView: View {
             case .deleteForward: model.moveCurrentToTrash(); return .handled
             case Self.f7: model.showDestinations(.move); return .handled
             case Self.f8: model.showDestinations(.copy); return .handled
+            case Self.f2: model.beginRename(); return .handled
             case .return: model.toggleFullScreen(); return .handled
             case .escape:
                 // A slideshow first (it leaves full screen too), then compare, then full screen.
@@ -719,6 +726,8 @@ struct ImageContextMenu: View {
         Button("Flip Vertical") { model.flip(.vertical) }
         Button("Adjust Date Taken…") { model.showAdjustDate() }
         Divider()
+        Button("Rename…") { model.beginRename() }
+            .disabled(!model.availability.canChangeFile)
         Button("Move to Folder…") { model.showDestinations(.move) }
         Button("Copy to Folder…") { model.showDestinations(.copy) }
         Button("Move to Trash") { model.moveCurrentToTrash() }
@@ -886,7 +895,7 @@ struct InfoPanel: View {
 }
 
 /// Whether viewer windows hide their toolbar (View › Hide Toolbar).
-private let toolbarHiddenKey = "toolbarHidden"
+let toolbarHiddenKey = "toolbarHidden"
 /// Whether viewer windows hide their status bar (View › Hide Status Bar).
 private let statusBarHiddenKey = "statusBarHidden"
 
@@ -963,6 +972,8 @@ struct ViewerCommands: Commands {
             Button("Save As…  (S)") { model?.saveAs() }
                 .keyboardShortcut("s", modifiers: [.command, .shift])
                 .disabled(model?.availability.canChangeFile != true && model?.unsaved == nil)
+            Button("Rename…  (F2)") { model?.beginRename() }
+                .disabled(model?.availability.canChangeFile != true)
             Divider()
             ShareMenu(model: model)
         }
