@@ -8,11 +8,11 @@ cd "$(dirname "$0")/.."
 SDK="$(xcrun --show-sdk-version)"
 LINK="-Xlinker -platform_version -Xlinker macos -Xlinker 14.0 -Xlinker $SDK"
 swift build -c "$CONFIG" --product Featherview $LINK
-BIN="$(swift build -c "$CONFIG" --show-bin-path $LINK)/Featherview"
+BINDIR="$(swift build -c "$CONFIG" --show-bin-path $LINK)"
 APP=build/Featherview.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN" "$APP/Contents/MacOS/Featherview"
+cp "$BINDIR/Featherview" "$APP/Contents/MacOS/Featherview"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 # The copyright year is the build's year (About and Finder's Get Info show it).
 plutil -replace NSHumanReadableCopyright -string "© $(date +%Y) Joachim Rütter" "$APP/Contents/Info.plist"
@@ -39,7 +39,7 @@ appex() {
   swift build -c "$CONFIG" --product "$1" $LINK
   dir="$APP/Contents/PlugIns/$1.appex/Contents"
   mkdir -p "$dir/MacOS"
-  cp "$(swift build -c "$CONFIG" --show-bin-path $LINK)/$1" "$dir/MacOS/$1"
+  cp "$BINDIR/$1" "$dir/MacOS/$1"
   # They never encode: libjxl (several MB) belongs to FeatherviewJXL, which only the app links.
   if nm "$dir/MacOS/$1" | grep -q _JxlEncoderCreate; then echo "error: $1 links libjxl's encoder" >&2; exit 1; fi
   cp "$2" "$dir/Info.plist"
