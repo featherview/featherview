@@ -256,3 +256,14 @@ Files in the formats only Featherview reads show the feather (without the app ic
 system's document page, with the extension under it, through `UTTypeIcons` in our type
 declarations; a default app's own document icon still wins. Plan:
 `docs/superpowers/plans/2026-10-22-document-icon.md`.
+
+## Next version (after v2)
+
+Ideas from the maintainer's QA that no spec covers yet; each gets a plan and a spec section first.
+
+- Thumbnail grid sizes snap to whole columns that fill the window, as in Photos; the slider, + / − and a
+  pinch step one column at a time (thumbnails still decode in 128-pixel steps).
+- Right-click on a thumbnail: a context menu for the selection (the clicked cell joins it, as in Finder):
+  View, Copy, Move to Folder…, Copy to Folder…, Show in Finder, Batch Convert…, Move to Trash.
+- Dragging thumbnails out of the window is a file drag of the selection, so Finder, Mail or any app
+  takes the files.
