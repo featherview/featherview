@@ -60,19 +60,19 @@ final class ViewerModel {
     /// `start` instead of keeping the relative scroll position.
     private(set) var arrival: (id: Int, start: ZoomStart) = (0, .keep)
     /// The file and page `image` shows, for `arrival`.
-    @ObservationIgnored private var onScreen: (url: URL, page: Int)?
+    @ObservationIgnored var onScreen: (url: URL, page: Int)?
     /// The file and page `show` last decoded for: another one starts in the fit mode unless Keep Zoom is on.
-    @ObservationIgnored private var showing: (url: URL, page: Int)?
+    @ObservationIgnored var showing: (url: URL, page: Int)?
     /// Bumped when the current file changes on disk (rotation), so views reading it refresh.
     private(set) var fileRevision = 0
     /// For the image on screen, read off the main thread: the previous image's until the next one is shown,
     /// then the new one's if it was read ahead, else none until its read lands (never another file's).
     var fileInfo: FileInfo?
     /// Page-0 reads for the image shown and its prefetched neighbours, so a swap sets the info with the image.
-    @ObservationIgnored private var knownInfo: [URL: FileInfo] = [:]
+    @ObservationIgnored var knownInfo: [URL: FileInfo] = [:]
     /// Fit-size decodes of the image shown and its neighbours, also in `cache`: one swaps in with the
     /// position, in one update. Awaiting the cache actor would draw a frame in between (≈15 ms).
-    @ObservationIgnored private var ready: [URL: CGImage] = [:]
+    @ObservationIgnored var ready: [URL: CGImage] = [:]
     var fileValues: (url: URL, values: [String: String])? { fileInfo.map { ($0.url, $0.values) } }
 
     /// The scale the image is shown at, from its full pixel size (not the screen-size decode).
@@ -183,6 +183,11 @@ final class ViewerModel {
     /// F7 / F8: which panel is open, if any.
     var destinationPanel: FileOperation?
     var slots = DestinationSlots(defaults: .standard)
+    /// Rename (F2): the field shows in the title, or in a sheet with the toolbar hidden or in full screen (ViewerModel+Rename).
+    var renaming = false
+    var renamingInSheet = false
+    /// A rename being committed: losing focus while Return's commit waits must not commit twice.
+    @ObservationIgnored var renameBusy = false
     /// ⌘N's image from the clipboard, not saved yet; it covers `coveredList`, which shows again once it's left.
     var unsaved: CGImage? { didSet { updateAvailability() } }
     var coveredList: ImageList?

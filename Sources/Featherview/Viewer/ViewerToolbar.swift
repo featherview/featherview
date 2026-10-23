@@ -195,16 +195,37 @@ private struct ThumbnailsToggle: View {
     }
 }
 
+/// The name being renamed; its draft lives here, made when renaming starts.
+private struct TitleRenameField: View {
+    let model: ViewerModel
+    @State private var draft: String
+
+    init(model: ViewerModel) {
+        self.model = model
+        _draft = State(initialValue: model.list.current?.lastPathComponent ?? "")
+    }
+
+    var body: some View {
+        RenameField(text: $draft, onCommit: { await model.commitRename(draft) }, onCancel: model.cancelRename)
+    }
+}
+
 /// The file name, then " — n / N" in the secondary colour with tabular digits; the name truncates first.
 private struct WindowTitle: View {
     let model: ViewerModel
 
     var body: some View {
         HStack(spacing: Theme.titleGap) {
-            Text(verbatim: model.titleName)
-                .font(Theme.windowTitle)
-                .foregroundStyle(Theme.labelPrimary)
-                .truncationMode(.tail)
+            if model.renaming && !model.renamingInSheet {
+                TitleRenameField(model: model)
+            } else {
+                Text(verbatim: model.titleName)
+                    .font(Theme.windowTitle)
+                    .foregroundStyle(Theme.labelPrimary)
+                    .truncationMode(.tail)
+                    // A click on the name renames, as in Preview.
+                    .onTapGesture { model.beginRename() }
+            }
             if let counter = model.titleCounter {
                 Text(verbatim: counter)
                     .font(Theme.counter)
