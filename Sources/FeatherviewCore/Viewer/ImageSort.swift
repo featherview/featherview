@@ -107,7 +107,8 @@ public enum ImageSort {
                 let other = result[mid]
                 let otherEntry = (url: other, name: other.lastPathComponent, value: values[other])
                 let after = order.key == .name
-                    ? new.name.localizedStandardCompare(otherEntry.name) == (order.ascending ? .orderedDescending : .orderedAscending)
+                    ? (order.ascending ? FolderScanner.finderPrecedes(otherEntry.name, new.name)
+                                       : FolderScanner.finderPrecedes(new.name, otherEntry.name))
                     : precedes(otherEntry, new, ascending: order.ascending)
                 if after { low = mid + 1 } else { high = mid }
             }
@@ -133,7 +134,7 @@ public enum ImageSort {
         if order == .finder { return FolderScanner.firstInFinderOrder(urls) }
         if order.key == .name {
             return urls.map { ($0.lastPathComponent, $0) }
-                .max { $0.0.localizedStandardCompare($1.0) == .orderedAscending }?.1
+                .max { FolderScanner.finderPrecedes($0.0, $1.0) }?.1
         }
         return entries(urls, values: values).min { precedes($0, $1, ascending: order.ascending) }?.url
     }
@@ -170,6 +171,6 @@ public enum ImageSort {
         case (nil, _?): return false
         case (nil, nil): break
         }
-        return a.name.localizedStandardCompare(b.name) == .orderedAscending
+        return FolderScanner.finderPrecedes(a.name, b.name)
     }
 }

@@ -24,11 +24,7 @@ public enum FolderTree {
                 return values.isDirectory == true && values.isPackage != true
             }
             .map { folder.appendingPathComponent($0.lastPathComponent, isDirectory: true) }
-            .sorted { a, b in
-                // Ties ("Photos"/"photos" on a case-sensitive volume) fall back to a plain compare to stay stable.
-                let order = a.lastPathComponent.localizedStandardCompare(b.lastPathComponent)
-                return order == .orderedSame ? a.lastPathComponent < b.lastPathComponent : order == .orderedAscending
-            }
+            .sorted { FolderScanner.finderPrecedes($0.lastPathComponent, $1.lastPathComponent) }
     }
 
     /// Images directly inside `folder` (by extension, as the viewer would list them); 0 if unreadable.

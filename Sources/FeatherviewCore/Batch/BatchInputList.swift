@@ -185,16 +185,10 @@ public struct BatchInputList: Equatable, Sendable {
         totalBytes = 0
     }
 
-    /// Finder order of the file names, stable.
+    /// Finder order of the file names, as the viewer lists them.
     public mutating func sortByName() {
         let names = items.map(\.url.lastPathComponent)
-        items = items.indices.sorted {
-            switch names[$0].localizedStandardCompare(names[$1]) {
-            case .orderedAscending: true
-            case .orderedDescending: false
-            case .orderedSame: $0 < $1
-            }
-        }.map { items[$0] }
+        items = items.indices.sorted { FolderScanner.finderPrecedes(names[$0], names[$1]) }.map { items[$0] }
     }
 
     /// Moves the rows at `offsets` by `delta` (up = −1, down = +1); rows keep their relative order
