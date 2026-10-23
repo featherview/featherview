@@ -224,7 +224,7 @@ struct ThumbnailGrid: NSViewRepresentable {
             return true
         }
 
-        private func select(_ index: Int) {
+        func select(_ index: Int) {
             guard let grid, urls.indices.contains(index) else { return }
             anchor = urls[index]
             let path = IndexPath(item: index, section: 0)
@@ -331,7 +331,11 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
         guard controlsPreviewPanel else { return }
         let panel = QLPreviewPanel.shared()!
         updatePreviewed(panel)
-        if previewed.isEmpty { panel.orderOut(nil) } else { panel.reloadData() }
+        guard previewed.isEmpty else { return panel.reloadData() }
+        // An arrow deselects before it selects: close only if the selection is still empty after this event.
+        DispatchQueue.main.async { [weak self] in
+            if let self, selectionIndexPaths.isEmpty, controlsPreviewPanel { QLPreviewPanel.shared().orderOut(nil) }
+        }
     }
 
     private func updatePreviewed(_ panel: QLPreviewPanel) {
@@ -372,10 +376,26 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
             panel.orderOut(nil)
             return true
         }
-        guard previewed.count <= 1, Self.arrows.contains(event.charactersIgnoringModifiers?.unicodeScalars.first?.value ?? 0)
-        else { return false }
-        keyDown(with: event)
+        guard previewed.count <= 1, let arrow = event.charactersIgnoringModifiers?.unicodeScalars.first?.value,
+              Self.arrows.contains(arrow) else { return false }
+        step(arrow)
         return true
+    }
+
+    /// With the panel as key window, the collection view's own arrow moves start from a stale cell each time, so the
+    /// grid steps itself: a row is as many cells as share the first cell's line.
+    private func step(_ arrow: UInt32) {
+        guard let coordinator = delegate as? ThumbnailGrid.Coordinator, let current = selectionIndexPaths.first?.item else { return }
+        let top = { (item: Int) in self.layoutAttributesForItem(at: IndexPath(item: item, section: 0))?.frame.minY }
+        let columns = max(1, urls.indices.prefix { top($0) == top(0) }.count)
+        let rtl = userInterfaceLayoutDirection == .rightToLeft
+        let delta = switch Int(arrow) {
+        case NSLeftArrowFunctionKey: rtl ? 1 : -1
+        case NSRightArrowFunctionKey: rtl ? -1 : 1
+        case NSUpArrowFunctionKey: -columns
+        default: columns
+        }
+        if urls.indices.contains(current + delta) { coordinator.select(current + delta) }
     }
 
     private static let arrows: Set<UInt32> = [UInt32(NSUpArrowFunctionKey), UInt32(NSDownArrowFunctionKey),
