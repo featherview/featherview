@@ -188,8 +188,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Updater.scheduleAutomaticCheck()
+        offerCrashReport()
         // Open Recent also when no viewer window comes back (showOnce reads it sooner when one does).
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { RecentFiles.shared.reload() }
+    }
+
+    /// Spec "Help menu": after a crash, offers once (10 s after launch, like the update check) to open the bug report
+    /// form with the crash summary; nothing is sent by the app.
+    private func offerCrashReport() {
+        Task {
+            try? await Task.sleep(for: .seconds(10))
+            let last = AppSettings.lastCrashOffered.value()
+            let found = await Task.detached { () -> (date: Date, summary: String)? in
+                guard let url = CrashReports.newest(newerThan: last),
+                      let date = try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
+                      let data = try? Data(contentsOf: url), let summary = CrashReports.summary(of: data) else { return nil }
+                return (date, summary)
+            }.value
+            guard let found else { return }
+            // Set before asking, so either button (or a quit) ends the offer for this crash.
+            AppSettings.lastCrashOffered.set(found.date)
+            let alert = NSAlert()
+            alert.alertStyle = .informational
+            alert.messageText = String(localized: "Featherview quit unexpectedly last time.")
+            alert.addButton(withTitle: String(localized: "Report…"))
+            alert.addButton(withTitle: String(localized: "Not Now")).keyEquivalent = "\u{1b}"
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+            NSWorkspace.shared.open(AboutInfo.bugReportURL(
+                version: AboutView.version, build: AboutView.build, macOS: ProcessInfo.processInfo.operatingSystemVersionString,
+                model: AboutInfo.modelIdentifier(), crash: found.summary))
+        }
     }
 
     @objc private func openDocuments(_ event: NSAppleEventDescriptor, withReply reply: NSAppleEventDescriptor) {

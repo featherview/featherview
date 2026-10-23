@@ -30,3 +30,8 @@ body:
     id: mac
     attributes:
       label: Mac model or chip
+  - type: textarea
+    id: crash
+    attributes:
+      label: Crash report
+      description: Filled in when Featherview offers to report a crash.
