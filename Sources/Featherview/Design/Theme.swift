@@ -67,8 +67,6 @@ enum Theme {
     static let labelHint = colour(dark: white(0.70), light: black(0.65))
     /// Label · tertiary: "Empty", footer hints, "end of folder".
     static let labelTertiary = colour(dark: white(0.40), light: black(0.40))
-    /// Disabled glyph: back/forward at either end, the whole toolbar in the empty window.
-    static let disabledGlyph = colour(dark: white(0.30), light: black(0.25))
     /// Separator: 1 pt dividers inside capsules.
     static let separator = colour(dark: white(0.14), light: black(0.12))
     /// Separator in the status strip.
@@ -91,18 +89,12 @@ enum Theme {
 
     /// Toggled pill: behind an active toolbar item (Info while the panel is open).
     static let toggledPill = colour(dark: white(0.12), light: black(0.08))
-    /// Toolbar item hover and pressed backgrounds.
-    static let itemHover = colour(dark: white(0.08), light: black(0.05))
-    static let itemPressed = colour(dark: white(0.14), light: black(0.09))
 
     /// Info panel: format badge fill and line; grouped-rows card (and the empty hint card) fill and line.
     static let badgeFill = colour(dark: white(0.08), light: black(0.08))
     static let badgeLine = colour(dark: white(0.12), light: black(0.12))
     static let cardFill = colour(dark: white(0.04), light: black(0.04))
     static let cardLine = colour(dark: white(0.06), light: black(0.06))
-
-    /// Settings tab pill, selected.
-    static let tabPill = colour(dark: white(0.10), light: black(0.07))
 
     /// Accent: selections and toggled glyphs; the app's AccentColor (feather coral in dark, brown in light).
     static let accent = Color.accentColor
@@ -117,11 +109,9 @@ enum Theme {
     static let previewRing = 3.0
     static let previewGap = 20.0
 
-    /// Feather mark: #FFC766 → #FF7A59, top-leading to bottom-trailing. Only the empty hint and About.
+    /// Feather mark colours, #FFC766 and #FF7A59: the About glow is made from them.
     static let featherStart = rgb(0xFF, 0xC7, 0x66, 1)
     static let featherEnd = rgb(0xFF, 0x7A, 0x59, 1)
-    static let featherGradient = LinearGradient(colors: [Color(nsColor: featherStart), Color(nsColor: featherEnd)],
-                                                startPoint: .topLeading, endPoint: .bottomTrailing)
 
     /// About: the icon tile's gradient, and the feather glow behind it (dark 0.26, light 0.45 → 0).
     static let aboutTile = LinearGradient(colors: [Color(nsColor: rgb(0x23, 0x23, 0x2C, 1)), Color(nsColor: rgb(0x10, 0x10, 0x15, 1))],
@@ -243,21 +233,14 @@ enum Theme {
 
     // MARK: Metrics (pt)
 
-    /// Title bar height (the unified toolbar on macOS 26).
-    static let titleBarHeight = 52.0
-    /// Fit-area insets: leading, top, trailing, bottom (bottom = strip 28 + 8 inset + 8 clearance).
-    static let fitInsets = EdgeInsets(top: 60, leading: CanvasInsets.side, bottom: 44, trailing: CanvasInsets.side)
     /// Between the file name and its counter in the title.
     static let titleGap = 6.0
     /// Width the back / forward capsule takes in the toolbar on macOS 26 (measured): a blank item holds it
     /// until the buttons are built, so the title starts where it stays.
     // shortcut: measured on macOS 26 only, measure again on 14/15 or a new macOS if the title moves when the buttons appear.
     static let backForwardWidth = 66.5
-    /// Toolbar capsules and their items.
-    static let leadingGroup = CGSize(width: 76, height: 32)
-    static let trailingGroup = CGSize(width: 256, height: 32)
+    /// Toolbar items.
     static let toolbarItem = CGSize(width: 36, height: 28)
-    static let toolbarSeparator = CGSize(width: 1, height: 16)
     /// Status strip: 28 tall, 12 side and 8 bottom inset, 14 inner padding, 12 between items, 1 × 12 separators.
     static let stripHeight = CanvasInsets.stripHeight
     static let stripSideInset = CanvasInsets.stripSideMargin
@@ -265,9 +248,8 @@ enum Theme {
     static let stripPadding = 14.0
     static let stripGap = 12.0
     static let stripSeparatorHeight = 12.0
-    /// Info panel width, its inset from the trailing edge, and its padding / gap.
+    /// Info panel width and its padding / gap.
     static let infoPanelWidth = CanvasInsets.infoPanelWidth
-    static let infoPanelInset = CanvasInsets.infoPanelMargin
     static let panelPadding = 16.0
     static let panelGap = 12.0
     static let infoHeaderHeight = 24.0
@@ -356,8 +338,6 @@ enum Theme {
         static let chooserRow = 9.0
         /// F7 rows.
         static let moveRow = 8.0
-        /// Push buttons.
-        static let pushButton = 7.0
         /// Appearance tile in Settings.
         static let preview = 8.0
         /// F7 slot key, small button.
@@ -379,8 +359,6 @@ enum Theme {
     // MARK: Motion
 
     enum Motion {
-        /// Hover and press fill change.
-        static let hover = 0.08
         /// Zoom step (keyboard, buttons, Fit), ease-out, about the cursor; pinch: none.
         static let zoom = 0.12
         /// Rotation, ease-in-out, about the picture centre.
@@ -394,29 +372,17 @@ enum Theme {
         static let sheetScale = 0.97
         /// Move / Trash: the leaving picture fades out.
         static let leave = 0.06
-        /// Bars at rest: after 2 s, out in 200 ms, back in 120 ms; opacity only.
-        static let barsRest = BarsAutoHide.rest
+        /// Bars at rest: out in 200 ms, back in 120 ms; opacity only.
         static let barsOut = 0.2
         static let barsIn = 0.12
-        /// Strip text fade when a different file arrives; drop outline.
+        /// Strip text fade when a different file arrives.
         static let stripFade = 0.12
-        static let dropOutline = 0.12
         /// A new window waits at most this long, transparent, for its first image; a slower decode shows it empty.
         static let firstImageWait = 0.25
-
-        /// Reduce Motion: zoom, rotation, panels and sheets become 0; pure opacity changes keep their duration.
-        static func duration(_ seconds: Double, reduceMotion: Bool, opacityOnly: Bool = false) -> Double {
-            reduceMotion && !opacityOnly ? 0 : seconds
-        }
 
         /// The SwiftUI animation for a movement, nil under Reduce Motion.
         static func moving(_ seconds: Double, reduceMotion: Bool) -> SwiftUI.Animation? {
             reduceMotion ? nil : .easeInOut(duration: seconds)
-        }
-
-        /// Things that arrive: ease-out, nil under Reduce Motion.
-        static func arriving(_ seconds: Double, reduceMotion: Bool) -> SwiftUI.Animation? {
-            reduceMotion ? nil : .easeOut(duration: seconds)
         }
 
         /// Pure opacity: linear, kept under Reduce Motion.

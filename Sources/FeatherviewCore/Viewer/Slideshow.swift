@@ -114,7 +114,7 @@ public struct Slideshow: Equatable, Sendable {
     /// `url` couldn't be shown: the next one in the direction of travel that hasn't failed since the
     /// last image shown, turning back at an end of the order (finished there when it was the end).
     /// Nil and finished on `url` when every image of the order failed in a row.
-    public mutating func failed(_ url: URL) -> URL? {
+    mutating func failed(_ url: URL) -> URL? {
         guard url == current else { return nil }
         failedRun.insert(url)
         guard !failedRun.isSuperset(of: urls) else { return finish() }

@@ -64,28 +64,23 @@ import Testing
         #expect(list.index == 3)
     }
 
-    @Test func neighborsNearestFirstWithoutWrapping() {
-        let list = ImageList(urls: urls, current: urls[1])
-        #expect(list.neighbors(radius: 2) == [urls[2], urls[0], urls[3]])
-        #expect(ImageList(urls: urls, current: urls[3]).neighbors(radius: 2) == [urls[2], urls[1]])
-        #expect(list.neighbors(radius: 0).isEmpty)
-        #expect(ImageList(urls: [urls[0]]).neighbors(radius: 2).isEmpty)
-    }
-
     @Test func neighborsAheadOfTheRunFirst() {
         let list = ImageList(urls: urls, current: urls[1])
         #expect(list.neighbors(radius: 2, forward: true) == [urls[2], urls[3], urls[0]])
         #expect(list.neighbors(radius: 2, forward: false) == [urls[0], urls[2], urls[3]])
         #expect(list.neighbors(radius: 0, forward: true).isEmpty)
+        // No wrapping at either end; a single image has no neighbours.
+        #expect(ImageList(urls: urls, current: urls[3]).neighbors(radius: 2, forward: true) == [urls[2], urls[1]])
+        #expect(ImageList(urls: [urls[0]]).neighbors(radius: 2, forward: true).isEmpty)
     }
 
     @Test func removeCurrentShowsFollowingImage() {
         var middle = ImageList(urls: urls, current: urls[1])
-        middle.removeCurrent()
+        middle.remove(urls[1])
         #expect(middle.current == urls[2])
 
         var last = ImageList(urls: urls, current: urls[3])
-        last.removeCurrent()
+        last.remove(urls[3])
         #expect(last.current == urls[2])
         #expect(last.urls.count == 3)
     }
@@ -121,7 +116,7 @@ import Testing
 
     @Test func emptyListIsSafe() {
         var list = ImageList(urls: [urls[0]])
-        list.removeCurrent()
+        list.remove(urls[0])
         #expect(list.isEmpty)
         #expect(list.current == nil)
         #expect(list.position == "0 / 0")
@@ -129,7 +124,7 @@ import Testing
         let movedPrevious = list.previous()
         #expect(!movedNext)
         #expect(!movedPrevious)
-        list.removeCurrent()
+        list.remove(urls[0])
         #expect(list.current == nil)
     }
 
@@ -140,7 +135,7 @@ import Testing
         #expect(list.current == urls[0])
         #expect(list.isHolding)
         #expect(list.urls == Array(urls[1...]))
-        #expect(list.neighbors(radius: 1) == [urls[2]])
+        #expect(list.neighbors(radius: 1, forward: true) == [urls[2]])
         let moved = list.next()
         #expect(moved)
         #expect(list.current == urls[1])

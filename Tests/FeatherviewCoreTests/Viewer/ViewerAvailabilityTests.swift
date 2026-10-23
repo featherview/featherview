@@ -11,7 +11,7 @@ import Testing
 
     @Test func plainViewerAllowsEverythingButCompareActions() {
         let a = viewing()
-        #expect(a.canGoBack && a.canGoForward && a.hasCurrent && a.canStartSlideshow && a.hasPicture)
+        #expect(a.canGoBack && a.canGoForward)
         #expect(a.canChangeFile && a.canShowGrid && a.canCompare && a.canSetDesktop)
         #expect(a.canShowInfo && a.canAdjustDate && a.hasOperationTargets && a.canShowInFinder)
         #expect(a.canSaveAs && a.canBatch && a.canCopy && a.canZoom && a.canToggleSlideshow && a.canFollow)
@@ -32,7 +32,7 @@ import Testing
 
     @Test func holdingARemovedFileOnlyBrowsesAndZooms() {
         let a = viewing { $0.isHolding = true }
-        #expect(a.canGoBack && a.canGoForward && a.hasCurrent && a.hasPicture && a.canShowGrid && a.canZoom)
+        #expect(a.canGoBack && a.canGoForward && a.canShowInFinder && a.canShowGrid && a.canZoom)
         #expect(!a.canChangeFile && !a.canCompare && !a.canSetDesktop && !a.canAdjustDate && !a.hasOperationTargets)
         #expect(!a.canSaveAs)
         #expect(!viewing { $0.isHolding = true; $0.pageCount = 3 }.hasPages)
@@ -41,19 +41,19 @@ import Testing
     @Test func openingTreatsTheFolderEndsAsUnknown() {
         let a = viewing { $0.isOpening = true; $0.pastEnd = .stop; $0.index = 0; $0.count = 1 }
         #expect(a.canGoBack && a.canGoForward)
-        #expect(!a.canStartSlideshow && !a.canToggleSlideshow && !a.canShowGrid)
+        #expect(!a.canToggleSlideshow && !a.canShowGrid)
         #expect(a.canChangeFile && a.canCompare)
     }
 
     @Test func emptyFolderStillLeavesWithArrows() {
-        let a = ViewerAvailability(ViewerState(isEmpty: true, count: 0, hasFolder: true))
+        let a = ViewerAvailability(ViewerState(count: 0, hasFolder: true))
         #expect(a.canGoBack && a.canGoForward && a.canFollow)
-        #expect(!a.hasCurrent && !a.hasPicture && !a.canChangeFile && !a.canShowGrid && !a.canStartSlideshow)
+        #expect(!a.canChangeFile && !a.canShowGrid && !a.canToggleSlideshow)
         #expect(!a.canShowInfo && !a.canShowInFinder && !a.canSaveAs && !a.canZoom && !a.hasOperationTargets)
     }
 
     @Test func nothingOpenAllowsNothing() {
-        let a = ViewerAvailability(ViewerState(isEmpty: true, count: 0))
+        let a = ViewerAvailability(ViewerState(count: 0))
         #expect(!a.canGoBack && !a.canGoForward && !a.canFollow && !a.canShowGrid)
         #expect(a.canBatch && a.canCopy)
     }
@@ -65,7 +65,7 @@ import Testing
             #expect(a.canShowGrid)  // T leaves the grid
             #expect(!a.canChangeFile && !a.hasPages && !a.canCompare && !a.canSetDesktop && !a.canShowInfo)
             #expect(!a.canShowInFinder && !a.canCopy && !a.canZoom && !a.canSaveAs)
-            #expect(a.hasPicture && a.canStartSlideshow)
+            #expect(a.canToggleSlideshow)
             #expect(a.canAdjustDate == (selected > 0))
             #expect(a.hasOperationTargets == (selected > 0))
             #expect(a.canBatch == (selected > 0))
@@ -104,11 +104,11 @@ import Testing
 
     @Test func unsavedPictureAsksBeforeLeavingAndHasNoFile() {
         // The covered list is put aside: the window's list is empty while it shows.
-        let state = ViewerState(isEmpty: true, count: 0, hasUnsaved: true, hasFolder: true)
+        let state = ViewerState(count: 0, hasUnsaved: true, hasFolder: true)
         let a = ViewerAvailability(state)
         #expect(a.canGoBack && a.canGoForward)  // they ask to save first
-        #expect(a.hasPicture && a.canZoom && a.canSaveAs && a.canCopy)
-        #expect(!a.canChangeFile && !a.hasOperationTargets && !a.canShowGrid && !a.canStartSlideshow && !a.canCompare)
+        #expect(a.canZoom && a.canSaveAs && a.canCopy)
+        #expect(!a.canChangeFile && !a.hasOperationTargets && !a.canShowGrid && !a.canToggleSlideshow && !a.canCompare)
         #expect(!a.canShowInfo && !a.canShowInFinder && !a.canSetDesktop && !a.canAdjustDate)
         // With "Past the end: Stop" an empty list has no step either way, so ← / → are off then.
         var stop = state

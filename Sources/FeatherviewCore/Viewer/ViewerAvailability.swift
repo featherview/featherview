@@ -5,7 +5,6 @@ public struct ViewerState: Sendable {
     public var isHolding: Bool
     /// The folder is being listed: the list holds only the opened file.
     public var isOpening: Bool
-    public var isEmpty: Bool
     public var index: Int
     public var count: Int
     public var pageCount: Int
@@ -28,7 +27,7 @@ public struct ViewerState: Sendable {
     /// The current file is one the system can set as its desktop picture.
     public var desktopCanShow: Bool
 
-    public init(hasCurrent: Bool = false, isHolding: Bool = false, isOpening: Bool = false, isEmpty: Bool = false,
+    public init(hasCurrent: Bool = false, isHolding: Bool = false, isOpening: Bool = false,
                 index: Int = 0, count: Int = 1, pageCount: Int = 1, frameCount: Int = 1,
                 isGrid: Bool = false, gridSelectionCount: Int = 0,
                 isComparing: Bool = false, compareFailed: Bool = false, compareDecoded: Bool = false,
@@ -37,7 +36,6 @@ public struct ViewerState: Sendable {
         self.hasCurrent = hasCurrent
         self.isHolding = isHolding
         self.isOpening = isOpening
-        self.isEmpty = isEmpty
         self.index = index
         self.count = count
         self.pageCount = pageCount
@@ -62,11 +60,6 @@ public struct ViewerAvailability: Equatable, Sendable {
     /// with "Past the end: Stop" not past the folder's ends.
     public var canGoBack = false
     public var canGoForward = false
-    public var hasCurrent = false
-    /// W, ⇧A: an image shows and its folder is listed.
-    public var canStartSlideshow = false
-    /// Zoom: a file's image or an unsaved one.
-    public var hasPicture = false
     /// Rotate, Trash, F2, F7 / F8: not on a held (already removed) image.
     public var canChangeFile = false
     public var hasPages = false
@@ -115,13 +108,14 @@ public struct ViewerAvailability: Equatable, Sendable {
         // A slideshow steps in its play order, which has no Finder ends.
         canGoBack = canBrowse && (s.isSlideshow || pastEnd.canStep(forward: false, index: s.index, count: s.count))
         canGoForward = canBrowse && (s.isSlideshow || pastEnd.canStep(forward: true, index: s.index, count: s.count))
-        hasCurrent = s.hasCurrent
-        canStartSlideshow = Slideshow.mayStart(hasCurrent: s.hasCurrent, isOpening: s.isOpening)
-        hasPicture = s.hasCurrent || s.hasUnsaved
+        // W, ⇧A: an image shows and its folder is listed.
+        let canStartSlideshow = Slideshow.mayStart(hasCurrent: s.hasCurrent, isOpening: s.isOpening)
+        // Zoom: a file's image or an unsaved one.
+        let hasPicture = s.hasCurrent || s.hasUnsaved
         // In the grid these act on one viewed image (Decision 13).
         canChangeFile = s.hasCurrent && !s.isHolding && !s.isGrid
         hasPages = (s.pageCount > 1 || s.frameCount > 1) && !s.isHolding && !s.isGrid
-        canShowGrid = s.isGrid || (!s.isEmpty && !s.isOpening)
+        canShowGrid = s.isGrid || (s.count > 0 && !s.isOpening)
         canCompare = canChangeFile
         canSwap = s.isComparing && !s.compareFailed && s.hasCurrent && !s.isHolding
         canShowDifference = s.isComparing && !s.compareFailed && s.compareDecoded

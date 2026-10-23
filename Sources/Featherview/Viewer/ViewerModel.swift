@@ -72,7 +72,6 @@ final class ViewerModel {
     /// Fit-size decodes of the image shown and its neighbours, also in `cache`: one swaps in with the
     /// position, in one update. Awaiting the cache actor would draw a frame in between (≈15 ms).
     @ObservationIgnored var ready: [URL: CGImage] = [:]
-    var fileValues: (url: URL, values: [String: String])? { fileInfo.map { ($0.url, $0.values) } }
 
     /// The scale the image is shown at, from its full pixel size (not the screen-size decode).
     var zoomPercent: Int? {
@@ -96,7 +95,7 @@ final class ViewerModel {
     private(set) var availability = ViewerAvailability()
     private func updateAvailability() {
         let new = ViewerAvailability(ViewerState(
-            hasCurrent: list.current != nil, isHolding: list.isHolding, isOpening: isOpening, isEmpty: list.isEmpty,
+            hasCurrent: list.current != nil, isHolding: list.isHolding, isOpening: isOpening,
             index: list.index, count: list.urls.count, pageCount: pageCount, frameCount: player.frameCount,
             isGrid: isGrid, gridSelectionCount: gridSelection.count,
             isComparing: compareSession != nil, compareFailed: compareSession?.errorMessage != nil,

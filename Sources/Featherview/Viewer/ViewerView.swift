@@ -436,7 +436,7 @@ struct ViewerView: View {
                       "folder": url.deletingLastPathComponent().lastPathComponent,
                       "path": OverlayTemplate.path(of: url, home: FileManager.default.homeDirectoryForCurrentUser),
                       "index": "\(model.list.index + 1)", "count": "\(model.list.urls.count)"]
-        if let file = model.fileValues, file.url == url { values.merge(file.values) { $1 } }
+        if let file = model.fileInfo, file.url == url { values.merge(file.values) { $1 } }
         return values
     }
 
@@ -536,7 +536,7 @@ struct ViewerView: View {
                                              .home, .end].contains(press.key)
         feedAutoHide(.key(browsing: browsing))
         if model.isChooserOpen { return handleChooser(press, modifiers) }
-        if let operation = model.destinationPanel { return handleDestinations(press, modifiers, operation) }
+        if model.destinationPanel != nil { return handleDestinations(press, modifiers) }
         // The grid's keys, when its collection view hasn't the keyboard (the size slider, Tab); the viewer's keys do
         // nothing there (Decision 13).
         if model.isGrid {
@@ -684,8 +684,7 @@ struct ViewerView: View {
     }
 
     /// While the F7 / F8 panel shows: a slot key picks a folder, ↑ ↓ and Return use the highlight.
-    private func handleDestinations(_ press: KeyPress, _ modifiers: EventModifiers,
-                                    _ operation: FileOperation) -> KeyPress.Result {
+    private func handleDestinations(_ press: KeyPress, _ modifiers: EventModifiers) -> KeyPress.Result {
         guard modifiers.subtracting(.shift).isEmpty else { return .handled }
         switch press.key {
         case .escape: model.destinationPanel = nil

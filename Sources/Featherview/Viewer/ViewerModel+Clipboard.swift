@@ -69,17 +69,11 @@ extension ViewerModel {
     }
 
     /// True when `command` waits on the question about the unsaved image (`UnsavedRules`); `action` then runs once
-    /// it's saved or dropped. False: the caller goes on.
+    /// it's saved or dropped (Cancel: never). False: the caller goes on.
     func guardUnsaved(_ command: ViewerCommand, then action: @escaping @MainActor () -> Void) -> Bool {
         guard UnsavedRules.asksFirst(command, hasUnsaved: unsaved != nil) else { return false }
-        leaveUnsaved(then: action)
-        return true
-    }
-
-    /// Runs `action` at once without an unsaved image; with one, after Save… or Don't Save (Cancel: never).
-    private func leaveUnsaved(then action: @escaping @MainActor () -> Void) {
-        guard unsaved != nil else { return action() }
         Task { if await confirmDiscard() { action() } }
+        return true
     }
 
     /// Asks about the unsaved image; true once it's saved or dropped (the covered list is back), false to stay.
