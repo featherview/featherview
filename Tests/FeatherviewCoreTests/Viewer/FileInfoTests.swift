@@ -14,6 +14,18 @@ import Testing
         #expect(!info.isFor(dir.appendingPathComponent("other.tif"), page: 1))
     }
 
+    /// The overlay's `{size}` is the file's own pixels (fit mode shows a smaller decode), page 0's on any page.
+    @Test func valuesAreTheFilesOwnPixelSizeAndDate() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 40, height: 30, orientation: 6)
+        let info = FileInfo.read(url: url, page: 0)
+        #expect(info.values["size"] == "30 × 40")
+        #expect(info.values["date"] == info.modified?.formatted(date: .abbreviated, time: .shortened))
+        #expect(info.values["date"]?.isEmpty == false)
+        let tiff = try Fixtures.writeMultiPageTIFF(to: dir.appendingPathComponent("m.tif"), pages: 3)
+        #expect(FileInfo.read(url: tiff, page: 2).values["size"] == "8 × 4")
+    }
+
     /// The viewer assigns a re-read only when it differs: each assignment redraws the status bar.
     @Test func readsCompareEqualUntilTheFileChanges() throws {
         let dir = try Fixtures.makeTempDir()

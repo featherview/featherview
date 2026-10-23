@@ -101,13 +101,4 @@ import Testing
         #expect(OverlayTemplate.path(of: URL(filePath: "/Volumes/Card/DCIM/a.jpg"), home: home) == "/Volumes/Card/DCIM/a.jpg")
         #expect(OverlayTemplate.render("{path}", values: ["path": "~/a.jpg"]) == "~/a.jpg")
     }
-
-    @Test func fileValuesUseTheFilesOwnPixelSizeAndDate() throws {
-        // Fit mode shows a smaller decode; the overlay must still name the file's real size.
-        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("a.jpg"),
-                                          width: 40, height: 30, orientation: 6)
-        let values = OverlayTemplate.fileValues(of: url)
-        #expect(values["size"] == "30 × 40")
-        #expect(values["date"]?.isEmpty == false)
-    }
 }

@@ -22,25 +22,30 @@ public enum ImageDecoder {
     public static var supportsHDR: Bool { if #available(macOS 15, *) { true } else { false } }
 
     /// Pages of a multi-page TIFF; 1 for every other file, so GIF frames and HEIC image sequences
-    /// are not browsed as pages (spec: GIF shows its first frame).
-    public static func pageCount(of url: URL) -> Int {
+    /// are not browsed as pages (spec: GIF shows its first frame). `source`: the file's, when already open.
+    public static func pageCount(of url: URL, source: CGImageSource? = nil) -> Int {
         if let own = OwnDecoders.format(for: url) {
             return (try? Data(contentsOf: url, options: .mappedIfSafe)).map { max(own.pageCount($0), 1) } ?? 1
         }
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+        guard let source = source ?? CGImageSourceCreateWithURL(url as CFURL, nil),
               let type = CGImageSourceGetType(source),
               UTType(type as String)?.conforms(to: .tiff) == true else { return 1 }
         return max(CGImageSourceGetCount(source), 1)
     }
 
     /// Pixel size as displayed, with EXIF orientation applied. nil if the file isn't a readable image.
-    public static func displaySize(of url: URL, page: Int = 0) -> CGSize? {
+    /// `source`: the file's, when already open.
+    public static func displaySize(of url: URL, page: Int = 0, source: CGImageSource? = nil) -> CGSize? {
         if let own = OwnDecoders.format(for: url) {
             // Mapped, so only the header's pages are read from disk.
             return (try? Data(contentsOf: url, options: .mappedIfSafe)).flatMap { own.size($0, page) }
         }
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let props = CGImageSourceCopyPropertiesAtIndex(source, page, nil) as? [CFString: Any],
+        return (source ?? CGImageSourceCreateWithURL(url as CFURL, nil)).flatMap { displaySize(of: $0, page: page) }
+    }
+
+    /// `displaySize` from an ImageIO source already open.
+    static func displaySize(of source: CGImageSource, page: Int) -> CGSize? {
+        guard let props = CGImageSourceCopyPropertiesAtIndex(source, page, nil) as? [CFString: Any],
               let width = props[kCGImagePropertyPixelWidth] as? Int,
               let height = props[kCGImagePropertyPixelHeight] as? Int else { return nil }
         let orientation = props[kCGImagePropertyOrientation] as? Int ?? 1
@@ -147,8 +152,8 @@ public enum ImageDecoder {
             }
             return try display(scaled(image, longestSide: side) ?? image)
         }
-        guard let size = displaySize(of: url),
-              let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary)
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary),
+              let size = displaySize(of: source, page: 0)
         else { throw DecodeError.unreadable(url) }
         let full = PixelSize(width: Int(size.width), height: Int(size.height))
         // Neither FromImage* flag: ImageIO returns the embedded thumbnail if there is one, else decodes at `side`.
@@ -229,8 +234,8 @@ public enum ImageDecoder {
                 throw DecodeError.unreadable(url)
             }
         }
-        guard let size = displaySize(of: url, page: page),
-              let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary)
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary),
+              let size = displaySize(of: source, page: page)
         else { throw DecodeError.unreadable(url) }
         let full = Int(max(size.width, size.height))
         var options = thumbnailOptions(maxPixelSize: fit(size, exact: decodesAtExactFit(url)) ?? (halvingSteps
