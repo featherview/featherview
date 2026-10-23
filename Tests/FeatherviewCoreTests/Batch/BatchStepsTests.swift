@@ -18,13 +18,15 @@ import Testing
                                      .tiles, .dateTaken])
     }
 
-    @Test func appliedLineOrder() {
+    @Test func appliedLineListsStepsInProcessingOrder() {
         var s = BatchSettings()
         s.dateTaken.isOn = true
         s.tiles.isOn = true
+        s.watermark.isOn = true
+        s.resize.isOn = true
         s.crop.isOn = true
         s.frames.isOn = true
-        #expect(BatchCard.appliedLine(s) == "Applied: frames and pages → crop → tiles → date taken")
+        #expect(BatchCard.appliedLine(s) == "Applied: frames and pages → crop → size → watermark → tiles → date taken")
     }
 
     @Test func tilesSummary() {
@@ -54,31 +56,20 @@ import Testing
         #expect(BatchCard.dateTaken.summary(in: s).hasPrefix("Earlier by"))
     }
 
-    @Test func addAndRemove() {
-        var s = BatchSettings()
-        let cards: [BatchCard] = [.frames, .tiles, .dateTaken]
-        for card in cards {
-            card.setAdded(true, in: &s)
-            #expect(card.isAdded(in: s))
-        }
-        #expect(s.frames.isOn && s.tiles.isOn && s.dateTaken.isOn)
-        for card in cards {
-            card.setAdded(false, in: &s)
-            #expect(!card.isAdded(in: s))
-        }
-        #expect(!s.frames.isOn && !s.tiles.isOn && !s.dateTaken.isOn)
-    }
-
-    @Test func extrasFollowTheirSwitch() {
+    @Test(arguments: BatchCard.extras) func extraFollowsItsStepSwitch(card: BatchCard) throws {
+        let switches: [BatchCard: KeyPath<BatchSettings, Bool>] = [
+            .frames: \.frames.isOn, .crop: \.crop.isOn, .orientation: \.orientation.isOn, .colour: \.colour.isOn,
+            .filters: \.filters.isOn, .canvas: \.canvas.isOn, .border: \.border.isOn, .text: \.text.isOn,
+            .watermark: \.watermark.isOn, .tiles: \.tiles.isOn, .dateTaken: \.dateTaken.isOn,
+        ]
+        let isOn = try #require(switches[card])
         var s = BatchSettings()
         #expect(BatchCard.extras.allSatisfy { !$0.isAdded(in: s) })
-        BatchCard.orientation.setAdded(true, in: &s)
-        #expect(s.orientation.isOn)
-        #expect(BatchCard.orientation.isAdded(in: s))
-        BatchCard.watermark.setAdded(true, in: &s)
-        BatchCard.watermark.setAdded(false, in: &s)
-        #expect(!s.watermark.isOn)
-        #expect(BatchCard.extras.filter { $0.isAdded(in: s) } == [.orientation])
+        card.setAdded(true, in: &s)
+        #expect(s[keyPath: isOn])
+        #expect(BatchCard.extras.filter { $0.isAdded(in: s) } == [card])
+        card.setAdded(false, in: &s)
+        #expect(!s[keyPath: isOn] && !card.isAdded(in: s))
     }
 
     @Test func formatSummaryJPEGQuality() {
@@ -166,19 +157,6 @@ import Testing
         #expect(BatchCard.extras.allSatisfy { !$0.summary(in: BatchSettings()).isEmpty })
     }
 
-    @Test func appliedLineInProcessingOrder() throws {
-        var s = BatchSettings()
-        s.watermark.isOn = true
-        s.resize.isOn = true
-        s.crop.isOn = true
-        let line = try #require(BatchCard.appliedLine(s))
-        let crop = try #require(line.range(of: "crop"))
-        let size = try #require(line.range(of: "size"))
-        let watermark = try #require(line.range(of: "watermark"))
-        #expect(crop.upperBound <= size.lowerBound)
-        #expect(size.upperBound <= watermark.lowerBound)
-    }
-
     @Test func appliedLineNilWhenNothingOn() {
         var s = BatchSettings()
         s.changeFormat = false
@@ -186,22 +164,25 @@ import Testing
         #expect(BatchCard.appliedLine(s) == nil)
     }
 
-    @Test func canStartNeedsFilesAFolderAndNoScan() {
+    /// A batch starts with files, no scan running, and an absolute output folder or none (next to the originals).
+    @Test(arguments: [
+        (running: false, scans: 0, files: 1, folder: "/tmp/out", changeFormat: true, canStart: true),
+        (running: true, scans: 0, files: 1, folder: "/tmp/out", changeFormat: true, canStart: false),
+        (running: false, scans: 1, files: 1, folder: "/tmp/out", changeFormat: true, canStart: false),
+        (running: false, scans: 0, files: 0, folder: "/tmp/out", changeFormat: true, canStart: false),
+        (running: false, scans: 0, files: 1, folder: "out", changeFormat: true, canStart: false),
+        (running: false, scans: 0, files: 1, folder: "~/Desktop/Out", changeFormat: true, canStart: true),
+        (running: false, scans: 0, files: 1, folder: "", changeFormat: true, canStart: true),
+        (running: false, scans: 0, files: 1, folder: "", changeFormat: false, canStart: true),
+        (running: false, scans: 0, files: 1, folder: "relative", changeFormat: false, canStart: false),
+    ])
+    func canStartNeedsFilesNoScanAndAnAbsoluteOrEmptyFolder(
+        running: Bool, scans: Int, files: Int, folder: String, changeFormat: Bool, canStart: Bool
+    ) {
         var s = BatchSettings()
-        s.outputFolder = "/tmp/out"
-        #expect(BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
-        #expect(!BatchProgress.canStart(isRunning: true, scans: 0, inputCount: 1, settings: s))
-        #expect(!BatchProgress.canStart(isRunning: false, scans: 1, inputCount: 1, settings: s))
-        #expect(!BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 0, settings: s))
-        s.outputFolder = ""  // next to the originals
-    }
-
-    @Test func canStartNeedsAnAbsoluteFolder() {
-        var s = BatchSettings()
-        s.outputFolder = "out"
-        #expect(!BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
-        s.outputFolder = "~/Desktop/Out"
-        #expect(BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
+        s.outputFolder = folder
+        s.changeFormat = changeFormat
+        #expect(BatchProgress.canStart(isRunning: running, scans: scans, inputCount: files, settings: s) == canStart)
     }
 
     @Test func secondsLeftTakesPausesOut() {

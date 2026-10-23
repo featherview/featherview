@@ -203,7 +203,7 @@ import Testing
         #expect(flat.width <= 65536 && flat.height >= 1)
     }
 
-    @Test func percentIgnoresScale() {
+    @Test func previewScaleAppliesToPixelsNotPercent() {
         let percent = SizeCase(mode: .percent, input: Self.landscape, expected: Self.size(2000, 1500))
         #expect(ResizeStep.targetSize(for: Self.landscape, percent.settings, scale: 0.5) == Self.size(2000, 1500))
         // Pixel values do follow the preview's scale; megapixels by its square.

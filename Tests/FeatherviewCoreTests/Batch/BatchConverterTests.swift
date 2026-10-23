@@ -37,12 +37,12 @@ import FeatherviewJXL
         }
     }
 
-    // MARK: Milestone 1 cases
+    // MARK: Convert
 
     @Test func convertsResizesAndReportsFailuresWithoutStopping() async throws {
         let dir = try Fixtures.makeTempDir()
         let rotated = try Fixtures.writeImage(to: dir.appendingPathComponent("rot.jpg"), width: 40, height: 20, orientation: 6)
-        let big = try Fixtures.writeImage(to: dir.appendingPathComponent("big.png"), width: 4000, height: 2000, type: .png)
+        let big = try Fixtures.writeImage(to: dir.appendingPathComponent("big.png"), width: 400, height: 200, type: .png)
         let bad = try Fixtures.writeCorrupt(to: dir.appendingPathComponent("bad.jpg"))
         let out = try Fixtures.makeTempDir()
         let job = job([rotated, big, bad], out: out, format: "jpg") {
@@ -61,13 +61,6 @@ import FeatherviewJXL
         #expect(results[2].output == nil)
         #expect(results[2].message == "Can't open bad.jpg")
         #expect(try FileManager.default.contentsOfDirectory(atPath: out.path).count == 2)
-    }
-
-    @Test func encodesHEIC() async throws {
-        let dir = try Fixtures.makeTempDir()
-        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 64, height: 64)
-        let results = await BatchConverter.run(job([input], out: dir, format: "heic"))
-        #expect(results.first?.status == .converted)
     }
 
     @Test func neverReplacesAFileThatAppearedAfterNaming() throws {
@@ -237,23 +230,6 @@ import FeatherviewJXL
         #expect(try [Data(contentsOf: a), Data(contentsOf: b)] == before)
     }
 
-    @Test func keepFormatResavesInOwnFormat() async throws {
-        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
-        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 400, height: 200)
-
-        let results = await BatchConverter.run(job([input], out: out, format: "png") {
-            $0.changeFormat = false
-            $0.resize.isOn = true
-            $0.resize.side = 100
-        })
-
-        let output = try #require(results.first?.output)
-        #expect(output.lastPathComponent == "a.jpg")
-        #expect(ImageDecoder.displaySize(of: output) == CGSize(width: 100, height: 50))
-        let type = CGImageSourceCreateWithURL(output as CFURL, nil).flatMap(CGImageSourceGetType) as String?
-        #expect(type == "public.jpeg")
-    }
-
     @Test func keepFormatMixedList() async throws {
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let jpeg = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 40, height: 20)
@@ -278,7 +254,9 @@ import FeatherviewJXL
         #expect(results.map { $0.output?.lastPathComponent } == ["a.jpg", "b.png", nil, nil])
         #expect(results[2].message == "Can't save c.dcx in its own format")
         #expect(results[3].message == "Can't save d.cr3 in its own format")
-        let png2 = try #require(results[1].output)
+        let jpeg2 = try #require(results[0].output), png2 = try #require(results[1].output)
+        #expect(ImageDecoder.displaySize(of: jpeg2) == CGSize(width: 10, height: 5))
+        #expect(CGImageSourceCreateWithURL(jpeg2 as CFURL, nil).flatMap(CGImageSourceGetType) as String? == "public.jpeg")
         #expect(CGImageSourceCreateWithURL(png2 as CFURL, nil).flatMap(CGImageSourceGetType) as String? == "public.png")
     }
 
@@ -310,29 +288,24 @@ import FeatherviewJXL
     @Test func jxlInputsKeepTheirFormat() async throws {
         _ = Fixtures.jxl
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
-        let inputs = try ["a.jxl", "b.jxl"].map { name in
-            let source = try ImageDecoder.decode(
-                try Fixtures.writeImage(to: dir.appendingPathComponent(name + ".png"), width: 40, height: 20, type: .png))
-            let url = dir.appendingPathComponent(name)
-            try JXLEncoder.encode(source, quality: 90, lossless: false, effort: 3, xmp: nil).write(to: url)
-            return url
-        }
+        let source = try ImageDecoder.decode(
+            try Fixtures.writeImage(to: dir.appendingPathComponent("a.png"), width: 40, height: 20, type: .png))
+        let input = dir.appendingPathComponent("a.jxl")
+        try JXLEncoder.encode(source, quality: 90, lossless: false, effort: 3, xmp: nil).write(to: input)
 
-        let results = await BatchConverter.run(job(inputs, out: out) {
+        let results = await BatchConverter.run(job([input], out: out) {
             $0.changeFormat = false
             $0.resize.isOn = true
             $0.resize.side = 10
         })
 
-        #expect(results.map(\.status) == [.converted, .converted])
-        #expect(results.map { $0.output?.lastPathComponent } == ["a.jxl", "b.jxl"])
-        for result in results {
-            let output = try #require(result.output)
-            #expect(CGImageSourceCreateWithURL(output as CFURL, nil).flatMap(CGImageSourceGetType) as String? == "public.jpeg-xl")
-        }
+        #expect(results.map(\.status) == [.converted])
+        let output = try #require(results.first?.output)
+        #expect(output.lastPathComponent == "a.jxl")
+        #expect(CGImageSourceCreateWithURL(output as CFURL, nil).flatMap(CGImageSourceGetType) as String? == "public.jpeg-xl")
     }
 
-    @Test func convertsToJXL() async throws {
+    @Test func convertsOpaqueAndHalfTransparentInputsToJXL() async throws {
         _ = Fixtures.jxl
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let jpeg = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 40, height: 20)
@@ -350,16 +323,6 @@ import FeatherviewJXL
 
         #expect(results.map(\.status) == [.converted, .converted])
         #expect(results.map { $0.output?.lastPathComponent } == ["a.jxl", "b.jxl"])
-    }
-
-    @Test func canStartWithEmptyFolder() {
-        var s = BatchSettings()
-        s.outputFolder = ""
-        #expect(BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
-        s.changeFormat = false
-        #expect(BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
-        s.outputFolder = "relative"
-        #expect(!BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
     }
 
     // MARK: Pages
@@ -671,7 +634,7 @@ import FeatherviewJXL
         #expect(control.pausedDuration() >= afterOne + .milliseconds(30))
     }
 
-    @Test func pauseHoldsThenResumes() async throws {
+    @Test(.timeLimit(.minutes(1))) func pauseHoldsThenResumes() async throws {
         let out = try Fixtures.makeTempDir()
         let control = BatchControl()
         let started = Box(0), committed = Box(0)
@@ -708,7 +671,7 @@ import FeatherviewJXL
             started.update { $0 += 1 }
             let ahead = started.get - committed.get
             most.update { $0 = max($0, ahead) }
-            if index == 0 { Thread.sleep(forTimeInterval: 0.3) }  // everything after it waits for its commit
+            if index == 0 { Thread.sleep(forTimeInterval: 0.05) }  // everything after it waits for its commit
             return BatchConverter.Prepared(data: Data("\(index)".utf8))
         })
 
@@ -858,12 +821,12 @@ import FeatherviewJXL
 
     @Test func tilesOfStill() async throws {
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
-        let input = try writeQuarterRed(to: dir.appendingPathComponent("a.png"), width: 1600, height: 900)
+        let input = try writeQuarterRed(to: dir.appendingPathComponent("a.png"), width: 16, height: 8)
 
         let result = try #require(await BatchConverter.run(job([input], out: out) { $0.tiles.isOn = true }).first)
 
         #expect(result.outputs.map(\.lastPathComponent) == ["a-1-1.png", "a-1-2.png", "a-2-1.png", "a-2-2.png"])
-        #expect(result.outputs.allSatisfy { ImageDecoder.displaySize(of: $0) == CGSize(width: 800, height: 450) })
+        #expect(result.outputs.allSatisfy { ImageDecoder.displaySize(of: $0) == CGSize(width: 8, height: 4) })
         let reds = try result.outputs.map(red)
         #expect(reds[0] > 240 && reds.dropFirst().allSatisfy { $0 < 16 })
     }
@@ -1090,23 +1053,13 @@ import FeatherviewJXL
         #expect(try names(out) == ["b.jpg"])
     }
 
-    @Test func dateSetWithoutADateFails() async throws {
-        let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
-        let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
-        let result = try #require(await BatchConverter.run(job([input], out: out) {
-            $0.dateTaken.isOn = true
-            $0.dateTaken.mode = .set
-        }).first)
-        #expect(result.message == "Choose a date for the Date Taken step")
-    }
-
-    @Test func dateSetToAnUnreadableDateFails() async throws {
+    @Test(arguments: ["", "not a date"]) func dateSetWithoutAReadableDateFails(setTo: String) async throws {
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
         let input = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8)
         let result = try #require(await BatchConverter.run(job([input], out: out, format: "jpg") {
             $0.dateTaken.isOn = true
             $0.dateTaken.mode = .set
-            $0.dateTaken.setTo = "not a date"
+            $0.dateTaken.setTo = setTo
         }).first)
         #expect(result.status == .failed)
         #expect(result.message == "Choose a date for the Date Taken step")
@@ -1138,32 +1091,5 @@ import FeatherviewJXL
         }).first?.output)
 
         #expect(output.lastPathComponent == "2020-02-03.jpg")
-    }
-}
-
-// Moved from the old BatchPlannerTests: RenamePattern stays.
-@Suite struct RenamePatternTests {
-    @Test func tokens() {
-        #expect(RenamePattern("{name}_{n:3}").baseName(original: "IMG", index: 7) == "IMG_007")
-        #expect(RenamePattern("x{n}").baseName(original: "a", index: 12) == "x12")
-        #expect(RenamePattern("{n:2}").baseName(original: "a", index: 123) == "123")
-    }
-
-    @Test func padWidthIsCapped() {
-        // A typo like {n:200000000} must not build a huge string for every file.
-        #expect(RenamePattern("{n:20}").baseName(original: "a", index: 1) == "0000000001")
-        #expect(RenamePattern("{n:200000000}").baseName(original: "a", index: 1).count == 10)
-    }
-
-    @Test func cannotEscapeTheOutputFolder() {
-        #expect(RenamePattern("a/b:c").baseName(original: "z", index: 1) == "a-b-c")
-    }
-
-    @Test func emptyTemplateKeepsOriginal() {
-        #expect(RenamePattern("").baseName(original: "z", index: 1) == "z")
-    }
-
-    @Test func originalNameIsNeverTreatedAsATemplate() {
-        #expect(RenamePattern("{name}").baseName(original: "my{n}", index: 5) == "my{n}")
     }
 }

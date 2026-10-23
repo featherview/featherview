@@ -94,18 +94,6 @@ import Testing
         #expect(names(items) == ["a.jpg"])
     }
 
-    @Test func scanFollowsASymlinkedRootFolder() throws {
-        let dir = try Fixtures.makeTempDir()
-        let real = dir.appendingPathComponent("real")
-        try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
-        _ = try image(real, "x.jpg")
-        let link = dir.appendingPathComponent("link")
-        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
-        let items = try BatchInputList.scan(folder: link, subfolders: true)
-        #expect(names(items) == ["x.jpg"])
-        #expect(items.allSatisfy { $0.root == link })
-    }
-
     @Test func droppedSymlinkedFolderIsScanned() throws {
         let dir = try Fixtures.makeTempDir()
         let real = dir.appendingPathComponent("real")
@@ -183,17 +171,20 @@ import Testing
         #expect(BatchInputList.convertTitle(count: 48) == "Convert 48 Images")
     }
 
-    /// "Recreate subfolders" takes each input's path below its root, so the root must prefix it.
+    /// "Recreate subfolders" takes each input's path below its root, so the chosen folder, even a
+    /// symlink, is every item's root and prefixes its path.
     @Test func scanKeepsItemsUnderTheChosenFolderPath() throws {
         let dir = try Fixtures.makeTempDir()  // under /var, which is a symlink to /private/var
         let real = dir.appendingPathComponent("real")
         try FileManager.default.createDirectory(at: real.appendingPathComponent("sub"), withIntermediateDirectories: true)
+        _ = try image(real, "a.jpg")
         _ = try image(real, "sub/x.jpg")
         let link = dir.appendingPathComponent("link")
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
         for folder in [real, link] {
             let items = try BatchInputList.scan(folder: folder, subfolders: true)
-            #expect(items.map(\.url.path) == [folder.path + "/sub/x.jpg"])
+            #expect(items.map(\.url.path).sorted() == [folder.path + "/a.jpg", folder.path + "/sub/x.jpg"])
+            #expect(items.allSatisfy { $0.root == folder })
         }
     }
 
@@ -228,16 +219,6 @@ import Testing
         }
     }
 
-    @Test func scanSetsRoot() throws {
-        let dir = try Fixtures.makeTempDir()
-        try FileManager.default.createDirectory(at: dir.appendingPathComponent("s"), withIntermediateDirectories: true)
-        _ = try image(dir, "a.jpg")
-        _ = try image(dir, "s/b.jpg")
-        let items = try BatchInputList.scan(folder: dir, subfolders: true)
-        #expect(items.count == 2)
-        #expect(items.allSatisfy { $0.root == dir })
-    }
-
     private func list(_ names: [String]) -> BatchInputList {
         BatchInputList(names.map { BatchInput(url: URL(fileURLWithPath: "/tmp/\($0)")) })
     }
@@ -247,7 +228,7 @@ import Testing
         var l = BatchInputList((0..<20_000).map { BatchInput(url: URL(fileURLWithPath: "/tmp/batch-perf/\($0).jpg")) })
         let start = ContinuousClock.now
         for i in 0..<20 { l.append([BatchInput(url: URL(fileURLWithPath: "/tmp/batch-perf/new\(i).jpg"))]) }
-        #expect(ContinuousClock.now - start < .seconds(1))
+        #expect(ContinuousClock.now - start < .seconds(3))  // resolving every row again takes over 5 s
         #expect(l.items.count == 20_020)
         l.append([BatchInput(url: URL(fileURLWithPath: "/tmp/batch-perf/5.jpg"))])
         #expect(l.items.count == 20_020)

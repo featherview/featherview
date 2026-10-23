@@ -66,18 +66,12 @@ import UniformTypeIdentifiers
         return box
     }
 
-    @Test func textChangesPixelsOnlyNearItsCorner() throws {
-        let base = black()
-        let out = TextStep.apply(base, text(), values: values, scale: 1)
-        #expect(out.extent == base.extent)
-        let box = try #require(changedBox(try PipelineFixtures.pixels(base), try PipelineFixtures.pixels(out)))
-        #expect(box.minX >= 200 && box.minY >= 150)
-    }
-
+    /// The text lands in its anchor's third of the picture and changes nothing on the far half.
     @Test(arguments: ImageAnchor.allCases)
     func textAtEachAnchorLandsInThatRegion(_ anchor: ImageAnchor) throws {
         let base = black()
         let out = TextStep.apply(base, text(at: anchor), values: values, scale: 1)
+        #expect(out.extent == base.extent)
         let box = try #require(changedBox(try PipelineFixtures.pixels(base), try PipelineFixtures.pixels(out)))
         let column = (box.minX + box.maxX) / 2 / (400 / 3), row = (box.minY + box.maxY) / 2 / (300 / 3)
         let expected: (Int, Int) = switch anchor {
@@ -92,6 +86,10 @@ import UniformTypeIdentifiers
         case .bottomRight: (2, 2)
         }
         #expect(column == expected.0 && row == expected.1)
+        if expected.0 == 0 { #expect(box.maxX < 200) }
+        if expected.0 == 2 { #expect(box.minX >= 200) }
+        if expected.1 == 0 { #expect(box.maxY < 150) }
+        if expected.1 == 2 { #expect(box.minY >= 150) }
     }
 
     @Test func textOpacityZeroChangesNothing() throws {
