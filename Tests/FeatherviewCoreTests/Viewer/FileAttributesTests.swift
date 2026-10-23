@@ -36,4 +36,21 @@ import Testing
         #expect(info.modified == own.modified)
         #expect(info.values["date"] == own.values["date"])
     }
+
+    /// A prefetched read is shown again without another until something rewrites or touches the file.
+    @Test func fileInfoIsCurrentUntilTheFileChanges() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 4)
+        let info = FileInfo.read(url: url, page: 0)
+        #expect(info.isCurrent)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSinceNow: -60)], ofItemAtPath: url.path)
+        #expect(!info.isCurrent)
+        let touched = FileInfo.read(url: url, page: 0)
+        _ = try Fixtures.writeImage(to: url, width: 400, height: 300)
+        try FileManager.default.setAttributes([.modificationDate: try #require(touched.modified)], ofItemAtPath: url.path)
+        #expect(!touched.isCurrent)  // same date, other bytes
+        let last = FileInfo.read(url: url, page: 0)
+        try FileManager.default.removeItem(at: url)
+        #expect(!last.isCurrent)
+    }
 }

@@ -662,10 +662,15 @@ final class ViewerModel {
                 guard !Task.isCancelled else { return }
                 if prefetched == nil { shown(decoded, url: url, page: page, started: started) }
                 if page == 0 { play(url, target: target, first: decoded) }
-                // Read again on every show: a rotation changes both size and date. Not awaited, so the
-                // prefetch below doesn't wait for another file read (slow on network or USB disks).
+                // Read again unless the prefetch's read is still current: our own rewrites drop it, and a stat
+                // catches an app that changed the file elsewhere (the folder watch sees only entries come and go).
+                // Not awaited, so the prefetch below doesn't wait for a file read (slow on network or USB disks).
+                let known = page == 0 ? knownInfo[url] : nil
                 Task {
-                    let info = await Task.detached { FileInfo.read(url: url, page: page) }.value
+                    let info = await Task.detached {
+                        if let known, known.isCurrent { return known }
+                        return FileInfo.read(url: url, page: page)
+                    }.value
                     if page == 0 { knownInfo[url] = info }
                     // A slower read for another page of this file may finish last. Unchanged: no second redraw.
                     if info.isFor(list.current, page: self.page), info != fileInfo { fileInfo = info }

@@ -26,6 +26,10 @@ public struct FileInfo: Equatable, Sendable {
         FileInfo(url: url, page: page, pixelSize: pixelSize, bytes: bytes, modified: modified, values: values)
     }
 
+    /// True while the file has the size and date this read saw, so nothing rewrote it since: one stat, where a read
+    /// opens the file's header too.
+    public var isCurrent: Bool { url.modificationDate == modified && url.fileSize == bytes }
+
     /// A read for another page of the same file has another pixel size.
     public func isFor(_ url: URL?, page: Int) -> Bool { self.url == url && self.page == page }
 
