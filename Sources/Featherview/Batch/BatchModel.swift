@@ -160,7 +160,7 @@ final class BatchModel {
             // Input sizes from add: the originals may be in the Trash by now.
             let bytesIn = converted.reduce(0) { $0 + list.size(of: $1.input) }
             let bytesOut = converted.flatMap(\.outputs).reduce(0) {
-                $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+                $0 + ($1.fileSize ?? 0)
             }
             return BatchReport.summary(results: results, seconds: seconds, bytesIn: bytesIn,
                                        bytesOut: bytesOut, folder: folder)

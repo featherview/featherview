@@ -288,7 +288,7 @@ public struct BatchInput: Hashable, Sendable {
 
     /// The image's size in bytes (through a symlink, not the link's own), 0 when it can't be read.
     public func fileSize() -> Int {
-        (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        url.fileSize ?? 0
     }
 }
 

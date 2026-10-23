@@ -12,13 +12,13 @@ public struct FileInfo: Equatable, Sendable {
 
     /// Reads the file; call off the main thread (it touches the disk).
     public static func read(url: URL, page: Int) -> FileInfo {
-        let resources = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+        let modified = url.modificationDate
         let size = ImageDecoder.displaySize(of: url, page: page)
         // `{size}` is page 0's on every page.
         let fileSize = page == 0 ? size : ImageDecoder.displaySize(of: url)
         return FileInfo(url: url, page: page, pixelSize: size,
-                        bytes: resources?.fileSize, modified: resources?.contentModificationDate,
-                        values: OverlayTemplate.fileValues(size: fileSize, modified: resources?.contentModificationDate))
+                        bytes: url.fileSize, modified: modified,
+                        values: OverlayTemplate.fileValues(size: fileSize, modified: modified))
     }
 
     /// The same values under a new URL: after a rename the picture stays without a new read.

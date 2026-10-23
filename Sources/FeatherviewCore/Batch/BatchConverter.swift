@@ -305,7 +305,7 @@ public enum BatchConverter {
         if let dateTaken = prepared.dateTaken {
             for output in outputs { DateTaken.setFileDates(output, date: dateTaken, offset: prepared.offset) }
         } else if settings.safety.keepDates,
-           let date = (try? fm.attributesOfItem(atPath: url.resolvingSymlinksInPath().path))?[.modificationDate] as? Date {
+           let date = url.modificationDate {
             for output in outputs { try? fm.setAttributes([.modificationDate: date], ofItemAtPath: output.path) }
         }
         var message = prepared.note

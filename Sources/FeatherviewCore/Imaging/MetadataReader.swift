@@ -8,8 +8,7 @@ public struct MetadataField: Equatable, Sendable {
 
 public enum MetadataReader {
     public static func fields(for url: URL) -> [MetadataField] {
-        // .fileSizeKey does not follow symlinks; resolve first so a link shows the image's size.
-        let fileSize = (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.fileSizeKey]))?.fileSize
+        let fileSize = url.fileSize
         if OwnDecoders.format(for: url) != nil {  // ImageIO can't read it; own decoders give dimensions only
             let size = ImageDecoder.displaySize(of: url)
             let props: [CFString: Any] = size.map {
@@ -102,7 +101,7 @@ public enum MetadataReader {
            let date = (exif[kCGImagePropertyExifDateTimeOriginal] as? String).flatMap(exifDate) {
             return date
         }
-        return (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+        return url.modificationDate
     }
 
     /// 1/N for fast shutters and exact unit fractions (1/2, 1/3); decimal seconds otherwise (0.8 s, 2 s).
