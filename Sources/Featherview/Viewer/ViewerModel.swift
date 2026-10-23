@@ -43,12 +43,8 @@ final class ViewerModel {
             if compareSession != nil, image !== oldValue { updateAvailability(); updateDifference() }
         }
     }
-    /// Rotations and flips asked for (R, L, H, V) that the picture on screen doesn't show yet: the canvas shows
-    /// them while the file is rewritten and decoded again.
-    var pendingChanges: [OrientationChange] = []
-    var pendingTransform: PictureTransform { PictureTransform(pendingChanges) }
-    /// The file being rewritten and how many of `pendingChanges` are written to it, which the next decode of it shows.
-    @ObservationIgnored private var writtenChanges: (url: URL, count: Int)?
+    var pendingChanges = PendingChanges()
+    var pendingTransform: PictureTransform { pendingChanges.transform }
     /// True while a trashed or moved picture fades out before the next one shows.
     private(set) var isLeaving = false
     var errorMessage: String?
@@ -816,15 +812,7 @@ final class ViewerModel {
             // Already on screen: the canvas commits nothing new, so the wait ends here.
             if image === decoded { endCommittedNavigation() } else { self.navigation?.image = decoded }
         }
-        if image !== decoded {
-            // The rewritten file shows the changes written to it; the rest stay pending. Another file shows none.
-            if let written = writtenChanges, written.url == url {
-                pendingChanges.removeFirst(min(written.count, pendingChanges.count))
-            } else {
-                pendingChanges = []
-            }
-            writtenChanges = nil
-        }
+        if image !== decoded { pendingChanges.decoded(url) }
         if image == nil || onScreen.map({ $0.url != url || $0.page != page }) ?? true {
             arrival = (arrival.id + 1, AppSettings.keepZoom.value() ? .keep : zoom.start)
         }
@@ -1118,7 +1106,7 @@ final class ViewerModel {
         guard let url = list.current, !list.isHolding else { return }  // a held image is already gone
         let page = page
         let isRotation = if case .rotate = change { true } else { false }
-        pendingChanges.append(change)
+        pendingChanges.add(change)
         rotations += 1
         // A rotated file shows once the canvas has finished turning the picture, not part-way; a flip shows at once.
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -1130,9 +1118,7 @@ final class ViewerModel {
             do {
                 try await Task.detached(priority: .userInitiated) { try OrientationRotator.apply(url, change, page: page) }.value
                 // Only for the file on screen: another one shown meanwhile cleared the changes.
-                if list.current == url {
-                    writtenChanges = (url, (writtenChanges?.url == url ? writtenChanges?.count ?? 0 : 0) + 1)
-                }
+                if list.current == url { pendingChanges.written(url) }
                 await cache.remove(url)
                 await fullSizeCache.remove(url)
                 await thumbnails?.cache.remove(url)
@@ -1167,11 +1153,9 @@ final class ViewerModel {
         }
     }
 
-    /// Takes back the change that failed: the first not yet written (the ones before it in the chain were).
+    /// Takes back the change that failed, for the file on screen only: another one shown meanwhile cleared them.
     private func dropFailed(_ url: URL) {
-        guard list.current == url else { return }
-        let written = writtenChanges?.url == url ? writtenChanges?.count ?? 0 : 0
-        if pendingChanges.indices.contains(written) { pendingChanges.remove(at: written) }
+        if list.current == url { pendingChanges.failed(url) }
     }
 
     // MARK: Date taken
