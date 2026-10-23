@@ -88,7 +88,7 @@ import Testing
     @Test(arguments: [
         ("\r", MenuKey.Modifiers(), GridKey.view), ("\u{3}", [], .view), ("\u{1B}", [], .leave),
         (" ", [], .quickLook), ("\u{F728}", [], .trash), ("\u{7F}", .command, .trash),
-        ("\u{F70A}", [], .move), ("\u{F70B}", [], .copy), ("\u{F729}", [], .first), ("\u{F72B}", [], .last),
+        ("\u{F70A}", [], .move), ("\u{F70B}", [], .copy), ("\u{F708}", [], .refresh), ("\u{F729}", [], .first), ("\u{F72B}", [], .last),
         ("b", [], .batch), ("+", [], .larger), ("+", .shift, .larger), ("=", [], .larger), ("-", [], .smaller),
         ("t", [], .toggle), ("o", [], .passOn(.open)), ("p", [], .passOn(.settings)),
         ("a", [], .passOn(.about)), ("m", [], .passOn(.minimize)), ("f", [], .passOn(.toggleFullScreen)),

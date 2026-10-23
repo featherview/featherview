@@ -159,8 +159,8 @@ final class ViewerModel {
     var unsaved: CGImage? {
         didSet {
             updateAvailability()
-            // Arrivals held back while it covered the list (ViewerModel+Follow).
-            if unsaved == nil, pendingRescan { pendingRescan = false; folderChanged() }
+            // Arrivals or a Refresh held back while it covered the list (ViewerModel+Follow).
+            if unsaved == nil, pendingRescan { pendingRescan = false; followsNewFiles ? folderChanged() : refreshFolder() }
         }
     }
     var coveredList: ImageList?

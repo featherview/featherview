@@ -36,36 +36,8 @@ extension ViewerModel {
         rotateTask = Task {
             await previous?.value
             await scan?.value
-            guard followsNewFiles, folder == self.folder, openTask == scan, unsaved == nil else { return }
-            let listed = list.urls
-            // Around the current file, the scan names files as the list does (a file's folder isn't symlink-resolved).
-            let around = list.current ?? folder
-            let includeHidden = AppSettings.showHiddenFiles.value()
-            let found = await Task.detached(priority: .userInitiated) { () -> (scanned: [URL], added: [URL], removed: [URL], newest: URL?)? in
-                guard let scanned = try? FolderScanner.images(around: around, includeHidden: includeHidden, sorted: false)
-                else { return nil }
-                let (added, removed) = Arrivals.diff(listed: listed, scanned: scanned)
-                let newest = Arrivals.newest(added) { $0.modificationDate }
-                return (scanned, added, removed, newest)
-            }.value
-            guard let found, followsNewFiles, openTask == scan, unsaved == nil else { return }
-            let removed = Set(found.removed)
-            if !removed.isEmpty {
-                ready = ready.filter { !removed.contains($0.key) }
-                knownInfo = knownInfo.filter { !removed.contains($0.key) }
-                sortValues = sortValues.filter { !removed.contains($0.key) }
-                for url in removed {
-                    await cache.remove(url)
-                    await fullSizeCache.remove(url)
-                }
-            }
-            await readSortValues(for: found.added)
-            // An open while the values were read has the newer list.
-            guard openTask == scan, unsaved == nil else { return }
-            // A current file deleted elsewhere stays on screen, held, until the next key (ImageList.reorder).
-            relist(found.scanned)
-            if !list.isEmpty { emptyFolder = nil }
-            guard let newest = found.newest else { return }
+            guard followsNewFiles, folder == self.folder, openTask == scan, unsaved == nil,
+                  let found = await rescan(), let newest = found.newest, followsNewFiles else { return }
             followTask?.cancel()  // an earlier queued rescan's wait
             followTask = Task {
                 guard await Arrivals.settled(newest), !Task.isCancelled, followsNewFiles,
@@ -75,6 +47,63 @@ extension ViewerModel {
                 show()
             }
         }
+    }
+
+    /// View › Refresh (F5, ⌘R): rescans the folder now, also with Follow New Files off. The image shown stays;
+    /// if its file is gone, the one at its position shows, as after Move to Trash.
+    func refreshFolder() {
+        guard let folder else { return }
+        if unsaved != nil {
+            pendingRescan = true
+            return
+        }
+        let previous = rotateTask
+        let scan = openTask
+        rotateTask = Task {
+            await previous?.value
+            await scan?.value
+            guard folder == self.folder, openTask == scan, unsaved == nil else { return }
+            let shown = list.current
+            guard await rescan() != nil else { return }
+            list.release()
+            if list.isEmpty { emptyFolder = folder }  // keeps the folder known, as after Trash
+            if list.current != shown { show() }
+        }
+    }
+
+    /// Scans the folder and takes its new and vanished images into the list in sort order; the current image stays,
+    /// held when its file is gone (ImageList.reorder). Nil when the scan failed or an open superseded it.
+    private func rescan() async -> (added: [URL], newest: URL?)? {
+        guard let folder else { return nil }
+        let scan = openTask
+        let listed = list.urls
+        // Around the current file, the scan names files as the list does (a file's folder isn't symlink-resolved).
+        let around = list.current ?? folder
+        let includeHidden = AppSettings.showHiddenFiles.value()
+        let found = await Task.detached(priority: .userInitiated) { () -> (scanned: [URL], added: [URL], removed: [URL], newest: URL?)? in
+            guard let scanned = try? FolderScanner.images(around: around, includeHidden: includeHidden, sorted: false)
+            else { return nil }
+            let (added, removed) = Arrivals.diff(listed: listed, scanned: scanned)
+            let newest = Arrivals.newest(added) { $0.modificationDate }
+            return (scanned, added, removed, newest)
+        }.value
+        guard let found, openTask == scan, unsaved == nil else { return nil }
+        let removed = Set(found.removed)
+        if !removed.isEmpty {
+            ready = ready.filter { !removed.contains($0.key) }
+            knownInfo = knownInfo.filter { !removed.contains($0.key) }
+            sortValues = sortValues.filter { !removed.contains($0.key) }
+            for url in removed {
+                await cache.remove(url)
+                await fullSizeCache.remove(url)
+            }
+        }
+        await readSortValues(for: found.added)
+        // An open while the values were read has the newer list.
+        guard openTask == scan, unsaved == nil else { return nil }
+        relist(found.scanned)
+        if !list.isEmpty { emptyFolder = nil }
+        return (found.added, found.newest)
     }
 
     /// The folder itself was renamed or deleted.

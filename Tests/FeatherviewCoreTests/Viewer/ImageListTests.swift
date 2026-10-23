@@ -228,6 +228,18 @@ import Testing
         #expect(list.current == c)
     }
 
+    /// Refresh: a current file gone from the rescan gives way to the one at its position, as after Trash.
+    @Test func refreshKeepsPositionWhenCurrentIsGone() {
+        let (a, b, c, d) = (urls[0], urls[1], urls[2], urls[3])
+        var list = ImageList(urls: [a, b, c], current: b)
+        list.reorder([a, c])
+        list.release()
+        #expect(list.current == c)
+        list.reorder([a, c, d])
+        #expect(list.current == c)
+        #expect(!list.isHolding)
+    }
+
     @Test func reorderToEmpty() {
         var list = ImageList(urls: urls, current: urls[1])
         list.reorder([])
