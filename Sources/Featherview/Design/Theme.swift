@@ -399,6 +399,8 @@ enum Theme {
         static let stripFade = 0.12
         /// A new window waits at most this long, transparent, for its first image; a slower decode shows it empty.
         static let firstImageWait = 0.25
+        /// A grid cell reads its tooltip's file details once the pointer has rested this long, so scrolling reads nothing.
+        static let hoverRest = 0.15
 
         /// The SwiftUI animation for a movement, nil under Reduce Motion.
         static func moving(_ seconds: Double, reduceMotion: Bool) -> SwiftUI.Animation? {

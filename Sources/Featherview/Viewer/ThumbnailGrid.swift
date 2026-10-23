@@ -248,7 +248,7 @@ struct ThumbnailGrid: NSViewRepresentable {
 
         func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
             let item = collectionView.makeItem(withIdentifier: ThumbnailCell.identifier, for: indexPath)
-            (item as? ThumbnailCell)?.configure(url: urls[indexPath.item], grid: self)
+            (item as? ThumbnailCell)?.configure(url: urls[indexPath.item], index: indexPath.item, count: urls.count, grid: self)
             return item
         }
 
@@ -398,10 +398,16 @@ final class ThumbnailCell: NSCollectionViewItem {
     /// The decode side of the picture shown or asked for; 0 for none.
     private var side = 0
     private var loading: Task<Void, Never>?
+    /// The hover's file details read; nil once it has finished, so each URL is read once.
+    private var reading: Task<Void, Never>?
     private weak var grid: ThumbnailGrid.Coordinator?
     private var cell: CellView { view as! CellView }
 
-    override func loadView() { view = CellView() }
+    override func loadView() {
+        view = CellView()
+        view.addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+                                            owner: self, userInfo: nil))
+    }
 
     override var isSelected: Bool { didSet { cell.selected = isSelected } }
 
@@ -409,17 +415,40 @@ final class ThumbnailCell: NSCollectionViewItem {
         super.prepareForReuse()
         loading?.cancel()
         loading = nil
+        reading?.cancel()
+        reading = nil
+        cell.info = nil
         url = nil
         side = 0
         cell.show(nil, failed: false)
     }
 
-    func configure(url: URL, grid: ThumbnailGrid.Coordinator) {
+    func configure(url: URL, index: Int, count: Int, grid: ThumbnailGrid.Coordinator) {
         self.url = url
         self.grid = grid
+        cell.position = (index, count)
         cell.name = url.lastPathComponent
         if grid.isFailed(url) { cell.show(nil, failed: true) }
         load()
+    }
+
+    /// The tooltip's details: read off the main thread once the pointer rests on the cell; until then the tooltip is
+    /// the name. Cells scrolling under a still pointer enter and exit within the rest, which cancels the read unstarted.
+    override func mouseEntered(with event: NSEvent) {
+        guard let url, cell.info == nil, reading == nil else { return }
+        reading = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Theme.Motion.hoverRest))
+            guard !Task.isCancelled else { return }
+            let info = await Task.detached { FileInfo.read(url: url, page: 0) }.value
+            guard !Task.isCancelled, let self, self.url == url else { return }
+            self.reading = nil
+            self.cell.info = info
+        }
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        reading?.cancel()
+        reading = nil
     }
 
     /// Asks for a picture when the cell has none at the grid's decode side, nor a decode on its way.
@@ -465,6 +494,9 @@ private final class CellView: NSView {
     private var image: CGImage?
     private var failed = false
     var selected = false { didSet { applyColours() } }
+    /// The cell's index and the grid's count, for the tooltip's position.
+    var position = (index: 0, count: 0) { didSet { updateTooltip() } }
+    var info: FileInfo? { didSet { updateTooltip() } }
     var name = "" {
         didSet {
             label.stringValue = name
@@ -541,7 +573,7 @@ private final class CellView: NSView {
     }
 
     private func updateTooltip() {
-        toolTip = failed ? String(localized: "Can't open \(name)") : name
+        toolTip = GridText.tooltip(name: name, info: info, index: position.index, count: position.count, failed: failed)
     }
 
     private func applyColours() {
