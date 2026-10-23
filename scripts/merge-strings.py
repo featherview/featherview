@@ -7,6 +7,7 @@ xcstringstool's own format. Stops with exit 1, writing nothing, when both sides 
 differently, and names each such key. Then: git add Resources/Localizable.xcstrings
 """
 import json
+import re
 import subprocess
 import sys
 
@@ -41,9 +42,15 @@ def main():
         for key in conflicts:
             print(f"  {json.dumps(key, ensure_ascii=False)}", file=sys.stderr)
         sys.exit(1)
-    # xcstringstool's layout: two-space indent, ": " separators, UTF-8 unescaped, trailing newline.
     with open(f"{root.stdout.strip()}/{PATH}", "w", encoding="utf-8") as f:
-        f.write(json.dumps(ours, indent=2, ensure_ascii=False) + "\n")
+        f.write(layout(ours))
+
+
+def layout(catalog):
+    """xcstringstool's layout: keys sorted, two-space indent, " : " separators, UTF-8 unescaped,
+    an empty object over two lines with a blank one between, no trailing newline."""
+    text = json.dumps(catalog, indent=2, ensure_ascii=False, separators=(",", " : "), sort_keys=True)
+    return re.sub(r'^( *)(".*" : )\{\}', lambda m: f"{m[1]}{m[2]}{{\n\n{m[1]}}}", text, flags=re.M)
 
 
 if __name__ == "__main__":
