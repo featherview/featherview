@@ -1,17 +1,17 @@
 //*@@@+++@@@@******************************************************************
 //
-// Copyright (c) Microsoft Corp.
+// Copyright © Microsoft Corp.
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
-//
-// * Redistributions of source code must retain the above copyright notice,
+// 
+// • Redistributions of source code must retain the above copyright notice,
 //   this list of conditions and the following disclaimer.
-// * Redistributions in binary form must reproduce the above copyright notice,
+// • Redistributions in binary form must reproduce the above copyright notice,
 //   this list of conditions and the following disclaimer in the documentation
 //   and/or other materials provided with the distribution.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -27,6 +27,7 @@
 //*@@@---@@@@******************************************************************
 #include "strcodec.h"
 #include "perfTimer.h"
+#include "memory_lim.h"
 
 #ifdef MEM_TRACE
 #define TRACE_MALLOC    1
@@ -142,7 +143,7 @@ U8 readQPIndex(BitIOInfo * pIO, U32 cBits)
 }
 
 Void getTilePos(CWMImageStrCodec* pSC, size_t mbX, size_t mbY)
-{
+{   
     if(mbX == 0){ // left image boundary
         pSC->cTileColumn = 0;
     }
@@ -245,12 +246,20 @@ Int IDPEmpty(CWMImageStrCodec* pSC)
 
 ERR WMPAlloc(void** ppv, size_t cb)
 {
-    *ppv = calloc(1, cb);
+    if (ppv == NULL)
+    {
+        return WMP_errInvalidArgument;
+    }
+    *ppv = calloc_lim(1, cb);
     return *ppv ? WMP_errSuccess : WMP_errOutOfMemory;
 }
 
 ERR WMPFree(void** ppv)
 {
+    if (ppv == NULL)
+    {
+        return WMP_errInvalidArgument;
+    }
     if (*ppv)
     {
         free(*ppv);
@@ -288,7 +297,7 @@ ERR CreateWS_File(struct WMPStream** ppWS, const char* szFilename, const char* s
     FailIf(NULL == pWS->state.file.pFile, WMP_errFileIO);
 #endif
 
-Cleanup:
+Cleanup:    
     return err;
 }
 
@@ -373,7 +382,7 @@ ERR CreateWS_Memory(struct WMPStream** ppWS, void* pv, size_t cb)
     pWS->SetPos = SetPosWS_Memory;
     pWS->GetPos = GetPosWS_Memory;
 
-Cleanup:
+Cleanup:    
     return err;
 }
 
@@ -382,8 +391,8 @@ ERR CloseWS_Memory(struct WMPStream** ppWS)
     ERR err = WMP_errSuccess;
 
     Call(WMPFree((void**)ppWS));
-
-Cleanup:
+    
+Cleanup:    
     return err;
 }
 
@@ -478,7 +487,7 @@ ERR CreateWS_List(struct WMPStream** ppWS)
 
     //printf ("create buffer %d: %x\n", pWS->state.buf.cbBufCount, pWS->state.buf.pbBuf);
 
-Cleanup:
+Cleanup:    
     return err;
 }
 
@@ -498,8 +507,8 @@ ERR CloseWS_List(struct WMPStream** ppWS)
         }
     }
     Call(WMPFree((void**)ppWS));
-
-Cleanup:
+    
+Cleanup:    
     return err;
 }
 
@@ -668,9 +677,7 @@ ERR detach_SB(SimpleBitIO* pSB)
 // WinCE ARM and Desktop x86
 #else
 // other platform
-#ifdef _BIG__ENDIAN_
-#define _byteswap_ulong(x)  (x)
-#else // _BIG__ENDIAN_
+#ifndef _BIG__ENDIAN_
 U32 _byteswap_ulong(U32 bits)
 {
     U32 r = (bits & 0xffu) << 24;
@@ -694,9 +701,7 @@ U32 load4BE(void* pv)
     v |= ((U32)((U16 *) pv)[1]) << 16;
     return _byteswap_ulong(v);
 #else // _M_IA64
-    U32 v;
-    memcpy(&v, pv, sizeof(U32));
-    return _byteswap_ulong(v);
+    return _byteswap_ulong(*(U32*)pv);
 #endif // _M_IA64
 #endif // _BIG__ENDIAN_
 }
@@ -710,7 +715,7 @@ U32 load4BE(void* pv)
 #endif // _BIG__ENDIAN_
 
 //================================================================
-// Bit I/O functions
+// Bit I/O functions 
 //================================================================
 Int allocateBitIOInfo(CWMImageStrCodec* pSC)
 {
@@ -736,10 +741,10 @@ Int allocateBitIOInfo(CWMImageStrCodec* pSC)
     if(cNumBitIO > 0){
         U32 i = 0;
         size_t cb = sizeof(BitIOInfo) * cNumBitIO + (PACKETLENGTH * 4 - 1) + PACKETLENGTH * 4 * cNumBitIO;
-        U8* pb = (U8*)malloc(cb);
+        U8* pb = (U8*)calloc_lim(1, cb);
 
-        if (NULL == pb) return ICERR_ERROR;
-        memset(pb, 0, cb);
+        if (NULL == pb)
+            return ICERR_ERROR;
 
         pSC->m_ppBitIO = (BitIOInfo**)pb;
         pb += sizeof(BitIOInfo) * cNumBitIO;
@@ -753,7 +758,7 @@ Int allocateBitIOInfo(CWMImageStrCodec* pSC)
         // allocate index table
         if(cNumBitIO > MAX_TILES * 4 || pSC->WMISCP.cNumOfSliceMinus1H >= MAX_TILES)
             return ICERR_ERROR;
-        pSC->pIndexTable = malloc(cNumBitIO * (pSC->WMISCP.cNumOfSliceMinus1H + 1) * sizeof(size_t));
+        pSC->pIndexTable = malloc_lim(sizeof(size_t) * cNumBitIO * (pSC->WMISCP.cNumOfSliceMinus1H + 1));
         if(NULL == pSC->pIndexTable) return ICERR_ERROR;
     }
 
@@ -799,10 +804,9 @@ Int allocateTileInfo(CWMImageStrCodec * pSC)
 
     if(pSC->WMISCP.cNumOfSliceMinus1V >= MAX_TILES)
         return ICERR_ERROR;
-    pSC->pTile = (CWMITile *)malloc((pSC->WMISCP.cNumOfSliceMinus1V + 1) * sizeof(CWMITile));
+    pSC->pTile = (CWMITile *)calloc_lim((pSC->WMISCP.cNumOfSliceMinus1V + 1), sizeof(CWMITile));
     if(pSC->pTile == NULL)
         return ICERR_ERROR;
-    memset(pSC->pTile, 0, (pSC->WMISCP.cNumOfSliceMinus1V + 1) * sizeof(CWMITile));
 
     for(i = 0; i <= pSC->WMISCP.cNumOfSliceMinus1V; i ++)
         pSC->pTile[i].cNumQPHP = pSC->pTile[i].cNumQPLP = 1, pSC->pTile[i].cBitsHP = pSC->pTile[i].cBitsLP = 0;
@@ -820,31 +824,35 @@ Void freeTileInfo(CWMImageStrCodec * pSC)
     else
         freeQuantizer(pSC->pTile[0].pQuantizerDC);
 
-    if(pSC->WMISCP.sbSubband != SB_DC_ONLY)
+    if(pSC->WMISCP.sbSubband != SB_DC_ONLY) {
         if((pSC->m_param.uQPMode & 2) != 0) // not LP uniform
             for(iTile = 0; iTile <= pSC->WMISCP.cNumOfSliceMinus1V; iTile ++)
                 freeQuantizer(pSC->pTile[iTile].pQuantizerLP);
         else
             freeQuantizer(pSC->pTile[0].pQuantizerLP);
+    }
 
-    if(pSC->WMISCP.sbSubband != SB_DC_ONLY && pSC->WMISCP.sbSubband != SB_NO_HIGHPASS)
+    if(pSC->WMISCP.sbSubband != SB_DC_ONLY && pSC->WMISCP.sbSubband != SB_NO_HIGHPASS) {
         if((pSC->m_param.uQPMode & 4) != 0) // not HP uniform
             for(iTile = 0; iTile <= pSC->WMISCP.cNumOfSliceMinus1V; iTile ++)
                 freeQuantizer(pSC->pTile[iTile].pQuantizerHP);
         else
             freeQuantizer(pSC->pTile[0].pQuantizerHP);
+    }
 
-    if(pSC->pTile != NULL)
+    if(pSC->pTile != NULL) {
         free(pSC->pTile);
+        pSC->pTile = NULL;
+    }
 }
 
 Int allocateQuantizer(CWMIQuantizer * pQuantizer[MAX_CHANNELS], size_t cChannel, size_t cQP)
 {
     size_t iCh;
-
+    
     if(cQP > 16 || cChannel > MAX_CHANNELS)
         return ICERR_ERROR;
-    pQuantizer[0] = (CWMIQuantizer *)malloc(cQP * sizeof(CWMIQuantizer) * cChannel);
+    pQuantizer[0] = (CWMIQuantizer *)malloc_lim(cQP * sizeof(CWMIQuantizer) * cChannel);
     if(pQuantizer[0] == NULL)
         return ICERR_ERROR;
 
@@ -856,21 +864,24 @@ Int allocateQuantizer(CWMIQuantizer * pQuantizer[MAX_CHANNELS], size_t cChannel,
 
 Void freeQuantizer(CWMIQuantizer * pQuantizer[MAX_CHANNELS])
 {
-    if(pQuantizer[0] != NULL)
+    if(pQuantizer[0] != NULL) {
         free(pQuantizer[0]);
+        pQuantizer[0] = NULL;
+    }
 }
 
 Void formatQuantizer(CWMIQuantizer * pQuantizer[MAX_CHANNELS], U8 cChMode, size_t cCh, size_t iPos, Bool bShiftedUV,
                      Bool bScaledArith)
 {
     size_t iCh;
-
+    
     for(iCh = 0; iCh < cCh; iCh ++){
-        if(iCh > 0)
+        if(iCh > 0) {
             if(cChMode == 0) // uniform
                 pQuantizer[iCh][iPos] = pQuantizer[0][iPos];
             else if(cChMode == 1) // mixed
                 pQuantizer[iCh][iPos] = pQuantizer[1][iPos];
+        }
         remapQP(pQuantizer[iCh] + iPos, (iCh > 0 && bShiftedUV == TRUE) ? SHIFTZERO - 1 : SHIFTZERO, bScaledArith);
     }
 }
@@ -1080,7 +1091,7 @@ ERR attachISRead(BitIOInfo* pIO, struct WMPStream* pWS, CWMImageStrCodec* pSC)
     pIO->offRef += PACKETLENGTH * 2;
 
     pIO->uiAccumulator = load4BE(pIO->pbStart);
-
+    
     pIO->cBitsUsed = 0;
     pIO->iMask = ~(PACKETLENGTH * 2);
     pIO->iMask &= ~1;
@@ -1241,7 +1252,7 @@ void OutputPerfTimerReport(CWMImageStrCodec *pState)
     printf("***************************************************************************\n");
     printf("* Perf Report\n");
     printf("***************************************************************************\n\n");
-
+    
     fltMegaPixels = (float)pState->WMII.cWidth * pState->WMII.cHeight / 1000000;
     printf("Image Width = %d, Height = %d, total MegaPixels = %.1f MP\n",
         (int) pState->WMII.cWidth, (int) pState->WMII.cHeight, fltMegaPixels);

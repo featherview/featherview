@@ -1,17 +1,17 @@
 //*@@@+++@@@@******************************************************************
 //
-// Copyright (c) Microsoft Corp.
+// Copyright © Microsoft Corp.
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
-//
-// * Redistributions of source code must retain the above copyright notice,
+// 
+// • Redistributions of source code must retain the above copyright notice,
 //   this list of conditions and the following disclaimer.
-// * Redistributions in binary form must reproduce the above copyright notice,
+// • Redistributions in binary form must reproduce the above copyright notice,
 //   this list of conditions and the following disclaimer in the documentation
 //   and/or other materials provided with the distribution.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -27,8 +27,6 @@
 //*@@@---@@@@******************************************************************
 
 #include "strcodec.h"
-
-#include <limits.h>
 
 #ifdef MEM_TRACE
 #define TRACE_MALLOC    1
@@ -136,7 +134,7 @@ Void Clean (CAdaptiveHuffman *pAdHuff)
 
 CAdaptiveHuffman *Allocate (Int iNSymbols, CODINGMODE cm)
 {
-    CAdaptiveHuffman *pAdHuff = (CAdaptiveHuffman *) malloc (sizeof (CAdaptiveHuffman));
+    CAdaptiveHuffman *pAdHuff = (CAdaptiveHuffman *) calloc (1, sizeof (CAdaptiveHuffman));
 
     UNREFERENCED_PARAMETER(cm);
 
@@ -145,7 +143,6 @@ CAdaptiveHuffman *Allocate (Int iNSymbols, CODINGMODE cm)
     if (iNSymbols > 255 || iNSymbols <= 0)
         goto ErrorExit;
 
-    memset (pAdHuff, 0, sizeof (CAdaptiveHuffman));
     pAdHuff->m_iNSymbols = iNSymbols;
 
     pAdHuff->m_pDelta = NULL;
@@ -329,7 +326,7 @@ static const Int g_Index12Table[] = {  // index12 is the most critical symbol
     3,1,7,4,7,3,8,4,7,4,8,5,
 };
 static const Int g12CodeTable[] = {
-    12,
+    12,  
     1, 5,
     1, 6,
     0, 7,
@@ -411,7 +408,7 @@ static const Int g12DeltaTable[] = {
 **********************************************************************/
 static const Int THRESHOLD = 8;
 static const Int MEMORY = 8;
-
+ 
 Void AdaptDiscriminant (CAdaptiveHuffman *pAdHuff)
 {
     Int iSym = pAdHuff->m_iNSymbols, t, dL, dH;
@@ -461,7 +458,7 @@ Void AdaptDiscriminant (CAdaptiveHuffman *pAdHuff)
     assert (t < gMaxTables[iSym]);
 
     //pAdHuff->m_iDiscriminant >>= 1;
-    pAdHuff->m_iLowerBound = (t == 0) ? INT_MIN : -THRESHOLD;
+    pAdHuff->m_iLowerBound = (t == 0) ? (Int)(1u << 31) : -THRESHOLD;
     pAdHuff->m_iUpperBound = (t == gMaxTables[iSym] - 1) ? (1 << 30) : THRESHOLD;
 
     switch (iSym) {

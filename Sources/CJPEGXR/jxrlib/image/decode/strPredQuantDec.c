@@ -1,14 +1,14 @@
 //*@@@+++@@@@******************************************************************
 //
-// Copyright (c) Microsoft Corp.
+// Copyright © Microsoft Corp.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// * Redistributions of source code must retain the above copyright notice,
+// • Redistributions of source code must retain the above copyright notice,
 //   this list of conditions and the following disclaimer.
-// * Redistributions in binary form must reproduce the above copyright notice,
+// • Redistributions in binary form must reproduce the above copyright notice,
 //   this list of conditions and the following disclaimer in the documentation
 //   and/or other materials provided with the distribution.
 //
@@ -67,16 +67,21 @@ Int dequantizeMacroblock(CWMImageStrCodec * pSC)
 
     for(i = 0; i < iChannels; i ++){
         //dequantize DC
+        if(!pTile->pQuantizerDC[i]) // Sanity check
+            return ICERR_ERROR;
         pSC->p1MBbuffer[i][0] = DEQUANT(pMBInfo->iBlockDC[i][0], pTile->pQuantizerDC[i]->iQP);
 
         // dequantize LP
-        if(pSC->WMISCP.sbSubband != SB_DC_ONLY)
+        if(pSC->WMISCP.sbSubband != SB_DC_ONLY) {
+            if(!pTile->pQuantizerLP[i]) // Sanity check
+                return ICERR_ERROR;
             if(i == 0 || (cf != YUV_422 && cf != YUV_420))
                 dequantizeBlock4x4(pSC->p1MBbuffer[i] , pMBInfo->iBlockDC[i], dctIndex[2], pTile->pQuantizerLP[i][pMBInfo->iQIndexLP].iQP);
             else if(cf == YUV_422)
                 dequantizeBlock4x2(pSC->p1MBbuffer[i], pMBInfo->iBlockDC[i], pTile->pQuantizerLP[i][pMBInfo->iQIndexLP].iQP);
             else // 420
                 dequantizeBlock2x2(pSC->p1MBbuffer[i], pMBInfo->iBlockDC[i], pTile->pQuantizerLP[i][pMBInfo->iQIndexLP].iQP);
+        }
     }
 
     return ICERR_OK;
@@ -204,7 +209,7 @@ Void predACDec(CWMImageStrCodec * pSC)
                 // predict from top
                 static U8 blkIdx[] = {1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15};
 
-                for (j = 0; j < sizeof(blkIdx) / sizeof(*blkIdx); ++j)
+                for (j = 0; j < (Int)(sizeof(blkIdx) / sizeof(*blkIdx)); ++j)
                 {
                     pOrg = pSrc + 16 * blkIdx[j];
                     pRef = pOrg - 16;

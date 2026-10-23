@@ -1,14 +1,14 @@
 //*@@@+++@@@@******************************************************************
 //
-// Copyright (c) Microsoft Corp.
+// Copyright © Microsoft Corp.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //
-// * Redistributions of source code must retain the above copyright notice,
+// • Redistributions of source code must retain the above copyright notice,
 //   this list of conditions and the following disclaimer.
-// * Redistributions in binary form must reproduce the above copyright notice,
+// • Redistributions in binary form must reproduce the above copyright notice,
 //   this list of conditions and the following disclaimer in the documentation
 //   and/or other materials provided with the distribution.
 //
@@ -63,9 +63,7 @@ static U32 _FORCEINLINE _load4(void* pv)
     v |= ((U32)((U16 *) pv)[1]) << 16;
     return _byteswap_ulong(v);
 #else // _M_IA64
-    U32 v;
-    memcpy(&v, pv, sizeof(U32));
-    return _byteswap_ulong(v);
+    return _byteswap_ulong(*(U32*)pv);
 #endif // _M_IA64
 #endif // _BIG__ENDIAN_
 }
@@ -100,12 +98,12 @@ Int getHuff(const short *pDecodeTable, BitIOInfo* pIO)
     iSymbol = pDecodeTable[peekBit16(pIO, HUFFMAN_DECODE_ROOT_BITS)];
 
     flushBit16(pIO, iSymbol < 0 ? HUFFMAN_DECODE_ROOT_BITS : iSymbol & ((1 << HUFFMAN_DECODE_ROOT_BITS_LOG) - 1));
-	iSymbolHuff = iSymbol >> HUFFMAN_DECODE_ROOT_BITS_LOG;
+    iSymbolHuff = iSymbol >> HUFFMAN_DECODE_ROOT_BITS_LOG;
 
-	if (iSymbolHuff < 0) {
-		iSymbolHuff = iSymbol;
+    if (iSymbolHuff < 0) {
+        iSymbolHuff = iSymbol;
         while ((iSymbolHuff = pDecodeTable[iSymbolHuff + SIGN_BIT (pDecodeTable[0]) + getBit16(pIO, 1)]) < 0);
-	}
+    }
     return (iSymbolHuff);
 }
 
@@ -357,16 +355,13 @@ static Void DecodeCBP(CWMImageStrCodec * pSC, CCodingContext *pContext)
 
 Int _FORCEINLINE DecodeSignificantRun (Int iMaxRun, struct CAdaptiveHuffman *pAHexpt, BitIOInfo* pIO)
 {
+    if (iMaxRun < 0 || iMaxRun > 14) { // sanity check!
+        return 0;
+    }
     Int iIndex;
     static const Int aRemap[] = {1,2,3,5,7,   1,2,3,5,7,   /*1,2,3,4,6,  */1,2,3,4,5 };
-    Int iBin;
+    Int iBin = gSignificantRunBin[iMaxRun];
     Int iRun = 0, iFLC = 0;
-
-    // featherview patch: runs are 1 to 14 in a valid stream; a damaged one ends the block instead of reading
-    // past gSignificantRunBin.
-    if (iMaxRun > 14)
-        return 16;
-    iBin = gSignificantRunBin[iMaxRun];
 
     if (iMaxRun < 5) {
         if (iMaxRun == 1) {
@@ -524,12 +519,12 @@ static _FORCEINLINE Int DecodeBlockHighpass (const Bool bChroma, struct CAdaptiv
        iLoc += DecodeSignificantRun (15 - iLoc, pAHexpt[0], pIO);
     }
     iLoc &= 0xf;
-	pCoef[pConstScan[iLoc].uScan] = (PixelI) iLevel;//(PixelI)(iQP * iLevel);
+    pCoef[pConstScan[iLoc].uScan] = (PixelI) iLevel;//(PixelI)(iQP * iLevel);
     pScan[iLoc].uTotal++;
-	if (iLoc && pScan[iLoc].uTotal > pScan[iLoc - 1].uTotal) {
-		CAdaptiveScan cTemp = pScan[iLoc];
-		pScan[iLoc] = pScan[iLoc - 1];
-		pScan[iLoc - 1] = cTemp;
+    if (iLoc && pScan[iLoc].uTotal > pScan[iLoc - 1].uTotal) {
+        CAdaptiveScan cTemp = pScan[iLoc];
+        pScan[iLoc] = pScan[iLoc - 1];
+        pScan[iLoc - 1] = cTemp;
     }
     iLoc = (iLoc + 1) & 0xf;
     //iLoc++;
@@ -557,12 +552,12 @@ static _FORCEINLINE Int DecodeBlockHighpass (const Bool bChroma, struct CAdaptiv
         //    iLevel = (1 | iSign); // 0 -> 1; -1 -> -1 (was 1 + (iSign * 2))
         //}
 
-	    pCoef[pConstScan[iLoc].uScan] = (PixelI) iLevel;//(PixelI)(iQP * iLevel);
+        pCoef[pConstScan[iLoc].uScan] = (PixelI) iLevel;//(PixelI)(iQP * iLevel);
         pScan[iLoc].uTotal++;
-	    if (iLoc && pScan[iLoc].uTotal > pScan[iLoc - 1].uTotal) {
-		    CAdaptiveScan cTemp = pScan[iLoc];
-		    pScan[iLoc] = pScan[iLoc - 1];
-		    pScan[iLoc - 1] = cTemp;
+        if (iLoc && pScan[iLoc].uTotal > pScan[iLoc - 1].uTotal) {
+            CAdaptiveScan cTemp = pScan[iLoc];
+            pScan[iLoc] = pScan[iLoc - 1];
+            pScan[iLoc - 1] = cTemp;
         }
 
         iLoc = (iLoc + 1) & 0xf;
@@ -692,7 +687,18 @@ static _FORCEINLINE Int DecodeCoeffs (CWMImageStrCodec * pSC, CCodingContext *pC
             if (pIO != pIOFL)
                 readIS_L2(pSC, pIOFL);
 
-            iQP = (pSC->m_param.bTranscode ? 1 : pTile->pQuantizerHP[iPlanes > 1 ? i : (iBlock > 3 ? (cf == YUV_420 ? iBlock - 3 : iBlock / 2 - 1) : 0)][pSC->MBInfo.iQIndexHP].iQP);
+            // sanity check
+            int idx0 = iPlanes > 1 ? i : (iBlock > 3
+                                              ? (cf == YUV_420
+                                                     ? iBlock - 3
+                                                     : iBlock / 2 - 1)
+                                              : 0);
+            if (pSC->m_param.bTranscode)
+                iQP = 1;
+            else if (pTile->pQuantizerHP[idx0])
+                iQP = pTile->pQuantizerHP[idx0][pSC->MBInfo.iQIndexHP].iQP;
+            else
+                return ICERR_ERROR;
 
             for (iSubblock = 0; iSubblock < 4; iSubblock++, iIndex++, iCBPCY >>= 1) {
                 pCoeffs = pSC->p1MBbuffer[i] + blkOffset[iIndex & 0xf];
@@ -793,7 +799,7 @@ Int DecodeMacroblockLowpass (CWMImageStrCodec * pSC, CCodingContext *pContext,
     const Int iChannels = (Int) pSC->m_param.cNumChannels;
     const Int iFullPlanes = (cf == YUV_420 || cf == YUV_422) ? 2 : iChannels;
     Int k;
-	CAdaptiveScan *pScan = pContext->m_aScanLowpass;
+    CAdaptiveScan *pScan = pContext->m_aScanLowpass;
     BitIOInfo* pIO = pContext->m_pIOLP;
     Int iModelBits = pContext->m_aModelLP.m_iFlcBits[0];
     Int aRLCoeffs[32], iNumNonzero = 0, iIndex = 0;
@@ -821,9 +827,9 @@ Int DecodeMacroblockLowpass (CWMImageStrCodec * pSC, CCodingContext *pContext,
     if (pSC->m_bResetRGITotals) {
         int iScale = 2;
         int iWeight = iScale * 16;
-		pScan[0].uTotal = MAXTOTAL;
+        pScan[0].uTotal = MAXTOTAL;
         for (k = 1; k < 16; k++) {
-			pScan[k].uTotal = iWeight;
+            pScan[k].uTotal = iWeight;
             iWeight -= iScale;
         }
     }
@@ -907,13 +913,13 @@ Int DecodeMacroblockLowpass (CWMImageStrCodec * pSC, CCodingContext *pContext,
 
                 for (k = 0; k < iNumNonzero; k++) {
                     iIndex += aRLCoeffs[k * 2];
-					pCoeffs[pScan[iIndex].uScan] = aRLCoeffs[k * 2 + 1];
-					pScan[iIndex].uTotal++;
-					if (pScan[iIndex].uTotal > pScan[iIndex - 1].uTotal) {
-						CAdaptiveScan cTemp = pScan[iIndex];
-						pScan[iIndex] = pScan[iIndex - 1];
-						pScan[iIndex - 1] = cTemp;
-					}
+                    pCoeffs[pScan[iIndex].uScan] = aRLCoeffs[k * 2 + 1];
+                    pScan[iIndex].uTotal++;
+                    if (pScan[iIndex].uTotal > pScan[iIndex - 1].uTotal) {
+                        CAdaptiveScan cTemp = pScan[iIndex];
+                        pScan[iIndex] = pScan[iIndex - 1];
+                        pScan[iIndex - 1] = cTemp;
+                    }
                     iIndex++;
                 }
             }

@@ -26,8 +26,8 @@ let package = Package(
         // JPEG XL writing (libjxl). Only the app links it, so the Finder and Quick Look extensions stay without libjxl:
         // every public and async symbol of FeatherviewCore survives dead-stripping. The app hands it to ImageEncoder.jxlEncoder.
         .target(name: "FeatherviewJXL", dependencies: ["FeatherviewCore", "CJPEGXL"]),
-        // jxrlib (BSD-2-Clause, Microsoft), vendored from github.com/Tom94/jxrlib at 0e1337d (Debian's
-        // patches applied, plus our fixes for damaged files, each marked `featherview patch:` and offered upstream);
+        // jxrlib (BSD-2-Clause, Microsoft), vendored from github.com/mircomir/jxrlib 1.4.4 (ddda911), without its
+        // unmaintained x86 files, plus our fixes for damaged files, each marked `featherview patch:` and offered upstream;
         // only JPEGXRDecoder uses it. The encoder sources are there because the glue links them.
         .target(name: "CJPEGXR", exclude: ["jxrlib/LICENSE"],
                 cSettings: [

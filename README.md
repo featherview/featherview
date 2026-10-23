@@ -34,9 +34,9 @@ Status: public preview (0.9), on the way to 1.0. Requires macOS 14 (Sonoma) or l
 
 - [libwebp](https://chromium.googlesource.com/webm/libwebp) 1.6.0 (BSD-3-Clause), for writing WebP,
   built from source through [libwebp-Xcode](https://github.com/SDWebImage/libwebp-Xcode).
-- [jxrlib](https://github.com/4creators/jxrlib) (BSD-2-Clause, Microsoft), for reading JPEG XR,
-  vendored in `Sources/CJPEGXR` from [Tom94/jxrlib](https://github.com/Tom94/jxrlib) (Debian's
-  patches applied) and built from source by SwiftPM.
+- [jxrlib](https://github.com/mircomir/jxrlib) 1.4.4 (BSD-2-Clause, Microsoft), for reading JPEG XR,
+  vendored in `Sources/CJPEGXR` and built from source by SwiftPM. Thanks to Mirco Miranda, whose
+  maintained fork carries years of fixes for damaged files.
 - [libjxl](https://github.com/libjxl/libjxl) 0.12.0 (BSD-3-Clause), with
   [highway](https://github.com/google/highway) (Apache-2.0 or BSD-3-Clause),
   [brotli](https://github.com/google/brotli) (MIT) and [skcms](https://skia.googlesource.com/skcms)
