@@ -141,8 +141,7 @@ import Testing
         OwnDecoders.register(PCXCodec.dcx)
         let first = try PCXCodec.encode(RGBAImage(width: 3, height: 2))
         let second = try PCXCodec.encode(RGBAImage(width: 5, height: 4))
-        func u32(_ v: Int) -> [UInt8] { (0..<4).map { UInt8(v >> ($0 * 8) & 0xFF) } }
-        let table = u32(0x3ADE68B1) + u32(16) + u32(16 + first.count) + u32(0)
+        let table = Fixtures.le32(0x3ADE68B1) + Fixtures.le32(16) + Fixtures.le32(16 + first.count) + Fixtures.le32(0)
         let url = try Fixtures.makeTempDir().appendingPathComponent("pages.dcx")
         try Data(table + first + second).write(to: url)
 

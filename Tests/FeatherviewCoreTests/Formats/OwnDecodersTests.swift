@@ -82,6 +82,13 @@ import Testing
         #expect(blue.b >= 254 && blue.a == 128 && blue.r == 0)
     }
 
+    @Test func unpremultiplyRoundsAndSkipsOpaqueAndClearPixels() {
+        var image = RGBAImage(width: 4, height: 1, pixels: [64, 32, 1, 128, 200, 100, 50, 255, 9, 9, 9, 0, 10, 20, 30, 20])
+        image.unpremultiply()
+        // (c * 255 + a / 2) / a, at most 255
+        #expect(image.pixels == [128, 64, 2, 128, 200, 100, 50, 255, 9, 9, 9, 0, 128, 255, 255, 20])
+    }
+
     @Test func byteReaderThrowsPastTheEnd() {
         var reader = ByteReader([1, 2, 3])
         #expect(throws: OwnDecodeError.truncated) { _ = try reader.u32be() }

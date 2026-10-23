@@ -294,7 +294,7 @@ public struct BatchInput: Hashable, Sendable {
 
 // MARK: - Tolerant decoding
 
-private extension KeyedDecodingContainer {
+extension KeyedDecodingContainer {
     /// The stored value, or `fallback` when it's missing or of the wrong type.
     func value<T: Decodable>(_ key: Key, _ fallback: T) -> T {
         (try? decodeIfPresent(T.self, forKey: key)) ?? fallback

@@ -10,6 +10,14 @@ import Testing
                                     view: CGSize(width: 1000, height: 1000), displayScale: 2) == 0.5)
     }
 
+    @Test func clampedKeepsTheRange() {
+        #expect(ZoomSteps.clamped(0.01) == 0.05 && ZoomSteps.clamped(20) == 16 && ZoomSteps.clamped(1.5) == 1.5)
+    }
+
+    @Test func percentRoundsToWhole() {
+        #expect(ZoomSteps.percent(0.333) == 33 && ZoomSteps.percent(0.335) == 34 && ZoomSteps.percent(2) == 200)
+    }
+
     @Test func fitNeverEnlarges() {
         #expect(ZoomSteps.fitFactor(image: CGSize(width: 100, height: 100),
                                     view: CGSize(width: 1000, height: 1000), displayScale: 2) == 1)

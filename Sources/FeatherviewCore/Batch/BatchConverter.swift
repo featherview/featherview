@@ -196,10 +196,7 @@ public enum BatchConverter {
         let tiles = settings.tiles
         let labels = PartLabels.combined(frames: units, rows: tiles.isOn ? tiles.rows : 1, columns: tiles.isOn ? tiles.columns : 1)
         let folder = BatchNamer.folder(for: input, settings: settings)
-        // The same day format as the rename pattern's {date}.
-        let day = date.map { RenamePattern("{date}").baseName(original: "", index: 1, date: $0) } ?? ""
-        let values = TextValues(name: url.deletingPathExtension().lastPathComponent,
-                                folder: url.deletingLastPathComponent().lastPathComponent, date: day, index: index + 1)
+        let values = TextValues(url: url, date: date, index: index + 1)
         let dpi = settings.resize.isOn ? settings.resize.dpi : nil
         var single: Data?, parts: [(file: URL, label: String)] = [], note: String?
         func failed(_ message: String) -> Prepared {
@@ -254,7 +251,7 @@ public enum BatchConverter {
                 } catch { return failed(String(localized: "Can't write \(name) as \(format.name)")) }
                 guard !labels.isEmpty else { single = data; continue }
                 // On disk as soon as it is made, so a 500-frame GIF holds one frame in memory.
-                let temp = folder.appendingPathComponent(".featherview-\(UUID().uuidString).tmp")
+                let temp = ImageSaver.tempURL(in: folder)
                 do {
                     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
                     try data.write(to: temp)
@@ -332,7 +329,7 @@ public enum BatchConverter {
     /// partial file under the real name, and a file that appeared there is never touched (" 2" appended).
     static func write(_ data: Data, to output: URL,
                       move: (String, String) -> Int32 = { moveExclusive($0, $1) }) throws -> URL {
-        let temp = output.deletingLastPathComponent().appendingPathComponent(".featherview-\(UUID().uuidString).tmp")
+        let temp = ImageSaver.tempURL(in: output.deletingLastPathComponent())
         defer { try? FileManager.default.removeItem(at: temp) }
         try data.write(to: temp)
         return try moveIn(temp, to: output, move: move)

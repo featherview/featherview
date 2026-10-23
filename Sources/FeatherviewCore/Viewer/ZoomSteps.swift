@@ -11,6 +11,12 @@ public enum ZoomStart: Equatable, Sendable { case keep, top, leading }
 public enum ZoomSteps {
     public static let range = 0.05...16.0
 
+    /// `factor` kept within `range`.
+    public static func clamped(_ factor: Double) -> Double { min(max(factor, range.lowerBound), range.upperBound) }
+
+    /// `factor` as a whole percentage, the way the viewer shows it.
+    public static func percent(_ factor: Double) -> Int { Int((factor * 100).rounded()) }
+
     /// The factor fit mode shows an image at. Fit shrinks to the view and never enlarges.
     public static func fitFactor(image: CGSize, view: CGSize, displayScale: Double) -> Double {
         guard image.width > 0, image.height > 0 else { return 1 }
@@ -27,7 +33,7 @@ public enum ZoomSteps {
         case .width: factor = view.width * displayScale / image.width
         case .height: factor = view.height * displayScale / image.height
         }
-        return min(max(factor, range.lowerBound), range.upperBound)
+        return clamped(factor)
     }
 
     /// The clear area's top-leading corner in document coordinates (flipped, y down) for a picture
@@ -50,7 +56,7 @@ public enum ZoomSteps {
 
     /// One step (`by` 1.1 in, 1/1.1 out), kept within `range`.
     public static func step(_ factor: Double, by multiplier: Double) -> Double {
-        min(max(factor * multiplier, range.lowerBound), range.upperBound)
+        clamped(factor * multiplier)
     }
 
     /// The file's pixel size `decoded` stands for: `full` when it has the same proportions, else `decoded`

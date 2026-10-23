@@ -33,7 +33,7 @@ enum Updater {
             if manual { alert(String(localized: "Can't check for updates right now.")) }
             return
         }
-        UserDefaults.standard.set(Date.now, forKey: AppSettings.lastUpdateCheck.key)
+        AppSettings.lastUpdateCheck.set(.now)
         let skipped = AppSettings.skippedVersion.value()
         if let release = UpdateCheck.update(in: releases, current: current, macOS: AboutView.macOSVersion,
                                             skipped: manual || skipped.isEmpty ? nil : skipped) {
@@ -99,7 +99,7 @@ private struct UpdateView: View {
                 }
                 HStack {
                     Button("Skip This Version") {
-                        UserDefaults.standard.set(release.version, forKey: AppSettings.skippedVersion.key)
+                        AppSettings.skippedVersion.set(release.version)
                         close()
                     }
                     Spacer()

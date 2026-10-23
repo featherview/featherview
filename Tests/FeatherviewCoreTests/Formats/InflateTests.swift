@@ -23,14 +23,13 @@ import Testing
 
     static func zlib(_ bytes: [UInt8]) -> [UInt8] { [0x78, 0x9C] + deflate(bytes) + adler32(bytes) }
 
-    static func le32(_ v: Int) -> [UInt8] { (0..<4).map { UInt8(truncatingIfNeeded: v >> ($0 * 8)) } }
 
     /// A gzip member; the CRC isn't checked by `Inflate`, so zeros stand in for it.
     static func gzip(_ bytes: [UInt8], fileName: String? = nil) -> [UInt8] {
         let flags: UInt8 = fileName == nil ? 0 : 0x08
         var header: [UInt8] = [0x1F, 0x8B, 8, flags, 0, 0, 0, 0, 0, 3]
         if let fileName { header += Array(fileName.utf8) + [0] }
-        return header + deflate(bytes) + [0, 0, 0, 0] + le32(bytes.count)
+        return header + deflate(bytes) + [0, 0, 0, 0] + Fixtures.le32(bytes.count)
     }
 
     @Test func zlibRoundTrip() throws {

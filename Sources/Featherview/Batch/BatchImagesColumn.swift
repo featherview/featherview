@@ -85,7 +85,7 @@ struct BatchImagesColumn: View {
     private var countLine: String {
         let count = model.inputs.items.count
         let bytes = model.inputs.totalBytes
-        let size = ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
+        let size = MetadataReader.format(bytes: bytes)
         return String(localized: "\(count) files · \(size)", comment: "Batch input list: file count and total size")
     }
 
@@ -235,7 +235,7 @@ private struct BatchImageRow: View {
             let size = ImageDecoder.displaySize(of: url)
             let bytes = input.fileSize()
             let pages = ImageFormats.mayHavePages(url) ? ImageDecoder.pageCount(of: url) : 1
-            let byteText = ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
+            let byteText = MetadataReader.format(bytes: bytes)
             let line: String
             switch (size, pages > 1) {
             case (let size?, false): line = String(localized: "\(Int(size.width)) × \(Int(size.height)) · \(byteText)")

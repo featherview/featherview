@@ -261,9 +261,8 @@ import FeatherviewJXL
         // Two pages, as in PCXCodecTests.dcxPagesThroughImageDecoder.
         let first = try PCXCodec.encode(RGBAImage(width: 3, height: 2))
         let second = try PCXCodec.encode(RGBAImage(width: 5, height: 4))
-        func u32(_ v: Int) -> [UInt8] { (0..<4).map { UInt8(v >> ($0 * 8) & 0xFF) } }
         let dcx = dir.appendingPathComponent("c.dcx")
-        try Data(u32(0x3ADE68B1) + u32(16) + u32(16 + first.count) + u32(0) + first + second).write(to: dcx)
+        try Data(Fixtures.le32(0x3ADE68B1) + Fixtures.le32(16) + Fixtures.le32(16 + first.count) + Fixtures.le32(0) + first + second).write(to: dcx)
         // ImageIO reads it (JPEG bytes); nothing writes CR3.
         let raw = dir.appendingPathComponent("d.cr3")
         try FileManager.default.copyItem(at: jpeg, to: raw)
@@ -762,7 +761,7 @@ import FeatherviewJXL
 
     /// Red of the top-leading pixel.
     func red(_ url: URL) throws -> Int {
-        Int(FrameSourceTests.pixel(try ImageDecoder.decode(url), x: 0, y: 0)[0])
+        Int(try #require(RGBAImage(ImageDecoder.decode(url)))[0, 0].r)
     }
 
     /// A PNG whose top-leading quarter is red and the rest blue.
@@ -775,19 +774,6 @@ import FeatherviewJXL
         context.fill(CGRect(x: 0, y: height / 2, width: width / 2, height: height / 2))  // y counts from the bottom
         let png = try #require(FormatRegistry.format(id: "png"))
         try ImageEncoder.encode([context.makeImage()!], as: png, options: FormatOptions()).write(to: url)
-        return url
-    }
-
-    func writePDF(to url: URL, pages: Int) throws -> URL {
-        let context = try #require(CGContext(url as CFURL, mediaBox: nil, nil))
-        for _ in 0..<pages {
-            var box = CGRect(x: 0, y: 0, width: 20, height: 10)
-            context.beginPDFPage([kCGPDFContextMediaBox: Data(bytes: &box, count: MemoryLayout<CGRect>.size)] as CFDictionary)
-            context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
-            context.fill(box)
-            context.endPDFPage()
-        }
-        context.closePDF()
         return url
     }
 
@@ -1012,7 +998,7 @@ import FeatherviewJXL
 
     @Test func keepFormatSplitsPDF() async throws {
         let dir = try Fixtures.makeTempDir(), out = try Fixtures.makeTempDir()
-        let pdf = try writePDF(to: dir.appendingPathComponent("a.pdf"), pages: 2)
+        let pdf = try Fixtures.writePDF(to: dir.appendingPathComponent("a.pdf"), pages: Array(repeating: CGSize(width: 20, height: 10), count: 2))
 
         let result = try #require(await BatchConverter.run(job([pdf], out: out) {
             $0.changeFormat = false

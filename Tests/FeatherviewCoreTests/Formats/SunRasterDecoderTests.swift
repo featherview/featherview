@@ -3,12 +3,11 @@ import Testing
 @testable import FeatherviewCore
 
 @Suite struct SunRasterDecoderTests {
-    static func be32(_ v: Int) -> [UInt8] { [24, 16, 8, 0].map { UInt8(truncatingIfNeeded: v >> $0) } }
 
     /// Header + colormap + body, as a file holds them.
     static func ras(width: Int, height: Int, depth: Int, type: Int = 1, map: [UInt8] = [], body: [UInt8]) -> Data {
         let header = [0x59A6_6A95, width, height, depth, body.count, type, map.isEmpty ? 0 : 1, map.count]
-        return Data(header.flatMap(be32) + map + body)
+        return Data(header.flatMap(Fixtures.be32) + map + body)
     }
 
     @Test func eightBitWithColormap() throws {

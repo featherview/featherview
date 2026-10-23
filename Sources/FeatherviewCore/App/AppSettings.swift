@@ -9,6 +9,10 @@ public struct Setting<Value: Sendable>: Sendable {
     public func value(in defaults: UserDefaults = .standard) -> Value {
         defaults.object(forKey: key) as? Value ?? defaultValue
     }
+
+    public func set(_ value: Value, in defaults: UserDefaults = .standard) {
+        defaults.set(value, forKey: key)
+    }
 }
 
 /// What → does past the last image (and ← before the first).

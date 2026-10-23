@@ -114,8 +114,7 @@ public enum DateTaken {
         let url = link.resolvingSymlinksInPath()  // replaceItemAt can't swap a symlink
         let offset = CGImageSourceCreateWithURL(url as CFURL, nil).flatMap { exifValue($0, kCGImagePropertyExifOffsetTimeOriginal) }
         let data = try rewritten(url, date: date)
-        let temp = url.deletingLastPathComponent()
-            .appendingPathComponent(".featherview-\(UUID().uuidString).\(url.pathExtension)")
+        let temp = ImageSaver.tempURL(in: url.deletingLastPathComponent(), ext: url.pathExtension)
         defer { try? FileManager.default.removeItem(at: temp) }  // no-op once swapped in
         do {
             try data.write(to: temp, options: .withoutOverwriting)

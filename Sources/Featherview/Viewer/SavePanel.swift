@@ -61,7 +61,7 @@ enum SavePanel {
         withExtendedLifetime((formatChanged, showOptions)) {}
         guard response == .OK, let target = panel.url else { return nil }
         FormatSettings.save(choice.options, for: choice.format)
-        UserDefaults.standard.set(choice.format.id, forKey: FormatSettings.lastSaveFormat.key)
+        FormatSettings.lastSaveFormat.set(choice.format.id)
         return (target, choice.format, choice.options)
     }
 

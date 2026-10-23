@@ -40,13 +40,11 @@ struct XCFBuilder {
     var extraProperties: [UInt8] = []
     var layers: [Layer] = []
 
-    static func be16(_ v: Int) -> [UInt8] { [UInt8(truncatingIfNeeded: v >> 8), UInt8(truncatingIfNeeded: v)] }
-    static func be32(_ v: Int) -> [UInt8] { be16(v >> 16) + be16(v) }
-    static func be64(_ v: Int) -> [UInt8] { be32(v >> 32) + be32(v) }
-    static func float(_ v: Float) -> [UInt8] { be32(Int(v.bitPattern)) }
+    static func be64(_ v: Int) -> [UInt8] { Fixtures.be32(v >> 32) + Fixtures.be32(v) }
+    static func float(_ v: Float) -> [UInt8] { Fixtures.be32(Int(v.bitPattern)) }
     static func double(_ v: Double) -> [UInt8] { be64(Int(bitPattern: UInt(v.bitPattern))) }
-    static func prop(_ type: Int, _ payload: [UInt8]) -> [UInt8] { be32(type) + be32(payload.count) + payload }
-    static func string(_ s: String) -> [UInt8] { be32(s.utf8.count + 1) + Array(s.utf8) + [0] }
+    static func prop(_ type: Int, _ payload: [UInt8]) -> [UInt8] { Fixtures.be32(type) + Fixtures.be32(payload.count) + payload }
+    static func string(_ s: String) -> [UInt8] { Fixtures.be32(s.utf8.count + 1) + Array(s.utf8) + [0] }
 
     /// XCF's RLE: per byte plane, runs of equal bytes and runs of literals, short and long forms.
     static func rle(_ tile: [UInt8], bpp: Int) -> [UInt8] {
@@ -58,7 +56,7 @@ struct XCFBuilder {
                 var run = 1
                 while i + run < plane.count, plane[i + run] == plane[i] { run += 1 }
                 if run >= 2 {
-                    out += run <= 127 ? [UInt8(run - 1), plane[i]] : [127] + be16(run) + [plane[i]]
+                    out += run <= 127 ? [UInt8(run - 1), plane[i]] : [127] + Fixtures.be16(run) + [plane[i]]
                     i += run
                     continue
                 }
@@ -66,7 +64,7 @@ struct XCFBuilder {
                 while i + literal < plane.count,
                       i + literal + 1 >= plane.count || plane[i + literal] != plane[i + literal + 1] { literal += 1 }
                 let bytes = Array(plane[i..<i + literal])
-                out += literal <= 127 ? [UInt8(256 - literal)] + bytes : [128] + be16(literal) + bytes
+                out += literal <= 127 ? [UInt8(256 - literal)] + bytes : [128] + Fixtures.be16(literal) + bytes
                 i += literal
             }
         }
@@ -75,7 +73,7 @@ struct XCFBuilder {
 
     func build() -> Built {
         let wide = version >= 11
-        func pointer(_ v: Int) -> [UInt8] { wide ? Self.be64(v) : Self.be32(v) }
+        func pointer(_ v: Int) -> [UInt8] { wide ? Self.be64(v) : Fixtures.be32(v) }
         var built = Built(bytes: [], pointerSize: wide ? 8 : 4)
         func patch(_ slot: Int, _ value: Int) {
             built.bytes.replaceSubrange(slot..<slot + built.pointerSize, with: pointer(value))
@@ -84,11 +82,11 @@ struct XCFBuilder {
 
         func hierarchy(width: Int, height: Int, pixels: [UInt8]) {
             let bpp = pixels.count / (width * height)
-            built.bytes += Self.be32(width) + Self.be32(height) + Self.be32(bpp)
+            built.bytes += Fixtures.be32(width) + Fixtures.be32(height) + Fixtures.be32(bpp)
             let level = slot()
             built.bytes += pointer(0)
             patch(level, built.bytes.count)
-            built.bytes += Self.be32(width) + Self.be32(height)
+            built.bytes += Fixtures.be32(width) + Fixtures.be32(height)
             var tiles: [(slot: Int, bytes: [UInt8])] = []
             for ty in stride(from: 0, to: height, by: 64) {
                 for tx in stride(from: 0, to: width, by: 64) {
@@ -113,9 +111,9 @@ struct XCFBuilder {
         }
 
         built.bytes = Array("gimp xcf ".utf8) + Array((version == 0 ? "file" : String(format: "v%03d", version)).utf8) + [0]
-        built.bytes += Self.be32(width) + Self.be32(height) + Self.be32(baseType)
-        if version >= 4 { built.bytes += Self.be32(precision) }
-        if let colormap { built.bytes += Self.prop(1, Self.be32(colormap.count / 3) + colormap) }
+        built.bytes += Fixtures.be32(width) + Fixtures.be32(height) + Fixtures.be32(baseType)
+        if version >= 4 { built.bytes += Fixtures.be32(precision) }
+        if let colormap { built.bytes += Self.prop(1, Fixtures.be32(colormap.count / 3) + colormap) }
         built.bytes += Self.prop(17, [UInt8(compression)]) + extraProperties + Self.prop(0, [])
         built.layerPointerSlots = layers.map { _ in slot() }
         built.bytes += pointer(0) + pointer(0)  // end of layers, no channels
@@ -123,21 +121,21 @@ struct XCFBuilder {
         for (i, layer) in layers.enumerated() {
             patch(built.layerPointerSlots[i], built.bytes.count)
             built.layerOffsets.append(built.bytes.count)
-            built.bytes += Self.be32(layer.width) + Self.be32(layer.height) + Self.be32(layer.type) + Self.string("Layer \(i)")
-            built.bytes += Self.prop(8, Self.be32(layer.visible ? 1 : 0))
-            if let o = layer.opacity { built.bytes += Self.prop(6, Self.be32(o)) }
+            built.bytes += Fixtures.be32(layer.width) + Fixtures.be32(layer.height) + Fixtures.be32(layer.type) + Self.string("Layer \(i)")
+            built.bytes += Self.prop(8, Fixtures.be32(layer.visible ? 1 : 0))
+            if let o = layer.opacity { built.bytes += Self.prop(6, Fixtures.be32(o)) }
             if let o = layer.floatOpacity { built.bytes += Self.prop(33, Self.float(o)) }
-            built.bytes += Self.prop(15, Self.be32(layer.x) + Self.be32(layer.y))
-            if let apply = layer.applyMask { built.bytes += Self.prop(11, Self.be32(apply ? 1 : 0)) }
+            built.bytes += Self.prop(15, Fixtures.be32(layer.x) + Fixtures.be32(layer.y))
+            if let apply = layer.applyMask { built.bytes += Self.prop(11, Fixtures.be32(apply ? 1 : 0)) }
             if layer.group { built.bytes += Self.prop(29, []) }
-            if let path = layer.path { built.bytes += Self.prop(30, path.flatMap(Self.be32)) }
-            built.bytes += Self.prop(7, Self.be32(28)) + Self.prop(0, [])
+            if let path = layer.path { built.bytes += Self.prop(30, path.flatMap(Fixtures.be32)) }
+            built.bytes += Self.prop(7, Fixtures.be32(28)) + Self.prop(0, [])
             let pixels = slot(), mask = slot()
             patch(pixels, built.bytes.count)
             hierarchy(width: layer.width, height: layer.height, pixels: layer.pixels)
             if let maskPixels = layer.mask {
                 patch(mask, built.bytes.count)
-                built.bytes += Self.be32(layer.width) + Self.be32(layer.height) + Self.string("Mask") + Self.prop(0, [])
+                built.bytes += Fixtures.be32(layer.width) + Fixtures.be32(layer.height) + Self.string("Mask") + Self.prop(0, [])
                 let h = slot()
                 patch(h, built.bytes.count)
                 hierarchy(width: layer.width, height: layer.height, pixels: maskPixels)
@@ -259,14 +257,14 @@ struct XCFBuilder {
 
     @Test func sixteenBitGamma() throws {
         var file = B(width: 1, height: 1, version: 12, precision: 250)
-        file.layers = [.init(width: 1, height: 1, pixels: B.be16(0xFFFF) + B.be16(0x8080) + B.be16(0) + B.be16(0xFFFF))]
+        file.layers = [.init(width: 1, height: 1, pixels: Fixtures.be16(0xFFFF) + Fixtures.be16(0x8080) + Fixtures.be16(0) + Fixtures.be16(0xFFFF))]
         #expect(try XCFDecoder.decode(file.data)[0, 0] == (255, 128, 0, 255))
     }
 
     @Test func halfFloatLinear() throws {
         var file = B(width: 2, height: 1, version: 12, precision: 500)
         // 1.0, 0.5, a subnormal, 1.0 | 2.0 (clamps), -1.0 (clamps), 0.25, 0.5 alpha (not gamma-encoded)
-        file.layers = [.init(width: 2, height: 1, pixels: [0x3C00, 0x3800, 0x0001, 0x3C00, 0x4000, 0xBC00, 0x3400, 0x3800].flatMap(B.be16))]
+        file.layers = [.init(width: 2, height: 1, pixels: [0x3C00, 0x3800, 0x0001, 0x3C00, 0x4000, 0xBC00, 0x3400, 0x3800].flatMap(Fixtures.be16))]
         let image = try XCFDecoder.decode(file.data)
         #expect(image[0, 0] == (255, 188, 0, 255))
         #expect(Self.close(image[1, 0], (255, 0, 137, 128), within: 1))
@@ -288,7 +286,7 @@ struct XCFBuilder {
         var gamma = B(width: values.count, height: 1, version: 12, precision: 150)
         gamma.layers = [.init(width: values.count, height: 1, type: 0, pixels: colours.flatMap { $0 })]
         var light = B(width: values.count, height: 1, version: 12, precision: 200)
-        light.layers = [.init(width: values.count, height: 1, type: 0, pixels: colours.flatMap { $0.flatMap { B.be16(linear($0)) } })]
+        light.layers = [.init(width: values.count, height: 1, type: 0, pixels: colours.flatMap { $0.flatMap { Fixtures.be16(linear($0)) } })]
         let a = try XCFDecoder.decode(gamma.data), b = try XCFDecoder.decode(light.data)
         for x in values.indices { #expect(Self.close(a[x, 0], b[x, 0], within: 1), "\(x)") }
     }
@@ -302,9 +300,9 @@ struct XCFBuilder {
     }
 
     @Test func userUnitLengthQuirk() throws {
-        let payload = B.float(2.54) + B.be32(2) + ["centimeters", "cm", "cm", "centimeter", "centimeters"].flatMap(B.string)
+        let payload = B.float(2.54) + Fixtures.be32(2) + ["centimeters", "cm", "cm", "centimeter", "centimeters"].flatMap(B.string)
         var file = B(width: 1, height: 1)
-        file.extraProperties = B.be32(24) + B.be32(16) + payload  // the length GIMP wrote, shorter than the payload
+        file.extraProperties = Fixtures.be32(24) + Fixtures.be32(16) + payload  // the length GIMP wrote, shorter than the payload
         file.layers = [.init(width: 1, height: 1, pixels: [9, 8, 7, 255])]
         #expect(try XCFDecoder.decode(file.data)[0, 0] == (9, 8, 7, 255))
     }
@@ -328,7 +326,7 @@ struct XCFBuilder {
 
     static func patched(_ built: XCFBuilder.Built, slot: Int, to value: Int) -> Data {
         var bytes = built.bytes
-        let v = built.pointerSize == 8 ? B.be64(value) : B.be32(value)
+        let v = built.pointerSize == 8 ? B.be64(value) : Fixtures.be32(value)
         bytes.replaceSubrange(slot..<slot + built.pointerSize, with: v)
         return Data(bytes)
     }
@@ -353,7 +351,7 @@ struct XCFBuilder {
         let built = Self.twoLayers.build()
         var bytes = built.bytes
         let at = built.layerOffsets[0]
-        bytes.replaceSubrange(at..<at + 8, with: B.be32(60000) + B.be32(60000))
+        bytes.replaceSubrange(at..<at + 8, with: Fixtures.be32(60000) + Fixtures.be32(60000))
         #expect(bytes.count < 1024)
         #expect(throws: OwnDecodeError.self) { try XCFDecoder.decode(Data(bytes)) }
     }
@@ -363,14 +361,14 @@ struct XCFBuilder {
     static func tiny(canvas: Int, layer: Int, records: Int, layers: [Int]) -> Data {
         let listEnd = 34 + 4 * layers.count + 8, recordSize = 32
         let hierarchy = listEnd + records * recordSize
-        var bytes = Array("gimp xcf file\0".utf8) + B.be32(canvas) + B.be32(canvas) + B.be32(0) + B.be32(0) + B.be32(0)
-        for i in layers { bytes += B.be32(listEnd + i * recordSize) }
-        bytes += B.be32(0) + B.be32(0)
+        var bytes = Array("gimp xcf file\0".utf8) + Fixtures.be32(canvas) + Fixtures.be32(canvas) + Fixtures.be32(0) + Fixtures.be32(0) + Fixtures.be32(0)
+        for i in layers { bytes += Fixtures.be32(listEnd + i * recordSize) }
+        bytes += Fixtures.be32(0) + Fixtures.be32(0)
         for _ in 0..<records {
-            bytes += B.be32(layer) + B.be32(layer) + B.be32(0) + B.be32(0) + B.be32(0) + B.be32(0) + B.be32(hierarchy) + B.be32(0)
+            bytes += Fixtures.be32(layer) + Fixtures.be32(layer) + Fixtures.be32(0) + Fixtures.be32(0) + Fixtures.be32(0) + Fixtures.be32(0) + Fixtures.be32(hierarchy) + Fixtures.be32(0)
         }
-        bytes += B.be32(layer) + B.be32(layer) + B.be32(3) + B.be32(hierarchy + 20) + B.be32(0)
-        bytes += B.be32(layer) + B.be32(layer) + B.be32(0)
+        bytes += Fixtures.be32(layer) + Fixtures.be32(layer) + Fixtures.be32(3) + Fixtures.be32(hierarchy + 20) + Fixtures.be32(0)
+        bytes += Fixtures.be32(layer) + Fixtures.be32(layer) + Fixtures.be32(0)
         return Data(bytes)
     }
 
@@ -420,16 +418,16 @@ struct XCFBuilder {
     static func sharedLevel(layers: Int, tiles: Int) -> Data {
         let width = 64 * tiles, listEnd = 34 + 4 * layers + 8, records = listEnd + 32 * layers
         let level = records + 20 * layers, tileData = level + 8 + 4 * tiles + 4
-        var bytes = Array("gimp xcf file\0".utf8) + B.be32(1) + B.be32(1) + B.be32(0) + B.be32(0) + B.be32(0)
-        for i in 0..<layers { bytes += B.be32(listEnd + 32 * i) }
-        bytes += B.be32(0) + B.be32(0)
+        var bytes = Array("gimp xcf file\0".utf8) + Fixtures.be32(1) + Fixtures.be32(1) + Fixtures.be32(0) + Fixtures.be32(0) + Fixtures.be32(0)
+        for i in 0..<layers { bytes += Fixtures.be32(listEnd + 32 * i) }
+        bytes += Fixtures.be32(0) + Fixtures.be32(0)
         for i in 0..<layers {
-            bytes += B.be32(width) + B.be32(1) + B.be32(0) + B.be32(0) + B.be32(0) + B.be32(0) + B.be32(records + 20 * i) + B.be32(0)
+            bytes += Fixtures.be32(width) + Fixtures.be32(1) + Fixtures.be32(0) + Fixtures.be32(0) + Fixtures.be32(0) + Fixtures.be32(0) + Fixtures.be32(records + 20 * i) + Fixtures.be32(0)
         }
-        for _ in 0..<layers { bytes += B.be32(width) + B.be32(1) + B.be32(3) + B.be32(level) + B.be32(0) }
-        bytes += B.be32(width) + B.be32(1)
-        for i in 0..<tiles { bytes += B.be32(tileData + (i == 0 ? 0 : 192 + i)) }
-        bytes += B.be32(0) + [UInt8](repeating: 7, count: 192 + tiles)
+        for _ in 0..<layers { bytes += Fixtures.be32(width) + Fixtures.be32(1) + Fixtures.be32(3) + Fixtures.be32(level) + Fixtures.be32(0) }
+        bytes += Fixtures.be32(width) + Fixtures.be32(1)
+        for i in 0..<tiles { bytes += Fixtures.be32(tileData + (i == 0 ? 0 : 192 + i)) }
+        bytes += Fixtures.be32(0) + [UInt8](repeating: 7, count: 192 + tiles)
         return Data(bytes)
     }
 

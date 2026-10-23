@@ -58,7 +58,7 @@ public struct StatusLine: Equatable, Sendable {
             fields.append((Double(zoomPercent) / 100).formatted(.percent))
         }
         if let fileBytes {
-            fields.append(ByteCountFormatter.string(fromByteCount: Int64(fileBytes), countStyle: .file))
+            fields.append(MetadataReader.format(bytes: fileBytes))
         }
         return fields
     }

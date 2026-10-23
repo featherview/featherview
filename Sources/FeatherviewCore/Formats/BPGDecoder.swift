@@ -43,7 +43,7 @@ enum BPGDecoder {
         guard var image = straightRGBA(full, width: header.width, height: header.height)
                 ?? full.cropping(to: CGRect(x: 0, y: 0, width: header.width, height: header.height)).flatMap(RGBAImage.init)
         else { throw OwnDecodeError.unsupported }
-        if header.premultiplied { unpremultiply(&image) }
+        if header.premultiplied { image.unpremultiply() }
         if header.colorSpace == 2 { fromYCgCo(&image, limitedRange: header.limitedRange) }
         return image
     }
@@ -365,14 +365,6 @@ enum BPGDecoder {
                 let full = limitedRange ? (v - 16) * 255 / 219 : v
                 image.pixels[i + c] = UInt8(max(0, min(255, full)))
             }
-        }
-    }
-
-    private static func unpremultiply(_ image: inout RGBAImage) {
-        for i in stride(from: 0, to: image.pixels.count, by: 4) {
-            let alpha = Int(image.pixels[i + 3])
-            guard alpha > 0, alpha < 255 else { continue }
-            for c in 0..<3 { image.pixels[i + c] = UInt8(min(255, (Int(image.pixels[i + c]) * 255 + alpha / 2) / alpha)) }
         }
     }
 }

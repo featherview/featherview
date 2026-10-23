@@ -14,6 +14,44 @@ enum Fixtures {
     /// Gives `ImageEncoder` its JPEG XL encoder, as the app does at launch: `_ = Fixtures.jxl` before writing JPEG XL.
     static let jxl: Void = { ImageEncoder.jxlEncoder = JXLEncoder.encode }()
 
+    /// Integers as big- and little-endian bytes, for building files byte by byte (only the low bytes count).
+    static func be16(_ v: Int) -> [UInt8] { [8, 0].map { UInt8(truncatingIfNeeded: v >> $0) } }
+    static func be32(_ v: Int) -> [UInt8] { [24, 16, 8, 0].map { UInt8(truncatingIfNeeded: v >> $0) } }
+    static func le16(_ v: Int) -> [UInt8] { [0, 8].map { UInt8(truncatingIfNeeded: v >> $0) } }
+    static func le32(_ v: Int) -> [UInt8] { [0, 8, 16, 24].map { UInt8(truncatingIfNeeded: v >> $0) } }
+
+    /// One colour (R, G, B, A) all over.
+    static func solid(_ width: Int, _ height: Int, _ p: (UInt8, UInt8, UInt8, UInt8)) -> RGBAImage {
+        RGBAImage(width: width, height: height, pixels: (0..<width * height).flatMap { _ in [p.0, p.1, p.2, p.3] })
+    }
+
+    /// `image` encoded as `type` in memory; `orientation` (the EXIF tag) is written only when given.
+    static func encoded(_ image: CGImage, as type: UTType, orientation: Int? = nil) -> Data {
+        let data = NSMutableData()
+        let destination = CGImageDestinationCreateWithData(data, type.identifier as CFString, 1, nil)!
+        CGImageDestinationAddImage(destination, image, orientation.map { [kCGImagePropertyOrientation: $0] as CFDictionary })
+        precondition(CGImageDestinationFinalize(destination))
+        return data as Data
+    }
+
+    /// A PDF with one page of each size (points), `rotate` as each page's Rotate, and a red rectangle `fill`
+    /// of each side from its lower-left corner (1: the whole page) on a transparent page.
+    @discardableResult
+    static func writePDF(to url: URL, pages sizes: [CGSize], rotate: Int = 0, fill: CGFloat = 1) throws -> URL {
+        guard let context = CGContext(url as CFURL, mediaBox: nil, nil) else { throw CocoaError(.fileWriteUnknown) }
+        for size in sizes {
+            var box = CGRect(origin: .zero, size: size)
+            var info: [CFString: Any] = [kCGPDFContextMediaBox: Data(bytes: &box, count: MemoryLayout<CGRect>.size)]
+            if rotate != 0 { info["Rotate" as CFString] = rotate }
+            context.beginPDFPage(info as CFDictionary)
+            context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
+            context.fill(CGRect(x: 0, y: 0, width: size.width * fill, height: size.height * fill))
+            context.endPDFPage()
+        }
+        context.closePDF()
+        return url
+    }
+
     static func makeTempDir() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("featherview-tests-\(UUID().uuidString)", isDirectory: true)
@@ -160,13 +198,16 @@ enum Fixtures {
         return context.makeImage()!
     }
 
-    /// An animation through ImageIO: one frame per delay (seconds), stored as `delayKey` in `dictionary`.
-    private static func writeSequence(to url: URL, type: String, dictionary: CFString, delayKey: CFString,
-                                      delays: [Double], width: Int, height: Int) throws -> URL {
+    /// An animation through ImageIO: one frame per delay (seconds), stored as `delayKey` in `dictionary`;
+    /// `frame(n)` draws frame n (by default `animationFrame`). `fileProperties` are set before the frames.
+    static func writeSequence(to url: URL, type: String, dictionary: CFString, delayKey: CFString,
+                              delays: [Double], width: Int = 8, height: Int = 6, frame: ((Int) -> CGImage)? = nil,
+                              fileProperties: [CFString: Any]? = nil) throws -> URL {
         guard let dest = CGImageDestinationCreateWithURL(url as CFURL, type as CFString, delays.count, nil)
         else { throw CocoaError(.fileWriteUnknown) }
+        if let fileProperties { CGImageDestinationSetProperties(dest, fileProperties as CFDictionary) }
         for (n, delay) in delays.enumerated() {
-            CGImageDestinationAddImage(dest, animationFrame(n, width: width, height: height),
+            CGImageDestinationAddImage(dest, frame?(n) ?? animationFrame(n, width: width, height: height),
                                        [dictionary: [delayKey: delay]] as CFDictionary)
         }
         guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }

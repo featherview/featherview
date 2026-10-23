@@ -35,8 +35,8 @@ public enum CropStep {
         guard s.isOn else { return image }
         let picture = atOrigin(image)
         let total = (w: Int(picture.extent.width), h: Int(picture.extent.height))
-        // Clamped first: presets aren't trusted, and no picture comes near 2³⁰ pixels a side.
-        let px = { (v: Int) in Int(min(max(Double(v) * scale, -0x1p30), 0x1p30).rounded()) }
+        // Clamped first: presets aren't trusted.
+        let px = { (v: Int) in clampedPixels(Double(v) * scale) }
         // A set length stays at least 1 pixel in the preview: 0 would mean "to the edge".
         let length = { (v: Int) in v > 0 ? max(1, px(v)) : 0 }
 

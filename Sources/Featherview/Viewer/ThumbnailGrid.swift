@@ -196,8 +196,7 @@ struct ThumbnailGrid: NSViewRepresentable {
             guard fill.pending.isEmpty else { return self.fill = fill }
             self.fill = nil
             Signposts.poster.endInterval("GridFill", fill.state)
-            let elapsed = fill.started.duration(to: .now).components
-            let ms = elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000
+            let ms = Int(fill.started.duration(to: .now).milliseconds)
             Self.log.debug("grid fill \(fill.cells) cells: \(ms) ms")
         }
 

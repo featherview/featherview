@@ -28,14 +28,18 @@ public enum ImageSaver {
         try write(ImageEncoder.encode([image], as: format, options: options), to: destination)
     }
 
+    /// A hidden, unique file name in `folder` for writing a file before it is swapped or moved in.
+    static func tempURL(in folder: URL, ext: String = "tmp") -> URL {
+        folder.appendingPathComponent(".featherview-\(UUID().uuidString).\(ext)")
+    }
+
     private static func write(_ data: Data, to destination: URL) throws {
         let destination = destination.resolvingSymlinksInPath()  // replaceItemAt can't replace a link: replace what it points to
         var isFolder: ObjCBool = false
         if FileManager.default.fileExists(atPath: destination.path, isDirectory: &isFolder), isFolder.boolValue {
             throw CocoaError(.fileWriteFileExists, userInfo: [NSFilePathErrorKey: destination.path])  // never replace a folder
         }
-        let temp = destination.deletingLastPathComponent()
-            .appendingPathComponent(".featherview-\(UUID().uuidString).tmp")
+        let temp = tempURL(in: destination.deletingLastPathComponent())
         defer { try? FileManager.default.removeItem(at: temp) }
         try data.write(to: temp)
         if FileManager.default.fileExists(atPath: destination.path) {

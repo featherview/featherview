@@ -76,7 +76,7 @@ public enum CanvasStep {
         guard s.isOn else { return image }
         let image = s.autoCropBorders ? AutoCropStep.apply(image) : atOrigin(image)
         let w = Int(image.extent.width.rounded()), h = Int(image.extent.height.rounded())
-        func scaled(_ v: Int) -> Int { pixels(Double(v) * scale) }
+        func scaled(_ v: Int) -> Int { clampedPixels(Double(v) * scale) }
         switch s.method {
         case .perSide:
             let left = scaled(s.left), right = scaled(s.right), top = scaled(s.top), bottom = scaled(s.bottom)
@@ -87,7 +87,7 @@ public enum CanvasStep {
         case .aspectRatio:
             guard s.ratioWidth > 0, s.ratioHeight > 0 else { return image }
             let ratio = s.ratioWidth / s.ratioHeight
-            let width = max(w, pixels(Double(h) * ratio)), height = max(h, pixels(Double(w) / ratio))
+            let width = max(w, clampedPixels(Double(h) * ratio)), height = max(h, clampedPixels(Double(w) / ratio))
             // Only one side grows: the other already fits the ratio.
             return Double(w) / Double(h) < ratio
                 ? try place(image, width: width, height: h, anchor: s.anchor, colour: s.colour)
@@ -101,7 +101,7 @@ public enum BorderStep {
         guard s.isOn else { return image }
         var image = atOrigin(image)
         for (width, colour) in [(s.innerWidth, s.innerColour), (s.outerWidth, s.outerColour)] {
-            let b = pixels(Double(width) * scale)
+            let b = clampedPixels(Double(width) * scale)
             guard b > 0 else { continue }
             let w = Int(image.extent.width.rounded()), h = Int(image.extent.height.rounded())
             // Growing a picture always leaves pixels: `place` can't throw here.
@@ -111,9 +111,9 @@ public enum BorderStep {
     }
 }
 
-/// A typed value in pixels, clamped to ±2^30 like the crop's: sums of a few never overflow, and the
-/// live preview sizes the output after every keystroke.
-private func pixels(_ v: Double) -> Int { Int(min(max(v, -0x1p30), 0x1p30).rounded()) }
+/// A typed value in pixels, clamped to ±2^30: sums of a few never overflow, no picture comes near 2^30
+/// pixels a side, and the live preview sizes the output after every keystroke.
+func clampedPixels(_ v: Double) -> Int { Int(min(max(v, -0x1p30), 0x1p30).rounded()) }
 
 private func atOrigin(_ image: CIImage) -> CIImage {
     image.transformed(by: .init(translationX: -image.extent.minX, y: -image.extent.minY))

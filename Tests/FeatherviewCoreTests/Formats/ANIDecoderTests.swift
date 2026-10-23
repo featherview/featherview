@@ -5,9 +5,8 @@ import UniformTypeIdentifiers
 @testable import FeatherviewCore
 
 @Suite struct ANIDecoderTests {
-    static func le32(_ v: Int) -> [UInt8] { [0, 8, 16, 24].map { UInt8(v >> $0 & 0xFF) } }
     static func chunk(_ id: String, _ body: [UInt8]) -> [UInt8] {
-        Array(id.utf8) + le32(body.count) + body + (body.count % 2 == 1 ? [0] : [])
+        Array(id.utf8) + Fixtures.le32(body.count) + body + (body.count % 2 == 1 ? [0] : [])
     }
 
     /// An ICO holding one image per size, each filled with `colour`.
@@ -38,12 +37,12 @@ import UniformTypeIdentifiers
     /// frames in LIST "fram".
     static func ani(frames: [[UInt8]], sequence: [Int]? = nil, rate: Int = 10, rates: [Int]? = nil,
                     iconFlag: Bool = true) -> [UInt8] {
-        let anih = [36, frames.count, sequence?.count ?? frames.count, 0, 0, 0, 0, rate, iconFlag ? 1 : 0].flatMap(le32)
+        let anih = [36, frames.count, sequence?.count ?? frames.count, 0, 0, 0, 0, rate, iconFlag ? 1 : 0].flatMap(Fixtures.le32)
         var body = Array("ACON".utf8) + chunk("anih", anih)
-        if let sequence { body += chunk("seq ", sequence.flatMap(le32)) }
-        if let rates { body += chunk("rate", rates.flatMap(le32)) }
+        if let sequence { body += chunk("seq ", sequence.flatMap(Fixtures.le32)) }
+        if let rates { body += chunk("rate", rates.flatMap(Fixtures.le32)) }
         body += chunk("LIST", Array("fram".utf8) + frames.flatMap { chunk("icon", $0) })
-        return Array("RIFF".utf8) + le32(body.count) + body
+        return Array("RIFF".utf8) + Fixtures.le32(body.count) + body
     }
 
     @Test func showsTheLargestImageOfTheFirstFrame() throws {

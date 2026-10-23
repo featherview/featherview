@@ -6,19 +6,7 @@ import Testing
 @Suite struct PDFPagesTests {
     /// Pages of `sizes` points; each a red square in the lower-left quarter on a transparent page.
     func pdf(_ sizes: [CGSize], rotate: Int = 0) throws -> URL {
-        let url = try Fixtures.makeTempDir().appendingPathComponent("doc.pdf")
-        let context = try #require(CGContext(url as CFURL, mediaBox: nil, nil))
-        for size in sizes {
-            var box = CGRect(origin: .zero, size: size)
-            var info: [CFString: Any] = [kCGPDFContextMediaBox: Data(bytes: &box, count: MemoryLayout<CGRect>.size)]
-            if rotate != 0 { info["Rotate" as CFString] = rotate }
-            context.beginPDFPage(info as CFDictionary)
-            context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
-            context.fill(CGRect(x: 0, y: 0, width: size.width / 2, height: size.height / 2))
-            context.endPDFPage()
-        }
-        context.closePDF()
-        return url
+        try Fixtures.writePDF(to: Fixtures.makeTempDir().appendingPathComponent("doc.pdf"), pages: sizes, rotate: rotate, fill: 0.5)
     }
 
     @Test func pagesAreListedAndSizedAt144dpi() throws {

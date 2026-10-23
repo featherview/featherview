@@ -75,10 +75,10 @@ final class ViewerModel {
 
     /// The scale the image is shown at, from its full pixel size (not the screen-size decode).
     var zoomPercent: Int? {
-        if case .factor(let factor) = zoom { return Int((factor * 100).rounded()) }
+        if case .factor(let factor) = zoom { return ZoomSteps.percent(factor) }
         guard let size = fileInfo?.pixelSize ?? unsavedSize else { return nil }
         let factor = self.factor(for: size) ?? ZoomSteps.fitFactor(image: size, view: viewSize, displayScale: displayScale)
-        return Int((factor * 100).rounded())
+        return ZoomSteps.percent(factor)
     }
 
     /// The zoom factor an image of `size` (its full pixel size) shows at; nil at fit, which decodes at fit size.
@@ -545,7 +545,7 @@ final class ViewerModel {
             return setSecondZoom(size.map { mode == .fit ? .fit : .factor(ZoomSteps.fillFactor(
                 image: $0, view: viewSize, displayScale: displayScale, mode: mode)) } ?? .fit, session)
         }
-        UserDefaults.standard.set(mode.rawValue, forKey: AppSettings.fitMode.key)
+        AppSettings.fitMode.set(mode.rawValue)
         setZoom(Zoom(mode))
         arrival = (arrival.id + 1, zoom.start)
     }
@@ -821,8 +821,7 @@ final class ViewerModel {
             slideshowChanged()
         }
         // Measures until the model has the image, not until it is on screen: the `Navigate` signpost covers that.
-        let elapsed = started.duration(to: .now).components
-        let ms = elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000
+        let ms = Int(started.duration(to: .now).milliseconds)
         Self.log.debug("show \(url.lastPathComponent, privacy: .public): \(ms) ms")
     }
 
@@ -1364,7 +1363,7 @@ final class ViewerModel {
     /// + / −, and the View menu's retitled zoom items, in the grid.
     func stepThumbnails(larger: Bool) {
         let size = ThumbnailSize.stepped(AppSettings.thumbnailSize.value(), larger: larger)
-        UserDefaults.standard.set(size, forKey: AppSettings.thumbnailSize.key)
+        AppSettings.thumbnailSize.set(size)
     }
 
     private func readGridInfo() {
@@ -1468,7 +1467,7 @@ final class ViewerModel {
 
     /// View › Zoom and Pan in Step, remembered. On: pane 2 snaps to pane 1's zoom and pan, and pane 1 leads.
     func setCompareInStep(_ on: Bool) {
-        UserDefaults.standard.set(on, forKey: AppSettings.compareInStep.key)
+        AppSettings.compareInStep.set(on)
         // Off: pane 2 keeps the matched zoom it shows and is adjusted from there.
         if !on, compareInStep, let compareSession { compareSession.ownZoom = secondZoom }
         compareInStep = on
@@ -1493,10 +1492,10 @@ final class ViewerModel {
     /// The scale pane 2's picture is shown at, from its full pixel size.
     var secondZoomPercent: Int? {
         switch secondZoom {
-        case .factor(let factor): return Int((factor * 100).rounded())
+        case .factor(let factor): return ZoomSteps.percent(factor)
         case .fit, .fillWidth, .fillHeight:
             guard let size = compareSession?.info?.pixelSize else { return nil }
-            return Int((ZoomSteps.fitFactor(image: size, view: viewSize, displayScale: displayScale) * 100).rounded())
+            return ZoomSteps.percent(ZoomSteps.fitFactor(image: size, view: viewSize, displayScale: displayScale))
         }
     }
 
@@ -1538,8 +1537,7 @@ final class ViewerModel {
                 compareSession.errorMessage = nil
                 updateAvailability()
                 updateDifference()
-                let elapsed = started.duration(to: .now).components
-                let ms = elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000
+                let ms = Int(started.duration(to: .now).milliseconds)
                 Self.log.debug("compare \(url.lastPathComponent, privacy: .public): \(ms) ms")
             } catch is CancellationError {
                 // The queue dropped it, not a newer ask: the next one decodes again.
