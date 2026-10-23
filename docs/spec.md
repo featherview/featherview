@@ -71,6 +71,7 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 | + / − | zoom in / out (×1.1 steps, 5 %–1600 %) |
 | ⌥→ / ⌥← | next / previous page of a multi-page file (TIFF, …); nothing past either end |
 | F7 / F8 | move / copy the current file to a folder (see below) |
+| F5 | refresh the folder (also ⌘R; see "Refresh") |
 | ⌦ (forward delete) | Move to Trash, like ⌘⌫ |
 | O / B / M | Open… / Batch Convert… / minimise the window (as ⌘O / ⌘B / ⌘M) |
 | P / A / S | Settings / About / Save As…, each added with its feature (milestones 2–3) |
@@ -117,7 +118,8 @@ menu is open, so typing in the batch window's text fields never triggers viewer 
 Like Finder and Preview, File holds what acts on the file (Open, Open Recent, Save As…, Rename…, Share, Move /
 Copy to Folder…, Move to Trash, Show in Finder, Open With, Always Open with Featherview, Batch Convert…) and Image
 what moves through or changes the picture (Next / Previous, pages and frames, rotate and flip, Adjust Date
-Taken…, Set as Desktop Picture, Show Info). The Window menu lists only the viewer windows: Batch and About open
+Taken…, Set as Desktop Picture, Show Info). View › "Refresh  (F5)" (⌘R) follows Sort By; Image › "Random
+Image" follows Previous. The Window menu lists only the viewer windows: Batch and About open
 from their own commands.
 
 The app menu has Check for Updates… below About (see "Updates"). The Help menu repeats About's links:
@@ -136,6 +138,29 @@ untouched and shows "Couldn't rotate <name>".
 In a multi-page TIFF only page 1 can be rotated: ImageIO can't change a later page's tag without
 re-encoding every page, so pages 2 and on show "Only page 1 of <name> can be rotated losslessly"
 and the file stays untouched.
+
+### Refresh
+
+F5 and ⌘R rescan the folder now, also with Follow New Files off: new images join the list in sort
+order, vanished ones leave it, and the current image stays on screen. If the current file is gone,
+the image at its position shows, as after Move to Trash. Disabled without a folder.
+
+### Random image
+
+Image › "Random Image" shows a random other image of the list, never the one already shown. Nothing
+happens with fewer than two images. Off during a slideshow (it has its own order) and in the grid.
+Its single key is the one the reference viewer uses (parity row "Random"), ⇧ plus that letter if
+ours already uses the letter, else the menu item only.
+
+### Desktop picture
+
+Image › "Set as Desktop Picture" is a submenu: Fill Screen (the default), Fit to Screen, Stretch to
+Fill Screen, Center. Every screen gets the picture. Fit and Center leave the rest of the screen black.
+
+### Thumbnails
+
+Hovering a cell shows its name, then pixel size, file size, position ("3 / 120") and date, read when
+the pointer arrives (never while scrolling). A file that can't be opened keeps "Can't open <name>".
 
 ### Move to Trash
 
