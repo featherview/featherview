@@ -134,9 +134,12 @@ struct RecentMenu: View {
                     Text(verbatim: names.filter { $0 == name }.count > 1 ? "\(name) — \(folder)" : name)
                 }
             }
-            Divider()
-            Button("Clear Menu") { recents.clear() }
-                .disabled(urls.isEmpty)
+            if urls.isEmpty {
+                Button("No Recent Files") {}.disabled(true)
+            } else {
+                Divider()
+                Button("Clear Menu") { recents.clear() }
+            }
         }
     }
 }
@@ -149,7 +152,8 @@ struct ShareMenu: View {
         if let model, model.availability.canChangeFile, let url = model.list.current {
             ShareLink("Share", item: url)
         } else {
-            Menu("Share") {}.disabled(true)
+            // An empty Menu stays enabled in the menu bar; a Button greys out.
+            Button("Share") {}.disabled(true)
         }
     }
 }

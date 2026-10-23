@@ -40,6 +40,8 @@ struct FeatherviewApp: App {
                     appDelegate.stopBatch = { await batch.stopAndWait() }
                     appDelegate.willQuit = { batch.saveNow() }
                 }
+                // A relaunch opens the viewer, never the batch window (its settings are saved on their own).
+                .background(WindowAccessor { $0.isRestorable = false })
                 .modifier(OpensViewerWindows())
         }
         .defaultSize(width: 1100, height: 700)
