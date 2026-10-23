@@ -72,12 +72,13 @@ final class RecentFiles {
 }
 
 extension ViewerModel {
-    /// The current file on every screen, filling it (Decision 5). The call only records the choice.
-    func setDesktopPicture() {
+    /// The current file on every screen, placed the same way on each. The call only records the choice.
+    func setDesktopPicture(_ placement: DesktopPlacement) {
         guard availability.canSetDesktop, let url = list.current else { return }
         let options: [NSWorkspace.DesktopImageOptionKey: Any] = [
-            .imageScaling: NSImageScaling.scaleProportionallyUpOrDown.rawValue,
-            .allowClipping: true,
+            .imageScaling: placement.scalingRawValue,
+            .allowClipping: placement.allowsClipping,
+            .fillColor: NSColor.black,
         ]
         do {
             for screen in NSScreen.screens {

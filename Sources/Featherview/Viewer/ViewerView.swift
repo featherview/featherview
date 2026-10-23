@@ -736,8 +736,24 @@ struct ImageContextMenu: View {
         OpenWithMenu(model: model)
         Divider()
         ShareMenu(model: model)
-        Button("Set as Desktop Picture") { model.setDesktopPicture() }
-            .disabled(!model.availability.canSetDesktop)
+        DesktopPictureMenu(model: model)
+    }
+}
+
+/// Set as Desktop Picture, one item per placement; every screen gets the same one.
+struct DesktopPictureMenu: View {
+    let model: ViewerModel?
+
+    var body: some View {
+        Menu("Set as Desktop Picture") {
+            Group {
+                Button("Fill Screen") { model?.setDesktopPicture(.fill) }
+                Button("Fit to Screen") { model?.setDesktopPicture(.fit) }
+                Button("Stretch to Fill Screen") { model?.setDesktopPicture(.stretch) }
+                Button("Center") { model?.setDesktopPicture(.center) }
+            }
+            .disabled(model?.availability.canSetDesktop != true)
+        }
     }
 }
 
@@ -1050,8 +1066,7 @@ struct ViewerCommands: Commands {
             Button("Adjust Date Taken…") { model?.showAdjustDate() }
                 .disabled(model?.availability.canAdjustDate != true)
             Divider()
-            Button("Set as Desktop Picture") { model?.setDesktopPicture() }
-                .disabled(model?.availability.canSetDesktop != true)
+            DesktopPictureMenu(model: model)
             Button("Show Info  (I)") { model?.showInfo.toggle() }
                 .disabled(model?.availability.canShowInfo != true)
             if model?.isGrid == true {
