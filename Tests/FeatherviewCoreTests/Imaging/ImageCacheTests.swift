@@ -255,4 +255,31 @@ import os
         await cache.remove(files[2])
         #expect(cache.cached(files[2], target: .thumbnail(128)) == nil)
     }
+
+    // The window moved to a screen with another colour space: images come in that one, decoded again.
+    @Test func anotherColourSpaceDecodesAgain() async throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("s.jpg"), width: 8, height: 8)
+        let srgb = CGColorSpace(name: CGColorSpace.sRGB)!, p3 = CGColorSpace(name: CGColorSpace.displayP3)!
+        let cache = ImageCache(colorSpace: srgb)
+        let target = DecodeTarget.fit([PixelSize(width: 100, height: 100)])
+        #expect(try await cache.image(for: url, target: target).colorSpace?.name == CGColorSpace.sRGB)
+        await cache.setColorSpace(srgb)
+        #expect(await cache.contains(url))
+        await cache.setColorSpace(p3)
+        #expect(await !cache.contains(url))
+        #expect(try await cache.image(for: url, target: target).colorSpace?.name == CGColorSpace.displayP3)
+    }
+
+    @Test func decodeInTheOldColourSpaceIsNotKept() async throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("o.jpg"), width: 8, height: 8)
+        let queue = DecodeQueue(width: 1)
+        let cache = ImageCache(colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, queue: queue)
+        let release = try await hold(queue)
+        let old = Task { try await cache.image(for: url, target: .full) }
+        while await !cache.isDecoding(url) { try await Task.sleep(for: .milliseconds(1)) }
+        await cache.setColorSpace(CGColorSpace(name: CGColorSpace.displayP3)!)
+        release.signal()
+        _ = try await old.value
+        #expect(await !cache.contains(url))
+    }
 }

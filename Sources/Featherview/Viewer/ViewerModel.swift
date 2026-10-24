@@ -109,7 +109,7 @@ final class ViewerModel {
     /// An animation shows: ⌥→ / ⌥← step its frames, the page items and buttons say "frame". Set only when it flips.
     private(set) var isAnimation = false
     /// Plays the animation on screen; the canvas shows its frames after the model's image (frame 0).
-    let player = AnimationPlayer(colorSpace: ViewerModel.screenSpace)
+    let player = AnimationPlayer(colorSpace: ViewerModel.launchSpace)
     /// The viewer area, kept up to date by the view; fit-mode zoom steps start from it.
     var viewSize = CGSize.zero {
         // A fill factor follows the window: a new halving step re-decodes.
@@ -186,10 +186,10 @@ final class ViewerModel {
     /// shortcut: screens are read at launch; a display plugged in later decodes for the old set, re-read on
     /// `NSApplication.didChangeScreenParametersNotification` if that comes up.
     let screens = PixelSize.screens(NSScreen.screens.map { ($0.frame.size, $0.backingScaleFactor) })
-    /// Display decodes come in it, so Core Animation doesn't colour-convert each image on the main thread.
-    /// shortcut: the main screen's at launch; on another display CA converts again (slower, and clipped to the first
-    /// display's gamut), follow the window's screen if people browse on two displays.
-    private static let screenSpace = NSScreen.main?.colorSpace?.cgColorSpace
+    /// Display decodes come in the colour space of the window's screen (`screenChanged`), so Core Animation doesn't
+    /// convert each image on the main thread (~30–60 ms for 12 MP). The main screen's until the window has one.
+    @ObservationIgnored private var screenSpace = ViewerModel.launchSpace
+    private static let launchSpace = NSScreen.main?.colorSpace?.cgColorSpace
     /// Every display decode of this viewer runs here: nearest the image shown first, stale ones dropped (`focusDecodes`).
     private let decodes = DecodeQueue()
     /// Counts opens, so a superseded open's scan can't refocus the newer one's decodes (checked under the lock).
@@ -228,8 +228,8 @@ final class ViewerModel {
     @ObservationIgnored private var navigation: (state: OSSignpostIntervalState, url: URL, prefetched: Bool, image: CGImage?)?
 
     init() {
-        cache = ImageCache(capacity: 8, hdr: ImageDecoder.supportsHDR, colorSpace: Self.screenSpace, queue: decodes)
-        fullSizeCache = ImageCache(capacity: 1, hdr: ImageDecoder.supportsHDR, colorSpace: Self.screenSpace, queue: decodes)
+        cache = ImageCache(capacity: 8, hdr: ImageDecoder.supportsHDR, colorSpace: Self.launchSpace, queue: decodes)
+        fullSizeCache = ImageCache(capacity: 1, hdr: ImageDecoder.supportsHDR, colorSpace: Self.launchSpace, queue: decodes)
         chooserSession.onListed = { [weak self] in self?.countImages() }
         Self.all.add(self)
     }
@@ -644,7 +644,7 @@ final class ViewerModel {
                     // would otherwise run a full-size decode per key press at once.
                     _ = await pageDecode?.result
                     guard !Task.isCancelled else { return }
-                    let space = Self.screenSpace, decodes = decodes
+                    let space = screenSpace, decodes = decodes
                     let decode = Task.detached(priority: .userInitiated) {
                         try await decodes.run(url) {
                             try ImageDecoder.decode(url, halvingSteps: true, fitting: size, page: page,
@@ -1287,7 +1287,7 @@ final class ViewerModel {
         if thumbnails == nil {
             let queue = DecodeQueue(width: max(2, min(6, ProcessInfo.processInfo.activeProcessorCount - 2)))
             let budget = ThumbnailSize.cacheBudget(screens: screens)
-            thumbnails = Thumbnails(queue: queue, cache: ImageCache(capacity: .max, colorSpace: Self.screenSpace,
+            thumbnails = Thumbnails(queue: queue, cache: ImageCache(capacity: .max, colorSpace: screenSpace,
                                                                     queue: queue, byteBudget: budget))
         }
         loadTask?.cancel()
@@ -1418,12 +1418,12 @@ final class ViewerModel {
         } else {
             compareInStep = AppSettings.compareInStep.value()
             let session = CompareSession(url: second, zoomCache: ImageCache(
-                capacity: 1, hdr: ImageDecoder.supportsHDR, colorSpace: Self.screenSpace, queue: decodes))
+                capacity: 1, hdr: ImageDecoder.supportsHDR, colorSpace: screenSpace, queue: decodes))
             let link = CompareLink(inStep: compareInStep)
             link.onLeader = { [weak session] in session?.leader = $0 }
             compareLink = link
             compareSession = session
-            let space = Self.screenSpace
+            let space = screenSpace
             Task.detached(priority: .utility) { ImageDifference.prepare(colorSpace: space) }
         }
         focusDecodes()
@@ -1595,7 +1595,7 @@ final class ViewerModel {
     /// it lands; one made from pictures no longer shown is dropped.
     private func updateDifference() {
         guard let session = compareSession, session.showsDifference, let first = image, let second = session.image else { return }
-        let space = Self.screenSpace
+        let space = screenSpace
         differences.submit { [weak self] in
             let made = await Task.detached(priority: .userInitiated) {
                 try? ImageDifference.make(first, second, colorSpace: space)
@@ -1613,6 +1613,21 @@ final class ViewerModel {
         session.difference = nil
         if pausedForDifference, !player.isPlaying, player.frameCount > 1 { player.togglePlaying() }
         pausedForDifference = false
+    }
+
+    /// The window is on a screen now, or moved to another: decodes follow its colour space. What's kept in the old one
+    /// goes, and the image shown is decoded again (same file, so the zoom stays); the grid's cells shown keep theirs.
+    func screenChanged() {
+        guard let space = window?.screen?.colorSpace?.cgColorSpace, space != screenSpace else { return }
+        screenSpace = space
+        player.colorSpace = space
+        ready = [:]
+        let caches = [cache, fullSizeCache, thumbnails?.cache, compareSession?.zoomCache].compactMap { $0 }
+        Task {
+            for cache in caches { await cache.setColorSpace(space) }
+            guard screenSpace == space else { return }
+            show(page: page, keepsPlayer: true)
+        }
     }
 
     /// Pane 2's canvas committed `committed` to the screen.

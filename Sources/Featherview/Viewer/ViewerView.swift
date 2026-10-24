@@ -182,7 +182,11 @@ struct ViewerView: View {
             // A restored or reopened window may already be in full screen; no didEnter notification follows.
             model.isFullScreen = window.styleMask.contains(.fullScreen)
             if !rememberFrame, !model.isFullScreen { Self.place(window) }
+            model.screenChanged()
         })
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didChangeScreenNotification)) { note in
+            if note.object as? NSWindow === model.window { model.screenChanged() }
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willEnterFullScreenNotification)) { note in
             if note.object as? NSWindow === model.window { model.isFullScreen = true }
         }

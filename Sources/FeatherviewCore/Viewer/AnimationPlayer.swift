@@ -20,7 +20,8 @@ public final class AnimationPlayer {
 
     public var isPlaying: Bool { frameCount > 1 && pausedFrame == nil }
 
-    @ObservationIgnored private let colorSpace: CGColorSpace?
+    /// The screen's; files started after a change decode in the new one.
+    @ObservationIgnored public var colorSpace: CGColorSpace?
     @ObservationIgnored private var delays: [Duration] = []
     @ObservationIgnored private var playback = Playback(frameCount: 1, playing: false)
     @ObservationIgnored private var source: Task<FrameSource, Error>?

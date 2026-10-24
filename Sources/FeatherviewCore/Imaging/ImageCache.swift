@@ -25,7 +25,7 @@ public actor ImageCache {
     private let capacity: Int
     private let byteBudget: Int?
     private let hdr: Bool
-    private let colorSpace: CGColorSpace?
+    private var colorSpace: CGColorSpace?
     // Behind a lock, not only the actor: `cached` answers without a hop.
     private nonisolated let kept = OSAllocatedUnfairLock<[URL: (target: DecodeTarget, image: CGImage)]>(initialState: [:])
     private var images: [URL: (target: DecodeTarget, image: CGImage)] { kept.withLock { $0 } }
@@ -122,6 +122,13 @@ public actor ImageCache {
         kept.withLock { $0 = [:] }
         inFlight = [:]
         order = []
+    }
+
+    /// The window moved to a screen with another colour space: what's kept goes, and running decodes aren't kept.
+    public func setColorSpace(_ space: CGColorSpace?) {
+        guard space != colorSpace else { return }
+        colorSpace = space
+        removeAll()
     }
 
     public var count: Int { images.count }
