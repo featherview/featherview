@@ -115,7 +115,7 @@ Single keys for commands match the reference viewer, for people switching over; 
 - Dragging pans a zoomed image (the image follows the pointer); it does nothing when the image
   fits. No selection rectangle.
 - Right-click (or Control-click) opens a context menu with the window's actions: Copy, Rotate
-  Left / Right, Flip Horizontal / Vertical, Rename…, Move to Folder…, Copy to Folder…, Move to Trash, Show in Finder, Open With,
+  Left / Right, Flip Horizontal / Vertical, Adjust Date Taken…, Rename…, Move to Folder…, Copy to Folder…, Move to Trash, Show in Finder, Open With,
   Share, Set as Desktop Picture; during a slideshow Pause / Resume Slideshow and End Slideshow come first.
 - A click on the file name in the window title renames the file (see "Rename"); dragging the title
   still moves the window.
@@ -194,6 +194,21 @@ time, none lost). Same formats and limits, with "Lossless flipping works with JP
 "Only page 1 of <name> can be flipped losslessly" and "Couldn't flip <name>". A flip shows at once, with
 no animation; a rotation keeps its animated turn. R on a mirrored picture still turns it clockwise on
 screen.
+
+### Adjust Date Taken
+
+Image › "Adjust Date Taken…" (no key; also in the context menu; enabled as Rotate is, and in the grid
+while cells are selected) opens a sheet "Adjust Date Taken": "Original" (the date taken, or "None, file
+date …"; "and 3 more" for a grid selection) and "Adjusted" (a date-and-time picker with seconds,
+starting at the original), the note "The file's date changes too.", Cancel and Adjust (disabled while
+the date is unchanged). Adjust changes the file in place, losslessly, as the batch's Date Taken step
+does: a rewrite to a temp file next to it, swapped in (a symlink's target is changed), then its modified
+and created dates follow; a failure leaves the original untouched. Only JPEG, HEIC, TIFF and PSD (by
+content); for one file of another type: "The date taken can be changed in JPEG, HEIC, TIFF and PSD
+files only", any other failure "Can't change the date taken of <name>". On a grid selection the first
+selected file gets the adjusted date and the others shift by the same amount, as Photos does; one
+failure never stops the rest ("3 files couldn't be changed"). The info panel, status strip and grid
+refresh afterwards.
 
 ### Refresh
 
@@ -576,13 +591,17 @@ Two columns and a bottom bar, titled "Batch Convert":
   their pixel sizes, small, rendered off the main thread, never blocking typing), the first
   output names, and one line naming the steps that are on in their processing order ("Applied:
   crop → size → watermark"). The preview keeps at least 160 pt; the cards scroll instead.
+  When one input gives several files, the output caption reads "Output 800 × 450 · 4 files" (the size
+  of each part; the first frame's for frames), Tiles draws the tile edges as thin lines on the output
+  picture, and the names list shows each input's parts in order (the first five names in all).
 - Bottom bar: Presets at the leading edge; **Convert N Images** (⌘↩) at the trailing edge.
 - Running: the cards give way to one line with every card's summary, "n of N", a progress bar,
   the time left, and the image just written (name, pixel size, file size). Each input row shows
-  its state (waiting, working, done with its output name, failed). Pause/Resume and Stop replace
+  its state (waiting, working, done with its (first) output name, failed). Pause/Resume and Stop replace
   the main button.
 - Done: one sentence ("47 of 48 images converted in 1 minute, 12 seconds. 210 MB in, 96 MB out.
-  Saved to ~/Desktop/Out."), then every failed file with its reason, Show in Finder and Copy
+  Saved to ~/Desktop/Out."; "47 of 48 images converted into 530 files in …" whenever outputs outnumber
+  converted inputs; MB out and Show in Finder count every part), then every failed file with its reason, Show in Finder and Copy
   Log. The main button becomes **New Batch** (⌘↩): it removes the converted images from the list,
   keeps the failed and unstarted ones, keeps all settings and returns to setup. Adding images or
   changing a setting also returns to setup.
@@ -615,7 +634,17 @@ Two columns and a bottom bar, titled "Batch Convert":
   (as in the reference viewer).
 - Multi-page input (TIFF, PDF, DCX): TIFF with "keep all pages" and PDF output get every page;
   any other format gets the first page, and the log line says so ("page 1 of 297"), so no page
-  is dropped silently. No file per page.
+  is dropped silently. The Frames and Pages step writes a file per frame or page instead.
+- `{part}` names the parts of an input that gives several files: frames and pages their number,
+  zero-padded to the digits of the count (`01` … `12`); tiles `row-column`, each padded to the digits
+  of rows / columns (`1-2`, `01-10`), rows top to bottom and columns left to right in the picture (never
+  mirrored); both steps `frame-row-column` (`03-1-2`). A pattern without `{part}` gets `-{part}` appended
+  when an input gives more than one file (`holiday-01.png`; when a name is shortened the part stays
+  whole); an input that gives one file never gets it, and an explicit `{part}` then becomes `1`. The
+  `{part}` button shows only while Frames and Pages or Tiles is on. `{n}` counts inputs: every part of
+  one input shares it, and it advances only when the input succeeds. Clashes get " 2", " 3" per part
+  (`holiday-01 2.png`); "Replace existing files" applies per part. The log line for such an input reads
+  "loop.gif → loop-01.png … loop-12.png (12 files)".
 - Name card: the rename pattern, then "Save to": **Next to the originals** (empty, the default)
   or a chosen folder, with a "Next to the originals" button to go back while a folder is set
   (the reference viewer's button for the browsed folder). `{folder}` in the output path stands
@@ -629,16 +658,22 @@ Two columns and a bottom bar, titled "Batch Convert":
 
 ### Per-image operations (applied in this order)
 
-1. Crop: fixed rectangle (x, y, width, height) from a chosen corner or the centre.
-2. Resize: width and/or height, longest side, shortest side, megapixels, or percentage. Options:
+1. Frames and Pages (no settings: "Each frame of an animation and each page of a document becomes its
+   own file."; summary "Every frame or page"): every frame of an animation (GIF, APNG, WebP, HEIC and
+   AVIF sequences, ANI), full size and composited, or every page of a multi-page file (TIFF, PDF, DCX)
+   becomes its own output, each through every later step, each a single-page file (TIFF "keep all
+   pages" and PDF output then write one page). All frames, no range. A still gives one output, named as
+   without the step. Splitting into frames or pages drops HDR (tiles of an HDR photo keep it).
+2. Crop: fixed rectangle (x, y, width, height) from a chosen corner or the centre.
+3. Resize: width and/or height, longest side, shortest side, megapixels, or percentage. Options:
    keep aspect ratio (default on), don't enlarge smaller images (default on), don't shrink
    larger images, DPI value.
-3. Rotate left/right, flip horizontal/vertical.
-4. Colour: greyscale, negative, auto-adjust colours, brightness, contrast, gamma, saturation,
+4. Rotate left/right, flip horizontal/vertical.
+5. Colour: greyscale, negative, auto-adjust colours, brightness, contrast, gamma, saturation,
    per-channel balance, sharpen, blur, reduce colour depth. Filters, each with one strength
    value: unsharp mask, noise reduction, sepia, colour temperature, auto levels (histogram
    stretch). No artistic filters.
-5. Auto-crop uniform borders, canvas size, border, text overlay, watermark image:
+6. Auto-crop uniform borders, canvas size, border, text overlay, watermark image:
    - Canvas size, one of: a width per side (negative values cut into the image); a total size
      in pixels (0 keeps that side) placed at one of 9 anchors; or an aspect ratio (1:1, 2:1, 3:2,
      4:3, 16:9, 16:10, √2, or custom) at one of 9 anchors. New area in one colour (transparent
@@ -651,6 +686,31 @@ Two columns and a bottom bar, titled "Batch Convert":
      below or above it; opacity; optional shadow and background box.
    - Watermark: an image file (PNG with alpha works best) at one of 9 positions with a margin,
      sized as % of the output's width, with an opacity (default 33 %).
+7. Tiles: columns 1–100 and rows 1–100 (default 2 × 2), overlap in pixels (default 0; negative leaves
+   gaps, "Negative values leave gaps"); summary "2 × 2" or "2 × 2, overlap 10 px". What the preview
+   shows is what gets cut. All tiles have the same size: w = min(W, ⌈(W + (c − 1)·o) / c⌉) (under 1 px
+   the input fails with "<name>: the tile settings leave no image"); tile i starts at
+   round(i·(W − w) / (c − 1)) (0 for one column); the same for rows. So the first tile starts at 0, the
+   last ends at W, and neighbours share about o pixels. A multi-page input without Frames and Pages
+   gives tiles of page 1, with the "page 1 of 3" note; with both steps, tiles of every frame.
+8. Date Taken ("Change:" Set to / Shift; default Shift by nothing, "No shift"; footnote "Changes the
+   converted files, not the originals."): "Set to" one date and time ("Date taken:", with seconds, first
+   filled from the first input's date taken, else its file date), or "Shift" Later / Earlier by days
+   (0–3650), hours, minutes and seconds. It changes the outputs' date, never the originals'.
+   - Re-encoded outputs get EXIF `DateTimeOriginal`, `DateTimeDigitized` and TIFF `DateTime`, also with
+     the format's "keep metadata" off (ImageIO's formats and JPEG XL; WebP, QOI, PCX, PBM / PGM / PPM and
+     PDF get only the file dates).
+   - With Change format off and no other pixel step, Frames and Pages or Tiles, the output is the
+     original's bytes with only the date changed (lossless) for JPEG, HEIC, TIFF and PSD; any other
+     file fails with "Can't change the date taken of IMG_0412.gif". Set to without a date fails with
+     "Choose a date for the Date Taken step".
+   - `{date}` in the pattern and in the text overlay use the new date. The output's file dates
+     (modified and created) follow the new date taken and win over "Keep file dates".
+   - Shift without a date taken starts from the file's modification date, so the output gains an EXIF
+     date. Dates are wall times as EXIF stores them; shifting is plain arithmetic on the wall time (no
+     time zone, so no daylight-saving jumps). The file date is that wall time at EXIF
+     `OffsetTimeOriginal` when present, else in the Mac's time zone. Known limit: TIFF loses
+     `OffsetTimeOriginal` and `SubsecTimeOriginal` in the lossless rewrite.
 
 Settings can be saved as named presets and loaded later.
 
@@ -671,6 +731,10 @@ Settings can be saved as named presets and loaded later.
   one line per file (output name or error) and is copied with "Copy Log". Stop (finishes files in
   flight, starts no more) and Pause/Resume.
 - A failing file never stops the batch and never leaves a partial output file.
+- One input's outputs are one unit: each part is written to a hidden `.featherview-<id>.tmp` in the
+  output folder as soon as it is made (one frame in memory per worker). If any part fails, the input
+  fails with one sentence and its temp files are removed; if moving a part into place fails, the parts
+  already moved for that input are removed again ("Can't save <name>"). Stop finishes inputs in flight.
 
 ## Settings (⌘,)
 
