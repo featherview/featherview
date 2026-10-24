@@ -2,6 +2,8 @@
 
 A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversion.
 
+[![CI](https://github.com/featherview/featherview/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/featherview/featherview/actions/workflows/ci.yml)
+
 **[Download](https://github.com/featherview/featherview/releases/latest)** · [Website](https://featherview.mynetx.net)
 
 <img src="docs/screenshots/viewer.png" alt="The Featherview viewer window showing a landscape picture, with the toolbar above and the status bar below" width="720">
