@@ -100,7 +100,7 @@ In 30 languages, with right-to-left layout in Arabic and Hebrew. Public preview,
 ## Updates
 
 About once a day Featherview reads a small feed at `https://featherview.mynetx.net/appcast.xml` (no
-cookies, nothing about you or your Mac) and tells you when a new version is out; it never downloads
+cookies; the request carries only the app's version) and tells you when a new version is out; it never downloads
 or installs anything itself. Turn it off in Settings › Browsing › "Check for updates automatically".
 
 ## Build
