@@ -5,7 +5,7 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
 [![CI](https://github.com/featherview/featherview/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/featherview/featherview/actions/workflows/ci.yml)
 
 For anyone who flips through folders of photos with the keyboard, the way classic Windows viewers
-work: open one image, hold →, rotate the sideways ones, trash the rejects, batch convert the rest.
+work: open one image, hold <kbd>→</kbd>, rotate the sideways ones, trash the rejects, batch convert the rest.
 About 400 ms from launch to the first image, about 20 ms to the next one (12 MP JPEG, Apple Silicon).
 
 **[Download](https://github.com/featherview/featherview/releases/latest)** · [Website](https://featherview.mynetx.net)
@@ -44,25 +44,25 @@ would let us sign and notarize releases, so none of this is needed.
   one, a keyboard-driven folder chooser takes you on to the next folder
 - Fit, actual size, zoom to width or height for tall and wide images, and Keep Zoom to look at the
   same spot from image to image
-- Thumbnail grid (T) of the folder, with a size slider and selection: Quick Look, move, copy, Trash
+- Thumbnail grid (<kbd>T</kbd>) of the folder, with a size slider and selection: Quick Look, move, copy, Trash
   and batch convert several images at once
-- Slideshow (W) in full screen or in the window (⇧A), with shuffle and repeat; Space pauses
+- Slideshow (<kbd>W</kbd>) in full screen or in the window (<kbd>⇧A</kbd>), with shuffle and repeat; <kbd>Space</kbd> pauses
 - Compare two images side by side, zoomed and panned in step, with a difference view
-- Plays animated GIF, PNG, WebP, HEIC and AVIF, and Windows animated cursors; G pauses, ⌥→ / ⌥← step
+- Plays animated GIF, PNG, WebP, HEIC and AVIF, and Windows animated cursors; <kbd>G</kbd> pauses, <kbd>⌥→</kbd> / <kbd>⌥←</kbd> step
   frames
 - HDR photos (iPhone HEIC and JPEG, HDR AVIF, OpenEXR) show their extra brightness on HDR screens
   (macOS 15 and later)
-- EXIF info panel (I), full screen (F or Return)
+- EXIF info panel (<kbd>I</kbd>), full screen (<kbd>F</kbd> or <kbd>Return</kbd>)
 
 ## Organising
 
-- Move and copy to folders with F7 / F8 (14 destinations, one key each), Move to Trash with ⌘⌫;
+- Move and copy to folders with <kbd>F7</kbd> / <kbd>F8</kbd> (14 destinations, one key each), Move to Trash with <kbd>⌘⌫</kbd>;
   sidecar files (`.xmp`, `.aae`, `.thm`) go along
-- Rename (F2), and sort by name, date modified, date taken, size or kind
-- Lossless rotate and flip of JPEG, HEIC and TIFF (R, L, H, V); adjust the date taken in place
+- Rename (<kbd>F2</kbd>), and sort by name, date modified, date taken, size or kind
+- Lossless rotate and flip of JPEG, HEIC and TIFF (<kbd>R</kbd> <kbd>L</kbd> <kbd>H</kbd> <kbd>V</kbd>); adjust the date taken in place
 - Follow New Files shows each image as it lands in the folder, for tethered shooting and screenshots
-- Open Recent, Share, Set as Desktop Picture (fill, fit, stretch or centre), Float on Top, New from Clipboard (⌘N)
-- Refresh the folder (F5), jump to a random image
+- Open Recent, Share, Set as Desktop Picture (fill, fit, stretch or centre), Float on Top, New from Clipboard (<kbd>⌘N</kbd>)
+- Refresh the folder (<kbd>F5</kbd>), jump to a random image
 
 ## Formats
 
@@ -70,7 +70,7 @@ would let us sign and notarize releases, so none of this is needed.
   and more), upright and colour-managed, plus SVG and PDF pages
 - Also reads 16 formats macOS can't, such as QOI, PCX, XPM, IFF/LBM, JPEG XR and BPG, and shows
   layered files from GIMP, Krita, Paint.NET, Procreate and others flattened
-- Finder thumbnails and Quick Look (Space) previews for all of them
+- Finder thumbnails and Quick Look (<kbd>Space</kbd>) previews for all of them
 
 <details>
 <summary>Every extra format, and what isn't shown</summary>
