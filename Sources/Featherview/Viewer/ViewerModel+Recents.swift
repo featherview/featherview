@@ -2,7 +2,7 @@ import AppKit
 import FeatherviewCore
 import Observation
 
-/// File › Open Recent and the Dock menu: the system's recent documents (plan M11 Decision 1).
+/// File › Open Recent: the system's recent documents, which the Dock menu also lists by itself (plan M11 Decision 1).
 /// Nothing is read on the launch path: notes made before the first `reload()` wait for it.
 @MainActor @Observable
 final class RecentFiles {

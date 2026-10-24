@@ -722,17 +722,25 @@ struct ImageContextMenu: View {
         }
         Button("Copy") { model.copyImage() }
         Divider()
-        Button("Rotate Left") { model.rotate(.counterClockwise) }
-        Button("Rotate Right") { model.rotate(.clockwise) }
-        Button("Flip Horizontal") { model.flip(.horizontal) }
-        Button("Flip Vertical") { model.flip(.vertical) }
+        // Disabled as in the menu bar: a held image or the clipboard image has no file to change.
+        Group {
+            Button("Rotate Left") { model.rotate(.counterClockwise) }
+            Button("Rotate Right") { model.rotate(.clockwise) }
+            Button("Flip Horizontal") { model.flip(.horizontal) }
+            Button("Flip Vertical") { model.flip(.vertical) }
+        }
+        .disabled(!model.availability.canChangeFile)
         Button("Adjust Date Taken…") { model.showAdjustDate() }
+            .disabled(!model.availability.canAdjustDate)
         Divider()
         Button("Rename…") { model.beginRename() }
             .disabled(!model.availability.canChangeFile)
-        Button("Move to Folder…") { model.showDestinations(.move) }
-        Button("Copy to Folder…") { model.showDestinations(.copy) }
-        Button("Move to Trash") { model.moveCurrentToTrash() }
+        Group {
+            Button("Move to Folder…") { model.showDestinations(.move) }
+            Button("Copy to Folder…") { model.showDestinations(.copy) }
+            Button("Move to Trash") { model.moveCurrentToTrash() }
+        }
+        .disabled(!model.availability.hasOperationTargets)
         Divider()
         Button("Show in Finder") { model.showInFinder() }
         OpenWithMenu(model: model)
