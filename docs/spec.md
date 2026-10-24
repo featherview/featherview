@@ -90,7 +90,7 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 | 0 | zoom to fit |
 | 1 | actual size (1 image pixel = 1 screen pixel) |
 | 2 / 3 | zoom to width / zoom to height |
-| ⇧L | Keep Zoom on / off (Caps Lock L still rotates left) |
+| ⇧L | Keep Zoom on / off (⇧L and ⇧A are the only Shift letters; Caps Lock L still rotates left) |
 | + / − | zoom in / out (×1.1 steps, 5 %–1600 %) |
 | ⌥→ / ⌥← | next / previous page of a multi-page file (TIFF, …); nothing past either end |
 | F7 / F8 | move / copy the current file to a folder (see below) |
@@ -98,6 +98,9 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 | F2 | rename the current file (see "Rename") |
 | T | thumbnail grid on / off (also ⇧⌘T; see "Thumbnail grid") |
 | Space in the grid | Quick Look of the selection |
+| W | start / end the slideshow in full screen (also ⇧⌘F; see "Slideshow") |
+| ⇧A | play the slideshow in the window / stop it |
+| Space during a slideshow | pause / resume |
 | ⌦ (forward delete) | Move to Trash, like ⌘⌫ |
 | O / B / M | Open… / Batch Convert… / minimise the window (as ⌘O / ⌘B / ⌘M) |
 | P / A / S | Settings / About / Save As…, each added with its feature (milestones 2–3) |
@@ -111,7 +114,7 @@ Single keys for commands match the reference viewer, for people switching over; 
   fits. No selection rectangle.
 - Right-click (or Control-click) opens a context menu with the window's actions: Copy, Rotate
   Left / Right, Flip Horizontal / Vertical, Rename…, Move to Folder…, Copy to Folder…, Move to Trash, Show in Finder, Open With,
-  Share, Set as Desktop Picture.
+  Share, Set as Desktop Picture; during a slideshow Pause / Resume Slideshow and End Slideshow come first.
 - A click on the file name in the window title renames the file (see "Rename"); dragging the title
   still moves the window.
 - Two-finger scroll (or a mouse wheel) pans a zoomed image.
@@ -141,7 +144,7 @@ Mac SF Symbols, never icons taken from another viewer.
 
 ### Menu commands
 
-⌘N New from Clipboard, ⌘O Open…, ⌘⌫ Move to Trash, ⌘B Batch Convert…, ⇧⌘S Save As… (the current image in any writable format, with that format's options, orientation
+⌘N New from Clipboard, ⌘O Open…, ⇧⌘F Start / End Slideshow, ⌘⌫ Move to Trash, ⌘B Batch Convert…, ⇧⌘S Save As… (the current image in any writable format, with that format's options, orientation
 applied, never overwriting without the standard Mac replace prompt; afterwards the window shows the saved file in its folder; if Featherview can't read the format it saved, the window stays on the original), ⌘C Copy (the current image, full resolution,
 orientation applied), ⌘Q Quit. Menus also list the single-key commands
 (the single key in the shortcut column, also for commands that have a ⌘ shortcut, which keeps
@@ -154,7 +157,7 @@ what moves through or changes the picture (Next / Previous, pages and frames, ro
 Taken…, Set as Desktop Picture, Show Info). View lists "Zoom to Fit  (0)", "Actual Size  (1)", "Zoom to
 Width  (2)", "Zoom to Height  (3)", Zoom In, Zoom Out, then "Keep Zoom  (⇧L)"; Image has "Flip Horizontal  (H)"
 and "Flip Vertical  (V)" after the rotate items. File starts with New from Clipboard, Open…, Open Recent; Rename…
-and Share follow Save As…. View has Sort By, then "Refresh  (F5)" (⌘R), then Follow New Files; Image ›
+and Share follow Save As…. View has Sort By, then "Refresh  (F5)" (⌘R), then Follow New Files, then the slideshow items; Image ›
 "Random Image" follows Previous. The Window menu has Float on Top, then only the viewer windows: Batch and
 About open from their own commands.
 
@@ -306,6 +309,63 @@ F8 panel: the list takes them, the window stays. While an unsaved clipboard imag
 until it is left. A current file deleted elsewhere stays on screen until the next key. Opening another
 folder moves the watch there; the folder renamed or deleted, or the window closed, turns following off.
 Nothing is watched while it is off, so launch and browsing pay nothing.
+
+### Slideshow
+
+- View › "Start Slideshow  (W)" (⇧⌘F, Preview's shortcut) plays the viewer's list in full screen from
+  the current image; View › "Play in Window  (⇧A)" plays it in the window. While one runs they read "End
+  Slideshow  (W)" and "Stop Playing  (⇧A)", and "Pause Slideshow  (Space)" / "Resume Slideshow  (Space)"
+  appears; the context menu gets Pause / Resume Slideshow and End Slideshow at its top. Disabled without
+  a current image and while the folder is still being listed. W or ⇧A in the grid start from the focused
+  cell. Starting leaves compare.
+- View › "Slideshow Options" (a submenu, so it can be changed mid-show from the menu bar that slides in
+  over full screen): "Show Each Image For" 1, 2, 3, 5, 10, 20, 30 or 60 seconds (default 5), then
+  "Shuffle" and "Repeat" (both off). All remembered; no Settings entry.
+- Order: from the current image to the end of the list, then the end. Shuffle: the current image first,
+  then every other image once in random order. With Repeat each further round is the whole list,
+  shuffled anew, never starting with the image the last round ended on. Shuffle never changes the
+  viewer's list: afterwards ← / → go to the shown image's Finder neighbours, and the title and overlay
+  show its Finder position.
+- Changing options while playing: a new interval applies to the image on screen at once (counted from
+  when it showed); toggling Shuffle restarts the round from the image on screen in the new order; Repeat
+  only changes what happens at the end.
+- Timing: an image's interval starts when it is on screen. A next image not decoded by its due time
+  shows as soon as it is, and its interval counts from then; ticks never queue up. Started from a
+  window, the first interval starts once the window is in full screen. A step, a rotation, a zoom or a
+  page change gives the image a full interval again; so does resuming after a pause.
+- While a slideshow runs, prefetch follows the play order (at fit the next two and the previous one,
+  zoomed the next and the previous one, into the next round with Repeat), so each change is a
+  prefetched swap.
+- While it plays (not paused or finished) in a visible window, the display doesn't sleep; the Mac may
+  still sleep. Minimized, fully covered or on another Space, the slideshow waits and goes on with a full
+  interval when visible again.
+- Full screen only: a small glass capsule at the bottom centre (Previous, Play / Pause, Next, End;
+  tooltips "Previous (←)", "Pause (Space)" / "Play (Space)", "Next (→)", "End slideshow (Esc)") shows
+  when the pointer moves and fades out after 2 s at rest unless the pointer is over it; paused or
+  finished it stays up. The pointer hides with it when Settings › Full Screen › "Hide the pointer" is on,
+  never on each image change. Playing in the window shows no capsule.
+- The end (Repeat off): after the last image's interval the slideshow is finished: it stays on that
+  image (in full screen if it was), Space or Play plays a new round from the start, → does nothing and ←
+  goes back, paused. Esc, W or ⇧⌘F go back to the window on the image shown; ⇧A stops in place.
+- Esc, W and ⇧⌘F end the slideshow and leave full screen if the window is in it; ⇧A ends it and leaves
+  the window as it is. F, Return, double-click and the green button toggle full screen and the slideshow
+  goes on in the other form.
+- Keys while it runs (everything else as in the viewer): → ↓ Page Down and a swipe step to the next
+  image in play order, ← ↑ ⌫ Page Up to the previous (panning a zoomed image first); paused stays
+  paused; nothing past either end (with Repeat, → past the end starts the next round). The folder
+  chooser never opens. Space pauses and resumes. Home, End and Random Image do nothing. R / L, H / V, ⌦
+  / ⌘⌫, F7 / F8, S, ⌘C, I, G, ⌥→ / ⌥←, 0–3, + / − work, so a slideshow can be used to cull: Trash or a
+  move takes the image out of the play order and the next one in play order shows at once ("show the
+  next image" off doesn't hold it here; at the end of the order the previous one shows); the last image
+  gone ends the slideshow. While a panel, sheet or alert is open a due image waits a full interval more.
+- Opening a file or folder, compare, T (the grid) and closing the window end the slideshow.
+- Unreadable files are skipped at once in the direction of travel, without a message (turning back at
+  an end of the order). When every image failed in a row it finishes on the last one with its "Can't
+  open <name>".
+- Animated images play while on screen; the interval alone decides when the next image comes. G pauses
+  the animation, not the slideshow.
+- Image changes are cuts; the capsule fades by opacity only, which Reduce Motion keeps. Entering full
+  screen is the system's animation.
 
 ### Thumbnail grid
 
