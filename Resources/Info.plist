@@ -389,9 +389,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.9.0</string>
+	<string>0.10.0</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>3</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.photography</string>
 	<key>LSMinimumSystemVersion</key>
@@ -410,8 +410,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>BPG image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.bpg</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -419,6 +417,8 @@
 				<key>UTTypeIconText</key>
 				<string>BPG</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.bpg</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -435,8 +435,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>JPEG XR image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.jpeg-xr</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -444,6 +442,8 @@
 				<key>UTTypeIconText</key>
 				<string>JXR</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.jpeg-xr</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -462,8 +462,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>Kodak Photo CD image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.photo-cd</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -471,6 +469,8 @@
 				<key>UTTypeIconText</key>
 				<string>PCD</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.photo-cd</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -487,8 +487,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>GIMP image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.xcf</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -496,6 +494,8 @@
 				<key>UTTypeIconText</key>
 				<string>XCF</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.xcf</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -512,8 +512,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>Paint.NET image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.pdn</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -521,6 +519,8 @@
 				<key>UTTypeIconText</key>
 				<string>PDN</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.pdn</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -537,8 +537,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>PaintShop Pro image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.psp</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -546,6 +544,8 @@
 				<key>UTTypeIconText</key>
 				<string>PSP</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.psp</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -599,8 +599,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>QOI image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.qoi</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -608,6 +606,8 @@
 				<key>UTTypeIconText</key>
 				<string>QOI</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.qoi</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -624,8 +624,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>PCX image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.pcx</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -633,6 +631,8 @@
 				<key>UTTypeIconText</key>
 				<string>PCX</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.pcx</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -649,8 +649,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>DCX image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.dcx</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -658,6 +656,8 @@
 				<key>UTTypeIconText</key>
 				<string>DCX</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.dcx</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -674,8 +674,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>XPM image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.xpm</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -683,6 +681,8 @@
 				<key>UTTypeIconText</key>
 				<string>XPM</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.xpm</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -699,8 +699,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>WBMP image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.wbmp</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -708,6 +706,8 @@
 				<key>UTTypeIconText</key>
 				<string>WBMP</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.wbmp</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -724,8 +724,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>Sun Raster image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.sun-raster</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -733,6 +731,8 @@
 				<key>UTTypeIconText</key>
 				<string>RAS</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.sun-raster</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -750,8 +750,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>Amiga IFF image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.ilbm</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -759,6 +757,8 @@
 				<key>UTTypeIconText</key>
 				<string>IFF</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.ilbm</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -777,8 +777,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>PAM image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.pam</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -786,6 +784,8 @@
 				<key>UTTypeIconText</key>
 				<string>PAM</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.pam</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -802,8 +802,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>farbfeld image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.farbfeld</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -811,6 +809,8 @@
 				<key>UTTypeIconText</key>
 				<string>FF</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.farbfeld</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -827,8 +827,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>MacPaint image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.macpaint</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -836,6 +834,8 @@
 				<key>UTTypeIconText</key>
 				<string>MAC</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.macpaint</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -853,8 +853,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>X Window Dump image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.xwd</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -862,6 +860,8 @@
 				<key>UTTypeIconText</key>
 				<string>XWD</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.xwd</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -878,8 +878,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>FITS image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.fits</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -887,6 +885,8 @@
 				<key>UTTypeIconText</key>
 				<string>FITS</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.fits</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -905,8 +905,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>Windows animated cursor</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.ani</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -914,6 +912,8 @@
 				<key>UTTypeIconText</key>
 				<string>ANI</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.ani</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -930,8 +930,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>OpenRaster image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.openraster</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -939,6 +937,8 @@
 				<key>UTTypeIconText</key>
 				<string>ORA</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.openraster</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -955,8 +955,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>Krita image</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.krita</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -964,6 +962,8 @@
 				<key>UTTypeIconText</key>
 				<string>KRA</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.krita</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -980,8 +980,6 @@
 			</array>
 			<key>UTTypeDescription</key>
 			<string>Procreate artwork</string>
-			<key>UTTypeIdentifier</key>
-			<string>net.mynetx.featherview.procreate</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconBadgeName</key>
@@ -989,6 +987,8 @@
 				<key>UTTypeIconText</key>
 				<string>PROCREATE</string>
 			</dict>
+			<key>UTTypeIdentifier</key>
+			<string>net.mynetx.featherview.procreate</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
