@@ -61,7 +61,10 @@ public enum OrientationRotator {
         guard page == 0 else { throw RotateError.notFirstPage }
         let url = link.resolvingSymlinksInPath()  // replaceItemAt can't swap a symlink; rotate its target
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let sourceType = CGImageSourceGetType(source) else { throw RotateError.unreadable }
+              let sourceType = CGImageSourceGetType(source) else {
+            // Featherview's own formats are images, just not ones ImageIO knows.
+            throw OwnDecoders.format(for: url) != nil ? RotateError.unsupportedFormat : RotateError.unreadable
+        }
         // Content, not extension: a PNG named .jpg must still be refused.
         guard let type = UTType(sourceType as String),
               supported.contains(where: { type.conforms(to: $0) }) else { throw RotateError.unsupportedFormat }

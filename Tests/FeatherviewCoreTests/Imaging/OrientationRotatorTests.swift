@@ -212,6 +212,12 @@ import UniformTypeIdentifiers
             try Fixtures.writeImage(to: dir.appendingPathComponent("png.jpg"), width: 4, height: 4, type: .png),
             try Fixtures.writeAnimatedGIF(to: dir.appendingPathComponent("a.gif"), delays: [0.1, 0.1]),
             try Fixtures.writeHEICS(to: dir.appendingPathComponent("s.heics"), delays: [0.1, 0.1]),
+            // Featherview's own formats, which ImageIO can't even identify.
+            try { () throws -> URL in
+                let url = dir.appendingPathComponent("q.qoi")
+                try QOICodec.encode(RGBAImage(width: 4, height: 4)).write(to: url)
+                return url
+            }(),
         ]
         for url in files {
             let original = try Data(contentsOf: url)
