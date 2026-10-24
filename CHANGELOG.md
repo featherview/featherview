@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.1 – 2026-10-24
+
+- Customized toolbars now survive a relaunch instead of resetting.
+- Browsing on a second display stays fast, with images decoded in that screen's colour space.
+- The thumbnail grid opens quicker for folders with thousands of files.
+- Compare's first Difference view appears almost instantly.
+
 ## 0.10.0 – 2026-10-24
 
 - Press `T` for a thumbnail grid of the folder. Move, copy, Trash, batch and Quick Look work on the selection.
