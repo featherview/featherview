@@ -9,6 +9,7 @@ struct FeatherviewApp: App {
 
     init() {
         ImageEncoder.jxlEncoder = JXLEncoder.encode
+        _ = savedToolbarItems
         // AppKit mirrors only for a right-to-left system language, not for one picked for this app alone.
         if let language = Bundle.main.preferredLocalizations.first,
            Locale.Language(identifier: language).characterDirection == .rightToLeft {

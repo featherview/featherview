@@ -925,6 +925,11 @@ let toolbarHiddenKey = "toolbarHidden"
 /// Whether viewer windows hide their status bar (View › Hide Status Bar).
 private let statusBarHiddenKey = "statusBarHidden"
 
+/// The customized toolbar items, read before the main window exists: its toolbar starts without the buttons
+/// (see `toolbarReady`), and AppKit, missing the saved ones, replaces the saved set with the default one.
+/// `ViewerToolbarPlacement` puts them back once the buttons are built.
+@MainActor let savedToolbarItems = UserDefaults.standard.dictionary(forKey: "NSToolbar Configuration viewer")?["TB Item Identifiers"]
+
 /// Only the main window's toolbar is customizable. AppKit copies every item inserted into a customizable
 /// toolbar into all windows with that toolbar's id, so a second window adding its buttons after its first
 /// image (or page buttons for a PDF) crashed with "already contains an item". Extra windows show the same
@@ -936,6 +941,11 @@ private struct ViewerToolbarPlacement: ViewModifier {
     func body(content: Content) -> some View {
         if model === ViewerModel.main {
             content.toolbar(id: "viewer") { ViewerToolbar(model: model, ready: ready) }
+                .onChange(of: ready) { _, ready in
+                    guard ready, let items = savedToolbarItems else { return }
+                    // After the update that inserts the buttons.
+                    ViewerModel.afterFrame { model.window?.toolbar?.setConfiguration(["TB Item Identifiers": items]) }
+                }
         } else {
             content.toolbar { ViewerToolbar(model: model, ready: true) }
         }
