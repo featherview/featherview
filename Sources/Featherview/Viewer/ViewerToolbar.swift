@@ -120,6 +120,19 @@ struct ViewerToolbar: CustomizableToolbarContent {
     }
 }
 
+/// A toolbar symbol from an NSImage made once: SwiftUI looks a named symbol up in the asset catalog again each time
+/// its item changes (~18 ms when T enables or disables most items).
+@MainActor private enum ToolbarSymbol {
+    private static var images: [String: NSImage] = [:]
+
+    static func image(_ name: String) -> Image {
+        if let image = images[name] { return Image(nsImage: image) }
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: nil) ?? NSImage()
+        images[name] = image
+        return Image(nsImage: image)
+    }
+}
+
 /// One button; its own view, so only it re-evaluates when whether it can act changes.
 private struct ToolbarButton: View {
     let title: LocalizedStringKey
@@ -140,7 +153,7 @@ private struct ToolbarButton: View {
     }
 
     var body: some View {
-        Button(title, systemImage: symbol) { action(model) }
+        Button { action(model) } label: { Label { Text(title) } icon: { ToolbarSymbol.image(symbol) } }
             .help(help)
             .disabled(!enabled(model))
     }
@@ -151,7 +164,7 @@ private struct InfoToggle: View {
     @Bindable var model: ViewerModel
 
     var body: some View {
-        Toggle("Info", systemImage: "info.circle", isOn: $model.showInfo)
+        Toggle(isOn: $model.showInfo) { Label { Text("Info") } icon: { ToolbarSymbol.image("info.circle") } }
             .help("Show info (I)")
             .disabled(!model.availability.canShowInfo)
     }
@@ -163,7 +176,7 @@ private struct KeepZoomToggle: View {
     @AppStorage(AppSettings.keepZoom.key) private var keepZoom = AppSettings.keepZoom.defaultValue
 
     var body: some View {
-        Toggle("Keep Zoom", systemImage: "pin", isOn: $keepZoom)
+        Toggle(isOn: $keepZoom) { Label { Text("Keep Zoom") } icon: { ToolbarSymbol.image("pin") } }
             .help("Keep zoom (⇧L)")
     }
 }
@@ -176,10 +189,10 @@ private struct ShareButton: View {
     var body: some View {
         // Not ShareLink: its item changes with every image, and SwiftUI rebuilds the whole toolbar for that
         // (~12 ms of each swap). The file is read when the button is clicked.
-        Button("Share", systemImage: "square.and.arrow.up") {
+        Button {
             guard let url = model.list.current, let view = anchor.view else { return }
             NSSharingServicePicker(items: [url]).show(relativeTo: view.bounds, of: view, preferredEdge: .minY)
-        }
+        } label: { Label { Text("Share") } icon: { ToolbarSymbol.image("square.and.arrow.up") } }
         .help("Share")
         .disabled(!model.availability.canChangeFile)
         .background(AnchorView(anchor: anchor))
@@ -204,7 +217,9 @@ private struct ThumbnailsToggle: View {
     let model: ViewerModel
 
     var body: some View {
-        Toggle("Thumbnails", systemImage: "square.grid.2x2", isOn: Binding(get: { model.isGrid }, set: { _ in model.toggleGrid() }))
+        Toggle(isOn: Binding(get: { model.isGrid }, set: { _ in model.toggleGrid() })) {
+            Label { Text("Thumbnails") } icon: { ToolbarSymbol.image("square.grid.2x2") }
+        }
             .help("Thumbnails (T)")
             .disabled(!model.availability.canShowGrid)
     }

@@ -514,7 +514,8 @@ final class ThumbnailCell: NSCollectionViewItem {
 private final class CellView: NSView {
     private let square = NSView()
     private let picture = NSView()
-    private let glyph = NSImageView()
+    /// Made at the first failure: most cells never need it, and an image view costs layout time as the grid opens.
+    private var glyph: NSImageView?
     private let label = NSTextField(labelWithString: "")
     private var image: CGImage?
     private var failed = false
@@ -530,8 +531,6 @@ private final class CellView: NSView {
         }
     }
 
-    override var isFlipped: Bool { true }
-
     init() {
         super.init(frame: .zero)
         square.wantsLayer = true
@@ -539,15 +538,12 @@ private final class CellView: NSView {
         picture.wantsLayer = true
         picture.layer?.contentsGravity = .resizeAspect
         picture.layer?.borderWidth = 1
-        glyph.imageScaling = .scaleProportionallyUpOrDown
-        glyph.isHidden = true
         label.font = Theme.gridName
         label.alignment = .center
         label.lineBreakMode = .byTruncatingMiddle
         label.maximumNumberOfLines = 1
         label.wantsLayer = true
         square.addSubview(picture)
-        square.addSubview(glyph)
         addSubview(square)
         addSubview(label)
         applyColours()
@@ -560,11 +556,13 @@ private final class CellView: NSView {
         self.failed = failed
         picture.layer?.contents = image
         picture.isHidden = image == nil
-        glyph.isHidden = !failed
-        // Set only when shown: a hidden image view still rasterizes its symbol, ~0.4 ms per cell as the grid opens.
-        if failed, glyph.image == nil {
-            glyph.image = NSImage(systemSymbolName: "photo.badge.exclamationmark", accessibilityDescription: nil)
+        if failed, glyph == nil {
+            let glyph = NSImageView(image: NSImage(systemSymbolName: "photo.badge.exclamationmark", accessibilityDescription: nil)!)
+            glyph.imageScaling = .scaleProportionallyUpOrDown
+            square.addSubview(glyph)
+            self.glyph = glyph
         }
+        glyph?.isHidden = !failed
         updateTooltip()
         applyColours()
         needsLayout = true
@@ -573,7 +571,8 @@ private final class CellView: NSView {
     override func layout() {
         super.layout()
         let side = bounds.width
-        square.frame = CGRect(x: 0, y: 0, width: side, height: side)
+        // Not flipped (AppKit asks isFlipped often enough to cost ~8 ms as the grid opens): the square sits at the top.
+        square.frame = CGRect(x: 0, y: bounds.height - side, width: side, height: side)
         if let image {
             // Fitted, aspect kept, never above one image pixel per screen pixel.
             let scale = window?.backingScaleFactor ?? 2
@@ -583,9 +582,11 @@ private final class CellView: NSView {
             picture.frame = CGRect(x: ((side - size.width) / 2).rounded(), y: ((side - size.height) / 2).rounded(),
                                    width: size.width, height: size.height)
         }
-        glyph.frame = square.bounds.insetBy(dx: side / 3, dy: side / 3)
-        let width = min(side, label.fittingSize.width + 2 * Theme.gridNamePadding)
-        label.frame = CGRect(x: ((side - width) / 2).rounded(), y: side + Theme.gridNameGap, width: width, height: Theme.gridNameHeight)
+        glyph?.frame = square.bounds.insetBy(dx: side / 3, dy: side / 3)
+        // The cell's size, not fittingSize: that sets up an Auto Layout engine per cell (~0.1 ms each as the grid opens).
+        let width = min(side, (label.cell?.cellSize.width ?? 0).rounded(.up) + 2 * Theme.gridNamePadding)
+        label.frame = CGRect(x: ((side - width) / 2).rounded(), y: bounds.height - side - Theme.gridNameGap - Theme.gridNameHeight,
+                             width: width, height: Theme.gridNameHeight)
         label.layer?.cornerRadius = Theme.gridNameHeight / 2
     }
 
@@ -611,7 +612,7 @@ private final class CellView: NSView {
             picture.layer?.borderColor = Theme.pictureHairline.cgColor
             label.layer?.backgroundColor = selected ? Theme.gridAccent.cgColor : nil
             label.textColor = selected ? Theme.gridOnAccent : Theme.gridLabel
-            glyph.contentTintColor = Theme.gridFailedGlyph
+            glyph?.contentTintColor = Theme.gridFailedGlyph
         }
     }
 }

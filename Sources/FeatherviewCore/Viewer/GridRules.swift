@@ -51,7 +51,9 @@ public enum GridSelection {
 
     /// The selection's indices in `urls`; files no longer listed drop out.
     public static func indices(of selected: Set<URL>, in urls: [URL]) -> IndexSet {
-        IndexSet(urls.indices.filter { selected.contains(urls[$0]) })
+        // A few files (the grid opens with one): comparing beats hashing every URL (~3 ms for 10,000).
+        if selected.count <= 16 { return IndexSet(selected.compactMap { urls.firstIndex(of: $0) }) }
+        return IndexSet(urls.indices.filter { selected.contains(urls[$0]) })
     }
 
     /// A click on cell `index` (Decision 10): ⇧ selects from the anchor's cell to it, in place of the selection;

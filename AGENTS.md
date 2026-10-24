@@ -113,7 +113,7 @@ Rule of thumb: if logic can be tested without a window, it belongs in Feathervie
 | Next/previous image, not prefetched | < 150 ms (12 MP JPEG; `Navigate` ~121 ms landscape, ~66 ms portrait) |
 | Opening a folder of 10,000 files | < 500 ms to first image, UI never blocks (measured in every Sort By order: name ~430 ms, size ~470 ms, date modified ~485 ms; Date Taken shows the first by name, ~410 ms, and re-sorts later) |
 | Memory while browsing | bounded by the 8-image cache, decoded to fit the screen per axis (rounded up to JPEG's next halving step, at most 2× per side) |
-| T to the thumbnail grid on screen | < 100 ms for any folder up to 10,000 files (cells laid out, names shown; `GridShow`). Measured: ~76 ms for 40 files, ~115 ms for 10,000 (over budget: the rest is NSCollectionView and the toolbar re-enabling its items) |
+| T to the thumbnail grid on screen | < 100 ms for any folder up to 10,000 files (cells laid out, names shown; `GridShow`). Measured: ~90 ms for 10,000 (84–99 ms; most of it is NSCollectionView making the visible cells) |
 | First screen of thumbnails complete | < 400 ms for 12 MP JPEGs without a usable embedded thumbnail, < 150 ms for 12 MP HEICs with a 320 px embedded one (default size, 1220 × 700 window; `GridFill`). Measured in an 805 × 585 window: ~282 ms JPEG, ~127 ms HEIC |
 | Scrolling a 10,000-file grid | no frame dropped by grid work (< 8 ms main-thread work per frame); when scrolling stops, the new screen completes within the row above |
 | Grid memory | thumbnail cache ≤ 3 × the largest screen's pixel area × 4 bytes, on top of the 8-image cache; Return to the image within the not-prefetched budget |

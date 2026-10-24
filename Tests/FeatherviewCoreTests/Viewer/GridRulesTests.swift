@@ -55,6 +55,13 @@ import Testing
         #expect(GridSelection.indices(of: [urls[2], x], in: list) == IndexSet([1]))
     }
 
+    // Past a few files the lookup takes another path: the same result.
+    @Test func indicesOfALargeSelection() {
+        let many = (0..<40).map { URL(fileURLWithPath: "/f/\($0).jpg") }
+        let selected = Set(many.enumerated().filter { $0.offset.isMultiple(of: 2) }.map(\.element) + [URL(fileURLWithPath: "/x/x.jpg")])
+        #expect(GridSelection.indices(of: selected, in: many) == IndexSet(stride(from: 0, to: 40, by: 2)))
+    }
+
     @Test func shiftClickRangesFromTheAnchor() {
         let click = GridSelection.click(4, in: urls, selection: [1], anchor: urls[1], shift: true, command: false)
         #expect(click.selection == [1, 2, 3, 4])
