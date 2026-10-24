@@ -564,7 +564,8 @@ dark tile) carries the identity.
 - Type: the system font everywhere; tabular figures wherever numbers change in place (status strip,
   batch progress and log).
 - Motion: browsing is instant (no crossfade). A zoom step animates in 120 ms, the info panel slides
-  in 180 ms, the hidden bars fade in 200 ms. With Reduce Motion these are plain cuts.
+  in 180 ms, resting bars fade out in 200 ms and back in 120 ms. With Reduce Motion the zoom step and
+  the panel are plain cuts; the bars' fade (opacity only) stays.
 
 ## Batch window (B, ⌘B)
 
