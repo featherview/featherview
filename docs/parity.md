@@ -214,10 +214,10 @@ Own 8 images, default settings unless named.
 
 | Area | Observed behaviour | Featherview | Status |
 |---|---|---|---|
-| Opening | A command in the File menu opens a separate resizable window with two panes: the current image on the left, the right one empty until a file is chosen through an open panel. Exactly two images, no more. | Two to four images side by side in one window, started from the thumbnail grid's selection (roadmap). | open |
-| Zoom and scroll | Each pane has its own zoom list (fit, 10 – 500 %); Ctrl+wheel zooms, the wheel scrolls, right-drag pans. Zoom lock and scroll lock are separate toggles, both off by default; with both on, the two panes zoom (checked at 10 % and 200 %) and scroll in step. | Zoom and pan always in step; no toggles. A two-window tile (macOS window tiling) with Keep Zoom doesn't cover it: the two windows would zoom and pan separately. | open |
-| Stepping | Buttons step the left pane through its folder (next / previous); the zoom stays and the main window follows the left pane's image (it showed c7 after closing). Another button swaps the panes. | ← / → step the focused pane through the viewer's list; the window follows the image last focused. | open |
-| Difference | A toggle shows the per-pixel difference of the two images in the right pane, with per-channel (R, G, B) switches. | Later, if asked. | open |
+| Opening | A command in the File menu opens a separate resizable window with two panes: the current image on the left, the right one empty until a file is chosen through an open panel. Exactly two images, no more. | Two images side by side in the viewer window itself: File › Compare With… (⌥⌘O, open panel) or Image › Compare on two thumbnails in the grid; the current image in the leading pane. | v2 |
+| Zoom and scroll | Each pane has its own zoom list (fit, 10 – 500 %); Ctrl+wheel zooms, the wheel scrolls, right-drag pans. Zoom lock and scroll lock are separate toggles, both off by default; with both on, the two panes zoom (checked at 10 % and 200 %) and scroll in step. | One toggle, View › Zoom and Pan in Step, on by default: the same detail stays at the same place in both panes, also for images of different sizes. Off, each pane zooms and pans on its own. | v2 |
+| Stepping | Buttons step the left pane through its folder (next / previous); the zoom stays and the main window follows the left pane's image (it showed c7 after closing). Another button swaps the panes. | ← / → step the first pane through the viewer's list, zoom kept; the second stays. X (or the strip's button) swaps the images; the window stays on the first pane's image after leaving. | v2 |
+| Difference | A toggle shows the per-pixel difference of the two images in the right pane, with per-channel (R, G, B) switches. | D shows the per-channel difference in the second pane, all channels together, no switches. | v2 |
 
 ## Batch extras
 

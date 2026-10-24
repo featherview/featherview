@@ -101,6 +101,8 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 | W | start / end the slideshow in full screen (also ⇧⌘F; see "Slideshow") |
 | ⇧A | play the slideshow in the window / stop it |
 | Space during a slideshow | pause / resume |
+| X / D, compare only | swap the images / show the difference (see "Compare") |
+| Esc, compare only | stop comparing (in full screen the next Esc leaves full screen) |
 | ⌦ (forward delete) | Move to Trash, like ⌘⌫ |
 | O / B / M | Open… / Batch Convert… / minimise the window (as ⌘O / ⌘B / ⌘M) |
 | P / A / S | Settings / About / Save As…, each added with its feature (milestones 2–3) |
@@ -144,7 +146,7 @@ Mac SF Symbols, never icons taken from another viewer.
 
 ### Menu commands
 
-⌘N New from Clipboard, ⌘O Open…, ⇧⌘F Start / End Slideshow, ⌘⌫ Move to Trash, ⌘B Batch Convert…, ⇧⌘S Save As… (the current image in any writable format, with that format's options, orientation
+⌘N New from Clipboard, ⌘O Open…, ⌥⌘O Compare With…, ⇧⌘F Start / End Slideshow, ⌘⌫ Move to Trash, ⌘B Batch Convert…, ⇧⌘S Save As… (the current image in any writable format, with that format's options, orientation
 applied, never overwriting without the standard Mac replace prompt; afterwards the window shows the saved file in its folder; if Featherview can't read the format it saved, the window stays on the original), ⌘C Copy (the current image, full resolution,
 orientation applied), ⌘Q Quit. Menus also list the single-key commands
 (the single key in the shortcut column, also for commands that have a ⌘ shortcut, which keeps
@@ -156,7 +158,8 @@ Copy to Folder…, Move to Trash, Show in Finder, Open With, Always Open with Fe
 what moves through or changes the picture (Next / Previous, pages and frames, rotate and flip, Adjust Date
 Taken…, Set as Desktop Picture, Show Info). View lists "Zoom to Fit  (0)", "Actual Size  (1)", "Zoom to
 Width  (2)", "Zoom to Height  (3)", Zoom In, Zoom Out, then "Keep Zoom  (⇧L)"; Image has "Flip Horizontal  (H)"
-and "Flip Vertical  (V)" after the rotate items. File starts with New from Clipboard, Open…, Open Recent; Rename…
+and "Flip Vertical  (V)" after the rotate items. File starts with New from Clipboard, Open…, Open Recent, Compare With… (and Stop Comparing while
+comparing); Rename…
 and Share follow Save As…. View has Sort By, then "Refresh  (F5)" (⌘R), then Follow New Files, then the slideshow items; Image ›
 "Random Image" follows Previous. The Window menu has Float on Top, then only the viewer windows: Batch and
 About open from their own commands.
@@ -366,6 +369,60 @@ Nothing is watched while it is off, so launch and browsing pay nothing.
   the animation, not the slideshow.
 - Image changes are cuts; the capsule fades by opacity only, which Reduce Motion keeps. Entering full
   screen is the system's animation.
+
+### Compare
+
+Two images side by side in the viewer window, as a mode of it (two windows can't stay in step).
+
+- File › "Compare With…" (⌥⌘O) opens an open panel for images, starting in the current image's folder,
+  with "Choose an image to compare with <name>"; the chosen file becomes the second pane. Chosen again
+  while comparing, it replaces the second image. Disabled without a current image, for an image whose
+  file is gone and in the grid. In the grid, Image › "Compare" compares the two selected thumbnails (in
+  list order), enabled with exactly two selected. Comparing a file with itself is allowed.
+- Layout: two panes of equal width, the first at the leading side (on the right in right-to-left
+  languages), a 1 pt divider between them. Each pane is its own canvas between the toolbar and its own
+  floating status strip: name · pixel size · zoom · file size · date; the position stays in the title.
+  The window never resizes. The info panel closes on entering; I does nothing. Title: "<first> and
+  <second>", then the first image's counter. The second pane's context menu: Swap Images, Stop
+  Comparing, Show in Finder.
+- In step (View › "Zoom and Pan in Step", on by default, remembered): content-aligned, not pixel for
+  pixel. The second picture is drawn at the first's zoom × min(w₁/w₂, h₁/h₂) of the displayed
+  (orientation-applied) sizes, so it covers the box the first is drawn in, centred, and the same detail
+  sits at the same place in both panes. Two images of the same size line up pixel for pixel; an image
+  and its resized copy line up too. At fit, the first fits and the second matches it (a smaller second
+  image is drawn enlarged; its strip shows its own zoom). Whichever pane is scrolled, dragged or pinched
+  leads, the other follows. Zoom keys, the toolbar's zoom buttons, 0–3 and pinch zoom the first pane,
+  the second follows. Zoom steps are cuts in compare (two animations would drift apart). At the edge of
+  the 5 %–1600 % range the panes stop lining up.
+- In step off: each pane keeps its own zoom and pan; zoom keys, 0–3 and pinch act on the pane last
+  clicked, scrolled or pinched (the first at first). Turning it on again snaps the second to the first.
+- Stepping: → ← Space ⌫ Page Up / Down Home End, the toolbar's arrows and swipes step the first pane
+  through the viewer's list as usual (end-of-folder rules and folder chooser unchanged); the second
+  stays. Zoom and the relative scroll position stay. Arrow keys pan the leading pane first when it has
+  something to pan.
+- Swap: X, View › "Swap Images  (X)" and a button on the second pane's strip (`arrow.left.arrow.right`,
+  tooltip "Swap Images (X)") exchange the files: the first pane shows the second file (selected in the
+  list when it is there, else the window opens its folder and stays in compare). Zoom stays. Disabled
+  while the second pane can't open.
+- Difference: D and View › "Show Difference  (D)" (ticked while on) show |first − second| per channel
+  (R, G, B) in the second pane, both flattened over black, not amplified. The second is scaled and
+  centred as for in step; outside it the first shows through. Computed off the main thread from the two
+  decodes on screen at the first's decoded size, recomputed when either changes; only the latest result
+  shows. The second pane then draws it exactly as the first draws its picture; its strip reads
+  "Difference". Available once both images are decoded; stays on across steps and swaps. While it is on
+  an animation in the first pane holds its first frame.
+- Leaving: Esc (a running slideshow ends first; in full screen the next Esc leaves full screen), File ›
+  "Stop Comparing", the close button on the second pane's strip (`xmark`, tooltip "Stop Comparing
+  (Esc)"), opening a file or folder into the window, T, starting a slideshow, and the list running
+  empty. The first image stays at its zoom; the second's decodes go.
+- Every command on "the current image" (R / L, H / V, ⌘C, S, F7 / F8, Trash, pages, Show in Finder,
+  Open With, Always Open…) acts on the first pane. The second shows page 1 and, for animations, the first
+  frame.
+- Memory: the second image's fit decode goes in the viewer's 8-image cache (a swap or a step onto that
+  file reuses it); beyond fit its zoom decode goes in a one-image cache that exists only while
+  comparing; plus one difference image. The second file joins the decode window right after the current
+  image, so a held arrow key never drops it.
+- The second image unreadable or gone: "Can't open <name>" in its pane; compare stays.
 
 ### Thumbnail grid
 

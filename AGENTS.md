@@ -117,13 +117,16 @@ Rule of thumb: if logic can be tested without a window, it belongs in Feathervie
 | First screen of thumbnails complete | < 400 ms for 12 MP JPEGs without a usable embedded thumbnail, < 150 ms for 12 MP HEICs with a 320 px embedded one (default size, 1220 × 700 window; `GridFill`) |
 | Scrolling a 10,000-file grid | no frame dropped by grid work (< 8 ms main-thread work per frame); when scrolling stops, the new screen completes within the row above |
 | Grid memory | thumbnail cache ≤ 3 × the largest screen's pixel area × 4 bytes, on top of the 8-image cache; Return to the image within the not-prefetched budget |
+| Compare With… to the second picture on screen | < 150 ms for a 12 MP JPEG (`CompareShow`); stepping the first pane keeps the next/previous budgets |
+| Difference on screen (D, or a step with it on) | < 100 ms after both decodes, 12 MP (`Difference`) |
+| Compare memory | on top of browsing: at most one fit image held by the second pane, one zoom decode and one difference image |
 
 How: decode off the main thread to fit the screen per axis, rounded up to full, ½, ¼ or ⅛ size (any size in between costs a slow resample; see `ImageDecoder.decodeSize`); HEIC/HEIF and own formats decode at the exact size instead (no slower, fewer bytes), prefetch 2 neighbours each
 way, never touch file contents while scanning a folder. Next/previous budgets are measured as the `Navigate` signpost (from `show()`, right after the key press, until Core Animation has
 committed the image, what the user sees), not the log line. Measure: the app logs how long each image
 took to appear — `log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'`.
 Without a window: `swift run -c release featherview-bench decode <dir>` (fit and full-size decode times; `--json` / `--baseline` to compare) and `browse <dir>/browse --interval-ms 300` (or 30, a held key).
-Instruments' Points of Interest shows the `Decode`, `Scan`, `Navigate`, `GridShow` and `GridFill` signposts and the `FirstImage` event (`Signposts.swift`); `featherview-bench grid` times thumbnail decodes without a window.
+Instruments' Points of Interest shows the `Decode`, `Scan`, `Navigate`, `GridShow`, `GridFill`, `CompareShow` and `Difference` signposts and the `FirstImage` event (`Signposts.swift`); `featherview-bench grid` times thumbnail decodes without a window.
 Use Instruments (Time Profiler) to find where time goes. Measure launches after a real quit (⌘Q), not after `pkill`: a killed app gets its window
 restored, which hides ~140 ms that every user who quit normally pays.
 
