@@ -31,7 +31,7 @@ has a German layout, so `+`/`−` were checked on the numpad and the German `+`/
 |---|---|---|---|
 | Window size | The window resizes to each image (and grows with zoom): small images at 100 %, large images shrunk to fit the screen. The window has a minimum width; small images are centred on black. | Decided: the window stays put; only the image changes. | v1 |
 | Fit default | Only images larger than the screen are shrunk; small ones stay at 100 %. | Same as spec ("never enlarges small ones"). | v1 |
-| Fit modes | Many fit modes exist (to window, to width, to height, to screen, none) with a few on Shift+letter keys. | Spec has fit (0) and actual size (1) only. | later |
+| Fit modes | Many fit modes exist (to window, to width, to height, to screen, none) with a few on Shift+letter keys. | Fit (0), actual size (1), zoom to width (2) and height (3); see "Zoom modes and flip". | v2 |
 | Zoom | `+` / `−` zoom in ×1.1 steps (100 → 110 → 121 %). The window grows with the zoom up to the screen size. | Decided: ×1.1 steps; window stays put. | v1 |
 | Actual size | Ctrl+H shows 100 %. Digits 0–9 do nothing. | Spec: `1` actual size, `0` fit (no clash). | v1 |
 | Title bar | Shows the filename and, when scaled, the displayed size in pixels. A leading `*` marks unsaved edits. | Spec: `filename — 3 / 120`. | v1 |
@@ -46,7 +46,7 @@ has a German layout, so `+`/`−` were checked on the numpad and the German `+`/
 |---|---|---|---|
 | Rotate | R / L rotate the displayed image right / left instantly. Not marked as an edit; navigating away discards the rotation silently and the file is unchanged. | Spec: R / L rotate losslessly and write it to the file (EXIF orientation). Ours is a deliberate difference. | v1 |
 | Lossless rotate | A separate dialog (Shift+J) does lossless JPEG rotation on files. | Covered by our R / L. | v1 |
-| Flip | V / H flip vertically / horizontally. | Not in spec (editing). | later |
+| Flip | V / H flip vertically / horizontally. | H / V flip losslessly, written to the file like R / L. | v2 |
 | Delete | Delete moves the current file to the Recycle Bin at once, with no confirmation. The deleted image stays on screen; the list shrinks; → continues with the next file. | Spec: ⌘⌫ and ⌦ move to Trash and show the next image (Mac convention, and the next image appears at once). | v1 |
 | Unsaved edits | Navigating away from an edited image discards the edit with no prompt. | We don't edit pixels, so nothing to discard. | won't (no pixel editing in v1) |
 | Info | I opens a modal dialog with file name, folder, compression, sizes, colours, file and memory size, list position, file date and load time. | Spec: I toggles a non-modal side panel with camera data. Consider adding load time to our log only. | v1 |
@@ -191,11 +191,11 @@ Same folder, window maximised.
 
 | Area | Observed behaviour | Featherview | Status |
 |---|---|---|---|
-| Fit modes | A submenu lists 12 mutually exclusive fit modes: window to image, image to window (all or only big ones), to window width, to window height, small side to window, the same five against the desktop, and none; the default is only big images to the desktop. A fit mode applies to every image after it until changed. | Zoom to Fit (0), Actual Size (1), Zoom to Width, Zoom to Height; the window stays put, so "desktop" variants aren't needed. | open |
-| Fit width / height | Fit to width fills the window's width, small images enlarged too (a 900-wide image at 277 %); a tall image starts at its top with a vertical scroll bar. Fit to height does the same for a wide image, starting at its left edge. | Same: fill the side, start at the top (width) or the leading edge (height); whether to enlarge small images follows Zoom to Fit's rule (never enlarge). | open |
-| Lock zoom | A toggle (Shift+L) keeps the zoom from image to image. It keeps the zoom it had when switched on: zooming further and moving on went back to that earlier value. Alone it doesn't keep the scroll position; each new image starts at its top-left corner. | View › Keep Zoom, following the current zoom (not a snapshot taken when switched on). | open |
-| Lock scroll | A second toggle (Ctrl+Shift+K) keeps the scroll position too: with both on, an image scrolled to its bottom-right showed the next one at its bottom-right. | Keep Zoom keeps the scroll position as well, one command (roadmap). | open |
-| Flip | H mirrors left–right, V upside down, instantly. The title shows no unsaved mark, moving on asks nothing and discards the flip; coming back shows the file unchanged. Same as rotate. | H / V in the Image menu, written to the file through the orientation tag, losslessly, like R / L. | open |
+| Fit modes | A submenu lists 12 mutually exclusive fit modes: window to image, image to window (all or only big ones), to window width, to window height, small side to window, the same five against the desktop, and none; the default is only big images to the desktop. A fit mode applies to every image after it until changed. | Zoom to Fit (0), Actual Size (1), Zoom to Width (2), Zoom to Height (3); the fit mode is remembered and applies to every new image; the window stays put, so "desktop" variants aren't needed. | v2 |
+| Fit width / height | Fit to width fills the window's width, small images enlarged too (a 900-wide image at 277 %); a tall image starts at its top with a vertical scroll bar. Fit to height does the same for a wide image, starting at its left edge. | Same: fill that side of the fit area, small images enlarged too; start at the top (width) or the leading edge (height; the right edge in Arabic and Hebrew). | v2 |
+| Lock zoom | A toggle (Shift+L) keeps the zoom from image to image. It keeps the zoom it had when switched on: zooming further and moving on went back to that earlier value. Alone it doesn't keep the scroll position; each new image starts at its top-left corner. | View › Keep Zoom (⇧L), off by default, remembered, following the current zoom (not a snapshot taken when switched on). | v2 |
+| Lock scroll | A second toggle (Ctrl+Shift+K) keeps the scroll position too: with both on, an image scrolled to its bottom-right showed the next one at its bottom-right. | Keep Zoom keeps the relative scroll position as well, one command. | v2 |
+| Flip | H mirrors left–right, V upside down, instantly. The title shows no unsaved mark, moving on asks nothing and discards the flip; coming back shows the file unchanged. Same as rotate. | H / V (Image menu, context menu, optional toolbar items) flip at once and write the file through the orientation tag, losslessly, like R / L (JPEG, HEIC, TIFF). | v2 |
 
 ## Slideshow
 

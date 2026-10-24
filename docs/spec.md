@@ -42,6 +42,26 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
   under the toolbar, so its title and buttons stay readable over any picture.
 - The window keeps its size and position when the image changes; it never resizes itself to the
   image. Zoom changes the image inside the window, not the window.
+- Zoom to Width (2) and Zoom to Height (3) fill that side of the fit area (the area Zoom to Fit uses,
+  clear of toolbar and strip, beside an open info panel), enlarging small images too, within
+  5 %–1600 %; the other side scrolls under the bars like any zoomed picture. From 2× on pixels show
+  sharp, as for any zoom. Window resize, the info panel and full screen refit at once.
+- Start edge: a new image in Zoom to Width starts at its top (centred sideways when narrower); in Zoom
+  to Height at its leading edge (centred vertically): the left edge, or the right edge in Arabic and
+  Hebrew. The picture itself never mirrors. Choosing either command on the image shown also goes to
+  that edge, animated as a zoom step (a cut with Reduce Motion). A new page counts as a new image.
+- Fit mode: Zoom to Fit (0), Zoom to Width (2) and Zoom to Height (3) set it (default Zoom to Fit,
+  remembered). Actual Size (1), + / − and pinch zoom only the image shown. With Keep Zoom off, every new
+  image (next, previous, first, last, after Trash or a move, a page, opening a file or folder, a new
+  window) starts in the fit mode at its start edge.
+- Keep Zoom (View › Keep Zoom, ⇧L, ticked while on; default off, remembered): a new image keeps the
+  zoom of the one before, factor or fit mode, and its scroll position: the point at the centre of the
+  clear area keeps its fraction of the picture's width and height, so a same-sized series shows the
+  same pixels and bottom-right stays bottom-right. It follows the current zoom, never one taken when
+  it was switched on.
+- A fill mode's zoom decodes at the next halving step like any zoom: into the 8-image cache when that is
+  no larger than the image's fit decode, else into the one-image full-size cache, so browsing images
+  that need more than their fit decode isn't prefetched (the not-prefetched budget applies).
 - EXIF orientation is always applied.
 - Status bar (milestone 3): one line along the bottom of the window, on by
   default, showing the image's pixel size, zoom %, file size, position N / M and the file's
@@ -64,10 +84,13 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 | Home / End | first / last image |
 | ← → ↑ ↓ when the image is larger than the window | pan instead of changing images |
 | R / L | rotate right / left (lossless) |
+| H / V | flip horizontal / vertical (lossless, see "Rotate and flip") |
 | I | toggle info panel |
 | F, Return | toggle full screen; Esc leaves full screen (and never quits the app) |
 | 0 | zoom to fit |
 | 1 | actual size (1 image pixel = 1 screen pixel) |
+| 2 / 3 | zoom to width / zoom to height |
+| ⇧L | Keep Zoom on / off (Caps Lock L still rotates left) |
 | + / − | zoom in / out (×1.1 steps, 5 %–1600 %) |
 | ⌥→ / ⌥← | next / previous page of a multi-page file (TIFF, …); nothing past either end |
 | F7 / F8 | move / copy the current file to a folder (see below) |
@@ -85,7 +108,7 @@ Single keys for commands match the reference viewer, for people switching over; 
 - Dragging pans a zoomed image (the image follows the pointer); it does nothing when the image
   fits. No selection rectangle.
 - Right-click (or Control-click) opens a context menu with the window's actions: Copy, Rotate
-  Left / Right, Rename…, Move to Folder…, Copy to Folder…, Move to Trash, Show in Finder, Open With,
+  Left / Right, Flip Horizontal / Vertical, Rename…, Move to Folder…, Copy to Folder…, Move to Trash, Show in Finder, Open With,
   Share, Set as Desktop Picture.
 - A click on the file name in the window title renames the file (see "Rename"); dragging the title
   still moves the window.
@@ -102,7 +125,10 @@ For mouse users, the viewer window has a standard macOS toolbar: previous,
 next, rotate left, rotate right, zoom out, zoom to fit, zoom in, info panel, Share (`square.and.arrow.up`, tooltip
 "Share"), Move to Trash, plus previous / next page
 for a multi-page file only. Each button does what its key does and has a tooltip naming that key. View › Hide Toolbar hides it
-(remembered), and View › Customize Toolbar… changes it, as in any Mac app. Hidden in full screen; it slides in with the menu bar when the pointer is at the top (macOS 15 and later).
+(remembered), and View › Customize Toolbar… changes it, as in any Mac app. Customize Toolbar… also
+offers five items that aren't in the default set: Flip Horizontal (tooltip "Flip horizontal (H)"), Flip
+Vertical ("Flip vertical (V)"), Zoom to Width ("Zoom to width (2)"), Zoom to Height ("Zoom to height (3)")
+and Keep Zoom (a toggle, `pin`, "Keep zoom (⇧L)"). Hidden in full screen; it slides in with the menu bar when the pointer is at the top (macOS 15 and later).
 
 "Hide toolbar and status bar while viewing" (Settings › Viewer, off): in a window, once the
 pointer has rested over the picture for 2 s, the toolbar and status strip fade out (200 ms). Moving
@@ -123,7 +149,9 @@ menu is open, so typing in the batch window's text fields never triggers viewer 
 Like Finder and Preview, File holds what acts on the file (Open, Open Recent, Save As…, Rename…, Share, Move /
 Copy to Folder…, Move to Trash, Show in Finder, Open With, Always Open with Featherview, Batch Convert…) and Image
 what moves through or changes the picture (Next / Previous, pages and frames, rotate and flip, Adjust Date
-Taken…, Set as Desktop Picture, Show Info). File starts with New from Clipboard, Open…, Open Recent; Rename…
+Taken…, Set as Desktop Picture, Show Info). View lists "Zoom to Fit  (0)", "Actual Size  (1)", "Zoom to
+Width  (2)", "Zoom to Height  (3)", Zoom In, Zoom Out, then "Keep Zoom  (⇧L)"; Image has "Flip Horizontal  (H)"
+and "Flip Vertical  (V)" after the rotate items. File starts with New from Clipboard, Open…, Open Recent; Rename…
 and Share follow Save As…. View has Sort By, then "Refresh  (F5)" (⌘R), then Follow New Files; Image ›
 "Random Image" follows Previous. The Window menu has Float on Top, then only the viewer windows: Batch and
 About open from their own commands.
@@ -142,15 +170,22 @@ and the crashed thread's first 15 frames) in a "Crash report" field. Nothing is 
 Featherview's own reports count (its process, not the extensions'); only reports newer than the last one
 offered.
 
-### Rotate
+### Rotate and flip
 
-Lossless: only the EXIF orientation tag changes. Supported for JPEG, HEIC and TIFF; other
-formats show "Lossless rotation works with JPEG, HEIC and TIFF only". The file is rewritten
-through a temp file and swapped in, so a failure (e.g. read-only folder) leaves the original
-untouched and shows "Couldn't rotate <name>".
+Lossless: only the EXIF orientation tag changes. Supported for JPEG, HEIC and TIFF (by content, not
+extension; HEIC sequences are not); other formats show "Lossless rotation works with JPEG, HEIC and
+TIFF only". The file is rewritten through a temp file and swapped in, so a failure (e.g. read-only
+folder) leaves the original untouched and shows "Couldn't rotate <name>".
 In a multi-page TIFF only page 1 can be rotated: ImageIO can't change a later page's tag without
 re-encoding every page, so pages 2 and on show "Only page 1 of <name> can be rotated losslessly"
 and the file stays untouched.
+
+Flip Horizontal (H) and Flip Vertical (V) mirror the picture as shown (left–right / top–bottom),
+whatever its orientation, and write it the same way, through the same queue as rotate (one change at a
+time, none lost). Same formats and limits, with "Lossless flipping works with JPEG, HEIC and TIFF only",
+"Only page 1 of <name> can be flipped losslessly" and "Couldn't flip <name>". A flip shows at once, with
+no animation; a rotation keeps its animated turn. R on a mirrored picture still turns it clockwise on
+screen.
 
 ### Refresh
 
