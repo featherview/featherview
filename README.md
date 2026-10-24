@@ -96,8 +96,8 @@ blocks the first launch. To open it anyway:
 
 Or in Terminal: `xattr -dr com.apple.quarantine /Applications/Featherview.app`
 
-Want to help? Sponsoring the $99/year Apple Developer Program would let us sign and notarize
-releases, so none of this is needed.
+Want to help? [Sponsoring](https://github.com/sponsors/mynetx) the $99/year Apple Developer Program
+would let us sign and notarize releases, so none of this is needed.
 
 ## Updates
 
