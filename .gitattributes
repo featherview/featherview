@@ -1,0 +1,3 @@
+# Vendored C libraries: left out of GitHub's language stats
+Sources/CJPEGXL/** linguist-vendored
+Sources/CJPEGXR/jxrlib/** linguist-vendored
