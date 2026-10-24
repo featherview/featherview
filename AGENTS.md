@@ -35,7 +35,7 @@ It must never derive from another product's code or assets. Its *behaviour* may 
 |---|---|
 | Language | Swift 6, strict concurrency (the package's default language mode) |
 | UI | SwiftUI app shell, AppKit where SwiftUI lacks something (open panels, full screen) |
-| Imaging | ImageIO first (decode/encode/metadata). A third-party codec only for a format ImageIO can't handle (today: WebP encoding; JPEG XL encoding in v2) |
+| Imaging | ImageIO first (decode/encode/metadata). A third-party codec only for a format ImageIO can't handle (today: WebP and JPEG XL encoding) |
 | Dependencies | Open-source codec libraries are allowed if all hold: permissive licence (BSD/MIT/Apache/zlib), built from source by SwiftPM (C target or package, no prebuilt binaries), used only when that format is read or written, and no measurable cost to the performance budgets (launch, browsing, memory). Anything else: ask first. Record each one in README.md with its licence. |
 | Build | Swift Package Manager + `scripts/bundle.sh` (no .xcodeproj) |
 | Tests | Swift Testing (`import Testing`, `@Test`, `#expect`) in `Tests/FeatherviewCoreTests` |

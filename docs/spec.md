@@ -767,7 +767,8 @@ window, nothing to configure.
   Bug…), all opening the browser.
 - "Supported formats": two lists, read and write, built at runtime from ImageIO plus our own
   encoders (see "Formats"), with the macOS version they come from.
-- "MIT License" and "Acknowledgements": the licence text of every bundled library (libwebp, jxrlib), each
+- "MIT License" and "Acknowledgements": the licence text of every bundled library (libwebp, jxrlib, libjxl with
+  Highway, Brotli and skcms), each
   in a scrollable sheet. Copyright line.
 - Clicking the version shows a small "Copy" bubble (as a value in iOS settings does); it copies
   version, macOS version and Mac model as text, for bug reports.
@@ -863,8 +864,22 @@ the About window.
 - Write (own encoders, pure Swift, no dependency): PBM, PGM, PPM, QOI, PCX. PBM is real 1-bit
   plain PBM (P1, the only PBM macOS reads), black and white at a 50% threshold (ImageIO's PBM writer writes
   colour ASCII PPM under the .pbm name).
-- Write (open-source encoder, per `AGENTS.md`): WebP (libwebp, BSD).
-- Writing JPEG XL is v2 (needs libjxl, a large C++ build). Reading JPEG XL works in v1 via ImageIO.
+- Write (open-source encoder, per `AGENTS.md`): WebP (libwebp, BSD), JPEG XL (libjxl, BSD).
+- JPEG XL is always written by libjxl, never ImageIO (macOS reads JPEG XL but writes none; should a
+  later macOS add a writer it stays hidden, so options and output are the same on every version). Only
+  the app links libjxl; the Finder extensions don't.
+  - Colour: an RGB image in an ICC-based colour space is written in that space (with its profile;
+    plain sRGB as JPEG XL's own sRGB, no profile bytes); grey, CMYK, indexed, extended-range and HDR
+    (PQ / HLG) spaces are converted to sRGB. 8 bits per sample, or 16 when the image has more than 8
+    (a 16-bit PNG or TIFF saved lossless stays lossless). SDR only: HDR output stays a HEIC / AVIF
+    feature.
+  - Alpha is written only when the image has it (premultiplied); an opaque image has three channels.
+  - Metadata, with "keep metadata": the source's EXIF, TIFF, GPS and IPTC fields as XMP in one `xml `
+    box, without orientation and pixel dimensions; no `Exif` box. Pixels are upright, the stored
+    orientation is always 1. DPI isn't written (JPEG XL has no field for it).
+  - Speed and memory: each encode uses libjxl's threads, and at most two JPEG XL encodes run at once (one
+    12 MP encode needs about 550 MB). A 12 MP photo at quality 90, effort 7 takes about 1.4 s.
+  - Lossless JPEG recompression (JPEG XL's JPEG transcoding) is not offered.
 - HDR display (milestone 3): images with HDR data (gain-map HEIC/JPEG from
   phones, HDR AVIF/HEIC, OpenEXR, Radiance HDR) show with their extra brightness on screens that
   support it, on macOS 15 and later. Only those images decode at 16 bits (twice the memory); all
@@ -884,6 +899,7 @@ the About window.
 | PDF | one page per image at the image's size; JPEG quality 1–100 for the image (default 95) or lossless (paper sizes later) |
 | GIF, TGA, BMP, PSD, OpenEXR, PBM | none |
 | ICO, ICNS | none; the image is scaled to fit a transparent square of 256 px (ICO) or 512 px (ICNS), or the next allowed size up for smaller images (16, 32, 128, 256, 512), never enlarged beyond it |
+| JPEG XL | lossless (default off), quality 1–100 (default 90, visually lossless; never below libjxl's distance 0.1), effort 1–9 (default 7; "Higher is slower and makes smaller files"), keep metadata (default on, "Keep camera data, location and keywords") |
 | WebP | preset photo (default) / picture / drawing / icon / text, lossless, quality 1–100 (default 75), effort 0–6 (default 4) |
 
 After testing ImageIO on macOS 27: it can't write JPEG without chroma subsampling
