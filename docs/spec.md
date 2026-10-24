@@ -42,6 +42,26 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
   under the toolbar, so its title and buttons stay readable over any picture.
 - The window keeps its size and position when the image changes; it never resizes itself to the
   image. Zoom changes the image inside the window, not the window.
+- Zoom to Width (2) and Zoom to Height (3) fill that side of the fit area (the area Zoom to Fit uses,
+  clear of toolbar and strip, beside an open info panel), enlarging small images too, within
+  5 %–1600 %; the other side scrolls under the bars like any zoomed picture. From 2× on pixels show
+  sharp, as for any zoom. Window resize, the info panel and full screen refit at once.
+- Start edge: a new image in Zoom to Width starts at its top (centred sideways when narrower); in Zoom
+  to Height at its leading edge (centred vertically): the left edge, or the right edge in Arabic and
+  Hebrew. The picture itself never mirrors. Choosing either command on the image shown also goes to
+  that edge, animated as a zoom step (a cut with Reduce Motion). A new page counts as a new image.
+- Fit mode: Zoom to Fit (0), Zoom to Width (2) and Zoom to Height (3) set it (default Zoom to Fit,
+  remembered). Actual Size (1), + / − and pinch zoom only the image shown. With Keep Zoom off, every new
+  image (next, previous, first, last, after Trash or a move, a page, opening a file or folder, a new
+  window) starts in the fit mode at its start edge.
+- Keep Zoom (View › Keep Zoom, ⇧L, ticked while on; default off, remembered): a new image keeps the
+  zoom of the one before, factor or fit mode, and its scroll position: the point at the centre of the
+  clear area keeps its fraction of the picture's width and height, so a same-sized series shows the
+  same pixels and bottom-right stays bottom-right. It follows the current zoom, never one taken when
+  it was switched on.
+- A fill mode's zoom decodes at the next halving step like any zoom: into the 8-image cache when that is
+  no larger than the image's fit decode, else into the one-image full-size cache, so browsing images
+  that need more than their fit decode isn't prefetched (the not-prefetched budget applies).
 - EXIF orientation is always applied.
 - Status bar (milestone 3): one line along the bottom of the window, on by
   default, showing the image's pixel size, zoom %, file size, position N / M and the file's
@@ -64,14 +84,25 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 | Home / End | first / last image |
 | ← → ↑ ↓ when the image is larger than the window | pan instead of changing images |
 | R / L | rotate right / left (lossless) |
+| H / V | flip horizontal / vertical (lossless, see "Rotate and flip") |
 | I | toggle info panel |
 | F, Return | toggle full screen; Esc leaves full screen (and never quits the app) |
 | 0 | zoom to fit |
 | 1 | actual size (1 image pixel = 1 screen pixel) |
+| 2 / 3 | zoom to width / zoom to height |
+| ⇧L | Keep Zoom on / off (⇧L and ⇧A are the only Shift letters; Caps Lock L still rotates left) |
 | + / − | zoom in / out (×1.1 steps, 5 %–1600 %) |
 | ⌥→ / ⌥← | next / previous page of a multi-page file (TIFF, …); nothing past either end |
 | F7 / F8 | move / copy the current file to a folder (see below) |
 | F5 | refresh the folder (also ⌘R; see "Refresh") |
+| F2 | rename the current file (see "Rename") |
+| T | thumbnail grid on / off (also ⇧⌘T; see "Thumbnail grid") |
+| Space in the grid | Quick Look of the selection |
+| W | start / end the slideshow in full screen (also ⇧⌘F; see "Slideshow") |
+| ⇧A | play the slideshow in the window / stop it |
+| Space during a slideshow | pause / resume |
+| X / D, compare only | swap the images / show the difference (see "Compare") |
+| Esc, compare only | stop comparing (in full screen the next Esc leaves full screen) |
 | ⌦ (forward delete) | Move to Trash, like ⌘⌫ |
 | O / B / M | Open… / Batch Convert… / minimise the window (as ⌘O / ⌘B / ⌘M) |
 | P / A / S | Settings / About / Save As…, each added with its feature (milestones 2–3) |
@@ -84,7 +115,10 @@ Single keys for commands match the reference viewer, for people switching over; 
 - Dragging pans a zoomed image (the image follows the pointer); it does nothing when the image
   fits. No selection rectangle.
 - Right-click (or Control-click) opens a context menu with the window's actions: Copy, Rotate
-  Left / Right, Move to Folder…, Copy to Folder…, Move to Trash, Show in Finder, Open With.
+  Left / Right, Flip Horizontal / Vertical, Adjust Date Taken…, Rename…, Move to Folder…, Copy to Folder…, Move to Trash, Show in Finder, Open With,
+  Share, Set as Desktop Picture; during a slideshow Pause / Resume Slideshow and End Slideshow come first.
+- A click on the file name in the window title renames the file (see "Rename"); dragging the title
+  still moves the window.
 - Two-finger scroll (or a mouse wheel) pans a zoomed image.
 - Pinch zooms in and out about the pointer, following the fingers (no animation), within the
   same 5 %–1600 % as + / −.
@@ -95,9 +129,13 @@ Single keys for commands match the reference viewer, for people switching over; 
 ### Toolbar
 
 For mouse users, the viewer window has a standard macOS toolbar: previous,
-next, rotate left, rotate right, zoom out, zoom to fit, zoom in, info panel, Move to Trash, plus previous / next page
+next, thumbnails, rotate left, rotate right, zoom out, zoom to fit, zoom in, info panel, Share (`square.and.arrow.up`, tooltip
+"Share"), Move to Trash, plus previous / next page
 for a multi-page file only. Each button does what its key does and has a tooltip naming that key. View › Hide Toolbar hides it
-(remembered), and View › Customize Toolbar… changes it, as in any Mac app. Hidden in full screen; it slides in with the menu bar when the pointer is at the top (macOS 15 and later).
+(remembered), and View › Customize Toolbar… changes it, as in any Mac app. Customize Toolbar… also
+offers five items that aren't in the default set: Flip Horizontal (tooltip "Flip horizontal (H)"), Flip
+Vertical ("Flip vertical (V)"), Zoom to Width ("Zoom to width (2)"), Zoom to Height ("Zoom to height (3)")
+and Keep Zoom (a toggle, `pin`, "Keep zoom (⇧L)"). Hidden in full screen; it slides in with the menu bar when the pointer is at the top (macOS 15 and later).
 
 "Hide toolbar and status bar while viewing" (Settings › Viewer, off): in a window, once the
 pointer has rested over the picture for 2 s, the toolbar and status strip fade out (200 ms). Moving
@@ -108,7 +146,7 @@ Mac SF Symbols, never icons taken from another viewer.
 
 ### Menu commands
 
-⌘O Open…, ⌘⌫ Move to Trash, ⌘B Batch Convert…, ⇧⌘S Save As… (the current image in any writable format, with that format's options, orientation
+⌘N New from Clipboard, ⌘O Open…, ⌥⌘O Compare With…, ⇧⌘F Start / End Slideshow, ⌘⌫ Move to Trash, ⌘B Batch Convert…, ⇧⌘S Save As… (the current image in any writable format, with that format's options, orientation
 applied, never overwriting without the standard Mac replace prompt; afterwards the window shows the saved file in its folder; if Featherview can't read the format it saved, the window stays on the original), ⌘C Copy (the current image, full resolution,
 orientation applied), ⌘Q Quit. Menus also list the single-key commands
 (the single key in the shortcut column, also for commands that have a ⌘ shortcut, which keeps
@@ -118,9 +156,13 @@ menu is open, so typing in the batch window's text fields never triggers viewer 
 Like Finder and Preview, File holds what acts on the file (Open, Open Recent, Save As…, Rename…, Share, Move /
 Copy to Folder…, Move to Trash, Show in Finder, Open With, Always Open with Featherview, Batch Convert…) and Image
 what moves through or changes the picture (Next / Previous, pages and frames, rotate and flip, Adjust Date
-Taken…, Set as Desktop Picture, Show Info). View › "Refresh  (F5)" (⌘R) follows Sort By; Image › "Random
-Image" follows Previous. The Window menu lists only the viewer windows: Batch and About open
-from their own commands.
+Taken…, Set as Desktop Picture, Show Info). View lists "Zoom to Fit  (0)", "Actual Size  (1)", "Zoom to
+Width  (2)", "Zoom to Height  (3)", Zoom In, Zoom Out, then "Keep Zoom  (⇧L)"; Image has "Flip Horizontal  (H)"
+and "Flip Vertical  (V)" after the rotate items. File starts with New from Clipboard, Open…, Open Recent, Compare With… (and Stop Comparing while
+comparing); Rename…
+and Share follow Save As…. View has Sort By, then "Refresh  (F5)" (⌘R), then Follow New Files, then the slideshow items; Image ›
+"Random Image" follows Previous. The Window menu has Float on Top, then only the viewer windows: Batch and
+About open from their own commands.
 
 The app menu has Check for Updates… below About (see "Updates"). The Help menu repeats About's links:
 Featherview Website and Source Code (browser); Supported Formats, MIT License and Acknowledgements
@@ -136,15 +178,37 @@ and the crashed thread's first 15 frames) in a "Crash report" field. Nothing is 
 Featherview's own reports count (its process, not the extensions'); only reports newer than the last one
 offered.
 
-### Rotate
+### Rotate and flip
 
-Lossless: only the EXIF orientation tag changes. Supported for JPEG, HEIC and TIFF; other
-formats show "Lossless rotation works with JPEG, HEIC and TIFF only". The file is rewritten
-through a temp file and swapped in, so a failure (e.g. read-only folder) leaves the original
-untouched and shows "Couldn't rotate <name>".
+Lossless: only the EXIF orientation tag changes. Supported for JPEG, HEIC and TIFF (by content, not
+extension; HEIC sequences are not); other formats show "Lossless rotation works with JPEG, HEIC and
+TIFF only". The file is rewritten through a temp file and swapped in, so a failure (e.g. read-only
+folder) leaves the original untouched and shows "Couldn't rotate <name>".
 In a multi-page TIFF only page 1 can be rotated: ImageIO can't change a later page's tag without
 re-encoding every page, so pages 2 and on show "Only page 1 of <name> can be rotated losslessly"
 and the file stays untouched.
+
+Flip Horizontal (H) and Flip Vertical (V) mirror the picture as shown (left–right / top–bottom),
+whatever its orientation, and write it the same way, through the same queue as rotate (one change at a
+time, none lost). Same formats and limits, with "Lossless flipping works with JPEG, HEIC and TIFF only",
+"Only page 1 of <name> can be flipped losslessly" and "Couldn't flip <name>". A flip shows at once, with
+no animation; a rotation keeps its animated turn. R on a mirrored picture still turns it clockwise on
+screen.
+
+### Adjust Date Taken
+
+Image › "Adjust Date Taken…" (no key; also in the context menu; enabled as Rotate is, and in the grid
+while cells are selected) opens a sheet "Adjust Date Taken": "Original" (the date taken, or "None, file
+date …"; "and 3 more" for a grid selection) and "Adjusted" (a date-and-time picker with seconds,
+starting at the original), the note "The file's date changes too.", Cancel and Adjust (disabled while
+the date is unchanged). Adjust changes the file in place, losslessly, as the batch's Date Taken step
+does: a rewrite to a temp file next to it, swapped in (a symlink's target is changed), then its modified
+and created dates follow; a failure leaves the original untouched. Only JPEG, HEIC, TIFF and PSD (by
+content); for one file of another type: "The date taken can be changed in JPEG, HEIC, TIFF and PSD
+files only", any other failure "Can't change the date taken of <name>". On a grid selection the first
+selected file gets the adjusted date and the others shift by the same amount, as Photos does; one
+failure never stops the rest ("3 files couldn't be changed"). The info panel, status strip and grid
+refresh afterwards.
 
 ### Refresh
 
@@ -160,13 +224,278 @@ It has no single key: the menu item only.
 
 ### Desktop picture
 
-Image › "Set as Desktop Picture" is a submenu: Fill Screen (the default), Fit to Screen, Stretch to
-Fill Screen, Center. Every screen gets the picture. Fit and Center leave the rest of the screen black.
+Image › "Set as Desktop Picture" (also in the context menu) is a submenu: Fill Screen (the default), Fit
+to Screen, Stretch to Fill Screen, Center. Every screen gets the picture, with no confirmation (System
+Settings undoes it); the file is used where it is. Fit and Center leave the rest of the screen black.
+Only for files macOS itself shows (not Featherview's own formats, not PDF); otherwise disabled. Failure:
+"Couldn't set <name> as the desktop picture".
 
-### Thumbnails
+### Open Recent
 
-Hovering a cell shows its name, then pixel size, file size, position ("3 / 120") and date, read when
-the pointer arrives (never while scrolling). A file that can't be opened keeps "Can't open <name>".
+File › Open Recent lists the system's recent documents, newest first, as many as System Settings ›
+Desktop & Dock › "Recent documents" allows (10 by default), then "Clear Menu"; empty, it shows "No Recent
+Files". Items show the file or folder name; two items with the same name get " — <folder>" after it.
+Files that are gone or in the Trash are left out (checked when the app becomes active and after its own
+moves and Trash). Counted as opened: an image or folder opened with ⌘O / O, dropped on the window,
+opened from Finder or the Dock, chosen in Open Recent, the file New from Clipboard opens, and a file
+written by Save As. Not counted: browsing, the folder chooser, Follow New Files, compare. A renamed or
+moved file keeps its entry (the system follows the file). The Dock menu shows the same list, kept by
+macOS itself; it may show a renamed file's old name until macOS refreshes it. The list is read after the
+first image is drawn, never on the launch path.
+
+### Rename
+
+File › "Rename…  (F2)", F2, the context menu's Rename… or a click on the file name in the window title
+turns the title's name into a text field, as Preview does: the whole name, the part before the extension
+selected, as Finder does. Return renames; clicking elsewhere renames too; Esc cancels. In full screen or
+with the toolbar hidden the same field shows in a small sheet ("Rename", Cancel / Rename).
+
+- Spaces and line breaks at either end are trimmed; an unchanged or empty name does nothing.
+- Refused, with a message in the window's message box (under the field in the sheet): "A name can't contain “/” or “:”." (also for control
+  characters), "A name can't start with “.”: the file would be hidden.", "That name is too long." (more
+  than 255 UTF-16 units), "“B.jpg” is already taken. Choose a different name.". Return keeps the field
+  open on a refusal. Nothing is ever overwritten; a name differing only in case renames. Any other
+  failure: "Couldn't rename <name>".
+- A changed extension asks first, as Finder does: "Are you sure you want to change the extension from
+  “.jpg” to “.png”?" (or "… remove the extension “.jpg”?"), "The image may then open in another app, or
+  not at all.", buttons "Keep .jpg" (default) and "Use .png" (or "Remove").
+- Sidecars (`.xmp`, `.aae`, `.thm`) follow under the new name with their own extension while "move,
+  copy and trash sidecar files" is on. If a sidecar's new name is taken, nothing is renamed and the
+  message names that sidecar.
+- Afterwards the title shows the new name, the list re-sorts in the current sort order and the
+  position updates; the picture stays on screen without a new decode. Disabled in the thumbnail grid,
+  for an image whose file is gone and for an unsaved clipboard image. Waits for a rotation, move or
+  Trash in progress, like they wait for each other.
+
+### Sort By
+
+View › Sort By: Name (Finder order), Date Modified, Date Taken, Size, Kind, then Ascending /
+Descending, ticked on the current choice. Global and remembered (default Name, Ascending): every
+viewer window re-sorts at once and every folder opens in it. Changing it keeps the current image on
+screen and updates its position.
+
+- Ties, and files whose value can't be read, fall back to name order, ascending; missing values go
+  last in both directions. Name Descending is Finder order reversed.
+- Date Taken is EXIF `DateTimeOriginal`, else the modification date. Kind is the system's name for the
+  extension's type ("JPEG image"), else the extension in capitals.
+- Name, Date Modified, Size and Kind read no file contents, so a folder opens on its first image in that
+  order within the open budget. Date Taken reads every file's header: the folder opens in name order,
+  its first image by name shows at once, the dates are read in the background, then the list re-sorts
+  with the shown image kept. Nothing blocks.
+
+### Share
+
+A toolbar button, File › Share and Share in the context menu open the system's share picker for the
+current file (Mail, Messages, AirDrop, …). Disabled in the grid, for an image whose file is gone and for
+an unsaved clipboard image.
+
+### Float on Top
+
+Window › "Float on Top" (ticked while on) keeps that window above other apps' windows. Per window, not
+remembered across launches, as in QuickTime Player. Disabled in full screen.
+
+### New from Clipboard
+
+File › "New from Clipboard" (⌘N), first in the File menu, shows the clipboard's image in the window in
+use (the last active one when none is), covering its list: the list stays behind it, unchanged.
+
+- A copied image file Featherview reads (Finder's Copy) opens that file, as ⌘O would. Otherwise the
+  first image type on the clipboard that ImageIO decodes (PNG, TIFF, JPEG, HEIC, …), full size,
+  orientation applied. Disabled when neither is there (checked when the app becomes active, when a menu
+  opens and on ⌘N). An image that can't be decoded shows "Can't open the image on the clipboard".
+- It ends a slideshow, the grid and compare and closes the folder chooser, the F7 / F8 panel and the
+  info panel. It shows as an unsaved image: title "Untitled" with the window's edited dot, status strip
+  with pixel size and zoom only. Zoom, full screen, ⌘C and Save As work; everything that acts on a file
+  is disabled.
+- Save As (S, ⇧⌘S) writes it in any writable format, named "Untitled", in the list's folder (else
+  Pictures), then shows the saved file in its folder.
+- Leaving it asks first, in a sheet: "Do you want to save the image from the clipboard?" / "If you
+  don't save it, it's gone." with Save… (default), Don't Save (⌘D) and Cancel. Asked for every key that
+  moves to another image, ⌘O / O, a drop, a Finder file sent to this window, Open Recent, ⌘N again,
+  closing the window and ⌘Q (once per unsaved image). Save… saves into the list and then carries on with
+  what was asked. After leaving, the image shown before shows again (Home / End go to the first / last).
+
+### Follow New Files
+
+View › "Follow New Files" (ticked while on): per window, off by default, not remembered, disabled
+without a folder. While on, the window watches its folder. After the folder has been quiet for 200 ms
+it rescans the names, adds new images to the list in sort order and drops vanished ones, then shows the
+newest arrival (latest modification date) once its size is above zero and has stayed the same for
+250 ms, so a file still being copied or exported isn't shown half-written (given up after 30 s). A burst
+of files shows its newest once. Arrivals don't interrupt a rename field, the folder chooser or the F7 /
+F8 panel: the list takes them, the window stays. While an unsaved clipboard image shows, the rescan waits
+until it is left. A current file deleted elsewhere stays on screen until the next key. Opening another
+folder moves the watch there; the folder renamed or deleted, or the window closed, turns following off.
+Nothing is watched while it is off, so launch and browsing pay nothing.
+
+### Slideshow
+
+- View › "Start Slideshow  (W)" (⇧⌘F, Preview's shortcut) plays the viewer's list in full screen from
+  the current image; View › "Play in Window  (⇧A)" plays it in the window. While one runs they read "End
+  Slideshow  (W)" and "Stop Playing  (⇧A)", and "Pause Slideshow  (Space)" / "Resume Slideshow  (Space)"
+  appears; the context menu gets Pause / Resume Slideshow and End Slideshow at its top. Disabled without
+  a current image and while the folder is still being listed. W or ⇧A in the grid start from the focused
+  cell. Starting leaves compare.
+- View › "Slideshow Options" (a submenu, so it can be changed mid-show from the menu bar that slides in
+  over full screen): "Show Each Image For" 1, 2, 3, 5, 10, 20, 30 or 60 seconds (default 5), then
+  "Shuffle" and "Repeat" (both off). All remembered; no Settings entry.
+- Order: from the current image to the end of the list, then the end. Shuffle: the current image first,
+  then every other image once in random order. With Repeat each further round is the whole list,
+  shuffled anew, never starting with the image the last round ended on. Shuffle never changes the
+  viewer's list: afterwards ← / → go to the shown image's Finder neighbours, and the title and overlay
+  show its Finder position.
+- Changing options while playing: a new interval applies to the image on screen at once (counted from
+  when it showed); toggling Shuffle restarts the round from the image on screen in the new order; Repeat
+  only changes what happens at the end.
+- Timing: an image's interval starts when it is on screen. A next image not decoded by its due time
+  shows as soon as it is, and its interval counts from then; ticks never queue up. Started from a
+  window, the first interval starts once the window is in full screen. A step, a rotation, a zoom or a
+  page change gives the image a full interval again; so does resuming after a pause.
+- While a slideshow runs, prefetch follows the play order (at fit the next two and the previous one,
+  zoomed the next and the previous one, into the next round with Repeat), so each change is a
+  prefetched swap.
+- While it plays (not paused or finished) in a visible window, the display doesn't sleep; the Mac may
+  still sleep. Minimized, fully covered or on another Space, the slideshow waits and goes on with a full
+  interval when visible again.
+- Full screen only: a small glass capsule at the bottom centre (Previous, Play / Pause, Next, End;
+  tooltips "Previous (←)", "Pause (Space)" / "Play (Space)", "Next (→)", "End slideshow (Esc)") shows
+  when the pointer moves and fades out after 2 s at rest unless the pointer is over it; paused or
+  finished it stays up. The pointer hides with it when Settings › Full Screen › "Hide the pointer" is on,
+  never on each image change. Playing in the window shows no capsule.
+- The end (Repeat off): after the last image's interval the slideshow is finished: it stays on that
+  image (in full screen if it was), Space or Play plays a new round from the start, → does nothing and ←
+  goes back, paused. Esc, W or ⇧⌘F go back to the window on the image shown; ⇧A stops in place.
+- Esc, W and ⇧⌘F end the slideshow and leave full screen if the window is in it; ⇧A ends it and leaves
+  the window as it is. F, Return, double-click and the green button toggle full screen and the slideshow
+  goes on in the other form.
+- Keys while it runs (everything else as in the viewer): → ↓ Page Down and a swipe step to the next
+  image in play order, ← ↑ ⌫ Page Up to the previous (panning a zoomed image first); paused stays
+  paused; nothing past either end (with Repeat, → past the end starts the next round). The folder
+  chooser never opens. Space pauses and resumes. Home, End and Random Image do nothing. R / L, H / V, ⌦
+  / ⌘⌫, F7 / F8, S, ⌘C, I, G, ⌥→ / ⌥←, 0–3, + / − work, so a slideshow can be used to cull: Trash or a
+  move takes the image out of the play order and the next one in play order shows at once ("show the
+  next image" off doesn't hold it here; at the end of the order the previous one shows); the last image
+  gone ends the slideshow. While a panel, sheet or alert is open a due image waits a full interval more.
+- Opening a file or folder, compare, T (the grid) and closing the window end the slideshow.
+- Unreadable files are skipped at once in the direction of travel, without a message (turning back at
+  an end of the order). When every image failed in a row it finishes on the last one with its "Can't
+  open <name>".
+- Animated images play while on screen; the interval alone decides when the next image comes. G pauses
+  the animation, not the slideshow.
+- Image changes are cuts; the capsule fades by opacity only, which Reduce Motion keeps. Entering full
+  screen is the system's animation.
+
+### Compare
+
+Two images side by side in the viewer window, as a mode of it (two windows can't stay in step).
+
+- File › "Compare With…" (⌥⌘O) opens an open panel for images, starting in the current image's folder,
+  with "Choose an image to compare with <name>"; the chosen file becomes the second pane. Chosen again
+  while comparing, it replaces the second image. Disabled without a current image, for an image whose
+  file is gone and in the grid. In the grid, Image › "Compare" compares the two selected thumbnails (in
+  list order), enabled with exactly two selected. Comparing a file with itself is allowed.
+- Layout: two panes of equal width, the first at the leading side (on the right in right-to-left
+  languages), a 1 pt divider between them. Each pane is its own canvas between the toolbar and its own
+  floating status strip: name · pixel size · zoom · file size · date; the position stays in the title.
+  The window never resizes. The info panel closes on entering; I does nothing. Title: "<first> and
+  <second>", then the first image's counter. The second pane's context menu: Swap Images, Stop
+  Comparing, Show in Finder.
+- In step (View › "Zoom and Pan in Step", on by default, remembered): content-aligned, not pixel for
+  pixel. The second picture is drawn at the first's zoom × min(w₁/w₂, h₁/h₂) of the displayed
+  (orientation-applied) sizes, so it covers the box the first is drawn in, centred, and the same detail
+  sits at the same place in both panes. Two images of the same size line up pixel for pixel; an image
+  and its resized copy line up too. At fit, the first fits and the second matches it (a smaller second
+  image is drawn enlarged; its strip shows its own zoom). Whichever pane is scrolled, dragged or pinched
+  leads, the other follows. Zoom keys, the toolbar's zoom buttons, 0–3 and pinch zoom the first pane,
+  the second follows. Zoom steps are cuts in compare (two animations would drift apart). At the edge of
+  the 5 %–1600 % range the panes stop lining up.
+- In step off: each pane keeps its own zoom and pan; zoom keys, 0–3 and pinch act on the pane last
+  clicked, scrolled or pinched (the first at first). Turning it on again snaps the second to the first.
+- Stepping: → ← Space ⌫ Page Up / Down Home End, the toolbar's arrows and swipes step the first pane
+  through the viewer's list as usual (end-of-folder rules and folder chooser unchanged); the second
+  stays. Zoom and the relative scroll position stay. Arrow keys pan the leading pane first when it has
+  something to pan.
+- Swap: X, View › "Swap Images  (X)" and a button on the second pane's strip (`arrow.left.arrow.right`,
+  tooltip "Swap Images (X)") exchange the files: the first pane shows the second file (selected in the
+  list when it is there, else the window opens its folder and stays in compare). Zoom stays. Disabled
+  while the second pane can't open.
+- Difference: D and View › "Show Difference  (D)" (ticked while on) show |first − second| per channel
+  (R, G, B) in the second pane, both flattened over black, not amplified. The second is scaled and
+  centred as for in step; outside it the first shows through. Computed off the main thread from the two
+  decodes on screen at the first's decoded size, recomputed when either changes; only the latest result
+  shows. The second pane then draws it exactly as the first draws its picture; its strip reads
+  "Difference". Available once both images are decoded; stays on across steps and swaps. While it is on
+  an animation in the first pane holds its first frame.
+- Leaving: Esc (a running slideshow ends first; in full screen the next Esc leaves full screen), File ›
+  "Stop Comparing", the close button on the second pane's strip (`xmark`, tooltip "Stop Comparing
+  (Esc)"), opening a file or folder into the window, T, starting a slideshow, and the list running
+  empty. The first image stays at its zoom; the second's decodes go.
+- Every command on "the current image" (R / L, H / V, ⌘C, S, F7 / F8, Trash, pages, Show in Finder,
+  Open With, Always Open…) acts on the first pane. The second shows page 1 and, for animations, the first
+  frame.
+- Memory: the second image's fit decode goes in the viewer's 8-image cache (a swap or a step onto that
+  file reuses it); beyond fit its zoom decode goes in a one-image cache that exists only while
+  comparing; plus one difference image. The second file joins the decode window right after the current
+  image, so a held arrow key never drops it.
+- The second image unreadable or gone: "Can't open <name>" in its pane; compare stays.
+
+### Thumbnail grid
+
+The grid is a mode of the viewer window, not a window of its own.
+
+- T, View › "Show Thumbnails  (T)" (⇧⌘T) and a toolbar button (`square.grid.2x2`, tooltip "Thumbnails
+  (T)", in the default set before Rotate Left, toggled while on) switch to it; in the grid the item reads
+  "Show Image  (T)". Disabled while the window has no list (empty window, folder without images, still
+  opening). Entering it ends a slideshow, leaves compare and closes the info panel.
+- It opens on the current image, selected and scrolled to the middle. T, Return or double-click go back
+  to the viewer on the focused cell (the last one clicked or moved to); Esc goes back to the image shown
+  before T (in full screen a second Esc leaves full screen). Opening any file or folder leaves the grid.
+- Cells are the viewer's list, in its order, so unreadable and non-image files the list holds get
+  cells too. The grid follows the list (the scan finishing after T, a removal, a new sort) and keeps the
+  selection.
+- Cell: a square of the slider's size (64–256 pt, default 128, remembered), the thumbnail fitted
+  inside, aspect kept, never enlarged, orientation applied, with the picture hairline and no shadow; the
+  file name below in one line, truncated in the middle. Selected: a toggled-pill backdrop behind the
+  square and the name in an accent capsule. Loading: a card-filled square. Can't open:
+  `photo.badge.exclamationmark` in tertiary. No folder tree and no subfolders (Finder and the folder
+  chooser choose folders).
+- Hovering a cell shows its name, then pixel size, file size, position ("3 / 120") and date, read once
+  the pointer rests (never while scrolling). A file that can't be opened shows "Can't open <name>".
+- Size: a slider at the trailing end of the status strip; + / − (and View's "Larger Thumbnails  (+)" /
+  "Smaller Thumbnails  (−)", which replace Zoom In / Out) change it by ×1.25 within the range; with the
+  strip hidden the keys still work. The toolbar's zoom buttons are disabled in the grid.
+- Thumbnails decode at the cell's pixels rounded up to 128, 256, 384 or 512, so dragging the slider
+  re-decodes only when it crosses a step, and a larger cached thumbnail serves a smaller cell. 8 bits in
+  the screen's colour space, never HDR. A file's embedded thumbnail is used when it is large enough (or
+  as large as the image) and its aspect matches the image's within 2 % (camera thumbnails with black
+  bars never show); otherwise the image is decoded in the same job, with no blurry first pass. Animated
+  files show their first frame, multi-page files page 1; nothing plays in the grid.
+- Only visible cells decode, then one screen ahead in the scroll direction, nearest first in reading
+  order; each scroll drops waiting jobs for cells that left. The grid has its own decode queue
+  (2–6 at once, by core count), apart from the viewer's.
+- Memory: the thumbnail cache holds at most three screens of pixels (3 × the largest screen's pixel
+  area × 4 bytes, ≈ 71 MB on a 3024 × 1964 screen), whatever the number of files. It is made at the
+  first T, kept while the window stays on its list (T back and forth is instant) and emptied when the
+  window opens a file or folder or closes.
+- Selection: click, ⇧-click a range from the last click, ⌘-click to add or remove one, arrows and
+  ⇧-arrows (mirrored in right-to-left languages), ⌘A (Edit › Select All); Home / End go to the first /
+  last cell. No selection rectangle. The grid takes the keyboard as soon as it opens.
+- On the selection: Space opens Quick Look (Featherview's own formats preview through its extension);
+  with one cell selected the arrows move the selection one cell and the panel follows, with several the
+  panel steps through them; Space again closes it. ⌦ and ⌘⌫ move the selection to the Trash without
+  asking (⌫ alone does nothing); F7 / F8 move or copy it through the destination panel ("Ask before…"
+  asks once for all: "Move 3 images to <folder>?"); B or ⌘B opens the Batch window with the selection
+  added; Image › Adjust Date Taken… changes the selection (see "Adjust Date Taken"). After a removal the
+  cell after the last removed one is selected (the one before it at the end); the grid closes when the
+  list runs empty. One failure never stops the rest; the message names the file when one failed
+  ("Couldn't move <name> to the Trash"), else the count ("Couldn't move 3 images to the Trash").
+  F5 refreshes as in the viewer.
+- Strip and title: the strip shows the focused file's pixel size, file size, position and date (no
+  zoom), or "12 of 120 selected" while several are selected, then the slider. The title is the folder's
+  name with "— 120 images".
+- Keys that act on one viewed image do nothing in the grid, and their menu items are disabled: R, L, H,
+  V, I, 0–3, ⇧L, S, F2, ⌥→ / ⌥←, G, ⌘C, ⇧⌘S, Next / Previous, Random Image, Show in Finder, Open With
+  (also ⌥1–⌥3), Always Open with, Rename… and Share. O, P, A, M and F keep their meaning.
 
 ### Move to Trash
 
@@ -262,13 +591,17 @@ Two columns and a bottom bar, titled "Batch Convert":
   their pixel sizes, small, rendered off the main thread, never blocking typing), the first
   output names, and one line naming the steps that are on in their processing order ("Applied:
   crop → size → watermark"). The preview keeps at least 160 pt; the cards scroll instead.
+  When one input gives several files, the output caption reads "Output 800 × 450 · 4 files" (the size
+  of each part; the first frame's for frames), Tiles draws the tile edges as thin lines on the output
+  picture, and the names list shows each input's parts in order (the first five names in all).
 - Bottom bar: Presets at the leading edge; **Convert N Images** (⌘↩) at the trailing edge.
 - Running: the cards give way to one line with every card's summary, "n of N", a progress bar,
   the time left, and the image just written (name, pixel size, file size). Each input row shows
-  its state (waiting, working, done with its output name, failed). Pause/Resume and Stop replace
+  its state (waiting, working, done with its (first) output name, failed). Pause/Resume and Stop replace
   the main button.
 - Done: one sentence ("47 of 48 images converted in 1 minute, 12 seconds. 210 MB in, 96 MB out.
-  Saved to ~/Desktop/Out."), then every failed file with its reason, Show in Finder and Copy
+  Saved to ~/Desktop/Out."; "47 of 48 images converted into 530 files in …" whenever outputs outnumber
+  converted inputs; MB out and Show in Finder count every part), then every failed file with its reason, Show in Finder and Copy
   Log. The main button becomes **New Batch** (⌘↩): it removes the converted images from the list,
   keeps the failed and unstarted ones, keeps all settings and returns to setup. Adding images or
   changing a setting also returns to setup.
@@ -301,7 +634,17 @@ Two columns and a bottom bar, titled "Batch Convert":
   (as in the reference viewer).
 - Multi-page input (TIFF, PDF, DCX): TIFF with "keep all pages" and PDF output get every page;
   any other format gets the first page, and the log line says so ("page 1 of 297"), so no page
-  is dropped silently. No file per page.
+  is dropped silently. The Frames and Pages step writes a file per frame or page instead.
+- `{part}` names the parts of an input that gives several files: frames and pages their number,
+  zero-padded to the digits of the count (`01` … `12`); tiles `row-column`, each padded to the digits
+  of rows / columns (`1-2`, `01-10`), rows top to bottom and columns left to right in the picture (never
+  mirrored); both steps `frame-row-column` (`03-1-2`). A pattern without `{part}` gets `-{part}` appended
+  when an input gives more than one file (`holiday-01.png`; when a name is shortened the part stays
+  whole); an input that gives one file never gets it, and an explicit `{part}` then becomes `1`. The
+  `{part}` button shows only while Frames and Pages or Tiles is on. `{n}` counts inputs: every part of
+  one input shares it, and it advances only when the input succeeds. Clashes get " 2", " 3" per part
+  (`holiday-01 2.png`); "Replace existing files" applies per part. The log line for such an input reads
+  "loop.gif → loop-01.png … loop-12.png (12 files)".
 - Name card: the rename pattern, then "Save to": **Next to the originals** (empty, the default)
   or a chosen folder, with a "Next to the originals" button to go back while a folder is set
   (the reference viewer's button for the browsed folder). `{folder}` in the output path stands
@@ -315,16 +658,22 @@ Two columns and a bottom bar, titled "Batch Convert":
 
 ### Per-image operations (applied in this order)
 
-1. Crop: fixed rectangle (x, y, width, height) from a chosen corner or the centre.
-2. Resize: width and/or height, longest side, shortest side, megapixels, or percentage. Options:
+1. Frames and Pages (no settings: "Each frame of an animation and each page of a document becomes its
+   own file."; summary "Every frame or page"): every frame of an animation (GIF, APNG, WebP, HEIC and
+   AVIF sequences, ANI), full size and composited, or every page of a multi-page file (TIFF, PDF, DCX)
+   becomes its own output, each through every later step, each a single-page file (TIFF "keep all
+   pages" and PDF output then write one page). All frames, no range. A still gives one output, named as
+   without the step. Splitting into frames or pages drops HDR (tiles of an HDR photo keep it).
+2. Crop: fixed rectangle (x, y, width, height) from a chosen corner or the centre.
+3. Resize: width and/or height, longest side, shortest side, megapixels, or percentage. Options:
    keep aspect ratio (default on), don't enlarge smaller images (default on), don't shrink
    larger images, DPI value.
-3. Rotate left/right, flip horizontal/vertical.
-4. Colour: greyscale, negative, auto-adjust colours, brightness, contrast, gamma, saturation,
+4. Rotate left/right, flip horizontal/vertical.
+5. Colour: greyscale, negative, auto-adjust colours, brightness, contrast, gamma, saturation,
    per-channel balance, sharpen, blur, reduce colour depth. Filters, each with one strength
    value: unsharp mask, noise reduction, sepia, colour temperature, auto levels (histogram
    stretch). No artistic filters.
-5. Auto-crop uniform borders, canvas size, border, text overlay, watermark image:
+6. Auto-crop uniform borders, canvas size, border, text overlay, watermark image:
    - Canvas size, one of: a width per side (negative values cut into the image); a total size
      in pixels (0 keeps that side) placed at one of 9 anchors; or an aspect ratio (1:1, 2:1, 3:2,
      4:3, 16:9, 16:10, √2, or custom) at one of 9 anchors. New area in one colour (transparent
@@ -337,6 +686,31 @@ Two columns and a bottom bar, titled "Batch Convert":
      below or above it; opacity; optional shadow and background box.
    - Watermark: an image file (PNG with alpha works best) at one of 9 positions with a margin,
      sized as % of the output's width, with an opacity (default 33 %).
+7. Tiles: columns 1–100 and rows 1–100 (default 2 × 2), overlap in pixels (default 0; negative leaves
+   gaps, "Negative values leave gaps"); summary "2 × 2" or "2 × 2, overlap 10 px". What the preview
+   shows is what gets cut. All tiles have the same size: w = min(W, ⌈(W + (c − 1)·o) / c⌉) (under 1 px
+   the input fails with "<name>: the tile settings leave no image"); tile i starts at
+   round(i·(W − w) / (c − 1)) (0 for one column); the same for rows. So the first tile starts at 0, the
+   last ends at W, and neighbours share about o pixels. A multi-page input without Frames and Pages
+   gives tiles of page 1, with the "page 1 of 3" note; with both steps, tiles of every frame.
+8. Date Taken ("Change:" Set to / Shift; default Shift by nothing, "No shift"; footnote "Changes the
+   converted files, not the originals."): "Set to" one date and time ("Date taken:", with seconds, first
+   filled from the first input's date taken, else its file date), or "Shift" Later / Earlier by days
+   (0–3650), hours, minutes and seconds. It changes the outputs' date, never the originals'.
+   - Re-encoded outputs get EXIF `DateTimeOriginal`, `DateTimeDigitized` and TIFF `DateTime`, also with
+     the format's "keep metadata" off (ImageIO's formats and JPEG XL; WebP, QOI, PCX, PBM / PGM / PPM and
+     PDF get only the file dates).
+   - With Change format off and no other pixel step, Frames and Pages or Tiles, the output is the
+     original's bytes with only the date changed (lossless) for JPEG, HEIC, TIFF and PSD; any other
+     file fails with "Can't change the date taken of IMG_0412.gif". Set to without a date fails with
+     "Choose a date for the Date Taken step".
+   - `{date}` in the pattern and in the text overlay use the new date. The output's file dates
+     (modified and created) follow the new date taken and win over "Keep file dates".
+   - Shift without a date taken starts from the file's modification date, so the output gains an EXIF
+     date. Dates are wall times as EXIF stores them; shifting is plain arithmetic on the wall time (no
+     time zone, so no daylight-saving jumps). The file date is that wall time at EXIF
+     `OffsetTimeOriginal` when present, else in the Mac's time zone. Known limit: TIFF loses
+     `OffsetTimeOriginal` and `SubsecTimeOriginal` in the lossless rewrite.
 
 Settings can be saved as named presets and loaded later.
 
@@ -357,6 +731,10 @@ Settings can be saved as named presets and loaded later.
   one line per file (output name or error) and is copied with "Copy Log". Stop (finishes files in
   flight, starts no more) and Pause/Resume.
 - A failing file never stops the batch and never leaves a partial output file.
+- One input's outputs are one unit: each part is written to a hidden `.featherview-<id>.tmp` in the
+  output folder as soon as it is made (one frame in memory per worker). If any part fails, the input
+  fails with one sentence and its temp files are removed; if moving a part into place fails, the parts
+  already moved for that input are removed again ("Can't save <name>"). Stop finishes inputs in flight.
 
 ## Settings (⌘,)
 
@@ -389,7 +767,8 @@ window, nothing to configure.
   Bug…), all opening the browser.
 - "Supported formats": two lists, read and write, built at runtime from ImageIO plus our own
   encoders (see "Formats"), with the macOS version they come from.
-- "MIT License" and "Acknowledgements": the licence text of every bundled library (libwebp, jxrlib), each
+- "MIT License" and "Acknowledgements": the licence text of every bundled library (libwebp, jxrlib, libjxl with
+  Highway, Brotli and skcms), each
   in a scrollable sheet. Copyright line.
 - Clicking the version shows a small "Copy" bubble (as a value in iOS settings does); it copies
   version, macOS version and Mac model as text, for bug reports.
@@ -485,8 +864,22 @@ the About window.
 - Write (own encoders, pure Swift, no dependency): PBM, PGM, PPM, QOI, PCX. PBM is real 1-bit
   plain PBM (P1, the only PBM macOS reads), black and white at a 50% threshold (ImageIO's PBM writer writes
   colour ASCII PPM under the .pbm name).
-- Write (open-source encoder, per `AGENTS.md`): WebP (libwebp, BSD).
-- Writing JPEG XL is v2 (needs libjxl, a large C++ build). Reading JPEG XL works in v1 via ImageIO.
+- Write (open-source encoder, per `AGENTS.md`): WebP (libwebp, BSD), JPEG XL (libjxl, BSD).
+- JPEG XL is always written by libjxl, never ImageIO (macOS reads JPEG XL but writes none; should a
+  later macOS add a writer it stays hidden, so options and output are the same on every version). Only
+  the app links libjxl; the Finder extensions don't.
+  - Colour: an RGB image in an ICC-based colour space is written in that space (with its profile;
+    plain sRGB as JPEG XL's own sRGB, no profile bytes); grey, CMYK, indexed, extended-range and HDR
+    (PQ / HLG) spaces are converted to sRGB. 8 bits per sample, or 16 when the image has more than 8
+    (a 16-bit PNG or TIFF saved lossless stays lossless). SDR only: HDR output stays a HEIC / AVIF
+    feature.
+  - Alpha is written only when the image has it (premultiplied); an opaque image has three channels.
+  - Metadata, with "keep metadata": the source's EXIF, TIFF, GPS and IPTC fields as XMP in one `xml `
+    box, without orientation and pixel dimensions; no `Exif` box. Pixels are upright, the stored
+    orientation is always 1. DPI isn't written (JPEG XL has no field for it).
+  - Speed and memory: each encode uses libjxl's threads, and at most two JPEG XL encodes run at once (one
+    12 MP encode needs about 550 MB). A 12 MP photo at quality 90, effort 7 takes about 1.4 s.
+  - Lossless JPEG recompression (JPEG XL's JPEG transcoding) is not offered.
 - HDR display (milestone 3): images with HDR data (gain-map HEIC/JPEG from
   phones, HDR AVIF/HEIC, OpenEXR, Radiance HDR) show with their extra brightness on screens that
   support it, on macOS 15 and later. Only those images decode at 16 bits (twice the memory); all
@@ -506,6 +899,7 @@ the About window.
 | PDF | one page per image at the image's size; JPEG quality 1–100 for the image (default 95) or lossless (paper sizes later) |
 | GIF, TGA, BMP, PSD, OpenEXR, PBM | none |
 | ICO, ICNS | none; the image is scaled to fit a transparent square of 256 px (ICO) or 512 px (ICNS), or the next allowed size up for smaller images (16, 32, 128, 256, 512), never enlarged beyond it |
+| JPEG XL | lossless (default off), quality 1–100 (default 90, visually lossless; never below libjxl's distance 0.1), effort 1–9 (default 7; "Higher is slower and makes smaller files"), keep metadata (default on, "Keep camera data, location and keywords") |
 | WebP | preset photo (default) / picture / drawing / icon / text, lossless, quality 1–100 (default 75), effort 0–6 (default 4) |
 
 After testing ImageIO on macOS 27: it can't write JPEG without chroma subsampling
