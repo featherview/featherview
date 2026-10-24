@@ -51,10 +51,19 @@ public enum ImageSort {
         case .name:
             break
         case .dateModified, .size:
-            // One stat per file, read fresh (a save changes size and date), following a symlink to the image:
-            // URL resource values cost ~4x as much, ~90 ms for 10,000 files ahead of a folder's first image.
+            // Read fresh (a save changes size and date), following a symlink to the image. A folder's worth comes from
+            // one bulk read of the folder (a stat each took ~55 ms for 10,000 files, ahead of a folder's first image);
+            // a few files, symlinks and anything that read missed get a stat each (URL resource values cost ~4x).
+            let folder = urls.first.map { ($0.path as NSString).deletingLastPathComponent } ?? ""
+            let listed = urls.count >= 64 ? FolderAttributes.read(folder) ?? [:] : [:]
+            let prefix = folder + "/"
             for url in urls {
-                values[url] = key == .size ? url.fileSize.map(SortValue.bytes) : url.modificationDate.map(SortValue.date)
+                // The same name in another folder isn't this one (a path compare, ~5x cheaper than taking the parent).
+                let name = url.lastPathComponent
+                let entry = url.path == prefix + name ? listed[name] : nil
+                values[url] = key == .size
+                    ? (entry?.size ?? url.fileSize).map(SortValue.bytes)
+                    : (entry?.modified ?? url.modificationDate).map(SortValue.date)
             }
         case .kind:
             // Looked up once per extension, as the scanner does.

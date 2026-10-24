@@ -142,6 +142,34 @@ import UniformTypeIdentifiers
         #expect(ImageSort.values(of: [link], key: .dateTaken)[link] == .date(date))
     }
 
+    @Test func wholeFolderReadMatchesAStatPerFile() throws {
+        // A folder's values come from one read of its entries: they must be what a stat of each file says.
+        let dir = try Fixtures.makeTempDir()
+        var urls: [URL] = []
+        for i in 0..<200 {
+            let url = dir.appendingPathComponent("\(i).jpg")
+            try Data(count: i).write(to: url)
+            let date = Date(timeIntervalSince1970: 1_000_000 + Double(i) + 0.123_456_789)
+            try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: url.path)
+            urls.append(url)
+        }
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: urls[150])
+        urls.append(link)
+        // The same name in another folder keeps its own values.
+        let other = try Fixtures.makeTempDir().appendingPathComponent("5.jpg")
+        try Data(count: 999).write(to: other)
+        urls.append(other)
+        let sizes = ImageSort.values(of: urls, key: .size)
+        let dates = ImageSort.values(of: urls, key: .dateModified)
+        for url in urls {
+            #expect(sizes[url] == url.fileSize.map(SortValue.bytes), "\(url.lastPathComponent)")
+            #expect(dates[url] == url.modificationDate.map(SortValue.date), "\(url.lastPathComponent)")
+        }
+        #expect(sizes[link] == .bytes(150))
+        #expect(sizes[other] == .bytes(999))
+    }
+
     @Test func sizeAndDateCostAboutAStatAndResolveOnlySymlinks() throws {
         // A folder opens on its first image by date or size: all values are read before that image decodes.
         // Resolving every path walks each of the 20 components with lstat, ~20x a stat.
