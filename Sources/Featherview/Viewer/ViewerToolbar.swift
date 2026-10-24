@@ -168,19 +168,34 @@ private struct KeepZoomToggle: View {
     }
 }
 
-/// Share: its own view, so only it reads the current file (see `ViewerToolbar`).
+/// Share: the system share picker for the current file.
 private struct ShareButton: View {
     let model: ViewerModel
+    @State private var anchor = Anchor()
 
     var body: some View {
-        if model.availability.canChangeFile, let url = model.list.current {
-            ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
-                .help("Share")
-        } else {
-            Button("Share", systemImage: "square.and.arrow.up") {}
-                .help("Share")
-                .disabled(true)
+        // Not ShareLink: its item changes with every image, and SwiftUI rebuilds the whole toolbar for that
+        // (~12 ms of each swap). The file is read when the button is clicked.
+        Button("Share", systemImage: "square.and.arrow.up") {
+            guard let url = model.list.current, let view = anchor.view else { return }
+            NSSharingServicePicker(items: [url]).show(relativeTo: view.bounds, of: view, preferredEdge: .minY)
         }
+        .help("Share")
+        .disabled(!model.availability.canChangeFile)
+        .background(AnchorView(anchor: anchor))
+    }
+
+    /// The button's view, for the picker to point at.
+    final class Anchor { weak var view: NSView? }
+
+    private struct AnchorView: NSViewRepresentable {
+        let anchor: Anchor
+        func makeNSView(context: Context) -> NSView {
+            let view = NSView()
+            anchor.view = view
+            return view
+        }
+        func updateNSView(_ view: NSView, context: Context) { anchor.view = view }
     }
 }
 
