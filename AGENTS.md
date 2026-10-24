@@ -109,16 +109,16 @@ Rule of thumb: if logic can be tested without a window, it belongs in Feathervie
 | Budget | Target |
 |---|---|
 | Cold launch with a file to first image on screen | < 410 ms (12 MP JPEG, Apple Silicon, after a normal quit, no window restored; AppKit + SwiftUI alone take ~300 ms to show the window, Liquid Glass ~85 ms more). Measured with the own look: ~400 ms (12 MP JPEG), ~395 ms (10,000-file folder) |
-| Next/previous image when prefetched | no visible delay (≈ 20 ms to swap is fine; `Navigate` p50 19 ms, p95 25 ms) |
-| Next/previous image, not prefetched | < 150 ms (12 MP JPEG; `Navigate` ~107 ms landscape, ~61 ms portrait) |
-| Opening a folder of 10,000 files | < 500 ms to first image, UI never blocks |
+| Next/previous image when prefetched | no visible delay (≈ 20 ms to swap is fine; `Navigate` p50 21 ms, p95 26 ms; Zoom to Width ~30 ms for landscapes, ~130 ms for enlarged portraits) |
+| Next/previous image, not prefetched | < 150 ms (12 MP JPEG; `Navigate` ~121 ms landscape, ~66 ms portrait) |
+| Opening a folder of 10,000 files | < 500 ms to first image, UI never blocks (measured in every Sort By order: name ~430 ms, size ~470 ms, date modified ~485 ms; Date Taken shows the first by name, ~410 ms, and re-sorts later) |
 | Memory while browsing | bounded by the 8-image cache, decoded to fit the screen per axis (rounded up to JPEG's next halving step, at most 2× per side) |
-| T to the thumbnail grid on screen | < 100 ms for any folder up to 10,000 files (cells laid out, names shown; `GridShow`) |
-| First screen of thumbnails complete | < 400 ms for 12 MP JPEGs without a usable embedded thumbnail, < 150 ms for 12 MP HEICs with a 320 px embedded one (default size, 1220 × 700 window; `GridFill`) |
+| T to the thumbnail grid on screen | < 100 ms for any folder up to 10,000 files (cells laid out, names shown; `GridShow`). Measured: ~76 ms for 40 files, ~115 ms for 10,000 (over budget: the rest is NSCollectionView and the toolbar re-enabling its items) |
+| First screen of thumbnails complete | < 400 ms for 12 MP JPEGs without a usable embedded thumbnail, < 150 ms for 12 MP HEICs with a 320 px embedded one (default size, 1220 × 700 window; `GridFill`). Measured in an 805 × 585 window: ~282 ms JPEG, ~127 ms HEIC |
 | Scrolling a 10,000-file grid | no frame dropped by grid work (< 8 ms main-thread work per frame); when scrolling stops, the new screen completes within the row above |
 | Grid memory | thumbnail cache ≤ 3 × the largest screen's pixel area × 4 bytes, on top of the 8-image cache; Return to the image within the not-prefetched budget |
-| Compare With… to the second picture on screen | < 150 ms for a 12 MP JPEG (`CompareShow`); stepping the first pane keeps the next/previous budgets |
-| Difference on screen (D, or a step with it on) | < 100 ms after both decodes, 12 MP (`Difference`) |
+| Compare With… to the second picture on screen | < 150 ms for a 12 MP JPEG (`CompareShow`, measured ~100 ms); stepping the first pane keeps the next/previous budgets |
+| Difference on screen (D, or a step with it on) | < 100 ms after both decodes, 12 MP (`Difference`, measured ~106 ms) |
 | Compare memory | on top of browsing: at most one fit image held by the second pane, one zoom decode and one difference image |
 
 How: decode off the main thread to fit the screen per axis, rounded up to full, ½, ¼ or ⅛ size (any size in between costs a slow resample; see `ImageDecoder.decodeSize`); HEIC/HEIF and own formats decode at the exact size instead (no slower, fewer bytes), prefetch 2 neighbours each

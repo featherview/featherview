@@ -21,16 +21,16 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 8 | Finder previews | `docs/superpowers/plans/2026-10-19-milestone-8-finder-previews.md` | done |
 | 9 | Animation (v2) | `docs/superpowers/plans/2026-10-22-milestone-9-animation.md` | done |
 | 10 | Document icon (v2) | `docs/superpowers/plans/2026-10-22-document-icon.md` | done |
-| 11 | Viewer conveniences (v2) | `docs/superpowers/plans/2026-10-22-milestone-11-viewer-conveniences.md` | ready |
-| 12 | Zoom modes and flip (v2) | `docs/superpowers/plans/2026-10-22-milestone-12-zoom-modes-flip.md` | ready |
-| 13 | Thumbnail grid (v2) | `docs/superpowers/plans/2026-10-22-milestone-13-thumbnails.md` | ready |
-| 14 | Slideshow (v2) | `docs/superpowers/plans/2026-10-22-milestone-14-slideshow.md` | ready |
-| 15 | Compare images (v2) | `docs/superpowers/plans/2026-10-22-milestone-15-compare.md` | ready |
-| 16 | Batch extras (v2) | `docs/superpowers/plans/2026-10-22-milestone-16-batch-extras.md` | ready |
-| 17 | JPEG XL writing (v2) | `docs/superpowers/plans/2026-10-22-milestone-17-jpeg-xl-writing.md` | ready |
+| 11 | Viewer conveniences (v2) | `docs/superpowers/plans/2026-10-22-milestone-11-viewer-conveniences.md` | done |
+| 12 | Zoom modes and flip (v2) | `docs/superpowers/plans/2026-10-22-milestone-12-zoom-modes-flip.md` | done |
+| 13 | Thumbnail grid (v2) | `docs/superpowers/plans/2026-10-22-milestone-13-thumbnails.md` | done |
+| 14 | Slideshow (v2) | `docs/superpowers/plans/2026-10-22-milestone-14-slideshow.md` | done |
+| 15 | Compare images (v2) | `docs/superpowers/plans/2026-10-22-milestone-15-compare.md` | done |
+| 16 | Batch extras (v2) | `docs/superpowers/plans/2026-10-22-milestone-16-batch-extras.md` | done |
+| 17 | JPEG XL writing (v2) | `docs/superpowers/plans/2026-10-22-milestone-17-jpeg-xl-writing.md` | done |
 | 18 | Quick wins (v2): Refresh, random image, desktop placement, grid tooltips | `docs/superpowers/plans/2026-10-22-milestone-18-quick-wins.md` | done |
 | 19 | Simplify: decisions from the app into tested Core types, catalog format, duplicates | `docs/superpowers/plans/2026-10-22-milestone-19-simplify.md` | done |
-| 20 | Hardening: fuzzing, sanitizers, real files through every write path, Intel, crash reports | `docs/superpowers/plans/2026-10-23-milestone-20-hardening.md` | ready |
+| 20 | Hardening: fuzzing, sanitizers, real files through every write path, Intel, crash reports | `docs/superpowers/plans/2026-10-23-milestone-20-hardening.md` | done |
 
 ## 1. Core viewer and batch
 
