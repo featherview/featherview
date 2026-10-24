@@ -8,7 +8,7 @@ For anyone who flips through folders of photos with the keyboard, the way classi
 work: open one image, hold <kbd>→</kbd>, rotate the sideways ones, trash the rejects, batch convert the rest.
 About 400 ms from launch to the first image, about 20 ms to the next one (12 MP JPEG, Apple Silicon).
 
-**[Download](https://github.com/featherview/featherview/releases/latest)** · [Website](https://featherview.mynetx.net)
+**[Download](https://github.com/featherview/featherview/releases/latest)** · [Website](https://featherview.mynetx.net) · [Roadmap](ROADMAP.md)
 
 <img src="docs/screenshots/viewer.png" alt="The Featherview viewer window showing a landscape picture, with the toolbar above and the status bar below" width="720">
 
