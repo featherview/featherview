@@ -72,6 +72,7 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 | ⌥→ / ⌥← | next / previous page of a multi-page file (TIFF, …); nothing past either end |
 | F7 / F8 | move / copy the current file to a folder (see below) |
 | F5 | refresh the folder (also ⌘R; see "Refresh") |
+| F2 | rename the current file (see "Rename") |
 | ⌦ (forward delete) | Move to Trash, like ⌘⌫ |
 | O / B / M | Open… / Batch Convert… / minimise the window (as ⌘O / ⌘B / ⌘M) |
 | P / A / S | Settings / About / Save As…, each added with its feature (milestones 2–3) |
@@ -84,7 +85,10 @@ Single keys for commands match the reference viewer, for people switching over; 
 - Dragging pans a zoomed image (the image follows the pointer); it does nothing when the image
   fits. No selection rectangle.
 - Right-click (or Control-click) opens a context menu with the window's actions: Copy, Rotate
-  Left / Right, Move to Folder…, Copy to Folder…, Move to Trash, Show in Finder, Open With.
+  Left / Right, Rename…, Move to Folder…, Copy to Folder…, Move to Trash, Show in Finder, Open With,
+  Share, Set as Desktop Picture.
+- A click on the file name in the window title renames the file (see "Rename"); dragging the title
+  still moves the window.
 - Two-finger scroll (or a mouse wheel) pans a zoomed image.
 - Pinch zooms in and out about the pointer, following the fingers (no animation), within the
   same 5 %–1600 % as + / −.
@@ -95,7 +99,8 @@ Single keys for commands match the reference viewer, for people switching over; 
 ### Toolbar
 
 For mouse users, the viewer window has a standard macOS toolbar: previous,
-next, rotate left, rotate right, zoom out, zoom to fit, zoom in, info panel, Move to Trash, plus previous / next page
+next, rotate left, rotate right, zoom out, zoom to fit, zoom in, info panel, Share (`square.and.arrow.up`, tooltip
+"Share"), Move to Trash, plus previous / next page
 for a multi-page file only. Each button does what its key does and has a tooltip naming that key. View › Hide Toolbar hides it
 (remembered), and View › Customize Toolbar… changes it, as in any Mac app. Hidden in full screen; it slides in with the menu bar when the pointer is at the top (macOS 15 and later).
 
@@ -108,7 +113,7 @@ Mac SF Symbols, never icons taken from another viewer.
 
 ### Menu commands
 
-⌘O Open…, ⌘⌫ Move to Trash, ⌘B Batch Convert…, ⇧⌘S Save As… (the current image in any writable format, with that format's options, orientation
+⌘N New from Clipboard, ⌘O Open…, ⌘⌫ Move to Trash, ⌘B Batch Convert…, ⇧⌘S Save As… (the current image in any writable format, with that format's options, orientation
 applied, never overwriting without the standard Mac replace prompt; afterwards the window shows the saved file in its folder; if Featherview can't read the format it saved, the window stays on the original), ⌘C Copy (the current image, full resolution,
 orientation applied), ⌘Q Quit. Menus also list the single-key commands
 (the single key in the shortcut column, also for commands that have a ⌘ shortcut, which keeps
@@ -118,9 +123,10 @@ menu is open, so typing in the batch window's text fields never triggers viewer 
 Like Finder and Preview, File holds what acts on the file (Open, Open Recent, Save As…, Rename…, Share, Move /
 Copy to Folder…, Move to Trash, Show in Finder, Open With, Always Open with Featherview, Batch Convert…) and Image
 what moves through or changes the picture (Next / Previous, pages and frames, rotate and flip, Adjust Date
-Taken…, Set as Desktop Picture, Show Info). View › "Refresh  (F5)" (⌘R) follows Sort By; Image › "Random
-Image" follows Previous. The Window menu lists only the viewer windows: Batch and About open
-from their own commands.
+Taken…, Set as Desktop Picture, Show Info). File starts with New from Clipboard, Open…, Open Recent; Rename…
+and Share follow Save As…. View has Sort By, then "Refresh  (F5)" (⌘R), then Follow New Files; Image ›
+"Random Image" follows Previous. The Window menu has Float on Top, then only the viewer windows: Batch and
+About open from their own commands.
 
 The app menu has Check for Updates… below About (see "Updates"). The Help menu repeats About's links:
 Featherview Website and Source Code (browser); Supported Formats, MIT License and Acknowledgements
@@ -160,8 +166,109 @@ It has no single key: the menu item only.
 
 ### Desktop picture
 
-Image › "Set as Desktop Picture" is a submenu: Fill Screen (the default), Fit to Screen, Stretch to
-Fill Screen, Center. Every screen gets the picture. Fit and Center leave the rest of the screen black.
+Image › "Set as Desktop Picture" (also in the context menu) is a submenu: Fill Screen (the default), Fit
+to Screen, Stretch to Fill Screen, Center. Every screen gets the picture, with no confirmation (System
+Settings undoes it); the file is used where it is. Fit and Center leave the rest of the screen black.
+Only for files macOS itself shows (not Featherview's own formats, not PDF); otherwise disabled. Failure:
+"Couldn't set <name> as the desktop picture".
+
+### Open Recent
+
+File › Open Recent lists the system's recent documents, newest first, as many as System Settings ›
+Desktop & Dock › "Recent documents" allows (10 by default), then "Clear Menu"; empty, it shows "No Recent
+Files". Items show the file or folder name; two items with the same name get " — <folder>" after it.
+Files that are gone or in the Trash are left out (checked when the app becomes active and after its own
+moves and Trash). Counted as opened: an image or folder opened with ⌘O / O, dropped on the window,
+opened from Finder or the Dock, chosen in Open Recent, the file New from Clipboard opens, and a file
+written by Save As. Not counted: browsing, the folder chooser, Follow New Files, compare. A renamed or
+moved file keeps its entry (the system follows the file). The Dock menu shows the same list, kept by
+macOS itself; it may show a renamed file's old name until macOS refreshes it. The list is read after the
+first image is drawn, never on the launch path.
+
+### Rename
+
+File › "Rename…  (F2)", F2, the context menu's Rename… or a click on the file name in the window title
+turns the title's name into a text field, as Preview does: the whole name, the part before the extension
+selected, as Finder does. Return renames; clicking elsewhere renames too; Esc cancels. In full screen or
+with the toolbar hidden the same field shows in a small sheet ("Rename", Cancel / Rename).
+
+- Spaces and line breaks at either end are trimmed; an unchanged or empty name does nothing.
+- Refused, with a message in the window's message box (under the field in the sheet): "A name can't contain “/” or “:”." (also for control
+  characters), "A name can't start with “.”: the file would be hidden.", "That name is too long." (more
+  than 255 UTF-16 units), "“B.jpg” is already taken. Choose a different name.". Return keeps the field
+  open on a refusal. Nothing is ever overwritten; a name differing only in case renames. Any other
+  failure: "Couldn't rename <name>".
+- A changed extension asks first, as Finder does: "Are you sure you want to change the extension from
+  “.jpg” to “.png”?" (or "… remove the extension “.jpg”?"), "The image may then open in another app, or
+  not at all.", buttons "Keep .jpg" (default) and "Use .png" (or "Remove").
+- Sidecars (`.xmp`, `.aae`, `.thm`) follow under the new name with their own extension while "move,
+  copy and trash sidecar files" is on. If a sidecar's new name is taken, nothing is renamed and the
+  message names that sidecar.
+- Afterwards the title shows the new name, the list re-sorts in the current sort order and the
+  position updates; the picture stays on screen without a new decode. Disabled in the thumbnail grid,
+  for an image whose file is gone and for an unsaved clipboard image. Waits for a rotation, move or
+  Trash in progress, like they wait for each other.
+
+### Sort By
+
+View › Sort By: Name (Finder order), Date Modified, Date Taken, Size, Kind, then Ascending /
+Descending, ticked on the current choice. Global and remembered (default Name, Ascending): every
+viewer window re-sorts at once and every folder opens in it. Changing it keeps the current image on
+screen and updates its position.
+
+- Ties, and files whose value can't be read, fall back to name order, ascending; missing values go
+  last in both directions. Name Descending is Finder order reversed.
+- Date Taken is EXIF `DateTimeOriginal`, else the modification date. Kind is the system's name for the
+  extension's type ("JPEG image"), else the extension in capitals.
+- Name, Date Modified, Size and Kind read no file contents, so a folder opens on its first image in that
+  order within the open budget. Date Taken reads every file's header: the folder opens in name order,
+  its first image by name shows at once, the dates are read in the background, then the list re-sorts
+  with the shown image kept. Nothing blocks.
+
+### Share
+
+A toolbar button, File › Share and Share in the context menu open the system's share picker for the
+current file (Mail, Messages, AirDrop, …). Disabled in the grid, for an image whose file is gone and for
+an unsaved clipboard image.
+
+### Float on Top
+
+Window › "Float on Top" (ticked while on) keeps that window above other apps' windows. Per window, not
+remembered across launches, as in QuickTime Player. Disabled in full screen.
+
+### New from Clipboard
+
+File › "New from Clipboard" (⌘N), first in the File menu, shows the clipboard's image in the window in
+use (the last active one when none is), covering its list: the list stays behind it, unchanged.
+
+- A copied image file Featherview reads (Finder's Copy) opens that file, as ⌘O would. Otherwise the
+  first image type on the clipboard that ImageIO decodes (PNG, TIFF, JPEG, HEIC, …), full size,
+  orientation applied. Disabled when neither is there (checked when the app becomes active, when a menu
+  opens and on ⌘N). An image that can't be decoded shows "Can't open the image on the clipboard".
+- It ends a slideshow, the grid and compare and closes the folder chooser, the F7 / F8 panel and the
+  info panel. It shows as an unsaved image: title "Untitled" with the window's edited dot, status strip
+  with pixel size and zoom only. Zoom, full screen, ⌘C and Save As work; everything that acts on a file
+  is disabled.
+- Save As (S, ⇧⌘S) writes it in any writable format, named "Untitled", in the list's folder (else
+  Pictures), then shows the saved file in its folder.
+- Leaving it asks first, in a sheet: "Do you want to save the image from the clipboard?" / "If you
+  don't save it, it's gone." with Save… (default), Don't Save (⌘D) and Cancel. Asked for every key that
+  moves to another image, ⌘O / O, a drop, a Finder file sent to this window, Open Recent, ⌘N again,
+  closing the window and ⌘Q (once per unsaved image). Save… saves into the list and then carries on with
+  what was asked. After leaving, the image shown before shows again (Home / End go to the first / last).
+
+### Follow New Files
+
+View › "Follow New Files" (ticked while on): per window, off by default, not remembered, disabled
+without a folder. While on, the window watches its folder. After the folder has been quiet for 200 ms
+it rescans the names, adds new images to the list in sort order and drops vanished ones, then shows the
+newest arrival (latest modification date) once its size is above zero and has stayed the same for
+250 ms, so a file still being copied or exported isn't shown half-written (given up after 30 s). A burst
+of files shows its newest once. Arrivals don't interrupt a rename field, the folder chooser or the F7 /
+F8 panel: the list takes them, the window stays. While an unsaved clipboard image shows, the rescan waits
+until it is left. A current file deleted elsewhere stays on screen until the next key. Opening another
+folder moves the watch there; the folder renamed or deleted, or the window closed, turns following off.
+Nothing is watched while it is off, so launch and browsing pay nothing.
 
 ### Thumbnails
 

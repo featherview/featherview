@@ -119,6 +119,8 @@ elevation. Reduce Transparency keeps the shadows and swaps glass for a solid fil
 | Toggled on | Info while the panel is open: toggled-pill fill, glyph in the accent. |
 | Disabled | Disabled-glyph token. Empty window: every item disabled, capsules remain. |
 | Trash | Same colour as the others. |
+| Share | `square.and.arrow.up`, tooltip "Share", between Info and Trash, in the default set; opens the system's share picker. |
+| Rename field | A click on the file name (or F2) turns the title's name into a text field in place, in the window title's type, the part before the extension selected; a refusal shows in the window's message box. Dragging the title still moves the window. With the toolbar hidden or in full screen the same field shows in a small "Rename" sheet with Cancel / Rename. |
 
 Implementation note: Featherview keeps the system toolbar (customizable, Hide Toolbar, on-hover in
 full screen). macOS draws the capsules and their sizes; the separators inside the trailing capsule
