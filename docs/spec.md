@@ -96,6 +96,8 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 | F7 / F8 | move / copy the current file to a folder (see below) |
 | F5 | refresh the folder (also ⌘R; see "Refresh") |
 | F2 | rename the current file (see "Rename") |
+| T | thumbnail grid on / off (also ⇧⌘T; see "Thumbnail grid") |
+| Space in the grid | Quick Look of the selection |
 | ⌦ (forward delete) | Move to Trash, like ⌘⌫ |
 | O / B / M | Open… / Batch Convert… / minimise the window (as ⌘O / ⌘B / ⌘M) |
 | P / A / S | Settings / About / Save As…, each added with its feature (milestones 2–3) |
@@ -122,7 +124,7 @@ Single keys for commands match the reference viewer, for people switching over; 
 ### Toolbar
 
 For mouse users, the viewer window has a standard macOS toolbar: previous,
-next, rotate left, rotate right, zoom out, zoom to fit, zoom in, info panel, Share (`square.and.arrow.up`, tooltip
+next, thumbnails, rotate left, rotate right, zoom out, zoom to fit, zoom in, info panel, Share (`square.and.arrow.up`, tooltip
 "Share"), Move to Trash, plus previous / next page
 for a multi-page file only. Each button does what its key does and has a tooltip naming that key. View › Hide Toolbar hides it
 (remembered), and View › Customize Toolbar… changes it, as in any Mac app. Customize Toolbar… also
@@ -305,10 +307,63 @@ until it is left. A current file deleted elsewhere stays on screen until the nex
 folder moves the watch there; the folder renamed or deleted, or the window closed, turns following off.
 Nothing is watched while it is off, so launch and browsing pay nothing.
 
-### Thumbnails
+### Thumbnail grid
 
-Hovering a cell shows its name, then pixel size, file size, position ("3 / 120") and date, read when
-the pointer arrives (never while scrolling). A file that can't be opened keeps "Can't open <name>".
+The grid is a mode of the viewer window, not a window of its own.
+
+- T, View › "Show Thumbnails  (T)" (⇧⌘T) and a toolbar button (`square.grid.2x2`, tooltip "Thumbnails
+  (T)", in the default set before Rotate Left, toggled while on) switch to it; in the grid the item reads
+  "Show Image  (T)". Disabled while the window has no list (empty window, folder without images, still
+  opening). Entering it ends a slideshow, leaves compare and closes the info panel.
+- It opens on the current image, selected and scrolled to the middle. T, Return or double-click go back
+  to the viewer on the focused cell (the last one clicked or moved to); Esc goes back to the image shown
+  before T (in full screen a second Esc leaves full screen). Opening any file or folder leaves the grid.
+- Cells are the viewer's list, in its order, so unreadable and non-image files the list holds get
+  cells too. The grid follows the list (the scan finishing after T, a removal, a new sort) and keeps the
+  selection.
+- Cell: a square of the slider's size (64–256 pt, default 128, remembered), the thumbnail fitted
+  inside, aspect kept, never enlarged, orientation applied, with the picture hairline and no shadow; the
+  file name below in one line, truncated in the middle. Selected: a toggled-pill backdrop behind the
+  square and the name in an accent capsule. Loading: a card-filled square. Can't open:
+  `photo.badge.exclamationmark` in tertiary. No folder tree and no subfolders (Finder and the folder
+  chooser choose folders).
+- Hovering a cell shows its name, then pixel size, file size, position ("3 / 120") and date, read once
+  the pointer rests (never while scrolling). A file that can't be opened shows "Can't open <name>".
+- Size: a slider at the trailing end of the status strip; + / − (and View's "Larger Thumbnails  (+)" /
+  "Smaller Thumbnails  (−)", which replace Zoom In / Out) change it by ×1.25 within the range; with the
+  strip hidden the keys still work. The toolbar's zoom buttons are disabled in the grid.
+- Thumbnails decode at the cell's pixels rounded up to 128, 256, 384 or 512, so dragging the slider
+  re-decodes only when it crosses a step, and a larger cached thumbnail serves a smaller cell. 8 bits in
+  the screen's colour space, never HDR. A file's embedded thumbnail is used when it is large enough (or
+  as large as the image) and its aspect matches the image's within 2 % (camera thumbnails with black
+  bars never show); otherwise the image is decoded in the same job, with no blurry first pass. Animated
+  files show their first frame, multi-page files page 1; nothing plays in the grid.
+- Only visible cells decode, then one screen ahead in the scroll direction, nearest first in reading
+  order; each scroll drops waiting jobs for cells that left. The grid has its own decode queue
+  (2–6 at once, by core count), apart from the viewer's.
+- Memory: the thumbnail cache holds at most three screens of pixels (3 × the largest screen's pixel
+  area × 4 bytes, ≈ 71 MB on a 3024 × 1964 screen), whatever the number of files. It is made at the
+  first T, kept while the window stays on its list (T back and forth is instant) and emptied when the
+  window opens a file or folder or closes.
+- Selection: click, ⇧-click a range from the last click, ⌘-click to add or remove one, arrows and
+  ⇧-arrows (mirrored in right-to-left languages), ⌘A (Edit › Select All); Home / End go to the first /
+  last cell. No selection rectangle. The grid takes the keyboard as soon as it opens.
+- On the selection: Space opens Quick Look (Featherview's own formats preview through its extension);
+  with one cell selected the arrows move the selection one cell and the panel follows, with several the
+  panel steps through them; Space again closes it. ⌦ and ⌘⌫ move the selection to the Trash without
+  asking (⌫ alone does nothing); F7 / F8 move or copy it through the destination panel ("Ask before…"
+  asks once for all: "Move 3 images to <folder>?"); B or ⌘B opens the Batch window with the selection
+  added; Image › Adjust Date Taken… changes the selection (see "Adjust Date Taken"). After a removal the
+  cell after the last removed one is selected (the one before it at the end); the grid closes when the
+  list runs empty. One failure never stops the rest; the message names the file when one failed
+  ("Couldn't move <name> to the Trash"), else the count ("Couldn't move 3 images to the Trash").
+  F5 refreshes as in the viewer.
+- Strip and title: the strip shows the focused file's pixel size, file size, position and date (no
+  zoom), or "12 of 120 selected" while several are selected, then the slider. The title is the folder's
+  name with "— 120 images".
+- Keys that act on one viewed image do nothing in the grid, and their menu items are disabled: R, L, H,
+  V, I, 0–3, ⇧L, S, F2, ⌥→ / ⌥←, G, ⌘C, ⇧⌘S, Next / Previous, Random Image, Show in Finder, Open With
+  (also ⌥1–⌥3), Always Open with, Rename… and Share. O, P, A, M and F keep their meaning.
 
 ### Move to Trash
 
