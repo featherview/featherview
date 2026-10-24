@@ -118,7 +118,7 @@ Rule of thumb: if logic can be tested without a window, it belongs in Feathervie
 | Scrolling a 10,000-file grid | no frame dropped by grid work (< 8 ms main-thread work per frame); when scrolling stops, the new screen completes within the row above |
 | Grid memory | thumbnail cache ≤ 3 × the largest screen's pixel area × 4 bytes, on top of the 8-image cache; Return to the image within the not-prefetched budget |
 | Compare With… to the second picture on screen | < 150 ms for a 12 MP JPEG (`CompareShow`, measured ~100 ms); stepping the first pane keeps the next/previous budgets |
-| Difference on screen (D, or a step with it on) | < 100 ms after both decodes, 12 MP (`Difference`, measured ~106 ms) |
+| Difference on screen (D, or a step with it on) | < 100 ms after both decodes, 12 MP (`Difference`, measured ~30 ms; Compare warms Core Image up first, which otherwise adds ~50–80 ms to the first D) |
 | Compare memory | on top of browsing: at most one fit image held by the second pane, one zoom decode and one difference image |
 
 How: decode off the main thread to fit the screen per axis, rounded up to full, ½, ¼ or ⅛ size (any size in between costs a slow resample; see `ImageDecoder.decodeSize`); HEIC/HEIF and own formats decode at the exact size instead (no slower, fewer bytes), prefetch 2 neighbours each

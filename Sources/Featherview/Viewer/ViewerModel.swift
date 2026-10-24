@@ -1423,6 +1423,8 @@ final class ViewerModel {
             link.onLeader = { [weak session] in session?.leader = $0 }
             compareLink = link
             compareSession = session
+            let space = Self.screenSpace
+            Task.detached(priority: .utility) { ImageDifference.prepare(colorSpace: space) }
         }
         focusDecodes()
         showSecond()
