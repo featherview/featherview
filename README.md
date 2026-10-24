@@ -4,6 +4,10 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
 
 **[Download](https://github.com/featherview/featherview/releases/latest)** · [Website](https://featherview.mynetx.net)
 
+<img src="docs/screenshots/viewer.png" alt="The Featherview viewer window showing a landscape picture, with the toolbar above and the status bar below" width="720">
+
+<img src="docs/screenshots/batch.png" alt="The Batch Convert window with six images listed, WebP output, a resize step and a before-and-after preview" width="720">
+
 ## Viewing
 
 - Opens instantly and flips through every image in the folder with the arrow keys; past the last
