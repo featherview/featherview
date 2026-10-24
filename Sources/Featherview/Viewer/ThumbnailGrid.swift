@@ -172,9 +172,14 @@ struct ThumbnailGrid: NSViewRepresentable {
         }
 
         /// A cell's picture; refocuses first when its cell isn't in the queue's window yet (the layout made it
-        /// before the bounds notification came), so its decode isn't dropped at once.
+        /// before the bounds notification came), so its decode isn't dropped at once. A cell outside the window
+        /// even then decodes nothing: it is asked again once it shows.
         func picture(for url: URL, side: Int) async throws -> CGImage {
-            if !wanted.contains(url) { refocus(force: true) }
+            if !wanted.contains(url) {
+                refocus(force: false)
+                // Still not wanted: a cell laid out before the grid scrolled to the current image, off screen now.
+                guard wanted.contains(url) else { throw CancellationError() }
+            }
             return try await model.thumbnail(url, side: side)
         }
 
@@ -534,7 +539,6 @@ private final class CellView: NSView {
         picture.wantsLayer = true
         picture.layer?.contentsGravity = .resizeAspect
         picture.layer?.borderWidth = 1
-        glyph.image = NSImage(systemSymbolName: "photo.badge.exclamationmark", accessibilityDescription: nil)
         glyph.imageScaling = .scaleProportionallyUpOrDown
         glyph.isHidden = true
         label.font = Theme.gridName
@@ -557,6 +561,10 @@ private final class CellView: NSView {
         picture.layer?.contents = image
         picture.isHidden = image == nil
         glyph.isHidden = !failed
+        // Set only when shown: a hidden image view still rasterizes its symbol, ~0.4 ms per cell as the grid opens.
+        if failed, glyph.image == nil {
+            glyph.image = NSImage(systemSymbolName: "photo.badge.exclamationmark", accessibilityDescription: nil)
+        }
         updateTooltip()
         applyColours()
         needsLayout = true
