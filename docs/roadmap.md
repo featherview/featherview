@@ -272,3 +272,28 @@ Ideas from the maintainer's QA that no spec covers yet; each gets a plan and a s
   quits, with "Install and Relaunch" in the update window. Replaces spec "Updates" ("never downloads
   or installs anything itself"). The library is the maintainer's call first (AGENTS.md
   "Dependencies"): Sparkle, built from source, or an own installer of a few hundred lines.
+- Photos library: browse and convert pictures from Apple's Photos library without exporting them first.
+  - **Drops from Photos:** dragging pictures from the Photos app onto the window or Dock icon opens them
+    (Photos hands over file promises; they land in a temporary folder and the viewer browses them like
+    a dropped selection).
+  - **File › Open from Photos… (⇧⌘O):** a sheet lists Library, Favorites, Recents, the user's albums
+    and the media types (Screenshots, Panoramas, …). Choosing one browses it like a folder: arrow
+    keys, Home/End, grid (T), slideshow, Compare, info panel (EXIF from the original). Order is the
+    album's own order (Library and smart albums: date taken); Sort By is disabled there. Videos are
+    skipped; Live Photos show their still; edited photos show the current version, as Photos does.
+  - **Read-only, data safe:** Copy to Folder (F8) and Save As export the current version; Batch
+    Convert… takes the selection. Rotate, rename and Move to Folder are disabled, since changing a
+    library picture is an edit in Photos. Delete moves to Photos' Recently Deleted, after the system's
+    own confirmation.
+  - **Batch output to Photos:** a destination choice "Add to Photos library" next to the output
+    folder; uses the add-only permission, which never lets the app read the library.
+  - **Permission only when used:** the Photos access prompt appears the first time Open from Photos…
+    is chosen, never at launch; once denied, the sheet says how to allow it in System Settings ›
+    Privacy & Security › Photos. Photos.framework loads only then, so launch and browsing budgets
+    stay as they are.
+  - **Budgets:** an album browses within the folder budgets (first image < 500 ms for 10,000 pictures,
+    prefetched swap ≈ 20 ms), decoding fit-to-screen through Photos' image manager with the same
+    2-each-way prefetch and 8-image cache. A picture stored only in iCloud shows Photos' local preview
+    at once and sharpens when the original arrives; the status bar says "Downloading from iCloud…".
+  - **Not planned:** organising the library (albums, keywords, favourites), syncing edits back, and
+    Photos' "Edit With" round trip.
