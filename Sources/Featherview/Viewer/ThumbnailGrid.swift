@@ -40,6 +40,7 @@ struct ThumbnailGrid: NSViewRepresentable {
         grid.onClick = { [weak coordinator] in coordinator?.clicked($0, $1) }
         grid.onLayout = { [weak coordinator] in coordinator?.laidOut() }
         grid.onScaleChange = { [weak coordinator] in coordinator?.scaleChanged() }
+        grid.onMenu = { [weak coordinator] in coordinator?.menu(at: $0) }
         grid.onPinch = { [weak model] steps in
             for _ in 0..<abs(steps) { model?.stepThumbnails(larger: steps > 0) }
         }
@@ -251,6 +252,47 @@ struct ThumbnailGrid: NSViewRepresentable {
             return true
         }
 
+        // MARK: Right-click menu
+
+        /// The selection's menu (spec "Right-click"): a cell outside the selection becomes it first; the clicked cell
+        /// takes the focus, so Show Image views it.
+        func menu(at index: Int) -> NSMenu {
+            if let grid {
+                let selection = Set(grid.selectionIndexPaths.map(\.item))
+                let next = GridSelection.contextClick(index, selection: selection)
+                if next != selection {
+                    anchor = urls[index]
+                    grid.selectionIndexPaths = Self.paths(next)
+                }
+                syncSelection(focus: index)
+            }
+            let menu = NSMenu()
+            let groups: [[(String, Selector)]] = [
+                [(String(localized: "Show Image"), #selector(menuView))],
+                [(String(localized: "Copy"), #selector(menuCopy)), (String(localized: "Show in Finder"), #selector(menuShowInFinder))],
+                [(String(localized: "Move to Folder…"), #selector(menuMove)), (String(localized: "Copy to Folder…"), #selector(menuCopyTo)),
+                 (String(localized: "Batch Convert…"), #selector(menuBatch))],
+                [(String(localized: "Move to Trash"), #selector(menuTrash))],
+            ]
+            for group in groups {
+                if !menu.items.isEmpty { menu.addItem(.separator()) }
+                for (title, action) in group {
+                    let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+                    item.target = self
+                    menu.addItem(item)
+                }
+            }
+            return menu
+        }
+
+        @objc private func menuView() { _ = onKey(.view) }
+        @objc private func menuCopy() { model.copyGridSelection() }
+        @objc private func menuShowInFinder() { model.showInFinder() }
+        @objc private func menuMove() { _ = onKey(.move) }
+        @objc private func menuCopyTo() { _ = onKey(.copy) }
+        @objc private func menuBatch() { _ = onKey(.batch) }
+        @objc private func menuTrash() { _ = onKey(.trash) }
+
         func select(_ index: Int) {
             guard let grid, urls.indices.contains(index) else { return }
             anchor = urls[index]
@@ -303,6 +345,8 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
     var onClick: (Int, NSEvent.ModifierFlags) -> Void = { _, _ in }
     var onLayout: () -> Void = {}
     var onScaleChange: () -> Void = {}
+    /// The right-clicked cell's menu.
+    var onMenu: (Int) -> NSMenu? = { _ in nil }
     /// Whole column steps of a pinch (positive: larger).
     var onPinch: (Int) -> Void = { _ in }
     private var pinch = PinchSteps()
@@ -328,6 +372,13 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         onScaleChange()
+    }
+
+    /// Right-click and Control-click on a cell; none between cells.
+    override func menu(for event: NSEvent) -> NSMenu? {
+        window?.makeFirstResponder(self)
+        guard let index = indexPathForItem(at: convert(event.locationInWindow, from: nil))?.item, index < urls.count else { return nil }
+        return onMenu(index)
     }
 
     override func magnify(with event: NSEvent) {
