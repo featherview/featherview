@@ -11,12 +11,6 @@ import Testing
         #expect(ThumbnailSize.decodeSide(points: 256, scale: 3) == 512)
     }
 
-    @Test func steppedClamps() {
-        #expect(ThumbnailSize.stepped(128, larger: true) == 160)
-        #expect(ThumbnailSize.stepped(250, larger: true) == 256)
-        #expect(ThumbnailSize.stepped(64, larger: false) == 64)
-    }
-
     @Test func columnsFillTheWidth() {
         #expect(ThumbnailSize.columns(width: 1000, target: 128, gap: 12) == .init(count: 7, cell: 132))
         #expect(ThumbnailSize.columns(width: 1000, target: 256, gap: 12) == .init(count: 4, cell: 241))

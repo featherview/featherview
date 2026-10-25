@@ -1262,6 +1262,8 @@ final class ViewerModel {
     var gridFocus: URL? { didSet { if gridFocus != oldValue { readGridInfo() } } }
     /// The selected cells' files, in list order; set by the grid.
     var gridSelection: [URL] = [] { didSet { updateAvailability() } }
+    /// The grid's room between its side margins, for + / − (`ThumbnailSize.stepped`); the grid writes it.
+    @ObservationIgnored var gridWidth = 0.0
     /// The focused cell's details for the strip, read off the main thread.
     private(set) var gridInfo: FileInfo?
     @ObservationIgnored private var gridInfoTask: Task<Void, Never>?
@@ -1372,9 +1374,10 @@ final class ViewerModel {
         BatchModel.shared.add(files: gridSelection)
     }
 
-    /// + / −, and the View menu's retitled zoom items, in the grid.
+    /// + / −, the View menu's retitled zoom items and a pinch, in the grid: one column fewer or more.
     func stepThumbnails(larger: Bool) {
-        let size = ThumbnailSize.stepped(AppSettings.thumbnailSize.value(), larger: larger)
+        guard let size = ThumbnailSize.stepped(width: gridWidth, target: AppSettings.thumbnailSize.value(),
+                                               gap: Theme.gridGap, larger: larger) else { return }
         AppSettings.thumbnailSize.set(size)
     }
 

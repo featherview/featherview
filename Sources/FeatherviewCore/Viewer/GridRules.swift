@@ -13,12 +13,6 @@ public enum ThumbnailSize {
         return min(512, max(128, Int(steps) * 128))
     }
 
-    /// + / − : ×1.25 or ÷1.25 within `range`.
-    public static func stepped(_ points: Double, larger: Bool) -> Double {
-        let next = larger ? points * 1.25 : points / 1.25
-        return min(max(next, range.lowerBound), range.upperBound)
-    }
-
     /// How many cells fill a row and how wide they are.
     public struct Columns: Equatable, Sendable {
         public let count: Int

@@ -10,7 +10,7 @@ import SwiftUI
 struct ThumbnailGrid: NSViewRepresentable {
     let model: ViewerModel
     let urls: [URL]
-    /// The slider's size in points.
+    /// The slider's size in points: the target the columns come nearest to.
     let cellSize: Double
     /// The toolbar's and strip's room, as the canvas has; the grid scrolls under both.
     let insets: CanvasInsets
@@ -40,6 +40,9 @@ struct ThumbnailGrid: NSViewRepresentable {
         grid.onClick = { [weak coordinator] in coordinator?.clicked($0, $1) }
         grid.onLayout = { [weak coordinator] in coordinator?.laidOut() }
         grid.onScaleChange = { [weak coordinator] in coordinator?.scaleChanged() }
+        grid.onPinch = { [weak model] steps in
+            for _ in 0..<abs(steps) { model?.stepThumbnails(larger: steps > 0) }
+        }
         let scroll = NSScrollView()
         scroll.documentView = grid
         scroll.hasVerticalScroller = true
@@ -64,6 +67,8 @@ struct ThumbnailGrid: NSViewRepresentable {
         weak var grid: GridCollectionView?
         private var onKey: (GridKey) -> Bool = { _ in false }
         private var urls: [URL] = []
+        /// The slider's size; `cellSize` is what filling the width makes of it.
+        private var target = 0.0
         private var cellSize = 0.0
         private var insets: CanvasInsets?
         private var hasKeyboard = true
@@ -100,11 +105,9 @@ struct ThumbnailGrid: NSViewRepresentable {
                 let bottom = max(view.insets.bottom, CanvasInsets.side) - view.insets.bottom
                 layout.sectionInset = NSEdgeInsets(top: top, left: CanvasInsets.side, bottom: bottom, right: CanvasInsets.side)
             }
-            if cellSize != view.cellSize {
-                let oldSide = side
-                cellSize = view.cellSize
-                layout.itemSize = NSSize(width: cellSize, height: cellSize + Theme.gridNameGap + Theme.gridNameHeight)
-                if side != oldSide { refocus(force: true) }
+            if target != view.cellSize {
+                target = view.cellSize
+                applyColumns()
             }
             if urls != view.urls { reload(view.urls) }
             if hasKeyboard != view.hasKeyboard {
@@ -136,7 +139,26 @@ struct ThumbnailGrid: NSViewRepresentable {
             Set(items.map { IndexPath(item: $0, section: 0) })
         }
 
+        /// Whole columns fill the room between the side margins (spec "Size"). True when the cell size changed: the
+        /// layout runs again with it.
+        @discardableResult
+        private func applyColumns() -> Bool {
+            guard let grid, let scroll = grid.enclosingScrollView,
+                  let layout = grid.collectionViewLayout as? NSCollectionViewFlowLayout else { return false }
+            let width = scroll.contentView.bounds.width - 2 * CanvasInsets.side
+            model.gridWidth = width
+            let cell = ThumbnailSize.columns(width: width, target: target, gap: Theme.gridGap).cell
+            guard cell != cellSize else { return false }
+            let oldSide = side
+            cellSize = cell
+            layout.itemSize = NSSize(width: cell, height: cell + Theme.gridNameGap + Theme.gridNameHeight)
+            if side != oldSide { refocus(force: true) }
+            return true
+        }
+
         func laidOut() {
+            // The scroll to the middle waits for the cells' final size.
+            if applyColumns() { return }
             if let index = pendingScroll, let grid, grid.bounds.width > 0, index < urls.count {
                 pendingScroll = nil
                 grid.scrollToItems(at: [IndexPath(item: index, section: 0)], scrollPosition: .centeredVertically)
@@ -281,6 +303,9 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
     var onClick: (Int, NSEvent.ModifierFlags) -> Void = { _, _ in }
     var onLayout: () -> Void = {}
     var onScaleChange: () -> Void = {}
+    /// Whole column steps of a pinch (positive: larger).
+    var onPinch: (Int) -> Void = { _ in }
+    private var pinch = PinchSteps()
 
     /// The selected files, in list order: what Quick Look shows.
     private var previewed: [URL] = []
@@ -303,6 +328,12 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         onScaleChange()
+    }
+
+    override func magnify(with event: NSEvent) {
+        let steps = pinch.add(event.magnification)
+        if steps != 0 { onPinch(steps) }
+        if event.phase == .ended || event.phase == .cancelled { pinch.end() }
     }
 
     override func keyDown(with event: NSEvent) {
