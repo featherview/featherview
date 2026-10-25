@@ -38,6 +38,7 @@ struct ThumbnailGrid: NSViewRepresentable {
         grid.onKey = { [weak coordinator] in coordinator?.key($0) ?? false }
         grid.onOpen = { [weak model] in model?.viewFromGrid($0) }
         grid.onClick = { [weak coordinator] in coordinator?.clicked($0, $1) }
+        grid.onWillLayout = { [weak coordinator] in coordinator?.applyColumns() }
         grid.onLayout = { [weak coordinator] in coordinator?.laidOut() }
         grid.onScaleChange = { [weak coordinator] in coordinator?.scaleChanged() }
         grid.onMenu = { [weak coordinator] in coordinator?.menu(at: $0) }
@@ -140,26 +141,22 @@ struct ThumbnailGrid: NSViewRepresentable {
             Set(items.map { IndexPath(item: $0, section: 0) })
         }
 
-        /// Whole columns fill the room between the side margins (spec "Size"). True when the cell size changed: the
-        /// layout runs again with it.
-        @discardableResult
-        private func applyColumns() -> Bool {
+        /// Whole columns fill the room between the side margins (spec "Size"). Runs before each layout pass, so the
+        /// pass already has the final cell size.
+        func applyColumns() {
             guard let grid, let scroll = grid.enclosingScrollView,
-                  let layout = grid.collectionViewLayout as? NSCollectionViewFlowLayout else { return false }
+                  let layout = grid.collectionViewLayout as? NSCollectionViewFlowLayout else { return }
             let width = scroll.contentView.bounds.width - 2 * CanvasInsets.side
             model.gridWidth = width
             let cell = ThumbnailSize.columns(width: width, target: target, gap: Theme.gridGap).cell
-            guard cell != cellSize else { return false }
+            guard cell != cellSize else { return }
             let oldSide = side
             cellSize = cell
             layout.itemSize = NSSize(width: cell, height: cell + Theme.gridNameGap + Theme.gridNameHeight)
             if side != oldSide { refocus(force: true) }
-            return true
         }
 
         func laidOut() {
-            // The scroll to the middle waits for the cells' final size.
-            if applyColumns() { return }
             if let index = pendingScroll, let grid, grid.bounds.width > 0, index < urls.count {
                 pendingScroll = nil
                 grid.scrollToItems(at: [IndexPath(item: index, section: 0)], scrollPosition: .centeredVertically)
@@ -344,6 +341,7 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
     /// Return is a key; this is the double-click.
     var onOpen: (URL) -> Void = { _ in }
     var onClick: (Int, NSEvent.ModifierFlags) -> Void = { _, _ in }
+    var onWillLayout: () -> Void = {}
     var onLayout: () -> Void = {}
     var onScaleChange: () -> Void = {}
     /// The right-clicked cell's menu.
@@ -368,6 +366,7 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
     }
 
     override func layout() {
+        onWillLayout()
         super.layout()
         onLayout()
     }
@@ -418,11 +417,11 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
         down = nil
         let selected = selectionIndexPaths.map(\.item).sorted()
         guard selected.contains(start.index) else { return }
-        // Cells off screen start from the dragged one.
-        let fallback = cellImage(start.index)
+        // Cells off screen start from the dragged one, without a picture: ⌘A in a big folder makes no thousands of images.
+        let origin = cellImage(start.index)?.1 ?? NSRect(origin: point, size: .zero)
         let items = selected.map { index in
             let item = NSDraggingItem(pasteboardWriter: urls[index] as NSURL)
-            if let (image, frame) = cellImage(index) ?? fallback { item.setDraggingFrame(frame, contents: image) }
+            if let (image, frame) = cellImage(index) { item.setDraggingFrame(frame, contents: image) } else { item.draggingFrame = origin }
             return item
         }
         beginDraggingSession(with: items, event: event, source: self)
