@@ -453,7 +453,7 @@ The grid is a mode of the viewer window, not a window of its own.
 - Cells are the viewer's list, in its order, so unreadable and non-image files the list holds get
   cells too. The grid follows the list (the scan finishing after T, a removal, a new sort) and keeps the
   selection.
-- Cell: a square of the slider's size (64–256 pt, default 128, remembered), the thumbnail fitted
+- Cell: a square, the thumbnail fitted
   inside, aspect kept, never enlarged, orientation applied, with the picture hairline and no shadow; the
   file name below in one line, truncated in the middle. Selected: a toggled-pill backdrop behind the
   square and the name in an accent capsule. Loading: a card-filled square. Can't open:
@@ -461,9 +461,17 @@ The grid is a mode of the viewer window, not a window of its own.
   chooser choose folders).
 - Hovering a cell shows its name, then pixel size, file size, position ("3 / 120") and date, read once
   the pointer rests (never while scrolling). A file that can't be opened shows "Can't open <name>".
-- Size: a slider at the trailing end of the status strip; + / − (and View's "Larger Thumbnails  (+)" /
-  "Smaller Thumbnails  (−)", which replace Zoom In / Out) change it by ×1.25 within the range; with the
-  strip hidden the keys still work. The toolbar's zoom buttons are disabled in the grid.
+- Size: whole columns always fill the width, as in Photos. The remembered size (64–256 pt, default 128)
+  is a target: the grid takes the column count whose cells come nearest to it, then widens the cells
+  (whole points) until the row fills the width between the side margins, gaps kept; the count moves
+  on if that leaves the cells outside 64–256 pt (one column, as wide as the window, when even 64 pt
+  doesn't fit twice). Resizing the window keeps the target, so cells grow until a column more fits.
+  The slider at the trailing end of the status strip sets the target, so dragging it steps one column
+  at a time; + / − (and View's "Larger Thumbnails  (+)" / "Smaller Thumbnails  (−)", which replace
+  Zoom In / Out) and a pinch on the trackpad take one column away or add one (a pinch: one column per
+  0.15 of magnification, as long as the fingers move), and the new cell size becomes the target.
+  Nothing happens when no column count is left in the range. With the strip hidden the keys still
+  work. The toolbar's zoom buttons are disabled in the grid.
 - Thumbnails decode at the cell's pixels rounded up to 128, 256, 384 or 512, so dragging the slider
   re-decodes only when it crosses a step, and a larger cached thumbnail serves a smaller cell. 8 bits in
   the screen's colour space, never HDR. A file's embedded thumbnail is used when it is large enough (or
@@ -489,12 +497,27 @@ The grid is a mode of the viewer window, not a window of its own.
   cell after the last removed one is selected (the one before it at the end); the grid closes when the
   list runs empty. One failure never stops the rest; the message names the file when one failed
   ("Couldn't move <name> to the Trash"), else the count ("Couldn't move 3 images to the Trash").
-  F5 refreshes as in the viewer.
+  F5 refreshes as in the viewer. ⌘C (Edit › Copy) puts the selected files on the clipboard, as Finder's
+  Copy does, so they paste as files into Finder, Mail or any app. File › Show in Finder selects them
+  in Finder.
+- Right-click (or Control-click) on a cell: a cell already selected keeps the selection; any other
+  cell becomes the selection and the focus first, as in Finder. A click between cells shows no menu.
+  The menu acts on the selection: "Show Image" (the clicked cell, as Return), then "Copy", "Show in
+  Finder", then "Move to Folder…", "Copy to Folder…", "Batch Convert…", then "Move to Trash". No key
+  names in the titles; each does what its key does.
+- Dragging a selected cell out of the window drags the selected files (one item each, in list order,
+  the cells' pictures as the drag image), so Finder, Mail or any app takes them. Copy only: Finder
+  copies them even on the same disk (the folder never changes under the viewer), dropping on the
+  Trash does nothing, and a drop back on a Featherview window does nothing. A plain click on a cell
+  inside a selection of several keeps the selection until the mouse goes up without dragging, then
+  selects only that cell; a drag that starts on a cell outside the selection first selects that cell.
+  ⇧- and ⌘-clicks change the selection at once; a drag from a cell they left selected drags the
+  selection.
 - Strip and title: the strip shows the focused file's pixel size, file size, position and date (no
   zoom), or "12 of 120 selected" while several are selected, then the slider. The title is the folder's
   name with "— 120 images".
 - Keys that act on one viewed image do nothing in the grid, and their menu items are disabled: R, L, H,
-  V, I, 0–3, ⇧L, S, F2, ⌥→ / ⌥←, G, ⌘C, ⇧⌘S, Next / Previous, Random Image, Show in Finder, Open With
+  V, I, 0–3, ⇧L, S, F2, ⌥→ / ⌥←, G, ⇧⌘S, Next / Previous, Random Image, Open With
   (also ⌥1–⌥3), Always Open with, Rename… and Share. O, P, A, M and F keep their meaning.
 
 ### Move to Trash

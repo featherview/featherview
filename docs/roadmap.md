@@ -31,6 +31,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 18 | Quick wins (v2): Refresh, random image, desktop placement, grid tooltips | `docs/superpowers/plans/2026-10-22-milestone-18-quick-wins.md` | done |
 | 19 | Simplify: decisions from the app into tested Core types, catalog format, duplicates | `docs/superpowers/plans/2026-10-22-milestone-19-simplify.md` | done |
 | 20 | Hardening: fuzzing, sanitizers, real files through every write path, Intel, crash reports | `docs/superpowers/plans/2026-10-23-milestone-20-hardening.md` | done |
+| 21 | Grid columns that fill the window, right-click menu, drag out | `docs/superpowers/plans/2026-10-25-milestone-21-grid-columns-menu-drag.md` | planned |
 
 ## 1. Core viewer and batch
 
@@ -261,12 +262,6 @@ declarations; a default app's own document icon still wins. Plan:
 
 Ideas from the maintainer's QA that no spec covers yet; each gets a plan and a spec section first.
 
-- Thumbnail grid sizes snap to whole columns that fill the window, as in Photos; the slider, + / − and a
-  pinch step one column at a time (thumbnails still decode in 128-pixel steps).
-- Right-click on a thumbnail: a context menu for the selection (the clicked cell joins it, as in Finder):
-  View, Copy, Move to Folder…, Copy to Folder…, Show in Finder, Batch Convert…, Move to Trash.
-- Dragging thumbnails out of the window is a file drag of the selection, so Finder, Mail or any app
-  takes the files.
 - Automatic updates: download the new disk image, check its signature (an EdDSA key whose public half
   ships in the app, as Sparkle's appcast format already allows), and swap the app in place when it
   quits, with "Install and Relaunch" in the update window. Replaces spec "Updates" ("never downloads
