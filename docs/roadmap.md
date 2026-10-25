@@ -31,7 +31,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 18 | Quick wins (v2): Refresh, random image, desktop placement, grid tooltips | `docs/superpowers/plans/2026-10-22-milestone-18-quick-wins.md` | done |
 | 19 | Simplify: decisions from the app into tested Core types, catalog format, duplicates | `docs/superpowers/plans/2026-10-22-milestone-19-simplify.md` | done |
 | 20 | Hardening: fuzzing, sanitizers, real files through every write path, Intel, crash reports | `docs/superpowers/plans/2026-10-23-milestone-20-hardening.md` | done |
-| 21 | Grid columns that fill the window, right-click menu, drag out | `docs/superpowers/plans/2026-10-25-milestone-21-grid-columns-menu-drag.md` | planned |
+| 21 | Grid columns that fill the window, right-click menu, drag out | `docs/superpowers/plans/2026-10-25-milestone-21-grid-columns-menu-drag.md` | done |
 
 ## 1. Core viewer and batch
 

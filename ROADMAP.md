@@ -13,11 +13,14 @@ conversion, the extra formats with Finder previews, and 30 languages.
 - Signed and notarized releases, so the first launch needs no "Open Anyway", once
   [sponsorships](https://github.com/sponsors/mynetx) cover Apple's $99/year developer membership.
 
-## After 1.0
+## Done, in the next release
 
 - Thumbnail sizes that snap to whole columns filling the window, as in Photos
 - Right-click on thumbnails: view, copy, move, Show in Finder, batch convert or trash the selection
 - Drag thumbnails out of the window into Finder, Mail or any app
+
+## After 1.0
+
 - Automatic updates: download, check and install a new version, then relaunch
 - Photos library: browse albums from Apple's Photos with the arrow keys, drag pictures in from
   Photos, and batch convert from it or into it, without exporting first
