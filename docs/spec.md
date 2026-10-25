@@ -979,29 +979,32 @@ the $99/year Apple Developer Program; then sign with Developer ID and notarize.
 
 ## Updates
 
-Featherview tells people when a newer version exists; they download and install it by hand. It
-never downloads or installs anything itself.
+Featherview updates itself through Sparkle (MIT, sparkle-project.org): it finds a new version,
+shows its release notes, downloads it and installs it when asked, then relaunches.
 
 - Feed: `https://featherview.mynetx.net/appcast.xml`, Sparkle appcast format (RSS 2.0 with the
   `sparkle` namespace). Per `<item>`: `<title>`, `<sparkle:shortVersionString>` (e.g. 1.2.0),
   `<sparkle:version>` (build), `<sparkle:minimumSystemVersion>`, `<link>` (the release page),
-  `<description>` (release notes, plain text or simple HTML), `<pubDate>`. An item without a
-  version or an https link is ignored; a malformed or empty feed means no update.
-- The request is a plain GET with no cookies, cache or anything about the person beyond the HTTP
-  request itself; User-Agent `Featherview/<version>`; 15 s timeout.
-- Versions compare numerically by dotted parts (1.10 is newer than 1.9; missing parts count as 0).
-  The update offered is the newest release that is newer than the running one, runs on this
-  macOS version, and is newer than a skipped version.
-- Automatic check: about 10 s after launch, off the main thread, when Settings › Browsing ›
-  "Check for updates automatically" is on (default) and the last successful check is at least
-  24 hours ago. Any failure is silent; it tries again at the next launch.
-- Check for Updates… (app menu) ignores the schedule and the skipped version and always answers:
-  the update window, or a short alert ("Featherview 1.2.0 is the newest version." / "Can't check
-  for updates right now.").
-- Update window: a small window of its own, not modal, in our own look: "Featherview 1.3.0 is
-  available", "You have 1.2.0.", the release notes as plain text (tags stripped, scrollable), and
-  Download (default; the browser downloads the disk image to Downloads, or opens the release page if
-  the feed names none), Skip This Version, Later.
+  `<description>` (release notes, simple HTML), `<pubDate>`, and `<enclosure>` with the disk image's
+  https URL, `length`, `type="application/octet-stream"` and `sparkle:edSignature`. The same file
+  serves 0.10, which only tells about a new version and ignores the enclosure.
+- Every download is checked against the EdDSA public key in Info.plist (`SUPublicEDKey`) before
+  anything is installed; a download that fails the check is thrown away with an error. The private
+  key lives only in the maintainer's Keychain.
+- The request sends nothing about the person or their Mac beyond the HTTP request itself (Sparkle's
+  system profile stays off).
+- Automatic check: on by default, at most once a day, never in the first 10 s after launch (Sparkle
+  starts then, so it costs launch nothing). Settings › Browsing › "Check for updates
+  automatically" turns it off; someone who turned it off in 0.10 keeps it off. No "check
+  automatically?" question on first launch.
+- Check for Updates… (app menu) checks at once and always answers: the update window, "You're up to
+  date", or an error.
+- Update window: Sparkle's own (release notes, Install Update, Remind Me Later, Skip This Version),
+  in Sparkle's languages; where it has none, English.
+- Installing: when the person chooses Install and Relaunch, or else when Featherview quits. If their
+  account can't write to the folder the app is in (a standard account and /Applications), macOS asks
+  for an administrator's name and password.
+- Homebrew: the cask declares `auto_updates true`, so `brew upgrade` leaves the update to Sparkle.
 
 ## App icon
 

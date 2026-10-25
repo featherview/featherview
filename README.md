@@ -125,6 +125,8 @@ Disk image: `scripts/dmg.sh` writes `build/Featherview-<version>.dmg`.
   [highway](https://github.com/google/highway) (Apache-2.0 or BSD-3-Clause),
   [brotli](https://github.com/google/brotli) (MIT) and [skcms](https://skia.googlesource.com/skcms)
   (BSD-3-Clause), for writing JPEG XL, vendored in `Sources/CJPEGXL` and built from source by SwiftPM.
+- [Sparkle](https://sparkle-project.org) 2.10.0 (MIT), for automatic updates, from its Swift package
+  (a prebuilt framework).
 
 ## License
 

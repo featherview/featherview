@@ -153,7 +153,12 @@ abort line with what is left to do by hand.
 1. `appcast.xml` (create it if missing, as below). Add the new `<item>` as the first item; keep the
    older ones. The app reads `sparkle:shortVersionString`, `sparkle:minimumSystemVersion`
    (`LSMinimumSystemVersion` from Info.plist), `link` (must be https) and `description` (simple HTML:
-   `<ul><li>`, `<p>`). The enclosure is for Sparkle-format readers.
+   `<ul><li>`, `<p>`). Sparkle installs from the enclosure, and only when its signature matches the
+   app's `SUPublicEDKey`: sign the disk image with
+   `.build/artifacts/sparkle/Sparkle/bin/sign_update --account featherview build/Featherview-X.Y.Z.dmg`
+   (the private key is in the maintainer's login Keychain; macOS may ask to allow access) and put the
+   `sparkle:edSignature="…" length="…"` it prints into the enclosure. No signature, no release: stop
+   and tell the maintainer.
 
    ```xml
    <?xml version="1.0" encoding="utf-8"?>
@@ -170,7 +175,7 @@ abort line with what is left to do by hand.
          <link>https://github.com/featherview/featherview/releases/tag/vX.Y.Z</link>
          <description><![CDATA[<ul><li>…</li></ul>]]></description>
          <enclosure url="https://github.com/featherview/featherview/releases/download/vX.Y.Z/Featherview-X.Y.Z.dmg"
-                    length="BYTES" type="application/x-apple-diskimage"/>
+                    sparkle:edSignature="SIGNATURE" length="BYTES" type="application/octet-stream"/>
        </item>
      </channel>
    </rss>
@@ -183,7 +188,7 @@ abort line with what is left to do by hand.
    Sonoma and later".
 3. Homebrew tap (`featherview/homebrew-tap`, clone it to `$TMPDIR` if needed): in
    `Casks/featherview.rb` set `version` and `sha256` (`shasum -a 256 build/Featherview-X.Y.Z.dmg`),
-   commit `feat: featherview X.Y.Z`, push.
+   and make sure it has `auto_updates true` (the app updates itself through Sparkle), commit `feat: featherview X.Y.Z`, push.
 4. Commit `feat: Featherview X.Y.Z` (website repo), push.
 
 `· Feed live`: GitHub Pages takes about a minute. Every 20 s, at most 5 minutes:

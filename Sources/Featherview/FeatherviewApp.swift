@@ -188,7 +188,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        Updater.scheduleAutomaticCheck()
+        Updater.startLater()
         offerCrashReport()
         // Open Recent also when no viewer window comes back (showOnce reads it sooner when one does).
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { RecentFiles.shared.reload() }
