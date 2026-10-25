@@ -348,6 +348,8 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
     var onMenu: (Int) -> NSMenu? = { _ in nil }
     /// Whole column steps of a pinch (positive: larger).
     var onPinch: (Int) -> Void = { _ in }
+    /// A drag out of a grid is running: Featherview's own drop targets turn it down (SwiftUI's ignore the source's mask).
+    static private(set) var isDraggingOut = false
     private var pinch = PinchSteps()
     /// The cell the mouse went down on; `deferred`: its plain click waits for mouse-up, a drag takes the selection.
     private var down: (point: NSPoint, index: Int, deferred: Bool)?
@@ -424,7 +426,12 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
             if let (image, frame) = cellImage(index) { item.setDraggingFrame(frame, contents: image) } else { item.draggingFrame = origin }
             return item
         }
+        Self.isDraggingOut = true
         beginDraggingSession(with: items, event: event, source: self)
+    }
+
+    override func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
+        Self.isDraggingOut = false
     }
 
     override func mouseUp(with event: NSEvent) {

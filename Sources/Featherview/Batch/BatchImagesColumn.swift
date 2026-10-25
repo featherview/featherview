@@ -32,7 +32,7 @@ struct BatchImagesColumn: View {
                 }
             }
             .dropDestination(for: URL.self) { urls, _ in
-                guard !model.isRunning else { return false }
+                guard !model.isRunning, !GridCollectionView.isDraggingOut else { return false }
                 model.add(dropped: urls)
                 return true
             } isTargeted: { isDropTarget = $0 }

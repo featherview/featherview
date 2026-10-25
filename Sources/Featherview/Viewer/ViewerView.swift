@@ -207,7 +207,7 @@ struct ViewerView: View {
             model.animatedImagesSettingChanged()
         }
         .dropDestination(for: URL.self) { urls, _ in
-            guard let url = urls.first else { return false }
+            guard !GridCollectionView.isDraggingOut, let url = urls.first else { return false }
             model.open(url)
             return true
         }
