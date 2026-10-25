@@ -335,7 +335,8 @@ struct ThumbnailGrid: NSViewRepresentable {
     }
 }
 
-/// The grid's collection view: its own clicks (no rubber band), double-click, keys and Quick Look of the selection.
+/// The grid's collection view: its own clicks (no rubber band), double-click, keys, Quick Look of the selection and
+/// dragging the selection out as files.
 final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanelDataSource, @preconcurrency QLPreviewPanelDelegate {
     var urls: [URL] = []
     /// Keys `GridKey` maps; false sends the key on up the responder chain.
@@ -350,6 +351,8 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
     /// Whole column steps of a pinch (positive: larger).
     var onPinch: (Int) -> Void = { _ in }
     private var pinch = PinchSteps()
+    /// The cell the mouse went down on; `deferred`: its plain click waits for mouse-up, a drag takes the selection.
+    private var down: (point: NSPoint, index: Int, deferred: Bool)?
 
     /// The selected files, in list order: what Quick Look shows.
     private var previewed: [URL] = []
@@ -396,8 +399,50 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
     /// No rubber band (spec "Mouse": no selection rectangle): a click between cells does nothing, a drag selects nothing.
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
-        guard let index = indexPathForItem(at: convert(event.locationInWindow, from: nil))?.item, index < urls.count else { return }
-        if event.clickCount == 2 { onOpen(urls[index]) } else { onClick(index, event.modifierFlags) }
+        down = nil
+        let point = convert(event.locationInWindow, from: nil)
+        guard let index = indexPathForItem(at: point)?.item, index < urls.count else { return }
+        if event.clickCount == 2 { return onOpen(urls[index]) }
+        let flags = event.modifierFlags
+        let deferred = GridSelection.defersClick(index, selection: Set(selectionIndexPaths.map(\.item)),
+                                                 shift: flags.contains(.shift), command: flags.contains(.command))
+        if !deferred { onClick(index, flags) }
+        down = (point, index, deferred)
+    }
+
+    /// Past the drag distance from a selected cell: the selected files, in list order (spec "Dragging").
+    override func mouseDragged(with event: NSEvent) {
+        guard let start = down else { return }
+        let point = convert(event.locationInWindow, from: nil)
+        guard hypot(point.x - start.point.x, point.y - start.point.y) >= 3 else { return }
+        down = nil
+        let selected = selectionIndexPaths.map(\.item).sorted()
+        guard selected.contains(start.index) else { return }
+        // Cells off screen start from the dragged one.
+        let fallback = cellImage(start.index)
+        let items = selected.map { index in
+            let item = NSDraggingItem(pasteboardWriter: urls[index] as NSURL)
+            if let (image, frame) = cellImage(index) ?? fallback { item.setDraggingFrame(frame, contents: image) }
+            return item
+        }
+        beginDraggingSession(with: items, event: event, source: self)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        if let start = down, start.deferred { onClick(start.index, []) }
+        down = nil
+    }
+
+    /// A visible cell's picture and its frame here.
+    private func cellImage(_ index: Int) -> (NSImage, NSRect)? {
+        guard let cell = item(at: IndexPath(item: index, section: 0)) as? ThumbnailCell, let url = cell.url else { return nil }
+        let (image, frame) = cell.dragImage(for: url)
+        return (image, convert(frame, from: cell.view))
+    }
+
+    /// Copy only: Finder copies even on the same disk, the Trash takes nothing, and no Featherview window takes the drop.
+    override func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
+        context == .outsideApplication ? .copy : []
     }
 
     // MARK: Quick Look (Space)
@@ -558,6 +603,9 @@ final class ThumbnailCell: NSCollectionViewItem {
         reading = nil
     }
 
+    /// The drag image: the shown picture and its frame, else the file's icon over the square.
+    func dragImage(for url: URL) -> (NSImage, NSRect) { cell.dragImage(for: url) }
+
     /// Asks for a picture when the cell has none at the grid's decode side, nor a decode on its way.
     func load() {
         guard let url, let grid, !grid.isFailed(url) else { return }
@@ -632,6 +680,11 @@ private final class CellView: NSView {
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
+
+    func dragImage(for url: URL) -> (NSImage, NSRect) {
+        if let image { return (NSImage(cgImage: image, size: picture.frame.size), convert(picture.frame, from: square)) }
+        return (NSWorkspace.shared.icon(forFile: url.path), square.frame)
+    }
 
     func show(_ image: CGImage?, failed: Bool) {
         self.image = image
