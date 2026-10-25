@@ -13,7 +13,7 @@ import Testing
         let a = viewing()
         #expect(a.canGoBack && a.canGoForward)
         #expect(a.canChangeFile && a.canShowGrid && a.canCompare && a.canSetDesktop)
-        #expect(a.canShowInfo && a.canAdjustDate && a.hasOperationTargets && a.canShowInFinder)
+        #expect(a.canShowInfo && a.canAdjustDate && a.hasOperationTargets && a.canShowInFinder && a.canOpenWith)
         #expect(a.canSaveAs && a.canBatch && a.canCopy && a.canZoom && a.canToggleSlideshow && a.canFollow)
         #expect(!a.hasPages && !a.canSwap && !a.canShowDifference && !a.canToggleDifference && !a.canCompareSelection)
     }
@@ -64,7 +64,9 @@ import Testing
             #expect(!a.canGoBack && !a.canGoForward)
             #expect(a.canShowGrid)  // T leaves the grid
             #expect(!a.canChangeFile && !a.hasPages && !a.canCompare && !a.canSetDesktop && !a.canShowInfo)
-            #expect(!a.canShowInFinder && !a.canCopy && !a.canZoom && !a.canSaveAs)
+            #expect(!a.canZoom && !a.canSaveAs && !a.canOpenWith)
+            #expect(a.canShowInFinder == (selected > 0))
+            #expect(a.canCopy == (selected > 0))
             #expect(a.canToggleSlideshow)
             #expect(a.canAdjustDate == (selected > 0))
             #expect(a.hasOperationTargets == (selected > 0))

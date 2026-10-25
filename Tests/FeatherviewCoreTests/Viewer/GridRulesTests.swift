@@ -17,6 +17,55 @@ import Testing
         #expect(ThumbnailSize.stepped(64, larger: false) == 64)
     }
 
+    @Test func columnsFillTheWidth() {
+        #expect(ThumbnailSize.columns(width: 1000, target: 128, gap: 12) == .init(count: 7, cell: 132))
+        #expect(ThumbnailSize.columns(width: 1000, target: 256, gap: 12) == .init(count: 4, cell: 241))
+        #expect(ThumbnailSize.columns(width: 300, target: 256, gap: 12) == .init(count: 2, cell: 144))  // 1 column: 300 > 256
+    }
+
+    @Test func columnsInANarrowWindow() {
+        #expect(ThumbnailSize.columns(width: 50, target: 128, gap: 12) == .init(count: 1, cell: 50))
+    }
+
+    @Test func columnsWithoutWidth() {
+        #expect(ThumbnailSize.columns(width: 0, target: 128, gap: 12) == .init(count: 1, cell: 128))
+    }
+
+    @Test func steppedTakesOneColumn() {
+        #expect(ThumbnailSize.stepped(width: 1000, target: 128, gap: 12, larger: true) == 156)  // 6 columns
+        #expect(ThumbnailSize.stepped(width: 1000, target: 128, gap: 12, larger: false) == 114)  // 8 columns
+    }
+
+    @Test func steppedStopsAtTheRange() {
+        #expect(ThumbnailSize.stepped(width: 1000, target: 256, gap: 12, larger: true) == nil)  // 3 columns: 325
+        #expect(ThumbnailSize.stepped(width: 1000, target: 64, gap: 12, larger: false) == nil)  // 14 columns: 60
+    }
+
+    @Test func pinchStepsKeepTheRemainder() {
+        var pinch = PinchSteps()
+        #expect(pinch.add(0.1) == 0)
+        #expect(pinch.add(0.1) == 1)
+        #expect(pinch.add(-0.4) == -2)
+        pinch.end()
+        #expect(pinch.add(0.1) == 0)
+    }
+
+    @Test func contextClickInsideSelectionKeepsIt() {
+        #expect(GridSelection.contextClick(2, selection: [1, 2, 5]) == [1, 2, 5])
+    }
+
+    @Test func contextClickOutsideSelectionReplacesIt() {
+        #expect(GridSelection.contextClick(3, selection: [1, 2, 5]) == [3])
+    }
+
+    @Test func plainClickInsideSeveralWaitsForMouseUp() {
+        #expect(GridSelection.defersClick(2, selection: [1, 2], shift: false, command: false))
+        #expect(!GridSelection.defersClick(2, selection: [2], shift: false, command: false))
+        #expect(!GridSelection.defersClick(3, selection: [1, 2], shift: false, command: false))
+        #expect(!GridSelection.defersClick(2, selection: [1, 2], shift: true, command: false))
+        #expect(!GridSelection.defersClick(2, selection: [1, 2], shift: false, command: true))
+    }
+
     @Test func cacheBudgetIsThreeOfTheLargestScreen() {
         let screens = [PixelSize(width: 3024, height: 1964), PixelSize(width: 1920, height: 1080)]
         #expect(ThumbnailSize.cacheBudget(screens: screens) == 3 * 3024 * 1964 * 4)

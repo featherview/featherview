@@ -787,7 +787,7 @@ struct OpenWithMenu: View {
                     model?.openWith(index)
                 }
                 .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .option)
-                .disabled(path.isEmpty || model?.availability.canShowInFinder != true)
+                .disabled(path.isEmpty || model?.availability.canOpenWith != true)
             }
         }
     }
