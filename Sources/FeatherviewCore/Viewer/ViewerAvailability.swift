@@ -79,13 +79,15 @@ public struct ViewerAvailability: Equatable, Sendable {
     public var canAdjustDate = false
     /// Move, Copy, Trash from the File menu: the grid's selection, else the viewed image (not a held one).
     public var hasOperationTargets = false
-    /// Show in Finder, Open With: the viewed image; in the grid they'd act on the one viewed before T.
+    /// Show in Finder: the viewed image, in the grid its selection.
     public var canShowInFinder = false
+    /// Open With: the viewed image; in the grid it would act on the one viewed before T.
+    public var canOpenWith = false
     /// Save As…: a file that is still there, or an unsaved picture.
     public var canSaveAs = false
     /// Batch Convert…: in the grid only with a selection, which joins the batch's list.
     public var canBatch = false
-    /// Copy: the grid has no image to copy.
+    /// Copy: the viewed image, in the grid its selection's files.
     public var canCopy = false
     /// Zoom to Fit, Width, Height, Actual Size, Zoom In / Out: a picture shows, not the grid (+ and − size its cells).
     public var canZoom = false
@@ -125,10 +127,11 @@ public struct ViewerAvailability: Equatable, Sendable {
         canShowInfo = s.hasCurrent && !s.isGrid && !s.isComparing
         canAdjustDate = s.isGrid ? s.gridSelectionCount > 0 : canChangeFile
         hasOperationTargets = canAdjustDate
-        canShowInFinder = s.hasCurrent && !s.isGrid
+        canShowInFinder = s.isGrid ? s.gridSelectionCount > 0 : s.hasCurrent
+        canOpenWith = s.hasCurrent && !s.isGrid
         canSaveAs = canChangeFile || s.hasUnsaved
         canBatch = !s.isGrid || s.gridSelectionCount > 0
-        canCopy = !s.isGrid
+        canCopy = !s.isGrid || s.gridSelectionCount > 0
         canZoom = hasPicture && !s.isGrid
         canCompareSelection = s.isGrid && s.gridSelectionCount == 2
         canToggleDifference = canShowDifference || s.showsDifference

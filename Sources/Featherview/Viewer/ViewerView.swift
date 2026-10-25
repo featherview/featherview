@@ -787,7 +787,7 @@ struct OpenWithMenu: View {
                     model?.openWith(index)
                 }
                 .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .option)
-                .disabled(path.isEmpty || model?.availability.canShowInFinder != true)
+                .disabled(path.isEmpty || model?.availability.canOpenWith != true)
             }
         }
     }
@@ -1026,7 +1026,7 @@ struct ViewerCommands: Commands {
             // The viewed image, or the grid's selection.
             .disabled(model?.availability.hasOperationTargets != true)
             Divider()
-            // In the grid these would act on the image viewed before T, not the cells (Decision 13).
+            // The viewed image, or the grid's selection; Open With only the viewed image.
             Button("Show in Finder") { model?.showInFinder() }
                 .disabled(model?.availability.canShowInFinder != true)
             OpenWithMenu(model: model)
@@ -1044,14 +1044,15 @@ struct ViewerCommands: Commands {
             // Text fields and selected text (batch window, Info panel) keep their own Copy and Paste.
             Button("Copy") {
                 // Selected text in the Info panel isn't an NSText, but it takes SwiftUI focus from the viewer.
-                if let model, model.hasKeyboardFocus, !(NSApp.keyWindow?.firstResponder is NSText) {
+                // The grid's collection view has the keyboard, not SwiftUI focus.
+                if let model, model.isGrid || model.hasKeyboardFocus, !(NSApp.keyWindow?.firstResponder is NSText) {
                     model.copyImage()
                 } else {
                     NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)
                 }
             }
             .keyboardShortcut("c")
-            // The grid has no image to copy and no text field (Decision 13).
+            // In the grid: its selection's files.
             .disabled(model?.availability.canCopy == false)
             Button("Cut") { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }
                 .keyboardShortcut("x")

@@ -10,7 +10,7 @@ import SwiftUI
 struct ThumbnailGrid: NSViewRepresentable {
     let model: ViewerModel
     let urls: [URL]
-    /// The slider's size in points.
+    /// The slider's size in points: the target the columns come nearest to.
     let cellSize: Double
     /// The toolbar's and strip's room, as the canvas has; the grid scrolls under both.
     let insets: CanvasInsets
@@ -38,8 +38,13 @@ struct ThumbnailGrid: NSViewRepresentable {
         grid.onKey = { [weak coordinator] in coordinator?.key($0) ?? false }
         grid.onOpen = { [weak model] in model?.viewFromGrid($0) }
         grid.onClick = { [weak coordinator] in coordinator?.clicked($0, $1) }
+        grid.onWillLayout = { [weak coordinator] in coordinator?.applyColumns() }
         grid.onLayout = { [weak coordinator] in coordinator?.laidOut() }
         grid.onScaleChange = { [weak coordinator] in coordinator?.scaleChanged() }
+        grid.onMenu = { [weak coordinator] in coordinator?.menu(at: $0) }
+        grid.onPinch = { [weak model] steps in
+            for _ in 0..<abs(steps) { model?.stepThumbnails(larger: steps > 0) }
+        }
         let scroll = NSScrollView()
         scroll.documentView = grid
         scroll.hasVerticalScroller = true
@@ -64,6 +69,8 @@ struct ThumbnailGrid: NSViewRepresentable {
         weak var grid: GridCollectionView?
         private var onKey: (GridKey) -> Bool = { _ in false }
         private var urls: [URL] = []
+        /// The slider's size; `cellSize` is what filling the width makes of it.
+        private var target = 0.0
         private var cellSize = 0.0
         private var insets: CanvasInsets?
         private var hasKeyboard = true
@@ -100,11 +107,9 @@ struct ThumbnailGrid: NSViewRepresentable {
                 let bottom = max(view.insets.bottom, CanvasInsets.side) - view.insets.bottom
                 layout.sectionInset = NSEdgeInsets(top: top, left: CanvasInsets.side, bottom: bottom, right: CanvasInsets.side)
             }
-            if cellSize != view.cellSize {
-                let oldSide = side
-                cellSize = view.cellSize
-                layout.itemSize = NSSize(width: cellSize, height: cellSize + Theme.gridNameGap + Theme.gridNameHeight)
-                if side != oldSide { refocus(force: true) }
+            if target != view.cellSize {
+                target = view.cellSize
+                applyColumns()
             }
             if urls != view.urls { reload(view.urls) }
             if hasKeyboard != view.hasKeyboard {
@@ -134,6 +139,21 @@ struct ThumbnailGrid: NSViewRepresentable {
 
         private static func paths<S: Sequence<Int>>(_ items: S) -> Set<IndexPath> {
             Set(items.map { IndexPath(item: $0, section: 0) })
+        }
+
+        /// Whole columns fill the room between the side margins (spec "Size"). Runs before each layout pass, so the
+        /// pass already has the final cell size.
+        func applyColumns() {
+            guard let grid, let scroll = grid.enclosingScrollView,
+                  let layout = grid.collectionViewLayout as? NSCollectionViewFlowLayout else { return }
+            let width = scroll.contentView.bounds.width - 2 * CanvasInsets.side
+            model.gridWidth = width
+            let cell = ThumbnailSize.columns(width: width, target: target, gap: Theme.gridGap).cell
+            guard cell != cellSize else { return }
+            let oldSide = side
+            cellSize = cell
+            layout.itemSize = NSSize(width: cell, height: cell + Theme.gridNameGap + Theme.gridNameHeight)
+            if side != oldSide { refocus(force: true) }
         }
 
         func laidOut() {
@@ -229,6 +249,47 @@ struct ThumbnailGrid: NSViewRepresentable {
             return true
         }
 
+        // MARK: Right-click menu
+
+        /// The selection's menu (spec "Right-click"): a cell outside the selection becomes it first; the clicked cell
+        /// takes the focus, so Show Image views it.
+        func menu(at index: Int) -> NSMenu {
+            if let grid {
+                let selection = Set(grid.selectionIndexPaths.map(\.item))
+                let next = GridSelection.contextClick(index, selection: selection)
+                if next != selection {
+                    anchor = urls[index]
+                    grid.selectionIndexPaths = Self.paths(next)
+                }
+                syncSelection(focus: index)
+            }
+            let menu = NSMenu()
+            let groups: [[(String, Selector)]] = [
+                [(String(localized: "Show Image"), #selector(menuView))],
+                [(String(localized: "Copy"), #selector(menuCopy)), (String(localized: "Show in Finder"), #selector(menuShowInFinder))],
+                [(String(localized: "Move to Folder…"), #selector(menuMove)), (String(localized: "Copy to Folder…"), #selector(menuCopyTo)),
+                 (String(localized: "Batch Convert…"), #selector(menuBatch))],
+                [(String(localized: "Move to Trash"), #selector(menuTrash))],
+            ]
+            for group in groups {
+                if !menu.items.isEmpty { menu.addItem(.separator()) }
+                for (title, action) in group {
+                    let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+                    item.target = self
+                    menu.addItem(item)
+                }
+            }
+            return menu
+        }
+
+        @objc private func menuView() { _ = onKey(.view) }
+        @objc private func menuCopy() { model.copyGridSelection() }
+        @objc private func menuShowInFinder() { model.showInFinder() }
+        @objc private func menuMove() { _ = onKey(.move) }
+        @objc private func menuCopyTo() { _ = onKey(.copy) }
+        @objc private func menuBatch() { _ = onKey(.batch) }
+        @objc private func menuTrash() { _ = onKey(.trash) }
+
         func select(_ index: Int) {
             guard let grid, urls.indices.contains(index) else { return }
             anchor = urls[index]
@@ -271,7 +332,8 @@ struct ThumbnailGrid: NSViewRepresentable {
     }
 }
 
-/// The grid's collection view: its own clicks (no rubber band), double-click, keys and Quick Look of the selection.
+/// The grid's collection view: its own clicks (no rubber band), double-click, keys, Quick Look of the selection and
+/// dragging the selection out as files.
 final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanelDataSource, @preconcurrency QLPreviewPanelDelegate {
     var urls: [URL] = []
     /// Keys `GridKey` maps; false sends the key on up the responder chain.
@@ -279,8 +341,16 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
     /// Return is a key; this is the double-click.
     var onOpen: (URL) -> Void = { _ in }
     var onClick: (Int, NSEvent.ModifierFlags) -> Void = { _, _ in }
+    var onWillLayout: () -> Void = {}
     var onLayout: () -> Void = {}
     var onScaleChange: () -> Void = {}
+    /// The right-clicked cell's menu.
+    var onMenu: (Int) -> NSMenu? = { _ in nil }
+    /// Whole column steps of a pinch (positive: larger).
+    var onPinch: (Int) -> Void = { _ in }
+    private var pinch = PinchSteps()
+    /// The cell the mouse went down on; `deferred`: its plain click waits for mouse-up, a drag takes the selection.
+    private var down: (point: NSPoint, index: Int, deferred: Bool)?
 
     /// The selected files, in list order: what Quick Look shows.
     private var previewed: [URL] = []
@@ -296,6 +366,7 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
     }
 
     override func layout() {
+        onWillLayout()
         super.layout()
         onLayout()
     }
@@ -303,6 +374,19 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         onScaleChange()
+    }
+
+    /// Right-click and Control-click on a cell; none between cells.
+    override func menu(for event: NSEvent) -> NSMenu? {
+        window?.makeFirstResponder(self)
+        guard let index = indexPathForItem(at: convert(event.locationInWindow, from: nil))?.item, index < urls.count else { return nil }
+        return onMenu(index)
+    }
+
+    override func magnify(with event: NSEvent) {
+        let steps = pinch.add(event.magnification)
+        if steps != 0 { onPinch(steps) }
+        if event.phase == .ended || event.phase == .cancelled { pinch.end() }
     }
 
     override func keyDown(with event: NSEvent) {
@@ -314,8 +398,50 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
     /// No rubber band (spec "Mouse": no selection rectangle): a click between cells does nothing, a drag selects nothing.
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
-        guard let index = indexPathForItem(at: convert(event.locationInWindow, from: nil))?.item, index < urls.count else { return }
-        if event.clickCount == 2 { onOpen(urls[index]) } else { onClick(index, event.modifierFlags) }
+        down = nil
+        let point = convert(event.locationInWindow, from: nil)
+        guard let index = indexPathForItem(at: point)?.item, index < urls.count else { return }
+        if event.clickCount == 2 { return onOpen(urls[index]) }
+        let flags = event.modifierFlags
+        let deferred = GridSelection.defersClick(index, selection: Set(selectionIndexPaths.map(\.item)),
+                                                 shift: flags.contains(.shift), command: flags.contains(.command))
+        if !deferred { onClick(index, flags) }
+        down = (point, index, deferred)
+    }
+
+    /// Past the drag distance from a selected cell: the selected files, in list order (spec "Dragging").
+    override func mouseDragged(with event: NSEvent) {
+        guard let start = down else { return }
+        let point = convert(event.locationInWindow, from: nil)
+        guard hypot(point.x - start.point.x, point.y - start.point.y) >= 3 else { return }
+        down = nil
+        let selected = selectionIndexPaths.map(\.item).sorted()
+        guard selected.contains(start.index) else { return }
+        // Cells off screen start from the dragged one, without a picture: ⌘A in a big folder makes no thousands of images.
+        let origin = cellImage(start.index)?.1 ?? NSRect(origin: point, size: .zero)
+        let items = selected.map { index in
+            let item = NSDraggingItem(pasteboardWriter: urls[index] as NSURL)
+            if let (image, frame) = cellImage(index) { item.setDraggingFrame(frame, contents: image) } else { item.draggingFrame = origin }
+            return item
+        }
+        beginDraggingSession(with: items, event: event, source: self)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        if let start = down, start.deferred { onClick(start.index, []) }
+        down = nil
+    }
+
+    /// A visible cell's picture and its frame here.
+    private func cellImage(_ index: Int) -> (NSImage, NSRect)? {
+        guard let cell = item(at: IndexPath(item: index, section: 0)) as? ThumbnailCell, let url = cell.url else { return nil }
+        let (image, frame) = cell.dragImage(for: url)
+        return (image, convert(frame, from: cell.view))
+    }
+
+    /// Copy only: Finder copies even on the same disk, the Trash takes nothing, and no Featherview window takes the drop.
+    override func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
+        context == .outsideApplication ? .copy : []
     }
 
     // MARK: Quick Look (Space)
@@ -476,6 +602,9 @@ final class ThumbnailCell: NSCollectionViewItem {
         reading = nil
     }
 
+    /// The drag image: the shown picture and its frame, else the file's icon over the square.
+    func dragImage(for url: URL) -> (NSImage, NSRect) { cell.dragImage(for: url) }
+
     /// Asks for a picture when the cell has none at the grid's decode side, nor a decode on its way.
     func load() {
         guard let url, let grid, !grid.isFailed(url) else { return }
@@ -550,6 +679,11 @@ private final class CellView: NSView {
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
+
+    func dragImage(for url: URL) -> (NSImage, NSRect) {
+        if let image { return (NSImage(cgImage: image, size: picture.frame.size), convert(picture.frame, from: square)) }
+        return (NSWorkspace.shared.icon(forFile: url.path), square.frame)
+    }
 
     func show(_ image: CGImage?, failed: Bool) {
         self.image = image

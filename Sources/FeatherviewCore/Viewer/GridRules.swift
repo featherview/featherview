@@ -13,10 +13,39 @@ public enum ThumbnailSize {
         return min(512, max(128, Int(steps) * 128))
     }
 
-    /// + / − : ×1.25 or ÷1.25 within `range`.
-    public static func stepped(_ points: Double, larger: Bool) -> Double {
-        let next = larger ? points * 1.25 : points / 1.25
-        return min(max(next, range.lowerBound), range.upperBound)
+    /// How many cells fill a row and how wide they are.
+    public struct Columns: Equatable, Sendable {
+        public let count: Int
+        public let cell: Double
+        public init(count: Int, cell: Double) {
+            self.count = count
+            self.cell = cell
+        }
+    }
+
+    /// The column count whose cells come nearest to `target`, widened to whole points that fill `width` (the room
+    /// between the side margins); the count moves on while the cells leave `range`. Without a width yet: the target.
+    public static func columns(width: Double, target: Double, gap: Double) -> Columns {
+        guard width > 0 else { return Columns(count: 1, cell: target) }
+        var count = max(1, Int(((width + gap) / (target + gap)).rounded()))
+        while count > 1, cell(count, width: width, gap: gap) < range.lowerBound { count -= 1 }
+        while cell(count, width: width, gap: gap) > range.upperBound { count += 1 }
+        return Columns(count: count, cell: cell(count, width: width, gap: gap))
+    }
+
+    /// + / − and the pinch: one column fewer (larger) or more; nil when that leaves `range`.
+    public static func stepped(width: Double, target: Double, gap: Double, larger: Bool) -> Double? {
+        let count = columns(width: width, target: target, gap: gap).count + (larger ? -1 : 1)
+        guard count >= 1 else { return nil }
+        let next = cell(count, width: width, gap: gap)
+        return range.contains(next) ? next : nil
+    }
+
+    /// Magnification that takes one column away or adds one.
+    public static let pinchStep = 0.15
+
+    private static func cell(_ count: Int, width: Double, gap: Double) -> Double {
+        ((width - Double(count - 1) * gap) / Double(count)).rounded(.down)
     }
 
     /// Three screens of pixels at 4 bytes each, for the largest screen: cells together cover at
@@ -24,6 +53,23 @@ public enum ThumbnailSize {
     public static func cacheBudget(screens: [PixelSize]) -> Int {
         3 * (screens.map { $0.width * $0.height }.max() ?? 0) * 4
     }
+}
+
+/// A pinch's magnification in whole column steps (positive: larger), the rest kept for the next event.
+public struct PinchSteps: Sendable {
+    private var sum = 0.0
+
+    public init() {}
+
+    public mutating func add(_ magnification: Double) -> Int {
+        sum += magnification
+        let steps = Int(sum / ThumbnailSize.pinchStep)
+        sum -= Double(steps) * ThumbnailSize.pinchStep
+        return steps
+    }
+
+    /// The fingers left the trackpad.
+    public mutating func end() { sum = 0 }
 }
 
 /// Which cells to decode, in order.
@@ -54,6 +100,16 @@ public enum GridSelection {
         // A few files (the grid opens with one): comparing beats hashing every URL (~3 ms for 10,000).
         if selected.count <= 16 { return IndexSet(selected.compactMap { urls.firstIndex(of: $0) }) }
         return IndexSet(urls.indices.filter { selected.contains(urls[$0]) })
+    }
+
+    /// Right-click: a selected cell keeps the selection, any other becomes it, as in Finder.
+    public static func contextClick(_ index: Int, selection: Set<Int>) -> Set<Int> {
+        selection.contains(index) ? selection : [index]
+    }
+
+    /// A plain click inside a selection of several waits for the mouse to go up: a drag takes the whole selection.
+    public static func defersClick(_ index: Int, selection: Set<Int>, shift: Bool, command: Bool) -> Bool {
+        !shift && !command && selection.count > 1 && selection.contains(index)
     }
 
     /// A click on cell `index` (Decision 10): ⇧ selects from the anchor's cell to it, in place of the selection;

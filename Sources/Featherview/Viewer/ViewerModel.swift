@@ -1262,6 +1262,8 @@ final class ViewerModel {
     var gridFocus: URL? { didSet { if gridFocus != oldValue { readGridInfo() } } }
     /// The selected cells' files, in list order; set by the grid.
     var gridSelection: [URL] = [] { didSet { updateAvailability() } }
+    /// The grid's room between its side margins, for + / − (`ThumbnailSize.stepped`); the grid writes it.
+    @ObservationIgnored var gridWidth = 0.0
     /// The focused cell's details for the strip, read off the main thread.
     private(set) var gridInfo: FileInfo?
     @ObservationIgnored private var gridInfoTask: Task<Void, Never>?
@@ -1372,9 +1374,10 @@ final class ViewerModel {
         BatchModel.shared.add(files: gridSelection)
     }
 
-    /// + / −, and the View menu's retitled zoom items, in the grid.
+    /// + / −, the View menu's retitled zoom items and a pinch, in the grid: one column fewer or more.
     func stepThumbnails(larger: Bool) {
-        let size = ThumbnailSize.stepped(AppSettings.thumbnailSize.value(), larger: larger)
+        guard let size = ThumbnailSize.stepped(width: gridWidth, target: AppSettings.thumbnailSize.value(),
+                                               gap: Theme.gridGap, larger: larger) else { return }
         AppSettings.thumbnailSize.set(size)
     }
 
@@ -1811,8 +1814,9 @@ final class ViewerModel {
         window?.toggleFullScreen(nil)
     }
 
-    /// ⌘C: the current image at full resolution, upright, decoded off the main thread.
+    /// ⌘C: the current image at full resolution, upright, decoded off the main thread; in the grid its selection's files.
     func copyImage() {
+        if isGrid { return copyGridSelection() }
         if let unsaved {
             copies.submit {
                 guard let data = await Task.detached(priority: .userInitiated, operation: { ClipboardImage.pngData(unsaved) }).value,
@@ -1864,6 +1868,17 @@ final class ViewerModel {
     }
 
     func showInFinder() {
-        if let url = list.current, !isGrid { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+        if isGrid {
+            if !gridSelection.isEmpty { NSWorkspace.shared.activateFileViewerSelecting(gridSelection) }
+        } else if let url = list.current {
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        }
+    }
+
+    /// The grid's selection as files on the clipboard, as Finder's Copy puts them: they paste as files.
+    func copyGridSelection() {
+        guard !gridSelection.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.writeObjects(gridSelection.map { $0 as NSURL })
     }
 }
