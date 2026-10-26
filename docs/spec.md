@@ -575,6 +575,60 @@ the user makes claims one type: never more than one macOS prompt per click.
   message (the two look alike to the app; the Settings row shows which app opens the type).
   Undo is Finder's Get Info › Open with › Change All.
 
+### Photos library
+
+Pictures in Apple's Photos library are browsed and converted without exporting them first. Nothing in
+the library is ever changed, except a delete the person confirms in the system's own prompt.
+
+- **Open from Photos… (File, ⇧⌘O, after Open Recent):** a sheet lists "Library", "Favorites",
+  "Recents", then "Media Types" (the system's smart albums that hold pictures: Selfies, Portrait,
+  Panoramas, Screenshots, Live Photos, Bursts, RAW, …, each under the name Photos gives it), then "My
+  Albums" (the person's albums; albums inside folders show the folder path under the name). Hidden
+  and Recently Deleted are never listed, nor are shared albums. Each row has the album's picture
+  count, filled in off the main thread. ↑/↓ and typing a name select, Return or a double click
+  opens the album in the window, Esc closes the sheet. It remembers the last album chosen.
+- **Browsing an album** works like a folder: arrow keys, Home / End, Random Image, the grid (T),
+  slideshow, Compare, zoom and the info panel. Order is the album's own; Library, Recents, Favorites
+  and the media types are in date taken order, oldest first, as Photos shows them. Library, Recents
+  and the media types open at the newest picture (the last), as Photos opens scrolled to the end;
+  user albums and Favorites open at their first picture. Videos are left out; a Live Photo shows its
+  still; an edited picture shows its current version. The title shows the picture's original file
+  name ("IMG_1234.HEIC — 3 / 120"), the grid's title the album's name; the status bar shows the pixel
+  size and the date taken instead of the file size.
+- **Read-only:** Sort By, Rename, Move to Folder (F7), rotate and flip, Adjust Date Taken, Set as
+  Desktop Picture, Follow New Files, Show in Finder and Open With are off for library pictures
+  (changing them is an edit in Photos). Copy to Folder (F8), Save As, Copy (⌘C), Batch Convert… and
+  the info panel's EXIF act on the current version's file, which Featherview fetches from Photos into
+  its own cache folder (`~/Library/Caches/net.mynetx.featherview/Photos`, emptied at quit and at
+  launch). Refresh (F5) reads the album again. Moving past the end of an album follows "Past the end
+  of a folder", except that the folder chooser becomes Stop (an album has no neighbouring folders).
+  Library albums are not listed in Open Recent.
+- **Delete** (⌘⌫, ⌦) moves the picture to Photos' Recently Deleted, after the system's own
+  confirmation (it replaces the "Confirm before moving to Trash" question for library pictures). In
+  the grid it acts on the selection, in one prompt.
+- **iCloud:** a picture whose original is only in iCloud shows Photos' local preview at once, and
+  the status bar says "Downloading from iCloud…" until the original has arrived and replaced it.
+  Without a connection the preview stays and the status bar says "Can't download IMG_1234.HEIC from
+  iCloud."
+- **Drops from Photos:** pictures dragged from the Photos app onto a viewer window open as a dropped
+  selection: Photos hands over files, which land in a new folder in Featherview's cache folder
+  (`…/Dropped/<n>`), and the window browses that folder. Onto the batch window's list they join the
+  inputs. Onto the Dock icon, macOS hands over files as for any other app.
+- **Permission only when used:** the system's Photos access prompt appears the first time Open from
+  Photos… is chosen, never at launch, and nothing calls Photos before then (linking the framework costs
+  launch nothing measurable). With access denied the sheet says "Featherview can't see your Photos
+  library." and "Allow it in System Settings › Privacy & Security › Photos." with a button that opens
+  that page. With limited access the sheet lists what the person shared, under "Library". Because
+  releases are ad-hoc signed, macOS may ask again after an update (its permission is tied to the
+  build); with Developer ID signing it would remember (see "Distribution").
+- **Budgets:** as for folders (AGENTS.md): an album of 10,000 pictures shows its first picture in
+  < 500 ms, prefetched next / previous ≈ 20 ms, not prefetched < 150 ms for local originals. Fit and
+  grid pictures come from Photos' image manager at the size the screen or the cell needs, with the
+  same 2-each-way prefetch and the same 8-image and thumbnail caches; zoom beyond fit decodes the
+  original from the cache folder.
+- **Not planned:** organising the library (albums, keywords, favourites), changing pictures in it,
+  syncing edits back, Photos' "Edit With" round trip, shared albums and videos.
+
 ## Look
 
 Featherview looks like a Mac app with a few touches of its own; the app icon (a warm feather on a
@@ -669,9 +723,17 @@ Two columns and a bottom bar, titled "Batch Convert":
   one input shares it, and it advances only when the input succeeds. Clashes get " 2", " 3" per part
   (`holiday-01 2.png`); "Replace existing files" applies per part. The log line for such an input reads
   "loop.gif → loop-01.png … loop-12.png (12 files)".
-- Name card: the rename pattern, then "Save to": **Next to the originals** (empty, the default)
-  or a chosen folder, with a "Next to the originals" button to go back while a folder is set
-  (the reference viewer's button for the browsed folder). `{folder}` in the output path stands
+- Name card: the rename pattern, then "Save to": **Next to the originals** (empty, the default),
+  a chosen folder, with a "Next to the originals" button to go back while a folder is set
+  (the reference viewer's button for the browsed folder), or **Photos library**: each output is
+  added to Photos as a new picture (the rename pattern names its original file) and nothing stays
+  on disk. Photos library asks for add-only access the first time a batch runs with it, which lets
+  Featherview add pictures but never see the library; it offers only the formats Photos imports
+  (JPEG, HEIC, PNG, TIFF, GIF; with any other format the choice is off and says "Photos can't
+  import <format>."). An output Photos refuses fails its row ("Can't add holiday.png to Photos.").
+  Pictures from the Photos library have no originals on disk: with them in the list, "Next to the
+  originals" is off and Start asks for a folder or Photos library ("Choose where to save pictures
+  from Photos."). `{folder}` in the output path stands
   for the input file's folder name.
   The safety and date options below sit in the same card.
 - Rename pattern (always applied; `{name}` by default): `{name}` original name, `{n}` counter, `{n:3}` zero-padded counter, `{date}`

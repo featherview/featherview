@@ -33,6 +33,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 20 | Hardening: fuzzing, sanitizers, real files through every write path, Intel, crash reports | `docs/superpowers/plans/2026-10-23-milestone-20-hardening.md` | done |
 | 21 | Grid columns that fill the window, right-click menu, drag out | `docs/superpowers/plans/2026-10-25-milestone-21-grid-columns-menu-drag.md` | done |
 | — | Automatic updates through Sparkle (spec "Updates") | no plan; commits 0949b8d, a5f9bd3 | done |
+| 22 | Photos library: browse albums, drops from Photos, batch from and into the library | `docs/superpowers/plans/2026-10-26-milestone-22-photos-library.md` | planned |
 
 ## 1. Core viewer and batch
 
@@ -280,8 +281,8 @@ Ideas from the maintainer's QA that no spec covers yet; each gets a plan and a s
     folder; uses the add-only permission, which never lets the app read the library.
   - **Permission only when used:** the Photos access prompt appears the first time Open from Photos…
     is chosen, never at launch; once denied, the sheet says how to allow it in System Settings ›
-    Privacy & Security › Photos. Photos.framework loads only then, so launch and browsing budgets
-    stay as they are.
+    Privacy & Security › Photos. Nothing calls Photos before then (linking it costs launch nothing measurable), so launch and
+    browsing budgets stay as they are.
   - **Budgets:** an album browses within the folder budgets (first image < 500 ms for 10,000 pictures,
     prefetched swap ≈ 20 ms), decoding fit-to-screen through Photos' image manager with the same
     2-each-way prefetch and 8-image cache. A picture stored only in iCloud shows Photos' local preview
