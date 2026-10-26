@@ -32,6 +32,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 19 | Simplify: decisions from the app into tested Core types, catalog format, duplicates | `docs/superpowers/plans/2026-10-22-milestone-19-simplify.md` | done |
 | 20 | Hardening: fuzzing, sanitizers, real files through every write path, Intel, crash reports | `docs/superpowers/plans/2026-10-23-milestone-20-hardening.md` | done |
 | 21 | Grid columns that fill the window, right-click menu, drag out | `docs/superpowers/plans/2026-10-25-milestone-21-grid-columns-menu-drag.md` | done |
+| — | Automatic updates through Sparkle (spec "Updates") | no plan; commits 0949b8d, a5f9bd3 | done |
 
 ## 1. Core viewer and batch
 
@@ -262,12 +263,6 @@ declarations; a default app's own document icon still wins. Plan:
 
 Ideas from the maintainer's QA that no spec covers yet; each gets a plan and a spec section first.
 
-- Automatic updates: download the new disk image, check its signature (an EdDSA key whose public half
-  ships in the app, as Sparkle's appcast format already allows), and swap the app in place when it
-  quits, with "Install and Relaunch" in the update window. Replaces spec "Updates" ("never downloads
-  or installs anything itself"). Library: Sparkle (AGENTS.md "Dependencies"). It reads the same
-  `appcast.xml`; each `<item>` gains an `<enclosure>` with the disk image's URL, length and
-  `sparkle:edSignature`, which the current update check ignores, so older versions keep working.
 - Photos library: browse and convert pictures from Apple's Photos library without exporting them first.
   - **Drops from Photos:** dragging pictures from the Photos app onto the window or Dock icon opens them
     (Photos hands over file promises; they land in a temporary folder and the viewer browses them like

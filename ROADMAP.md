@@ -18,10 +18,10 @@ conversion, the extra formats with Finder previews, and 30 languages.
 - Thumbnail sizes that snap to whole columns filling the window, as in Photos
 - Right-click on thumbnails: view, copy, move, Show in Finder, batch convert or trash the selection
 - Drag thumbnails out of the window into Finder, Mail or any app
+- Automatic updates: Featherview downloads, checks and installs a new version, then relaunches
 
 ## After 1.0
 
-- Automatic updates: download, check and install a new version, then relaunch
 - Photos library: browse albums from Apple's Photos with the arrow keys, drag pictures in from
   Photos, and batch convert from it or into it, without exporting first
 
