@@ -19,6 +19,8 @@ let package = Package(
     dependencies: [
         // libwebp (BSD), compiled from Google's C sources by SwiftPM; only WebPEncoder uses it.
         .package(url: "https://github.com/SDWebImage/libwebp-Xcode.git", exact: "1.6.0"),
+        // Sparkle (MIT): automatic updates (spec "Updates"). Its package ships a prebuilt framework, which the maintainer allowed.
+        .package(url: "https://github.com/sparkle-project/Sparkle.git", exact: "2.10.0"),
     ],
     targets: [
         // Everything testable without a window: scanning, decoding, caching, metadata, rotation, batch.
@@ -48,7 +50,9 @@ let package = Package(
                 cxxSettings: cjpegxlDefines.map { .define($0.0, to: $0.1) } + cjpegxlHeaderPaths.map { .headerSearchPath($0) }
                     + [.unsafeFlags(["-w", "-O2"])]),
         // The SwiftUI app. Thin: wires FeatherviewCore to windows, menus and keys.
-        .executableTarget(name: "Featherview", dependencies: ["FeatherviewCore", "FeatherviewJXL"]),
+        .executableTarget(name: "Featherview",
+                          dependencies: ["FeatherviewCore", "FeatherviewJXL", .product(name: "Sparkle", package: "Sparkle")],
+                          linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]),
         // Finder thumbnails. SwiftPM can't make app extensions: scripts/bundle.sh wraps this binary in an .appex.
         .executableTarget(name: "FeatherviewThumbnail", dependencies: ["FeatherviewCore"],
                           linkerSettings: [.unsafeFlags(["-Xlinker", "-e", "-Xlinker", "_NSExtensionMain"])]),

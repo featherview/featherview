@@ -148,4 +148,4 @@ restored, which hides ~140 ms that every user who quit normally pays.
 
 ## Out of scope for v1
 
-Plugins, interactive painting/editing (batch operations are in, see spec), scanning, OCR, printing, slideshows with effects, lossless JPEG crop, video, Windows/Linux, auto-update (v1 only tells about a new version, spec "Updates").
+Plugins, interactive painting/editing (batch operations are in, see spec), scanning, OCR, printing, slideshows with effects, lossless JPEG crop, video, Windows/Linux.

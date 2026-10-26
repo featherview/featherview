@@ -160,12 +160,6 @@ enum Theme {
     static let aboutFooterGap = 10.0
     static let aboutLinkGap = 14.0
 
-    // MARK: Update notice (About's background; the top padding clears the close button)
-
-    static let updateWidth = 480.0
-    static let updatePadding = EdgeInsets(top: 40, leading: 24, bottom: 20, trailing: 24)
-    static let updateNotesHeight = 180.0
-
     // MARK: Elevation
 
     /// One shadow layer; `blur` as in the spec (CSS), `alpha` per appearance. Always neutral black.

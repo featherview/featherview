@@ -13,8 +13,11 @@ swift build -c "$CONFIG" --product Featherview $LINK
 BINDIR="$(swift build -c "$CONFIG" --show-bin-path $LINK)"
 APP=build/Featherview.app
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 cp "$BINDIR/Featherview" "$APP/Contents/MacOS/Featherview"
+# Sparkle (spec "Updates"): its helpers (Autoupdate, Updater.app, XPC services) are signed with the framework.
+ditto "$BINDIR/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
+codesign --force --deep --sign - "$APP/Contents/Frameworks/Sparkle.framework"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 # The copyright year is the build's year (About and Finder's Get Info show it).
 plutil -replace NSHumanReadableCopyright -string "© $(date +%Y) Joachim Rütter" "$APP/Contents/Info.plist"

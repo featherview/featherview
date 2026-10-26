@@ -116,6 +116,7 @@ private struct BrowsingSettings: View {
             }
             Section("Updates") {
                 Toggle("Check for updates automatically", isOn: $checkForUpdates)
+                    .onChange(of: checkForUpdates) { Updater.automaticChecks(checkForUpdates) }
             }
         }
         .onAppear(perform: refresh)

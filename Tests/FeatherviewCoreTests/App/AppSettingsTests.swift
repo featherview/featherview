@@ -30,8 +30,6 @@ import Testing
         #expect(AppSettings.openWith.map { $0.value(in: defaults) } == ["", "", ""])
         #expect(defaults.object(forKey: AppSettings.offeredDefaultViewer.key) as? Bool == false)
         #expect(defaults.bool(forKey: AppSettings.checkForUpdates.key) == true)
-        #expect(AppSettings.lastUpdateCheck.value(in: defaults) == .distantPast)
-        #expect(AppSettings.skippedVersion.value(in: defaults) == "")
         #expect(defaults.double(forKey: AppSettings.thumbnailSize.key) == 128)
         #expect(defaults.string(forKey: AppSettings.fitMode.key) == "fit")
         #expect(defaults.object(forKey: AppSettings.keepZoom.key) as? Bool == false)
@@ -45,9 +43,9 @@ import Testing
     @Test func setStoresUnderTheKey() {
         AppSettings.keepZoom.set(true, in: defaults)
         AppSettings.thumbnailSize.set(160, in: defaults)
-        AppSettings.skippedVersion.set("1.2", in: defaults)
+        AppSettings.overlayTemplate.set("{name}", in: defaults)
         #expect(defaults.bool(forKey: "keepZoom") && defaults.double(forKey: "thumbnailSize") == 160)
-        #expect(defaults.object(forKey: "keepZoom") as? Bool == true && AppSettings.skippedVersion.value(in: defaults) == "1.2")
+        #expect(defaults.object(forKey: "keepZoom") as? Bool == true && AppSettings.overlayTemplate.value(in: defaults) == "{name}")
     }
 
     @Test func slideshowOptionsFromSettings() {
