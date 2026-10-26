@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.0 – 2026-10-26
+
+- Featherview now updates itself: it checks for new versions and installs them with your OK.
+- The thumbnail grid always fills the window with whole columns; `+`, `−` and pinch change the size by one column.
+- Right-click a thumbnail for a menu; `⌘C` and Show in Finder work on the whole selection.
+- Drag thumbnails out of the grid into Finder, Mail or other apps as files.
+- Plus smaller fixes, among them drags out of the grid no longer being caught by Featherview's own drop targets.
+
 ## 0.10.1 – 2026-10-24
 
 - Customized toolbars now survive a relaunch instead of resetting.

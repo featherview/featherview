@@ -389,17 +389,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.10.1</string>
-	<key>SUFeedURL</key>
-	<string>https://featherview.mynetx.net/appcast.xml</string>
-	<key>SUPublicEDKey</key>
-	<string>mPl0w6smGWN1eBpuR41wXkbWMPRWWbo6sqwSqvXPsHI=</string>
-	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>SUEnableSystemProfiling</key>
-	<false/>
+	<string>0.11.0</string>
 	<key>CFBundleVersion</key>
-	<string>4</string>
+	<string>5</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.photography</string>
 	<key>LSMinimumSystemVersion</key>
@@ -408,6 +400,14 @@
 	<string>AccentColor</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUEnableSystemProfiling</key>
+	<false/>
+	<key>SUFeedURL</key>
+	<string>https://featherview.mynetx.net/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>mPl0w6smGWN1eBpuR41wXkbWMPRWWbo6sqwSqvXPsHI=</string>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
 		<dict>
