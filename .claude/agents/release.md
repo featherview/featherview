@@ -156,9 +156,11 @@ abort line with what is left to do by hand.
    `<ul><li>`, `<p>`). Sparkle installs from the enclosure, and only when its signature matches the
    app's `SUPublicEDKey`: sign the disk image with
    `.build/artifacts/sparkle/Sparkle/bin/sign_update --account featherview build/Featherview-X.Y.Z.dmg`
-   (the private key is in the maintainer's login Keychain; macOS may ask to allow access) and put the
-   `sparkle:edSignature="…" length="…"` it prints into the enclosure. No signature, no release: stop
-   and tell the maintainer.
+   (the private key is in the maintainer's login Keychain, backed up in Bitwarden as "Featherview") and
+   put the `sparkle:edSignature="…" length="…"` it prints into the enclosure. No signature, no release:
+   stop and tell the maintainer. Keychain error -25320 means this copy of `sign_update` isn't allowed
+   yet (after a Sparkle update): the maintainer runs the same command once in their own Terminal and
+   clicks Always Allow.
 
    ```xml
    <?xml version="1.0" encoding="utf-8"?>
