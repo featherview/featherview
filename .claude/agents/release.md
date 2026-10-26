@@ -177,7 +177,7 @@ abort line with what is left to do by hand.
          <link>https://github.com/featherview/featherview/releases/tag/vX.Y.Z</link>
          <description><![CDATA[<ul><li>…</li></ul>]]></description>
          <enclosure url="https://github.com/featherview/featherview/releases/download/vX.Y.Z/Featherview-X.Y.Z.dmg"
-                    sparkle:edSignature="SIGNATURE" length="BYTES" type="application/octet-stream"/>
+                    sparkle:edSignature="SIGNATURE" length="BYTES" type="application/x-apple-diskimage"/>
        </item>
      </channel>
    </rss>

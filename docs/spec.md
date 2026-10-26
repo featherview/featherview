@@ -1048,7 +1048,7 @@ shows its release notes, downloads it and installs it when asked, then relaunche
   `sparkle` namespace). Per `<item>`: `<title>`, `<sparkle:shortVersionString>` (e.g. 1.2.0),
   `<sparkle:version>` (build), `<sparkle:minimumSystemVersion>`, `<link>` (the release page),
   `<description>` (release notes, simple HTML), `<pubDate>`, and `<enclosure>` with the disk image's
-  https URL, `length`, `type="application/octet-stream"` and `sparkle:edSignature`. The same file
+  https URL, `length`, `type="application/x-apple-diskimage"` and `sparkle:edSignature`. The same file
   serves 0.10, which only tells about a new version and ignores the enclosure.
 - Every download is checked against the EdDSA public key in Info.plist (`SUPublicEDKey`) before
   anything is installed; a download that fails the check is thrown away with an error. The private
