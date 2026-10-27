@@ -85,11 +85,11 @@ import Testing
         child.arguments = ["--test-bundle-path", bundle, "--filter", "parallelFirstEncodesChild", bundle,
                            "--testing-library", "swift-testing"]
         var environment = ProcessInfo.processInfo.environment.merging([Self.freshKey: "1"]) { $1 }
-        // Under a sanitizer the bundle carries its runtime, which must load before the bundle does (scripts/sanitize.sh).
-        let frameworks = URL(fileURLWithPath: bundle).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Frameworks")
-        if let runtime = try? FileManager.default.contentsOfDirectory(atPath: frameworks.path)
-            .first(where: { $0.hasPrefix("libclang_rt.") && $0.hasSuffix("_osx_dynamic.dylib") }) {
-            environment["DYLD_INSERT_LIBRARIES"] = frameworks.appendingPathComponent(runtime).path
+        // Under a sanitizer (scripts/sanitize.sh) its runtime must load before the bundle does: the one this process
+        // loaded, from the bundle's Frameworks folder or the toolchain, depending on the test runner.
+        if let runtime = (0..<_dyld_image_count()).lazy.compactMap({ _dyld_get_image_name($0).map { String(cString: $0) } })
+            .first(where: { ($0 as NSString).lastPathComponent.hasPrefix("libclang_rt.") && $0.hasSuffix("_osx_dynamic.dylib") }) {
+            environment["DYLD_INSERT_LIBRARIES"] = runtime
         }
         child.environment = environment
         let pipe = Pipe()
