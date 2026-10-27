@@ -6,6 +6,8 @@ written (superpowers:writing-plans) when the previous milestone is merged, so it
 interfaces instead of guessed ones. Run a milestone's plan wave by wave with the `plan-wave`
 workflow.
 
+Plans of done milestones are in git history only: `git show 5dcca24:<plan path>`.
+
 Milestones marked **observe first** have reference-viewer behaviour not yet recorded in
 `docs/parity.md`; run the `observe-reference` skill for those items before writing the plan.
 
