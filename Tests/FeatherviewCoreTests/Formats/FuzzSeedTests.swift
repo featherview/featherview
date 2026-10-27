@@ -48,7 +48,7 @@ import Testing
             "Krita": zipped,
             "Procreate": try read(ProcreateFixture.file()),
             "Photo CD": PhotoCDDecoderTests.file,
-            "JPEG XR": try #require(JPEGXRDecoderTests.rgb),
+            "JPEG XR": JPEGXRDecoderTests.rgb,
             "BPG": Data(BPGDecoderTests.gradient),
             "PDF": try read(pdf),
         ]

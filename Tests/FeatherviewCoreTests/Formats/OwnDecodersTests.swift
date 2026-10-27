@@ -108,7 +108,7 @@ import Testing
             Data(ANIDecoderTests.ani(frames: [try ANIDecoderTests.ico(sizes: [32], colour: (0, 255, 0, 255))]))
         },
         BuiltInFile(name: "a.ff", width: 2, height: 1) { Data(FarbfeldDecoderTests.file) },
-        BuiltInFile(name: "a.qoi", width: 17, height: 9) { try QOICodec.encode(QOICodecTests.noise(width: 17, height: 9)) },
+        BuiltInFile(name: "a.qoi", width: 17, height: 9) { QOICodec.encode(QOICodecTests.noise(width: 17, height: 9)) },
         BuiltInFile(name: "t.wbmp", width: 3, height: 2) { Data(WBMPDecoderTests.file) },
         BuiltInFile(name: "t.xpm", width: 3, height: 2) { Data(XPMDecoderTests.file.utf8) },
         BuiltInFile(name: "t.xbm", width: 3, height: 2) { Data(XBMDecoderTests.file.utf8) },
