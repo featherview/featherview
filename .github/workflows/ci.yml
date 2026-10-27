@@ -17,6 +17,10 @@ concurrency:
   group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
+# The jobs only check out and build; the token needs nothing else.
+permissions:
+  contents: read
+
 # Two runners side by side: the tests need only Core and the test targets, the app build catches what only
 # the app's code breaks. The release bundle is built by the release itself (disk image), not here.
 jobs:
