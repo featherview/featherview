@@ -6,6 +6,7 @@ Thanks for helping! Featherview is small and opinionated; these are the ground r
   Attach the file that fails, or say which camera or app wrote it.
 - **Ideas and feedback:** [Discussions](https://github.com/featherview/featherview/discussions).
 - **Security problems:** see [SECURITY.md](SECURITY.md), please not in public issues.
+- **Conduct:** everyone here follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Code
 
