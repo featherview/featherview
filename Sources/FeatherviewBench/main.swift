@@ -14,7 +14,9 @@ let usage = """
       swift run -c release featherview-bench grid <dir> [--points 128] [--scale 2] [--cells 40] [--width N]
                                                   [--json out.json] [--baseline in.json]
       swift run -c release featherview-bench fuzz <seed dir or file> --out <dir> [--seconds 60] [--seed N]
+      swift run -c release featherview-bench histogram <dir> [--screen WxH] [--runs 10]
       swift run -c release featherview-bench places <out.fvpl>
+      swift run -c release featherview-bench places --time <file.fvpl> [--lookups 10000]
 
     corpus  writes generated test images into <dir> (never commit them).
     decode  times the viewer's fit decode per file and screen, plus one full-size decode per file,
@@ -38,9 +40,13 @@ let usage = """
             FuzzSeedTests` writes them) and runs it through the own decoder, until --seconds are up. Each input is
             written to <out>/current.<ext> first, so a crash leaves it behind; an input taking over 5 s is copied to
             <out>/hang-<n>.<ext> and exits 3. scripts/fuzz.sh runs it under AddressSanitizer, one format at a time.
+    histogram  times `Histogram.compute` per file on the viewer's fit decode (the decode isn't timed), as the
+            info panel counts it. Budget: p95 ≤ 5 ms for a 2560 × 1600 decode.
     places  builds the info panel's place data (scripts/places.sh runs it for releases) from GeoNames and Natural
             Earth, downloaded fresh into ~/Library/Caches/net.mynetx.featherview-build/places; offline, the cached
             copies are used. Prints "place data: fresh" or "place data: cached from <date>", counts, bytes and time.
+            --time reads a built file as the app does (load) and names --lookups random coordinates with it.
+            Budgets: load ≤ 50 ms, lookup p95 ≤ 1 ms.
     Screens are in pixels; default 3024x1964 3456x2234 5120x2880 (decode), 3024x1964 (browse).
     """
 
@@ -92,6 +98,10 @@ func fail(_ message: String) -> Never {
 var arguments = Array(CommandLine.arguments.dropFirst())
 guard arguments.count >= 2 else { fail("Missing mode or folder.") }
 let mode = arguments.removeFirst()
+// `places --time <file>` times a built file instead of building one.
+let timePlaces = mode == "places" && arguments.first == "--time"
+if timePlaces { arguments.removeFirst() }
+guard !arguments.isEmpty else { fail("Missing folder or file.") }
 let folder = URL(fileURLWithPath: arguments.removeFirst())
 guard knownOptions[mode] != nil else { fail("Unknown mode \(mode).") }
 let options: [String: [String]]
@@ -327,7 +337,60 @@ struct Step: Sendable {
     if !failed.isEmpty { exit(1) }
 }
 
+// MARK: - histogram
+
+@MainActor func runHistogram() {
+    let screens = screens(default: ["2560x1600"])
+    let runs = number("--runs", default: 10)
+    let files = imageFiles(in: folder)
+    guard !files.isEmpty else { fail("No images in \(folder.path). Run `corpus` first.") }
+    print("file\tdecoded\tfirst ms\tmedian\tp95\tmin")
+    var firsts: [Double] = [], all: [Double] = []
+    for file in files {
+        guard let image = try? fitDecode(file, screens: screens) else {
+            print("Can't decode \(file.lastPathComponent)")
+            continue
+        }
+        let headroom = ImageInfo.read(file).picture.headroom
+        var times = (0...runs).map { _ in
+            let start = ContinuousClock.now
+            _ = Histogram.compute(image, headroom: headroom)
+            return start.duration(to: .now).milliseconds
+        }
+        // The panel counts each picture once, so the first count is reported apart from the warm ones.
+        firsts.append(times.removeFirst())
+        times.sort()
+        all += times
+        print([file.lastPathComponent, "\(image.width)×\(image.height)", f(firsts.last!), f(percentile(times, 0.5)),
+               f(percentile(times, 0.95)), f(times[0])].joined(separator: "\t"))
+    }
+    all.sort()
+    firsts.sort()
+    print("\nfirst counts: median \(f(percentile(firsts, 0.5))) ms, max \(f(firsts.last ?? 0)) ms")
+    print("warm counts: median \(f(percentile(all, 0.5))) ms, p95 \(f(percentile(all, 0.95))) ms, max \(f(all.last ?? 0)) ms")
+}
+
 // MARK: - Place data
+
+/// Loads `file` as `PlaceIndex` does and names random coordinates with it, as the info panel does.
+@MainActor func runPlaceTiming(_ file: URL) {
+    let lookups = number("--lookups", default: 10_000)
+    let start = ContinuousClock.now
+    guard let data = try? Data(contentsOf: file, options: .mappedIfSafe), let table = try? PlaceTable(data: data) else {
+        fail("Can't read place data from \(file.path).")
+    }
+    let load = start.duration(to: .now).milliseconds
+    var named = 0
+    let times = (0..<lookups).map { _ in
+        let latitude = Double.random(in: -90...90), longitude = Double.random(in: -180...180)
+        let start = ContinuousClock.now
+        if PlaceName.describe(latitude: latitude, longitude: longitude, in: table) != nil { named += 1 }
+        return start.duration(to: .now).milliseconds
+    }.sorted()
+    print("\(file.lastPathComponent): \(data.count) bytes, load \(f(load)) ms")
+    print("\(lookups) random lookups (\(named) named): median \(String(format: "%.3f", percentile(times, 0.5))) ms, "
+          + "p95 \(String(format: "%.3f", percentile(times, 0.95))) ms, max \(String(format: "%.3f", times.last ?? 0)) ms")
+}
 
 /// Downloads a source into the cache, or keeps the cached copy when that fails; nil when neither exists.
 func placeSource(_ remote: URL, cache: URL) async -> (url: URL, fresh: Bool)? {
@@ -401,6 +464,8 @@ case "decode": runDecode()
 case "browse": await runBrowse()
 case "grid": await runGrid()
 case "fuzz": runFuzz()
+case "histogram": runHistogram()
+case "places" where timePlaces: runPlaceTiming(folder)
 case "places": await runPlaces(out: folder)
 case "thumbnail": await runThumbnail(folder, out: option("--out").map { URL(fileURLWithPath: $0) })
 default: fail("Unknown mode \(mode).")
