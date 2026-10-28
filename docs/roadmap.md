@@ -305,6 +305,10 @@ Ideas from the maintainer's QA that no spec covers yet; each gets a plan and a s
     software, title, caption, keywords, rating, creator, copyright, JPEG comment.
   - **Location:** coordinates and altitude with Open in Maps; no map inside the panel, so nothing
     loads over the network.
+  - **Candidate: place name offline** ("near Andermatt, Switzerland"): GeoNames `cities1000` packed
+    with LZFSE (~2 MB in the app), grid lookup loaded lazily on the first geotagged image, countries
+    localized through `Locale`, nothing beyond 25–50 km. Open: GeoNames is CC BY 4.0 (credit in About
+    and README), which needs the maintainer's yes; Natural Earth (public domain) only has ~7k cities.
   - **Show all metadata…:** every EXIF, GPS, IPTC, XMP and TIFF tag with readable labels, search and
     copy; internal entries hidden.
   - Design options: <https://claude.ai/artifact/Lf6bXo8PaC2Exi6A6Unvmx> (variant B2 chosen, colour
