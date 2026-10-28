@@ -169,6 +169,28 @@ import Testing
         #expect(peak(histogram.red) == 127)
     }
 
+    // A zoom decode larger than the screen is counted at the screen-fit size, never copied at full size.
+    @Test func fittedScalesDownToTheScreen() throws {
+        let screens = [PixelSize(width: 400, height: 400)]
+        let large = try #require(Fixtures.solid(1000, 500, (200, 50, 50, 255)).makeCGImage())
+        let fitted = try #require(Histogram.fitted(large, screens: screens))
+        #expect((fitted.width, fitted.height) == (400, 200))
+        let histogram = Histogram.compute(fitted, headroom: nil)
+        #expect(peak(histogram.red) == 200)
+        #expect(peak(histogram.green) == 50)
+        let small = try #require(Fixtures.solid(400, 300, (1, 2, 3, 255)).makeCGImage())
+        #expect(Histogram.fitted(small, screens: screens) === small)
+    }
+
+    @Test func fittedHdrStaysHdr() throws {
+        let floats = [Float](repeating: 2, count: 3000 * 10 * 4).enumerated().map { $0.offset % 4 == 3 ? 1 : $0.element }
+        let fitted = try #require(Histogram.fitted(try hdrImage(3000, 10, floats), screens: [PixelSize(width: 1500, height: 1000)]))
+        #expect((fitted.width, fitted.height) == (1500, 5))
+        let histogram = Histogram.compute(fitted, headroom: 4)
+        #expect(histogram.headroom == 4)
+        #expect(peak(histogram.luminance) == 127)
+    }
+
     @Test func clippedText() {
         // The number is formatted for the current locale, as the panel shows it.
         let number = 2.4.formatted(.number.precision(.fractionLength(1)))

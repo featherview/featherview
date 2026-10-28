@@ -25,10 +25,12 @@ public struct Histogram: Equatable, Sendable {
 
     /// Counts `image` off the caller's actor, in a child of the calling task: nil once that task is cancelled,
     /// which also stops the count.
-    public static func counted(_ image: CGImage, headroom: Double?) async -> Histogram? {
+    /// `fitting`: scale `image` down to fit these screens first (a zoom decode, which can be full size).
+    public static func counted(_ image: CGImage, headroom: Double?, fitting screens: [PixelSize]? = nil) async -> Histogram? {
         let stopped = OSAllocatedUnfairLock(initialState: false)
-        let result = await withTaskCancellationHandler {
-            Task.isCancelled ? nil : compute(image, headroom: headroom, stop: { stopped.withLock { $0 } })
+        let result: Histogram? = await withTaskCancellationHandler {
+            guard !Task.isCancelled, let image = screens.map({ fitted(image, screens: $0) }) ?? image else { return nil }
+            return compute(image, headroom: headroom, stop: { stopped.withLock { $0 } })
         } onCancel: {
             stopped.withLock { $0 = true }
         }
@@ -47,6 +49,27 @@ public struct Histogram: Equatable, Sendable {
             luminance: scale(counts.luminance), red: scale(counts.red), green: scale(counts.green), blue: scale(counts.blue),
             shadowsClipped: Double(counts.shadows) / pixels, highlightsClipped: Double(counts.highlights) / pixels,
             headroom: headroom.flatMap { $0 > 1 ? $0 : nil })
+    }
+
+    /// `image` scaled down to the size that fits `screens` when it is larger, so a count copies no more pixels than a
+    /// fit decode has; `image` itself when it already fits. HDR is drawn in extended linear sRGB, which the count
+    /// converts to anyway. nil if no context can be made.
+    public static func fitted(_ image: CGImage, screens: [PixelSize]) -> CGImage? {
+        let longest = max(image.width, image.height)
+        let target = ImageDecoder.fitNeededSize(image: PixelSize(width: image.width, height: image.height), screens: screens)
+        guard target < longest else { return image }
+        let width = max(1, (image.width * target + longest / 2) / longest)
+        let height = max(1, (image.height * target + longest / 2) / longest)
+        let hdr = ImageDecoder.isHDR(image.colorSpace)
+        let space = hdr ? CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!
+            : image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? CGColorSpace(name: CGColorSpace.sRGB)!
+        let info = CGImageAlphaInfo.premultipliedLast.rawValue
+            | (hdr ? CGBitmapInfo.floatComponents.rawValue | CGBitmapInfo.byteOrder16Little.rawValue : 0)
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: hdr ? 16 : 8,
+                                      bytesPerRow: 0, space: space, bitmapInfo: info) else { return nil }
+        context.interpolationQuality = .medium
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage()
     }
 
     /// Bins, the pixels at black and at the brightest level, and all pixels counted (transparent ones are left out).

@@ -15,6 +15,8 @@ struct InfoPanel: View {
     let fitImage: CGImage?
     /// The kept fit-size decode of the picture on screen while zoomed into one never shown at fit, if there is one.
     let keptFit: () -> CGImage?
+    /// The screens' pixel sizes: without a fit decode, the histogram counts the picture scaled down to fit them.
+    let screens: [PixelSize]
     /// The viewer's focus for the panel's controls.
     var focus: FocusState<InfoFocus?>.Binding
     /// The panel's controls in Tab order, for Tab from the picture.
@@ -24,7 +26,7 @@ struct InfoPanel: View {
 
     private struct ReadKey: Hashable { var url: URL; var revision: Int }
     private struct PlaceKey: Hashable { var read: ReadKey; var latitude: Double; var longitude: Double }
-    private struct HistogramKey: Hashable { var read: ReadKey; var page: Int; var fit: ObjectIdentifier?; var headroom: Double? }
+    private struct HistogramKey: Hashable { var read: ReadKey; var page: Int; var fit: ObjectIdentifier? }
 
     @State private var readInfo: ImageInfo?
     @State private var infoKey: ReadKey?
@@ -52,7 +54,7 @@ struct InfoPanel: View {
     /// Set once the picture on screen and the info are both the file's.
     private var histogramKey: HistogramKey? {
         guard let key = readKey, let info, image != nil, let onScreen, onScreen.url == key.url else { return nil }
-        return HistogramKey(read: key, page: onScreen.page, fit: fitImage.map(ObjectIdentifier.init), headroom: info.picture.headroom)
+        return HistogramKey(read: key, page: onScreen.page, fit: fitImage.map(ObjectIdentifier.init))
     }
     private var histogram: Histogram? { countedFor != nil && countedFor == histogramKey ? counted : nil }
     private var placeKey: PlaceKey? {
@@ -121,9 +123,13 @@ struct InfoPanel: View {
             placeFor = key
         }
         .task(id: histogramKey) {
-            guard let key = histogramKey else { return }
-            // Spec: never an extra decode; zoomed into a picture never shown at fit, the zoom decode is counted.
-            guard let picture = fitImage ?? keptFit() ?? image, let histogram = await Histogram.counted(picture, headroom: key.headroom),
+            // The key holds the file and revision the info was read for, so the info's headroom is this file's.
+            guard let key = histogramKey, let headroom = info.map({ $0.picture.headroom }) else { return }
+            // Spec: never an extra decode; zoomed into a picture never shown at fit, the zoom decode is counted,
+            // scaled down to fit the screen first, as it can be full size.
+            let fit = fitImage ?? keptFit()
+            guard let picture = fit ?? image,
+                  let histogram = await Histogram.counted(picture, headroom: headroom, fitting: fit == nil ? screens : nil),
                   !Task.isCancelled else { return }
             counted = histogram
             countedFor = key
