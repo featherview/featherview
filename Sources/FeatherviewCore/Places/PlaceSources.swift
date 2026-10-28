@@ -10,8 +10,10 @@ public enum PlaceSources {
     static let marineClasses: Set<String> = ["ocean", "sea", "bay", "gulf"]
     static let regionClasses: Set<String> = ["desert", "range/mtn"]
 
-    /// GeoNames rows (tab-separated: 1 name, 4 latitude, 5 longitude, 8 country, 10 admin1 code), with the
-    /// admin1 name joined from admin1CodesASCII ("CH.UR\tUri\t…"). Rows that don't parse are skipped.
+    /// GeoNames rows (tab-separated: 1 name, 4 latitude, 5 longitude, 7 feature code, 8 country, 10 admin1 code,
+    /// 14 population), with the admin1 name joined from admin1CodesASCII ("CH.UR\tUri\t…"). Rows that don't
+    /// parse are skipped, and so are places under 1,000 people (0 means unknown and stays) and abandoned,
+    /// historical or destroyed ones.
     public static func places(geonamesTSV: String, admin1TSV: String) -> [PlaceRecord] {
         var admin1: [Substring: String] = [:]
         for line in admin1TSV.split(separator: "\n") {
@@ -20,7 +22,8 @@ public enum PlaceSources {
         }
         return geonamesTSV.split(separator: "\n").compactMap { line in
             let c = line.split(separator: "\t", omittingEmptySubsequences: false)
-            guard c.count > 10, !c[1].isEmpty, c[8].count == 2,
+            guard c.count > 14, !c[1].isEmpty, c[8].count == 2,
+                  !["PPLQ", "PPLH", "PPLW"].contains(c[7]), !(1...999).contains(Int(c[14]) ?? 0),
                   let lat = Double(c[4]), let lon = Double(c[5]),
                   (-90...90).contains(lat), (-180...180).contains(lon) else { return nil }
             return PlaceRecord(name: String(c[1]), admin1: c[10].isEmpty ? nil : admin1["\(c[8]).\(c[10])"],

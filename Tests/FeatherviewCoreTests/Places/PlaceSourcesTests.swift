@@ -40,6 +40,16 @@ import Testing
         #expect(PlaceSources.places(geonamesTSV: tsv, admin1TSV: Self.admin1).map(\.name) == ["Andermatt"])
     }
 
+    /// Spec: places with at least 1,000 people. Population 0 means unknown and stays; abandoned,
+    /// historical and destroyed places go.
+    @Test func skipsSmallAndGonePlaces() {
+        let small = Self.andermattLine.replacingOccurrences(of: "\t1258\t", with: "\t300\t")
+        let unknown = Self.andermattLine.replacingOccurrences(of: "\t1258\t", with: "\t0\t")
+        let gone = ["PPLQ", "PPLH", "PPLW"].map { Self.andermattLine.replacingOccurrences(of: "\tPPL\t", with: "\t\($0)\t") }
+        let tsv = ([small] + gone + [unknown]).joined(separator: "\n")
+        #expect(PlaceSources.places(geonamesTSV: tsv, admin1TSV: Self.admin1).count == 1)
+    }
+
     @Test func keepsOnlyListedFeatureClasses() throws {
         let square = [PlaceFixtures.box(lat: 0...10, lon: 0...10)]
         let marine = Self.geoJSON([("featurecla", "ocean", "name", "North Atlantic Ocean", square),
