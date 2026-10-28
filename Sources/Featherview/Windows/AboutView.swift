@@ -188,10 +188,27 @@ struct AboutView: View {
 
     /// An accent link.
     private func link(_ title: LocalizedStringKey, action: @escaping () -> Void) -> some View {
-        Button(title, action: action)
+        AboutLink(title: title, action: action)
+    }
+}
+
+/// A link in About's footer: underlined, with the pointing hand, while the pointer is over it.
+private struct AboutLink: View {
+    let title: LocalizedStringKey
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) { Text(title).underline(hovered) }
             .buttonStyle(.link)
             .fixedSize()
             .foregroundStyle(Theme.accent)
+            .onHover { inside in
+                hovered = inside
+                if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+            }
+            // A window closed under the pointer sends no exit: don't leave the hand behind.
+            .onDisappear { if hovered { NSCursor.pop() } }
     }
 }
 

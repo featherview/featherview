@@ -13,21 +13,50 @@ public enum PlaceSources {
     /// GeoNames rows (tab-separated: 1 name, 4 latitude, 5 longitude, 7 feature code, 8 country, 10 admin1 code,
     /// 14 population), with the admin1 name joined from admin1CodesASCII ("CH.UR\tUri\t…"). Rows that don't
     /// parse are skipped, and so are places under 1,000 people (0 means unknown and stays) and abandoned,
-    /// historical or destroyed ones.
+    /// historical or destroyed ones. A city district (PPLX) is named with its city: the nearest larger place within
+    /// 25 km that isn't a district itself and is in the same state and, as far as both have them, the same
+    /// administrative areas (in Germany the municipality, so Berlin-Spandau never takes Falkensee, which is nearer).
+    /// "Nuremberg-Wetzendorf" in German-speaking countries, "Camden, London" elsewhere; inside a city a district is
+    /// nearly always nearer than the city's point.
     public static func places(geonamesTSV: String, admin1TSV: String) -> [PlaceRecord] {
         var admin1: [Substring: String] = [:]
         for line in admin1TSV.split(separator: "\n") {
             let columns = line.split(separator: "\t", omittingEmptySubsequences: false)
             if columns.count >= 2, !columns[1].isEmpty { admin1[columns[0]] = String(columns[1]) }
         }
-        return geonamesTSV.split(separator: "\n").compactMap { line in
+        let rows: [(record: PlaceRecord, district: Bool, population: Int, areas: [Substring])] = geonamesTSV.split(separator: "\n").compactMap { line in
             let c = line.split(separator: "\t", omittingEmptySubsequences: false)
+            let population = c.count > 14 ? Int(c[14]) ?? 0 : 0
             guard c.count > 14, !c[1].isEmpty, c[8].count == 2,
-                  !["PPLQ", "PPLH", "PPLW"].contains(c[7]), !(1...999).contains(Int(c[14]) ?? 0),
+                  !["PPLQ", "PPLH", "PPLW"].contains(c[7]), !(1...999).contains(population),
                   let lat = Double(c[4]), let lon = Double(c[5]),
                   (-90...90).contains(lat), (-180...180).contains(lon) else { return nil }
-            return PlaceRecord(name: String(c[1]), admin1: c[10].isEmpty ? nil : admin1["\(c[8]).\(c[10])"],
-                               country: String(c[8]), latitude: lat, longitude: lon)
+            let record = PlaceRecord(name: String(c[1]), admin1: c[10].isEmpty ? nil : admin1["\(c[8]).\(c[10])"],
+                                     country: String(c[8]), latitude: lat, longitude: lon)
+            return (record, c[7] == "PPLX", population, [c[10], c[11], c[12], c[13]])
+        }
+        // Places that aren't districts, by whole degree, to find a district's city among the cells around it.
+        var cells: [Int: [Int]] = [:]
+        func cell(_ lat: Double, _ lon: Double) -> Int { Int(lat.rounded(.down) + 90) * 400 + Int(lon.rounded(.down) + 180) }
+        for (i, row) in rows.enumerated() where !row.district { cells[cell(row.record.latitude, row.record.longitude), default: []].append(i) }
+        return rows.map { row in
+            guard row.district else { return row.record }
+            let lat = row.record.latitude, lon = row.record.longitude
+            var city: (name: String, km: Double)?
+            for dLat in -1...1 { for dLon in -1...1 {
+                for i in cells[cell(lat + Double(dLat), lon + Double(dLon))] ?? [] {
+                    let other = rows[i]
+                    guard other.record.country == row.record.country, other.population > row.population,
+                          !row.areas[0].isEmpty, other.areas[0] == row.areas[0],
+                          zip(row.areas, other.areas).allSatisfy({ $0.isEmpty || $1.isEmpty || $0 == $1 }) else { continue }
+                    let km = PlaceTable.distanceKm(lat, lon, other.record.latitude, other.record.longitude)
+                    if km <= 25, km < city?.km ?? .infinity { city = (other.record.name, km) }
+                }
+            } }
+            guard let city else { return row.record }
+            var record = row.record
+            record.name = ["DE", "AT", "CH"].contains(record.country) ? "\(city.name)-\(record.name)" : "\(record.name), \(city.name)"
+            return record
         }
     }
 

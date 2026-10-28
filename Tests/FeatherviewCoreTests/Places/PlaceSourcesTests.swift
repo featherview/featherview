@@ -27,6 +27,27 @@ import Testing
         #expect(PlaceSources.places(geonamesTSV: line, admin1TSV: Self.admin1).first?.admin1 == nil)
     }
 
+    /// Inside a city a district is nearer than the city's point, and German addresses never name it alone. The city
+    /// shares the district's administrative areas: Spandau is nearer Falkensee (Brandenburg) than Berlin's point.
+    @Test func districtsCarryTheirCity() {
+        func line(_ name: String, _ lat: String, _ lon: String, _ code: String, _ country: String, _ people: String,
+                  _ areas: String) -> String {
+            "1\t\(name)\t\(name)\t\t\(lat)\t\(lon)\tP\t\(code)\t\(country)\t\t\(areas)\t\(people)\t\t\t\t"
+        }
+        let tsv = [line("Wetzendorf", "49.47056", "11.04148", "PPLX", "DE", "8268", "02\t095\t09564\t09564000"),
+                   line("Nuremberg", "49.45421", "11.07752", "PPLA3", "DE", "515543", "02\t095\t09564\t09564000"),
+                   line("Fürth", "49.47593", "10.98856", "PPL", "DE", "132036", "02\t095\t09563\t09563000"),
+                   line("Spandau", "52.5511", "13.19921", "PPLX", "DE", "39653", "16\t00\t11000\t11000000"),
+                   line("Falkensee", "52.56014", "13.09270", "PPLA4", "DE", "44000", "11\t00\t12063\t12063080"),
+                   line("Berlin", "52.52437", "13.41053", "PPLC", "DE", "3426354", "16\t00\t11000\t11000000"),
+                   line("Camden", "51.54057", "-0.14334", "PPLX", "GB", "26122", "ENG\tGLA\tC4\t"),
+                   line("London", "51.50853", "-0.12574", "PPLC", "GB", "8961989", "ENG\tGLA\t\t"),
+                   line("Lonely", "10.0", "10.0", "PPLX", "NG", "2000", "05\t\t\t")].joined(separator: "\n")
+        let names = PlaceSources.places(geonamesTSV: tsv, admin1TSV: Self.admin1).map(\.name)
+        #expect(names == ["Nuremberg-Wetzendorf", "Nuremberg", "Fürth", "Berlin-Spandau", "Falkensee", "Berlin",
+                          "Camden, London", "London", "Lonely"])
+    }
+
     @Test func skipsMalformedLines() {
         let bad = [
             "",

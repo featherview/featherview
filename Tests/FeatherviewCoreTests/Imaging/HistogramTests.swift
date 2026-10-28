@@ -17,6 +17,22 @@ import Testing
             provider: CGDataProvider(data: data as CFData)!, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
     }
 
+    /// The viewer decodes with HDR on, which gives a JPEG with a gain map as packed 10-bit pixels (what an
+    /// iPhone writes), a format vImage can't convert.
+    @Test func packedTenBitCounted() throws {
+        let red = [UInt32](repeating: 1023 << 20, count: 64 * 48)  // X2 R10 G10 B10, little-endian
+        let data = red.withUnsafeBytes { Data($0) }
+        let image = try #require(CGImage(
+            width: 64, height: 48, bitsPerComponent: 10, bitsPerPixel: 32, bytesPerRow: 64 * 4,
+            space: CGColorSpace(name: CGColorSpace.displayP3)!,
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+                                     | CGImagePixelFormatInfo.RGB101010.rawValue),
+            provider: CGDataProvider(data: data as CFData)!, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+        let histogram = Histogram.compute(image, headroom: nil)
+        #expect(peak(histogram.red) == 255)
+        #expect(histogram.luminance.max() == 1)
+    }
+
     @Test func transparentPixelsNotCounted() throws {
         var image = Fixtures.solid(100, 100, (255, 255, 255, 255))
         for y in 0..<50 { for x in 0..<100 { image[x, y] = (200, 50, 50, 0) } }

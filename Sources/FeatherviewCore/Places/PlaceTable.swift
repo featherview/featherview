@@ -177,7 +177,7 @@ public struct PlaceTable: Sendable {
         return row(latitude) * columns + column
     }
 
-    private static func distanceKm(_ lat1: Double, _ lon1: Double, _ lat2: Double, _ lon2: Double) -> Double {
+    static func distanceKm(_ lat1: Double, _ lon1: Double, _ lat2: Double, _ lon2: Double) -> Double {
         let r = Double.pi / 180
         let dLat = (lat2 - lat1) * r, dLon = (lon2 - lon1) * r
         let a = sin(dLat / 2) * sin(dLat / 2) + cos(lat1 * r) * cos(lat2 * r) * sin(dLon / 2) * sin(dLon / 2)

@@ -53,7 +53,7 @@ struct InfoPanel: View {
     private var info: ImageInfo? { infoKey != nil && infoKey == readKey ? readInfo : nil }
     /// Set once the picture on screen and the info are both the file's.
     private var histogramKey: HistogramKey? {
-        guard let key = readKey, let info, image != nil, let onScreen, onScreen.url == key.url else { return nil }
+        guard let key = readKey, info != nil, image != nil, let onScreen, onScreen.url == key.url else { return nil }
         return HistogramKey(read: key, page: onScreen.page, fit: fitImage.map(ObjectIdentifier.init))
     }
     private var histogram: Histogram? { countedFor != nil && countedFor == histogramKey ? counted : nil }

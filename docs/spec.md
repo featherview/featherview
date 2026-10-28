@@ -583,7 +583,9 @@ empty rows or cards). Text is selectable. Nothing in the panel uses the network.
 **Place names** come from data shipped in the app (GeoNames places with at least 1,000 people;
 Natural Earth seas, oceans, deserts and mountain ranges), looked up on the Mac:
 1. A place within 25 km: header "Andermatt, Switzerland", Location "near Andermatt, Uri,
-   Switzerland" (the nearest by distance, never weighted by population).
+   Switzerland" (the nearest by distance, never weighted by population). A city district carries its
+   city, the nearest larger place in the same administrative areas: "Berlin-Neukölln" in Germany,
+   Austria and Switzerland, "Camden, London" elsewhere.
 2. Else, a sea or ocean containing the point, with a place within 200 km: "North Atlantic, off
    Gambia" / "North Atlantic Ocean, off Banjul, Gambia". The header drops "Ocean" only when more
    than one word is left ("Indian Ocean, off Sri Lanka" keeps it).

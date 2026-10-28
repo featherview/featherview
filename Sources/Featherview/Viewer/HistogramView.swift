@@ -12,6 +12,11 @@ struct HistogramView: View {
     private let state = InfoPanelState.shared
     /// The clip mark whose share shows in a bubble.
     @State private var bubble: InfoFocus?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The curves' height, 0 at the baseline: below 1 once a histogram went away with the panel open, so the next
+    /// one rises. One that arrives while the panel slides in shows at once.
+    @State private var rise: CGFloat = 1
+    @State private var shownSince = Date.distantFuture
 
     var body: some View {
         VStack(spacing: Theme.infoSmallGap) {
@@ -53,14 +58,18 @@ struct HistogramView: View {
 
     private func segment(_ mode: HistogramMode, _ label: Text) -> some View {
         let on = state.mode == mode
-        return label
-            .font(Theme.infoSegment)
-            .foregroundStyle(on ? Theme.accent : secondary)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 2)
-            .background(on ? Theme.toggledPill : .clear, in: .rect(cornerRadius: Theme.Radius.keyCap))
-            .contentShape(.rect)
-            .onTapGesture { state.mode = mode }
+        // A button, not a tap gesture: the panel's selectable text would take the click first.
+        return Button { state.mode = mode } label: {
+            label
+                .font(Theme.infoSegment)
+                .foregroundStyle(on ? Theme.accent : secondary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(on ? Theme.toggledPill : .clear, in: .rect(cornerRadius: Theme.Radius.keyCap))
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
     }
 
     private func switchMode() { state.mode = state.mode == .luminance ? .rgb : .luminance }
@@ -68,6 +77,30 @@ struct HistogramView: View {
     private var plot: some View {
         Canvas { context, size in
             Self.drawGrid(&context, size: size, headroom: histogram?.headroom, hairline: hairline)
+        }
+        .overlay { curves.scaleEffect(x: 1, y: rise, anchor: .bottom) }
+        .onAppear { shownSince = .now }
+        .onChange(of: histogram == nil) { _, missing in
+            if missing {
+                if !reduceMotion, Date.now.timeIntervalSince(shownSince) > Theme.Motion.panel { rise = 0 }
+            } else if rise < 1 {
+                withAnimation(.easeOut(duration: Theme.Motion.histogramRise)) { rise = 1 }
+            }
+        }
+        .frame(height: Theme.histogramHeight)
+        .background(Theme.cardFill, in: .rect(cornerRadius: Theme.Radius.histogram))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.histogram).strokeBorder(Theme.cardLine, lineWidth: hairline))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(modeName)
+        .accessibilityValue(clippingSummary)
+        .overlay(alignment: .bottomLeading) { clipMark(.shadowsClip) }
+        .overlay(alignment: .bottomTrailing) { clipMark(.highlightsClip) }
+        .overlay(alignment: .top) { bubbleText }
+        .environment(\.layoutDirection, .leftToRight)
+    }
+
+    private var curves: some View {
+        Canvas { context, size in
             guard let histogram else { return }
             if state.mode == .rgb {
                 for (bins, colour) in [(histogram.red, Theme.histogramChannelRed), (histogram.green, Theme.histogramChannelGreen),
@@ -82,16 +115,6 @@ struct HistogramView: View {
             context.fill(fill, with: .color(Theme.histogramFill))
             context.stroke(Self.line(histogram.luminance, size), with: .color(Theme.histogramLine), lineWidth: 1.5)
         }
-        .frame(height: Theme.histogramHeight)
-        .background(Theme.cardFill, in: .rect(cornerRadius: Theme.Radius.histogram))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.histogram).strokeBorder(Theme.cardLine, lineWidth: hairline))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(modeName)
-        .accessibilityValue(clippingSummary)
-        .overlay(alignment: .bottomLeading) { clipMark(.shadowsClip) }
-        .overlay(alignment: .bottomTrailing) { clipMark(.highlightsClip) }
-        .overlay(alignment: .top) { bubbleText }
-        .environment(\.layoutDirection, .leftToRight)
     }
 
     private var clippingSummary: String {
