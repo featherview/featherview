@@ -585,7 +585,8 @@ Natural Earth seas, oceans, deserts and mountain ranges), looked up on the Mac:
 1. A place within 25 km: header "Andermatt, Switzerland", Location "near Andermatt, Uri,
    Switzerland" (the nearest by distance, never weighted by population).
 2. Else, a sea or ocean containing the point, with a place within 200 km: "North Atlantic, off
-   Gambia" / "North Atlantic Ocean, off Banjul, Gambia".
+   Gambia" / "North Atlantic Ocean, off Banjul, Gambia". The header drops "Ocean" only when more
+   than one word is left ("Indian Ocean, off Sri Lanka" keeps it).
 3. Else, a desert or mountain range containing the point, with a place within 500 km: "Sahara,
    near Tunisia" (both forms).
 4. Else the sea, ocean or region alone ("North Pacific Ocean"); else no place, coordinates only.

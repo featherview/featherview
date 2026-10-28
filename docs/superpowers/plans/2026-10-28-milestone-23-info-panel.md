@@ -203,7 +203,7 @@ viewer: `docs/parity.md` "Metadata". Roadmap: `docs/roadmap.md` row 23.
   `roundTripsThroughData` (encoded → init(data:) equal lookups); `townWithin25km` (46.64, 8.60 →
   short "Andermatt, Switzerland", full "near Andermatt, Uri, Switzerland", countryName stubbed to English);
   `nearestByDistanceNotPopulation`; `seaOffCountry` (13.35, −17.40 → "North Atlantic, off Gambia" /
-  "North Atlantic Ocean, off Banjul, Gambia" — the short form drops "Ocean"); `regionNearCountry`
+  "North Atlantic Ocean, off Banjul, Gambia" — the short form drops "Ocean", but only when more than one word is left: `oneWordOceanKeepsOcean`, "Indian Ocean, off Sri Lanka"); `regionNearCountry`
   (31.0, 9.0 → "Sahara, near Tunisia" both); `openOcean` (32, −160 → "North Pacific Ocean" both);
   `nothingNearby` (point outside all regions and > 25 km → nil); `nearestAcrossAntimeridian`
   (−16.9, 179.99 finds Taveuni); `poleDoesNotCrash` (90, 0 and −90, 0); `rejectsBadData` (wrong magic
