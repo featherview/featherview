@@ -197,21 +197,26 @@ struct CaseSensitiveVolume {
         let dir = try Fixtures.makeTempDir()
         image = dir.appendingPathComponent("cs.dmg")
         root = dir.appendingPathComponent("mnt")
-        try Self.hdiutil(["create", "-size", "8m", "-fs", "Case-sensitive APFS", "-volname", "FVTest", image.path])
+        try Self.hdiutil(["create", "-size", "8m", "-fs", "Case-sensitive APFS", "-volname", "FVTest-\(UUID().uuidString.prefix(8))", image.path])
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         try Self.hdiutil(["attach", "-nobrowse", "-mountpoint", root.path, image.path])
     }
 
     func detach() { try? Self.hdiutil(["detach", "-force", root.path]) }
 
+    /// CI's virtual Macs now and then fail a create or attach while another test's image mounts: tried three times.
     private static func hdiutil(_ arguments: [String]) throws {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
-        process.arguments = arguments
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-        try process.run()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else { throw CocoaError(.fileWriteUnknown) }
+        for attempt in 1...3 {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
+            process.arguments = arguments
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            try process.run()
+            process.waitUntilExit()
+            if process.terminationStatus == 0 { return }
+            if attempt < 3 { Thread.sleep(forTimeInterval: 1) }
+        }
+        throw CocoaError(.fileWriteUnknown)
     }
 }
