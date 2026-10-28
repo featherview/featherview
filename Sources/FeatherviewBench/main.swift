@@ -14,6 +14,7 @@ let usage = """
       swift run -c release featherview-bench grid <dir> [--points 128] [--scale 2] [--cells 40] [--width N]
                                                   [--json out.json] [--baseline in.json]
       swift run -c release featherview-bench fuzz <seed dir or file> --out <dir> [--seconds 60] [--seed N]
+      swift run -c release featherview-bench places <out.fvpl>
 
     corpus  writes generated test images into <dir> (never commit them).
     decode  times the viewer's fit decode per file and screen, plus one full-size decode per file,
@@ -37,6 +38,9 @@ let usage = """
             FuzzSeedTests` writes them) and runs it through the own decoder, until --seconds are up. Each input is
             written to <out>/current.<ext> first, so a crash leaves it behind; an input taking over 5 s is copied to
             <out>/hang-<n>.<ext> and exits 3. scripts/fuzz.sh runs it under AddressSanitizer, one format at a time.
+    places  builds the info panel's place data (scripts/places.sh runs it for releases) from GeoNames and Natural
+            Earth, downloaded fresh into ~/Library/Caches/net.mynetx.featherview-build/places; offline, the cached
+            copies are used. Prints "place data: fresh" or "place data: cached from <date>", counts, bytes and time.
     Screens are in pixels; default 3024x1964 3456x2234 5120x2880 (decode), 3024x1964 (browse).
     """
 
@@ -323,6 +327,69 @@ struct Step: Sendable {
     if !failed.isEmpty { exit(1) }
 }
 
+// MARK: - Place data
+
+/// Downloads a source into the cache, or keeps the cached copy when that fails; nil when neither exists.
+func placeSource(_ remote: URL, cache: URL) async -> (url: URL, fresh: Bool)? {
+    let local = cache.appendingPathComponent(remote.lastPathComponent)
+    if let (temp, response) = try? await URLSession.shared.download(from: remote),
+       (response as? HTTPURLResponse)?.statusCode == 200 {
+        try? FileManager.default.removeItem(at: local)
+        if (try? FileManager.default.moveItem(at: temp, to: local)) != nil { return (local, true) }
+    }
+    return FileManager.default.fileExists(atPath: local.path) ? (local, false) : nil
+}
+
+func runPlaces(out: URL) async {
+    let start = ContinuousClock.now
+    let cache = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Caches/net.mynetx.featherview-build/places")
+    try? FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
+    let geonames = URL(string: "https://download.geonames.org/export/dump/")!
+    let naturalEarth = URL(string: "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/")!
+    var sources: [(url: URL, fresh: Bool)] = []
+    for remote in [geonames.appendingPathComponent("cities1000.zip"), geonames.appendingPathComponent("admin1CodesASCII.txt"),
+                   naturalEarth.appendingPathComponent("ne_10m_geography_marine_polys.geojson"),
+                   naturalEarth.appendingPathComponent("ne_10m_geography_regions_polys.geojson")] {
+        guard let source = await placeSource(remote, cache: cache) else {
+            fail("Can't download \(remote.absoluteString), and there is no cached copy.")
+        }
+        sources.append(source)
+    }
+    if sources.allSatisfy(\.fresh) {
+        print("place data: fresh")
+    } else {
+        let dates = sources.filter { !$0.fresh }
+            .compactMap { try? $0.url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate }
+        print("place data: cached from \((dates.min() ?? .now).formatted(.iso8601.year().month().day()))")
+    }
+    let unzip = Process()
+    unzip.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+    unzip.arguments = ["-p", sources[0].url.path, "cities1000.txt"]
+    let pipe = Pipe()
+    unzip.standardOutput = pipe
+    do { try unzip.run() } catch { fail("Can't unzip \(sources[0].url.path).") }
+    let cities = pipe.fileHandleForReading.readDataToEndOfFile()
+    unzip.waitUntilExit()
+    guard unzip.terminationStatus == 0, let admin1 = try? String(contentsOf: sources[1].url, encoding: .utf8),
+          let marine = try? Data(contentsOf: sources[2].url), let outlines = try? Data(contentsOf: sources[3].url)
+    else { fail("Can't read the place sources in \(cache.path).") }
+    let places = PlaceSources.places(geonamesTSV: String(decoding: cities, as: UTF8.self), admin1TSV: admin1)
+    let regions: [RegionRecord]
+    do { regions = try PlaceSources.regions(marineGeoJSON: marine, regionsGeoJSON: outlines, toleranceKm: 1) } catch {
+        fail("Can't read the Natural Earth outlines in \(cache.path).")
+    }
+    let data = PlaceTable(places: places, regions: regions).encoded()
+    do {
+        try FileManager.default.createDirectory(at: out.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try data.write(to: out, options: .atomic)
+    } catch { fail("Can't write \(out.path).") }
+    let points = regions.reduce(0) { $0 + $1.rings.reduce(0) { $0 + $1.count } }
+    let seas = regions.filter { $0.kind == .sea }.count
+    print("\(places.count) places, \(seas) seas, \(regions.count - seas) regions (\(points) outline points)")
+    print("\(out.path): \(data.count) bytes, built in \(f(start.duration(to: .now).milliseconds)) ms")
+}
+
 switch mode {
 case "corpus":
     do {
@@ -334,6 +401,7 @@ case "decode": runDecode()
 case "browse": await runBrowse()
 case "grid": await runGrid()
 case "fuzz": runFuzz()
+case "places": await runPlaces(out: folder)
 case "thumbnail": await runThumbnail(folder, out: option("--out").map { URL(fileURLWithPath: $0) })
 default: fail("Unknown mode \(mode).")
 }

@@ -346,3 +346,10 @@ IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
+
+Featherview includes place names from GeoNames (https://www.geonames.org),
+simplified, under the Creative Commons Attribution 4.0 International
+licence (https://creativecommons.org/licenses/by/4.0/).
+
+Featherview includes region outlines from Natural Earth
+(https://www.naturalearthdata.com), simplified, in the public domain.
