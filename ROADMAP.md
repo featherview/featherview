@@ -24,6 +24,8 @@ conversion, the extra formats with Finder previews, and 30 languages.
 
 - Photos library: browse albums from Apple's Photos with the arrow keys, drag pictures in from
   Photos, and batch convert from it or into it, without exporting first
+- Richer info panel: a histogram, an exposure card, foldable groups, location with Open in Maps,
+  and every metadata tag on request
 
 ## Not planned
 

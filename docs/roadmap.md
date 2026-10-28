@@ -36,6 +36,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 21 | Grid columns that fill the window, right-click menu, drag out | `docs/superpowers/plans/2026-10-25-milestone-21-grid-columns-menu-drag.md` | done |
 | — | Automatic updates through Sparkle (spec "Updates") | no plan; commits 0949b8d, a5f9bd3 | done |
 | 22 | Photos library: browse albums, drops from Photos, batch from and into the library | `docs/superpowers/plans/2026-10-26-milestone-22-photos-library.md` | planned |
+| 23 | Info panel: histogram, exposure card, foldable groups, location, all metadata | no plan yet; design in progress | idea |
 
 ## 1. Core viewer and batch
 
@@ -291,3 +292,21 @@ Ideas from the maintainer's QA that no spec covers yet; each gets a plan and a s
     at once and sharpens when the original arrives; the status bar says "Downloading from iCloud…".
   - **Not planned:** organising the library (albums, keywords, favourites), syncing edits back, and
     Photos' "Edit With" round trip.
+
+- Info panel: more of what photographers check, without a network call.
+  - **Histogram** on top: luminance or RGB, clipping marks at both ends with the clipped share on
+    click; computed from the already decoded screen-size image (no extra decode); HDR shows the
+    standard range and a marker beyond it.
+  - **Exposure card:** shutter, aperture, ISO and focal length (35 mm equivalent when it differs) as
+    tiles with glyphs, plus exposure bias, flash, white balance and metering.
+  - **Foldable groups** (Image, Location, Description, File), each with a one-line summary when
+    closed; open and closed state is kept for every image until the app quits.
+  - **More fields:** folder (Show in Finder), format, megapixels, colour profile, bit depth, HDR,
+    software, title, caption, keywords, rating, creator, copyright, JPEG comment.
+  - **Location:** coordinates and altitude with Open in Maps; no map inside the panel, so nothing
+    loads over the network.
+  - **Show all metadata…:** every EXIF, GPS, IPTC, XMP and TIFF tag with readable labels, search and
+    copy; internal entries hidden.
+  - Design options: <https://claude.ai/artifact/Lf6bXo8PaC2Exi6A6Unvmx> (variant B2 chosen, colour
+    being explored). Reference behaviour: `docs/parity.md`, "Metadata".
+  - **Not planned:** editing metadata in the panel (Adjust Date Taken stays the only metadata edit).
