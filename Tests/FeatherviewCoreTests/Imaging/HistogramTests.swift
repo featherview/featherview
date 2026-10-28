@@ -53,6 +53,20 @@ import Testing
         #expect(peak(histogram.luminance) == 0 || peak(histogram.luminance) == 127)
     }
 
+    @Test func largeSdrSampledKeepsFractions() throws {
+        // 2400 × 2400, top half black, bottom half white, and a 1 px white column that sampling steps over.
+        let width = 2400, half = width * width / 2
+        var pixels = [UInt8](repeating: 255, count: width * width * 4)
+        for i in 0..<half { pixels[i * 4] = 0; pixels[i * 4 + 1] = 0; pixels[i * 4 + 2] = 0 }
+        for y in 0..<(width / 2) { let i = (y * width + 1) * 4; pixels[i] = 255; pixels[i + 1] = 255; pixels[i + 2] = 255 }
+        let image = try #require(RGBAImage(width: width, height: width, pixels: pixels).makeCGImage())
+        let histogram = Histogram.compute(image, headroom: nil)
+        #expect(abs(histogram.shadowsClipped - 0.5) < 0.01)
+        #expect(abs(histogram.highlightsClipped - 0.5) < 0.01)
+        // Full size would count the column's 1200 pixels: (half + 1200) / total.
+        #expect(histogram.highlightsClipped != Double(half + width / 2) / Double(width * width))
+    }
+
     @Test func solidMidGreyFillsOneBin() throws {
         let image = try #require(Fixtures.solid(64, 64, (128, 128, 128, 255)).makeCGImage())
         let histogram = Histogram.compute(image, headroom: nil)

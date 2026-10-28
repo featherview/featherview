@@ -40,17 +40,23 @@ public struct Histogram: Equatable, Sendable {
     private static let empty: Counts = ([UInt](repeating: 0, count: 256), [UInt](repeating: 0, count: 256),
                                         [UInt](repeating: 0, count: 256), [UInt](repeating: 0, count: 256), 0, 0, 0)
 
-    /// HDR pictures are sampled down to about this many pixels: the scalar loop stays within a few ms.
-    private static let hdrSamplePixels = 1 << 18
+    /// Pictures are sampled down to about this many pixels: a 5K fit decode stays within a few ms.
+    private static let samplePixels = 1 << 18
+
+    private static func sampleSize(_ image: CGImage) -> (width: Int, height: Int) {
+        let factor = min(1, (Double(samplePixels) / Double(max(1, image.width * image.height))).squareRoot())
+        return (max(1, Int(Double(image.width) * factor)), max(1, Int(Double(image.height) * factor)))
+    }
 
     /// sRGB RGBA8 levels, luminance from the encoded values as photo editors show it.
     private static func sdrCounts(_ image: CGImage) -> Counts {
-        let width = image.width, height = image.height
-        guard width > 0, height > 0,
+        let (width, height) = sampleSize(image)
+        guard image.width > 0, image.height > 0,
               let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
                                       space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
               let data = context.data else { return empty }
+        context.interpolationQuality = .none  // samples, so clipped values stay clipped
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
         var source = vImage_Buffer(data: data, height: vImagePixelCount(height), width: vImagePixelCount(width), rowBytes: width * 4)
         _ = vImageUnpremultiplyData_RGBA8888(&source, &source, vImage_Flags(kvImageNoFlags))
@@ -83,8 +89,7 @@ public struct Histogram: Equatable, Sendable {
     /// Extended linear sRGB floats binned over 0...headroom; values outside land in the end bins. Clipping is
     /// counted from the values themselves: luminance <= 0 and >= headroom.
     private static func hdrCounts(_ image: CGImage, headroom: Double) -> Counts {
-        let factor = min(1, (Double(hdrSamplePixels) / Double(max(1, image.width * image.height))).squareRoot())
-        let width = max(1, Int(Double(image.width) * factor)), height = max(1, Int(Double(image.height) * factor))
+        let (width, height) = sampleSize(image)
         var pixels = [Float](repeating: 0, count: width * height * 4)
         let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
             guard image.width > 0, image.height > 0,
