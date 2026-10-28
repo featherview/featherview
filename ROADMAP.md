@@ -13,11 +13,14 @@ conversion, the extra formats with Finder previews, 30 languages and automatic u
 - Signed and notarized releases, so the first launch needs no "Open Anyway", once
   [sponsorships](https://github.com/sponsors/mynetx) cover Apple's $99/year developer membership.
 
-## After 1.0
+## Next: 0.12
 
-- Richer info panel (done, in the next release): a histogram, an exposure card, foldable groups,
-  place names in your language, worked out on your Mac, with Open in Maps, every metadata tag on request, and all of
-  it usable from the keyboard and with VoiceOver
+- Richer info panel: a histogram, an exposure card, foldable groups, place names in your language,
+  worked out on your Mac, with Open in Maps, every metadata tag on request, and all of it usable
+  from the keyboard and with VoiceOver
+
+## Planned
+
 - Photos library: browse albums from Apple's Photos with the arrow keys, drag pictures in from
   Photos, and batch convert from it or into it, without exporting first
 
