@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreVideo
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
@@ -195,6 +196,27 @@ enum Fixtures {
         return url
     }
 
+    /// An 8 × 8 picture with an Apple HDR gain map whose metadata, as on iPhone photos, is an XMP packet of
+    /// its own (HDRGainMap:HDRGainMapVersion); the picture itself has none.
+    @discardableResult
+    static func writeAppleGainMap(to url: URL, type: UTType) throws -> URL {
+        guard let dest = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil)
+        else { throw CocoaError(.fileWriteUnknown) }
+        CGImageDestinationAddImage(dest, solid(8, 8, (255, 0, 0, 255)).makeCGImage()!, nil)
+        let metadata = CGImageMetadataCreateMutable()
+        CGImageMetadataRegisterNamespaceForPrefix(metadata, "http://ns.apple.com/HDRGainMap/1.0/" as CFString,
+                                                  "HDRGainMap" as CFString, nil)
+        CGImageMetadataSetValueWithPath(metadata, nil, "HDRGainMap:HDRGainMapVersion" as CFString, 65536 as CFNumber)
+        CGImageDestinationAddAuxiliaryDataInfo(dest, kCGImageAuxiliaryDataTypeHDRGainMap, [
+            kCGImageAuxiliaryDataInfoData: Data(count: 16),
+            kCGImageAuxiliaryDataInfoDataDescription: ["Width": 4, "Height": 4, "BytesPerRow": 4,
+                                                       "PixelFormat": kCVPixelFormatType_OneComponent8] as [String: Any],
+            kCGImageAuxiliaryDataInfoMetadata: metadata,
+        ] as CFDictionary)
+        guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
+        return url
+    }
+
     /// Solid frame `n` of an animation: red = 40·n, so tests can tell frames apart.
     static func animationFrame(_ n: Int, width: Int, height: Int) -> CGImage {
         let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
@@ -306,6 +328,32 @@ enum Fixtures {
         let at = app1(red) ?? 2..<2
         red.replaceSubrange(at, with: blue[exif])
         try Data(red).write(to: url)
+        return url
+    }
+
+    /// Puts an XMP packet (APP1) and IPTC records (APP13, `(dataset, value)` in record 2) right after a
+    /// JPEG's start marker, as other apps write them, without ImageIO mirroring one into the other.
+    @discardableResult
+    static func insertJPEGMetadata(into url: URL, xmp: String? = nil, iptc: [(UInt8, String)] = []) throws -> URL {
+        func segment(_ marker: UInt8, _ body: [UInt8]) -> [UInt8] { [0xFF, marker] + be16(body.count + 2) + body }
+        var segments: [UInt8] = []
+        if !iptc.isEmpty {
+            var records: [UInt8] = []
+            for (dataset, value) in iptc { records += [0x1C, 2, dataset] + be16(value.utf8.count) + Array(value.utf8) }
+            if records.count % 2 == 1 { records.append(0) }
+            // Records over one segment's 64 KB continue in further APP13 segments, as Photoshop writes them.
+            let resources = Array("8BIM".utf8) + [0x04, 0x04, 0, 0] + be32(records.count) + records
+            for start in stride(from: 0, to: resources.count, by: 60_000) {
+                segments += segment(0xED, Array("Photoshop 3.0\0".utf8)
+                                    + resources[start..<min(start + 60_000, resources.count)])
+            }
+        }
+        if let xmp {
+            segments += segment(0xE1, Array("http://ns.adobe.com/xap/1.0/\0".utf8) + Array(xmp.utf8))
+        }
+        var bytes = [UInt8](try Data(contentsOf: url))
+        bytes.insert(contentsOf: segments, at: 2)
+        try Data(bytes).write(to: url)
         return url
     }
 }
