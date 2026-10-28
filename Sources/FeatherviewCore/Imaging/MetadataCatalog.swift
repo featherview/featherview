@@ -23,14 +23,17 @@ public struct MetadataSection: Equatable, Sendable, Identifiable {
 /// Every tag of a picture for the All Metadata window, grouped, labelled and formatted.
 public struct MetadataCatalog: Equatable, Sendable {
     public var sections: [MetadataSection]
-    /// Internal entries left out: offsets, thumbnail data, binary maker notes.
+    /// Internal entries left out: offsets, thumbnail data, maker notes.
     public var hiddenCount: Int
 
     public static func read(_ url: URL) -> MetadataCatalog {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               var props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any]
         else { return MetadataCatalog(sections: [], hiddenCount: 0) }
-        guard let own = ownMetadata(url) else { return make(properties: props, xmp: imageIOXMP(source)) }
+        guard let own = ownMetadata(url) else {
+            props["{IPTC}"] = nil  // ImageIO makes it from the XMP; these containers have no IPTC of their own
+            return make(properties: props, xmp: imageIOXMP(source))
+        }
         props["{IPTC}"] = own.iptc.flatMap(iptc(records:))
         return make(properties: props, xmp: own.xmp.map(xmp(in:)) ?? [])
     }
@@ -50,6 +53,7 @@ public struct MetadataCatalog: Equatable, Sendable {
         guard let head = read(0, 8) else { return nil }
         if head[0] == 0xFF, head[1] == 0xD8 {
             var own: (xmp: Data?, iptc: [UInt8]?) = (nil, nil)
+            var photoshop: [UInt8] = []  // image resources continue across APP13 segments
             let xmpSignature = Array("http://ns.adobe.com/xap/1.0/\0".utf8), psSignature = Array("Photoshop 3.0\0".utf8)
             var at = 2
             while let marker = read(at, 4), marker[0] == 0xFF, marker[1] != 0xDA, marker[1] != 0xD9 {
@@ -58,12 +62,11 @@ public struct MetadataCatalog: Equatable, Sendable {
                 guard length >= 2 else { break }
                 if marker[1] == 0xE1 || marker[1] == 0xED, let body = read(at + 4, length - 2) {
                     if own.xmp == nil, body.starts(with: xmpSignature) { own.xmp = Data(body.dropFirst(xmpSignature.count)) }
-                    if own.iptc == nil, body.starts(with: psSignature) {
-                        own.iptc = resource(0x0404, in: Array(body.dropFirst(psSignature.count)))
-                    }
+                    if marker[1] == 0xED, body.starts(with: psSignature) { photoshop += body.dropFirst(psSignature.count) }
                 }
                 at += 2 + length
             }
+            own.iptc = resource(0x0404, in: photoshop)
             return own
         }
         if head.starts(with: [0x49, 0x49, 42, 0]) || head.starts(with: [0x4D, 0x4D, 0, 42]) {
@@ -122,10 +125,15 @@ public struct MetadataCatalog: Equatable, Sendable {
     /// The tags of an XMP packet.
     /// shortcut: extended XMP (more JPEG APP1 segments) isn't joined, add it if files show up.
     static func xmp(in packet: Data) -> [(String, String)] {
-        guard let start = find("<x:xmpmeta", in: packet),
-              let end = find("</x:xmpmeta>", in: packet, from: start.upperBound),
-              let metadata = CGImageMetadataCreateFromXMPData(packet[start.lowerBound..<end.upperBound] as CFData)
-        else { return [] }
+        let xml: Data
+        if let start = find("<x:xmpmeta", in: packet), let end = find("</x:xmpmeta>", in: packet, from: start.upperBound) {
+            xml = packet[start.lowerBound..<end.upperBound]
+        } else if let start = find("<rdf:RDF", in: packet), let end = find("</rdf:RDF>", in: packet, from: start.upperBound) {
+            // The x:xmpmeta wrapper is optional, but ImageIO only reads packets that have it.
+            xml = Data(#"<x:xmpmeta xmlns:x="adobe:ns:meta/">"#.utf8) + packet[start.lowerBound..<end.upperBound]
+                + Data("</x:xmpmeta>".utf8)
+        } else { return [] }
+        guard let metadata = CGImageMetadataCreateFromXMPData(xml as CFData) else { return [] }
         return tags(of: metadata, skipping: ["iio"])  // iio:hasXMP
     }
 
@@ -140,12 +148,17 @@ public struct MetadataCatalog: Equatable, Sendable {
 
     /// IPTC records as ImageIO reads them on their own. ImageIO's merged "{IPTC}" fills in values from XMP and TIFF.
     static func iptc(records: [UInt8]) -> [String: Any]? {
-        let header = Array("Photoshop 3.0\0".utf8) + Array("8BIM".utf8) + [4, 4, 0, 0]
-        guard !records.isEmpty, records.count + header.count + 6 <= 0xFFFF, blankJPEG.count > 2 else { return nil }
+        guard !records.isEmpty, blankJPEG.count > 2 else { return nil }
         // Standing alone in a small JPEG, the records have nothing for ImageIO to merge them with.
-        let body = header + [24, 16, 8, 0].map { UInt8(truncatingIfNeeded: records.count >> $0) } + records
+        let resources = Array("8BIM".utf8) + [4, 4, 0, 0]
+            + [24, 16, 8, 0].map { UInt8(truncatingIfNeeded: records.count >> $0) } + records
+        var segments: [UInt8] = []
+        for start in stride(from: 0, to: resources.count, by: 60_000) {  // APP13 segments of under 64 KB each
+            let body = Array("Photoshop 3.0\0".utf8) + resources[start..<min(start + 60_000, resources.count)]
+            segments += [0xFF, 0xED, UInt8((body.count + 2) >> 8), UInt8((body.count + 2) & 0xFF)] + body
+        }
         var jpeg = blankJPEG
-        jpeg.insert(contentsOf: [0xFF, 0xED, UInt8((body.count + 2) >> 8), UInt8((body.count + 2) & 0xFF)] + body, at: 2)
+        jpeg.insert(contentsOf: segments, at: 2)
         guard let source = CGImageSourceCreateWithData(jpeg as CFData, nil) else { return nil }
         return (CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any])?["{IPTC}"] as? [String: Any]
     }
@@ -179,6 +192,7 @@ public struct MetadataCatalog: Equatable, Sendable {
         var sections: [MetadataSection] = []
         for (key, value) in properties {
             guard key.hasPrefix("{"), let dictionary = value as? [String: Any] else { continue }
+            if key.hasPrefix("{Maker") { hidden += dictionary.count; continue }  // maker notes, tags named by numbers
             let id = key == "{Exif}" ? "EXIF" : String(key.dropFirst().dropLast())
             var entries: [MetadataEntry] = []
             for (tag, raw) in dictionary {

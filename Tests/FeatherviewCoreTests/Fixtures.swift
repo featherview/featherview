@@ -341,8 +341,12 @@ enum Fixtures {
             var records: [UInt8] = []
             for (dataset, value) in iptc { records += [0x1C, 2, dataset] + be16(value.utf8.count) + Array(value.utf8) }
             if records.count % 2 == 1 { records.append(0) }
-            segments += segment(0xED, Array("Photoshop 3.0\0".utf8) + Array("8BIM".utf8) + [0x04, 0x04, 0, 0]
-                                + be32(records.count) + records)
+            // Records over one segment's 64 KB continue in further APP13 segments, as Photoshop writes them.
+            let resources = Array("8BIM".utf8) + [0x04, 0x04, 0, 0] + be32(records.count) + records
+            for start in stride(from: 0, to: resources.count, by: 60_000) {
+                segments += segment(0xED, Array("Photoshop 3.0\0".utf8)
+                                    + resources[start..<min(start + 60_000, resources.count)])
+            }
         }
         if let xmp {
             segments += segment(0xE1, Array("http://ns.adobe.com/xap/1.0/\0".utf8) + Array(xmp.utf8))

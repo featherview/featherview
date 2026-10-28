@@ -127,6 +127,51 @@ import UniformTypeIdentifiers
         #expect(entry(catalog, "XMP.dc:subject")?.value == "snow, dusk")
     }
 
+    @Test func pngHasNoIPTCOfItsOwn() throws {
+        // ImageIO keeps IPTC in a PNG's XMP and reads an "{IPTC}" back from it.
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("tags.png"),
+                                          width: 8, height: 8, type: .png, properties: [
+            kCGImagePropertyIPTCDictionary: [kCGImagePropertyIPTCKeywords: ["snow"]] as [CFString: Any],
+        ])
+        let catalog = MetadataCatalog.read(url)
+        #expect(!catalog.sections.contains { $0.id == "IPTC" })
+        #expect(entry(catalog, "XMP.dc:subject")?.value == "snow")
+    }
+
+    @Test func iptcOverOneSegmentShows() throws {
+        let keywords = (0..<3_000).map { "keyword \($0) of a long list" }  // about 90 KB of records
+        let jpeg = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("big.jpg"),
+                                           width: 8, height: 8)
+        try Fixtures.insertJPEGMetadata(into: jpeg, iptc: keywords.map { (25, $0) } + [(120, "Andermatt")])
+        let tiff = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("big.tif"),
+                                           width: 8, height: 8, type: .tiff, properties: [
+            kCGImagePropertyIPTCDictionary: [kCGImagePropertyIPTCKeywords: keywords] as [CFString: Any],
+        ])
+        for url in [jpeg, tiff] {
+            let catalog = MetadataCatalog.read(url)
+            #expect(entry(catalog, "IPTC.Keywords")?.value == keywords.joined(separator: ", "), "\(url.lastPathComponent)")
+        }
+        #expect(entry(MetadataCatalog.read(jpeg), "IPTC.Caption/Abstract")?.value == "Andermatt")
+    }
+
+    @Test func xmpWithoutItsXmpmetaWrapper() {
+        let packet = #"<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>"#
+            + #"<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">"#
+            + #"<rdf:Description rdf:about="" xmlns:photoshop="http://ns.adobe.com/photoshop/1.0/">"#
+            + #"<photoshop:City>Zug</photoshop:City></rdf:Description></rdf:RDF><?xpacket end="w"?>"#
+        #expect(MetadataCatalog.xmp(in: Data(packet.utf8)).map(\.0) == ["photoshop:City"])
+    }
+
+    @Test func makerNoteDictionariesHidden() {
+        let catalog = MetadataCatalog.make(properties: [
+            "{MakerApple}": ["1": 14, "8": [0.1, 0.2]] as [String: Any],
+            "{MakerCanon}": ["LensModel": "EF50mm"],
+            "{Exif}": ["ExposureTime": 0.004],
+        ], xmp: [])
+        #expect(catalog.sections.map(\.id) == ["EXIF"])
+        #expect(catalog.hiddenCount == 3)
+    }
+
     @Test func binaryEntriesHidden() {
         let catalog = MetadataCatalog.make(properties: [
             "{Exif}": ["MakerNote": Data(count: 1_000_000), "ExposureTime": 0.004,
