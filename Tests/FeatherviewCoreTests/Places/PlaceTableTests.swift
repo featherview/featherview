@@ -54,6 +54,21 @@ enum PlaceFixtures {
         #expect(hit.km < 1)
     }
 
+    @Test func namesInTheAppsLanguage() throws {
+        var nuremberg = PlaceRecord(name: "Nuremberg", admin1: "Bavaria", country: "DE", latitude: 49.454, longitude: 11.078)
+        nuremberg.names = ["de": "Nürnberg"]
+        nuremberg.admin1Names = ["de": "Bayern"]
+        let fuerth = PlaceRecord(name: "Fürth", admin1: "Bavaria", country: "DE", latitude: 49.476, longitude: 10.989)
+        let decoded = try PlaceTable(data: PlaceTable(places: [fuerth, nuremberg], regions: []).encoded())
+        let german = decoded.localized(to: "de")
+        #expect(german.nearest(latitude: 49.45, longitude: 11.08, within: 25)?.0.name == "Nürnberg")
+        #expect(german.nearest(latitude: 49.45, longitude: 11.08, within: 25)?.0.admin1 == "Bayern")
+        #expect(german.nearest(latitude: 49.48, longitude: 10.99, within: 25)?.0.name == "Fürth")
+        #expect(german.nearest(latitude: 49.48, longitude: 10.99, within: 25)?.0.admin1 == "Bayern")
+        #expect(decoded.localized(to: "fr").nearest(latitude: 49.45, longitude: 11.08, within: 25)?.0.name == "Nuremberg")
+        #expect(decoded.nearest(latitude: 49.45, longitude: 11.08, within: 25)?.0.admin1 == "Bavaria")
+    }
+
     @Test func nothingWithinRadius() {
         #expect(table.nearest(latitude: -40, longitude: 60, within: 25) == nil)
     }

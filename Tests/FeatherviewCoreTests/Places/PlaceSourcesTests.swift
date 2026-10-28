@@ -48,6 +48,39 @@ import Testing
                           "Camden, London", "London", "Lonely"])
     }
 
+    /// Names in the app's language from GeoNames' alternate names: preferred before plain before short, never
+    /// colloquial, historic or dated ones, only for places of 15,000 people or more and every state; a district
+    /// takes its city's name, but never mixes scripts. Traditional Chinese falls back to the simplified name converted.
+    @Test func namesInTheAppsLanguages() throws {
+        func line(_ id: String, _ name: String, _ lat: String, _ lon: String, _ code: String, _ people: String,
+                  _ areas: String) -> String {
+            "\(id)\t\(name)\t\(name)\t\t\(lat)\t\(lon)\tP\t\(code)\tDE\t\t\(areas)\t\(people)\t\t\t\t"
+        }
+        let tsv = [line("1", "Wetzendorf", "49.47056", "11.04148", "PPLX", "8268", "02\t095\t09564\t09564000"),
+                   line("2", "Nuremberg", "49.45421", "11.07752", "PPLA3", "515543", "02\t095\t09564\t09564000"),
+                   line("3", "Village", "48.0", "11.0", "PPL", "2000", "02\t\t\t")].joined(separator: "\n")
+        let admin1 = "DE.02\tBavaria\tBavaria\t2951839\n"
+        let alternates = ["9\t2\tde\tNuernberg\t\t\t\t\t\t",
+                          "9\t2\tde\tNürnberg\t1\t\t\t\t\t",
+                          "9\t2\tde\tNbg\t\t1\t\t\t\t",
+                          "9\t2\tit\tNorimberga\t\t\t\t\t\t",
+                          "9\t2\tit\tNorimberga Antica\t1\t\t\t1\t\t",
+                          "9\t2\tja\tニュルンベルク\t\t\t\t\t\t",
+                          "9\t2\tzh\t纽伦堡\t\t\t\t\t\t",
+                          "9\t2\ten\tNuremberg\t\t\t\t\t\t",
+                          "9\t2\txx\tNoremb\t\t\t\t\t\t",
+                          "9\t3\tde\tDorf\t\t\t\t\t\t",
+                          "9\t2951839\tde\tBayern\t\t\t\t\t\t",
+                          "9\t2951839\tde\tFreistaat\t\t\t1\t\t\t"].joined(separator: "\n")
+        let places = PlaceSources.places(geonamesTSV: tsv, admin1TSV: admin1, alternateNamesTSV: alternates)
+        let district = try #require(places.first), city = places[1]
+        #expect(city.names == ["de": "Nürnberg", "it": "Norimberga", "ja": "ニュルンベルク", "zh-Hans": "纽伦堡",
+                               "zh-Hant": "紐倫堡"])
+        #expect(district.names == ["de": "Nürnberg-Wetzendorf", "it": "Norimberga-Wetzendorf"])
+        #expect(city.admin1Names == ["de": "Bayern"])
+        #expect(places[2].names.isEmpty)
+    }
+
     @Test func skipsMalformedLines() {
         let bad = [
             "",

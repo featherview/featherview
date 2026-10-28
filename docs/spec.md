@@ -593,8 +593,11 @@ Natural Earth seas, oceans, deserts and mountain ranges), looked up on the Mac:
 3. Else, a desert or mountain range containing the point, with a place within 500 km: "Sahara,
    near Tunisia" (both forms).
 4. Else the sea, ocean or region alone ("North Pacific Ocean"); else no place, coordinates only.
-Country names follow the app's language (from macOS); place, sea and region names are as the data
-gives them, except that names the data writes in capitals are title-cased ("AHAGGAR MTS." reads
+Country names follow the app's language (from macOS), and so do the names of places of 15,000 people
+or more, their districts and states where GeoNames has one in that language ("Nürnberg-Wetzendorf,
+Bayern, Deutschland" on a German Mac); a district never mixes scripts (in Japanese it stays
+"Nuremberg-Wetzendorf" rather than half translated). Other place names and sea and region names are as
+the data gives them, except that names the data writes in capitals are title-cased ("AHAGGAR MTS." reads
 "Ahaggar Mts."). The data loads on the first geotagged picture, off the main thread; launch and browsing
 budgets stay as they are. The Quick Look extensions don't carry it.
 

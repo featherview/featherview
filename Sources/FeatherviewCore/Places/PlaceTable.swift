@@ -1,7 +1,7 @@
 // The place data behind the info panel's place names (spec "Info panel", "Place names").
 //
-// File format "places.fvpl", version 1, all integers little-endian:
-//   "FVPL" (4 bytes), UInt16 version = 1, then the rest of the file is one LZFSE-compressed payload:
+// File format "places.fvpl", version 2, all integers little-endian:
+//   "FVPL" (4 bytes), UInt16 version = 2, then the rest of the file is one LZFSE-compressed payload:
 //   - string table: UInt32 count, then per string UInt32 byte length + UTF-8 bytes
 //   - places: UInt32 count, then per place Int32 latitude × 10,000, Int32 longitude × 10,000,
 //     UInt32 name index, UInt32 admin1 index (0xFFFF_FFFF = none), 2 bytes ISO 3166 alpha-2 country.
@@ -13,6 +13,9 @@
 //     bounding box Int32 min lon, min lat, max lon, max lat × 10,000, UInt32 ring count, then per ring
 //     UInt32 point count + Int32 lon, lat × 10,000 per point. A region's rings are tested even-odd
 //     together (outer rings and holes alike); rings crossing ±180° are stored split there.
+//   - names in the app's languages: UInt32 language count, then per language UInt32 string index of its
+//     code ("de", "zh-Hant"), UInt32 count + per entry UInt32 place index (in the sorted order) and UInt32
+//     name index, then UInt32 count + per entry UInt32 admin1 name index and UInt32 its name's index.
 
 import Foundation
 
@@ -24,6 +27,9 @@ public struct PlaceRecord: Equatable, Sendable {
     public var country: String
     public var latitude: Double
     public var longitude: Double
+    /// The name and admin1 in the app's languages (keys as in `PlaceSources.languages`), where they differ.
+    public var names: [String: String] = [:]
+    public var admin1Names: [String: String] = [:]
 
     public init(name: String, admin1: String?, country: String, latitude: Double, longitude: Double) {
         self.name = name
@@ -69,6 +75,10 @@ public struct PlaceTable: Sendable {
     private let cellStart: [Int]
     /// Seas first, then regions, each with its bounding box (min lon, min lat, max lon, max lat).
     private let regions: [(record: RegionRecord, box: (Double, Double, Double, Double))]
+    /// Per language, (place index, name) and (admin1 name, its name in the language), as string table indices.
+    private let translations: [String: Translation]
+    /// The language `localized(to:)` chose: place index → name, admin1 name → name.
+    private var names: [Int: UInt32] = [:], admin1Names: [UInt32: UInt32] = [:]
 
     public init(places: [PlaceRecord], regions: [RegionRecord]) {
         func q(_ v: Double) -> Double { (v * Self.scale).rounded() / Self.scale }
@@ -88,21 +98,41 @@ public struct PlaceTable: Sendable {
         let regionsQ = regions.map { RegionRecord(name: $0.name, kind: $0.kind,
                                                   rings: $0.rings.filter { $0.count > 2 }.map { $0.map { (q($0.0), q($0.1)) } }) }
             .filter { !$0.rings.isEmpty }
-        let sorted = packed.enumerated()
-            .sorted { (Self.cell($0.element), $0.offset) < (Self.cell($1.element), $1.offset) }
-            .map(\.element)
+        let order = packed.indices.sorted { (Self.cell(packed[$0]), $0) < (Self.cell(packed[$1]), $1) }
+        let sorted = order.map { packed[$0] }
+        var translations: [String: Translation] = [:], admin1Seen: [String: Set<UInt32>] = [:]
+        for (i, offset) in order.enumerated() {
+            let p = places[offset]
+            for (language, name) in p.names { translations[language, default: Translation()].names.append((UInt32(i), id(name))) }
+            guard let admin1 = p.admin1 else { continue }
+            for (language, name) in p.admin1Names where admin1Seen[language, default: []].insert(id(admin1)).inserted {
+                translations[language, default: Translation()].admin1.append((id(admin1), id(name)))
+            }
+        }
         var start = [Int](repeating: 0, count: Self.columns * Self.rows + 1)
         for place in sorted { start[Self.cell(place) + 1] += 1 }
         for i in 1 ..< start.count { start[i] += start[i - 1] }
-        self.init(sorted: sorted, strings: strings, cellStart: start, regions: regionsQ.map { ($0, Self.boundingBox($0.rings)) })
+        self.init(sorted: sorted, strings: strings, cellStart: start, regions: regionsQ.map { ($0, Self.boundingBox($0.rings)) },
+                  translations: translations)
     }
 
     private init(sorted: [Packed], strings: StringTable, cellStart: [Int],
-                 regions: [(record: RegionRecord, box: (Double, Double, Double, Double))]) {
+                 regions: [(record: RegionRecord, box: (Double, Double, Double, Double))], translations: [String: Translation]) {
         self.places = sorted
         self.strings = strings
         self.cellStart = cellStart
         self.regions = regions.filter { $0.record.kind == .sea } + regions.filter { $0.record.kind == .region }
+        self.translations = translations
+    }
+
+    /// This table naming places and admin1 in `language` (an app localization, "de", "zh-Hant") where the data
+    /// has names in it, else as the data gives them.
+    public func localized(to language: String?) -> PlaceTable {
+        var table = self
+        let translation = language.flatMap { translations[$0] } ?? Translation()
+        table.names = Dictionary(translation.names.map { (Int($0.0), $0.1) }, uniquingKeysWith: { a, _ in a })
+        table.admin1Names = Dictionary(translation.admin1.map { ($0.0, $0.1) }, uniquingKeysWith: { a, _ in a })
+        return table
     }
 
     // MARK: Lookup
@@ -123,23 +153,25 @@ public struct PlaceTable: Sendable {
         let firstColumn = Int((longitude + 180 - lonSpan).rounded(.down))
         let columnCount = lonSpan >= 179 ? Self.columns : min(Self.columns, Int((longitude + 180 + lonSpan).rounded(.down)) - firstColumn + 1)
 
-        var best: (Packed, km: Double)?
+        var best: (Int, km: Double)?
         for row in lowRow ... highRow {
             for c in 0 ..< columnCount {
                 let column = ((firstColumn + c) % Self.columns + Self.columns) % Self.columns
                 let cell = row * Self.columns + column
-                for place in places[cellStart[cell] ..< cellStart[cell + 1]] {
+                for i in cellStart[cell] ..< cellStart[cell + 1] {
+                    let place = places[i]
                     let d = Self.distanceKm(latitude, longitude, Self.degrees(place.lat), Self.degrees(place.lon))
-                    if d <= km, d < best?.km ?? .infinity { best = (place, d) }
+                    if d <= km, d < best?.km ?? .infinity { best = (i, d) }
                 }
             }
         }
         return best.map { (record($0.0), $0.km) }
     }
 
-    private func record(_ p: Packed) -> PlaceRecord {
+    private func record(_ i: Int) -> PlaceRecord {
+        let p = places[i]
         let country = [p.country.0, p.country.1].filter { $0 != 0x20 }
-        return PlaceRecord(name: strings[p.name], admin1: p.admin1 == .max ? nil : strings[p.admin1],
+        return PlaceRecord(name: strings[names[i] ?? p.name], admin1: p.admin1 == .max ? nil : strings[admin1Names[p.admin1] ?? p.admin1],
                            country: String(decoding: country, as: UTF8.self),
                            latitude: Self.degrees(p.lat), longitude: Self.degrees(p.lon))
     }
@@ -229,6 +261,14 @@ public struct PlaceTable: Sendable {
                 for (lon, lat) in ring { body.i32(fixed(lon)); body.i32(fixed(lat)) }
             }
         }
+        body.u32(UInt32(translations.count))
+        for (language, translation) in translations.sorted(by: { $0.key < $1.key }) {
+            body.u32(strings.append(language))
+            for pairs in [translation.names, translation.admin1] {
+                body.u32(UInt32(pairs.count))
+                for (a, b) in pairs { body.u32(a); body.u32(b) }
+            }
+        }
 
         var payload = Writer()
         payload.u32(UInt32(strings.ranges.count))
@@ -236,7 +276,7 @@ public struct PlaceTable: Sendable {
         payload.data.append(body.data)
 
         var file = Writer()
-        file.bytes(Array("FVPL".utf8)); file.u16(1)
+        file.bytes(Array("FVPL".utf8)); file.u16(2)
         // LZFSE of an in-memory buffer can't fail short of running out of memory.
         file.data.append(try! (payload.data as NSData).compressed(using: .lzfse) as Data)
         return file.data
@@ -244,15 +284,15 @@ public struct PlaceTable: Sendable {
 
     public init(data: Data) throws {
         guard data.count >= 6, data.prefix(4) == Data("FVPL".utf8) else { throw Failure.notPlaceData }
-        guard UInt16(data[data.startIndex + 4]) | UInt16(data[data.startIndex + 5]) << 8 == 1 else { throw Failure.unsupportedVersion }
+        guard UInt16(data[data.startIndex + 4]) | UInt16(data[data.startIndex + 5]) << 8 == 2 else { throw Failure.unsupportedVersion }
         guard let payload = try? (data.dropFirst(6) as NSData).decompressed(using: .lzfse) as Data else { throw Failure.damaged }
         let bytes = [UInt8](payload)
-        let (places, strings, cellStart, regions) = try bytes.withUnsafeBytes { try Self.parse($0, bytes) }
-        self.init(sorted: places, strings: strings, cellStart: cellStart, regions: regions)
+        let (places, strings, cellStart, regions, translations) = try bytes.withUnsafeBytes { try Self.parse($0, bytes) }
+        self.init(sorted: places, strings: strings, cellStart: cellStart, regions: regions, translations: translations)
     }
 
     private static func parse(_ raw: UnsafeRawBufferPointer, _ payload: [UInt8]) throws
-        -> ([Packed], StringTable, [Int], [(record: RegionRecord, box: (Double, Double, Double, Double))]) {
+        -> ([Packed], StringTable, [Int], [(record: RegionRecord, box: (Double, Double, Double, Double))], [String: Translation]) {
         var r = Reader(bytes: raw)
         var strings = StringTable()
         let stringCount = try r.count(each: 4)
@@ -297,7 +337,19 @@ public struct PlaceTable: Sendable {
             }
             regions.append((RegionRecord(name: name, kind: kind, rings: rings), box))
         }
-        return (places, strings, cellStart, regions)
+        var translations: [String: Translation] = [:]
+        for _ in 0 ..< (try r.count(each: 12)) {
+            let language = strings[try string(r.u32())]
+            var translation = Translation()
+            for _ in 0 ..< (try r.count(each: 8)) {
+                let place = try r.u32()
+                guard Int(place) < placeCount else { throw Failure.damaged }
+                translation.names.append((place, try string(r.u32())))
+            }
+            for _ in 0 ..< (try r.count(each: 8)) { translation.admin1.append((try string(r.u32()), try string(r.u32()))) }
+            translations[language] = translation
+        }
+        return (places, strings, cellStart, regions, translations)
     }
 }
 
@@ -306,6 +358,11 @@ private struct Packed: Sendable {
     var lat, lon: Int32
     var name, admin1: UInt32
     var country: (UInt8, UInt8)
+}
+
+private struct Translation: Sendable {
+    var names: [(UInt32, UInt32)] = []
+    var admin1: [(UInt32, UInt32)] = []
 }
 
 /// Strings as UTF-8 byte ranges in one buffer, made into `String`s only when asked for.

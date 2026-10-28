@@ -11,7 +11,7 @@ struct FeatherviewApp: App {
         ImageEncoder.jxlEncoder = JXLEncoder.encode
         // Only the location is handed over: the file is read on the first geotagged picture, never at launch.
         let places = Bundle.main.url(forResource: "places", withExtension: "fvpl")
-        Task { await PlaceIndex.shared.configure(url: places) }
+        Task { await PlaceIndex.shared.configure(url: places, language: Bundle.main.preferredLocalizations.first) }
         _ = savedToolbarItems
         // AppKit mirrors only for a right-to-left system language, not for one picked for this app alone.
         if let language = Bundle.main.preferredLocalizations.first,

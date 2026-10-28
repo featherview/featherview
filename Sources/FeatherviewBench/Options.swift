@@ -6,7 +6,7 @@ struct OptionError: Error, Equatable {
 /// The options each mode reads; anything else fails, so a typo can't fall back to a default unnoticed.
 let knownOptions: [String: Set<String>] = [
     "corpus": [],
-    "places": ["--lookups"],
+    "places": ["--lookups", "--language"],
     "histogram": ["--screen", "--runs"],
     "decode": ["--raw", "--screen", "--runs", "--json", "--baseline"],
     "browse": ["--screen", "--interval-ms", "--loops"],

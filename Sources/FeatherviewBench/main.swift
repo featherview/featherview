@@ -16,7 +16,7 @@ let usage = """
       swift run -c release featherview-bench fuzz <seed dir or file> --out <dir> [--seconds 60] [--seed N]
       swift run -c release featherview-bench histogram <dir> [--screen WxH] [--runs 10]
       swift run -c release featherview-bench places <out.fvpl>
-      swift run -c release featherview-bench places --time <file.fvpl> [--lookups 10000]
+      swift run -c release featherview-bench places --time <file.fvpl> [--lookups 10000] [--language ja]
 
     corpus  writes generated test images into <dir> (never commit them).
     decode  times the viewer's fit decode per file and screen, plus one full-size decode per file,
@@ -45,7 +45,8 @@ let usage = """
     places  builds the info panel's place data (scripts/places.sh runs it for releases) from GeoNames and Natural
             Earth, downloaded fresh into ~/Library/Caches/net.mynetx.featherview-build/places; offline, the cached
             copies are used. Prints "place data: fresh" or "place data: cached from <date>", counts, bytes and time.
-            --time reads a built file as the app does (load) and names --lookups random coordinates with it.
+            --time reads a built file as the app does (load, in --language, default ja, which has the most names)
+            and names --lookups random coordinates with it.
             Budgets: load ≤ 50 ms, lookup p95 ≤ 1 ms.
     Screens are in pixels; default 3024x1964 3456x2234 5120x2880 (decode), 3024x1964 (browse).
     """
@@ -376,7 +377,9 @@ struct Step: Sendable {
 @MainActor func runPlaceTiming(_ file: URL) {
     let lookups = number("--lookups", default: 10_000)
     let start = ContinuousClock.now
-    guard let data = try? Data(contentsOf: file, options: .mappedIfSafe), let table = try? PlaceTable(data: data) else {
+    // Japanese has the most names in the data: the slowest language to load.
+    guard let data = try? Data(contentsOf: file, options: .mappedIfSafe),
+          let table = try? PlaceTable(data: data).localized(to: option("--language") ?? "ja") else {
         fail("Can't read place data from \(file.path).")
     }
     let load = start.duration(to: .now).milliseconds
@@ -413,7 +416,8 @@ func runPlaces(out: URL) async {
     var sources: [(url: URL, fresh: Bool)] = []
     for remote in [geonames.appendingPathComponent("cities1000.zip"), geonames.appendingPathComponent("admin1CodesASCII.txt"),
                    naturalEarth.appendingPathComponent("ne_10m_geography_marine_polys.geojson"),
-                   naturalEarth.appendingPathComponent("ne_10m_geography_regions_polys.geojson")] {
+                   naturalEarth.appendingPathComponent("ne_10m_geography_regions_polys.geojson"),
+                   geonames.appendingPathComponent("alternateNamesV2.zip")] {
         guard let source = await placeSource(remote, cache: cache) else {
             fail("Can't download \(remote.absoluteString), and there is no cached copy.")
         }
@@ -426,18 +430,25 @@ func runPlaces(out: URL) async {
             .compactMap { try? $0.url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate }
         print("place data: cached from \((dates.min() ?? .now).formatted(.iso8601.year().month().day()))")
     }
-    let unzip = Process()
-    unzip.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-    unzip.arguments = ["-p", sources[0].url.path, "cities1000.txt"]
-    let pipe = Pipe()
-    unzip.standardOutput = pipe
-    do { try unzip.run() } catch { fail("Can't unzip \(sources[0].url.path).") }
-    let cities = pipe.fileHandleForReading.readDataToEndOfFile()
-    unzip.waitUntilExit()
-    guard unzip.terminationStatus == 0, let admin1 = try? String(contentsOf: sources[1].url, encoding: .utf8),
+    func unzipped(_ zip: URL, _ member: String) -> Data {
+        let unzip = Process()
+        unzip.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+        unzip.arguments = ["-p", zip.path, member]
+        let pipe = Pipe()
+        unzip.standardOutput = pipe
+        do { try unzip.run() } catch { fail("Can't unzip \(zip.path).") }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        unzip.waitUntilExit()
+        guard unzip.terminationStatus == 0 else { fail("Can't unzip \(zip.path).") }
+        return data
+    }
+    let cities = unzipped(sources[0].url, "cities1000.txt")
+    let alternates = String(decoding: unzipped(sources[4].url, "alternateNamesV2.txt"), as: UTF8.self)
+    guard let admin1 = try? String(contentsOf: sources[1].url, encoding: .utf8),
           let marine = try? Data(contentsOf: sources[2].url), let outlines = try? Data(contentsOf: sources[3].url)
     else { fail("Can't read the place sources in \(cache.path).") }
-    let places = PlaceSources.places(geonamesTSV: String(decoding: cities, as: UTF8.self), admin1TSV: admin1)
+    let places = PlaceSources.places(geonamesTSV: String(decoding: cities, as: UTF8.self), admin1TSV: admin1,
+                                     alternateNamesTSV: alternates)
     let regions: [RegionRecord]
     do { regions = try PlaceSources.regions(marineGeoJSON: marine, regionsGeoJSON: outlines, toleranceKm: 1) } catch {
         fail("Can't read the Natural Earth outlines in \(cache.path).")
@@ -449,6 +460,7 @@ func runPlaces(out: URL) async {
     } catch { fail("Can't write \(out.path).") }
     let points = regions.reduce(0) { $0 + $1.rings.reduce(0) { $0 + $1.count } }
     let seas = regions.filter { $0.kind == .sea }.count
+    print("\(places.reduce(0) { $0 + $1.names.count }) place names in the app's languages")
     print("\(places.count) places, \(seas) seas, \(regions.count - seas) regions (\(points) outline points)")
     print("\(out.path): \(data.count) bytes, built in \(f(start.duration(to: .now).milliseconds)) ms")
 }

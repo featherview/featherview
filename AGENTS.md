@@ -121,7 +121,7 @@ Rule of thumb: if logic can be tested without a window, it belongs in Feathervie
 | Difference on screen (D, or a step with it on) | < 100 ms after both decodes, 12 MP (`Difference`, measured ~30 ms; Compare warms Core Image up first, which otherwise adds ~50–80 ms to the first D) |
 | Compare memory | on top of browsing: at most one fit image held by the second pane, one zoom decode and one difference image |
 | Info panel histogram | ≤ 5 ms per count of a 2560 × 1600 decoded picture, off the main thread (`featherview-bench histogram`). Measured: decodes up to 2134 × 1600 ~2 ms warm, ≤ 3.3 ms the first count; 12 MP landscapes, which a 2560 × 1600 screen decodes at full size, ~4 ms warm (p95 5.2), ~8 ms the first count |
-| Place data | load ≤ 50 ms, off the main thread, once, on the first geotagged picture; lookup p95 ≤ 1 ms (`featherview-bench places --time`). Measured: 2.7 MB file loads in ~10 ms; 10,000 random lookups median 0.002 ms, p95 0.02 ms, max ~4 ms |
+| Place data | load ≤ 50 ms, off the main thread, once, on the first geotagged picture; lookup p95 ≤ 1 ms (`featherview-bench places --time`). Measured: 4.6 MB file loads in ~16 ms (Japanese, the language with the most names); 10,000 random lookups median 0.002 ms, p95 0.02 ms, max ~4 ms |
 
 How: decode off the main thread to fit the screen per axis, rounded up to full, ½, ¼ or ⅛ size (any size in between costs a slow resample; see `ImageDecoder.decodeSize`); HEIC/HEIF and own formats decode at the exact size instead (no slower, fewer bytes), prefetch 2 neighbours each
 way, never touch file contents while scanning a folder. Next/previous budgets are measured as the `Navigate` signpost (from `show()`, right after the key press, until Core Animation has

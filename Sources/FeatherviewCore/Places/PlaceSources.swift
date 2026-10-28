@@ -10,39 +10,57 @@ public enum PlaceSources {
     static let marineClasses: Set<String> = ["ocean", "sea", "bay", "gulf"]
     static let regionClasses: Set<String> = ["desert", "range/mtn"]
 
-    /// GeoNames rows (tab-separated: 1 name, 4 latitude, 5 longitude, 7 feature code, 8 country, 10 admin1 code,
-    /// 14 population), with the admin1 name joined from admin1CodesASCII ("CH.UR\tUri\t…"). Rows that don't
+    /// The app's languages and the GeoNames language codes that name places in each, best first.
+    static let languages: [String: [String]] = {
+        var map = Dictionary(uniqueKeysWithValues: ["ar", "ca", "cs", "da", "de", "el", "en", "es", "fi", "fr", "he", "hi", "hu",
+                                                    "id", "it", "ja", "ko", "ms", "nl", "pl", "ro", "ru", "sv", "th", "tr", "uk", "vi"]
+            .map { ($0, [$0]) })
+        map["pt-BR"] = ["pt-BR", "pt"]
+        map["zh-Hans"] = ["zh-Hans", "zh-CN", "zh"]
+        map["zh-Hant"] = ["zh-Hant", "zh-TW", "zh-HK"]
+        return map
+    }()
+
+    /// Places this size or larger carry names in the app's languages; smaller ones rarely have any.
+    static let translatedPopulation = 15_000
+
+    /// GeoNames rows (tab-separated: 0 id, 1 name, 4 latitude, 5 longitude, 7 feature code, 8 country, 10 admin1 code,
+    /// 14 population), with the admin1 name joined from admin1CodesASCII ("CH.UR\tUri\tUri\t2658226"). Rows that don't
     /// parse are skipped, and so are places under 1,000 people (0 means unknown and stays) and abandoned,
     /// historical or destroyed ones. A city district (PPLX) is named with its city: the nearest larger place within
     /// 25 km that isn't a district itself and is in the same state and, as far as both have them, the same
     /// administrative areas (in Germany the municipality, so Berlin-Spandau never takes Falkensee, which is nearer).
     /// "Nuremberg-Wetzendorf" in German-speaking countries, "Camden, London" elsewhere; inside a city a district is
     /// nearly always nearer than the city's point.
-    public static func places(geonamesTSV: String, admin1TSV: String) -> [PlaceRecord] {
-        var admin1: [Substring: String] = [:]
+    /// `alternateNamesTSV` (alternateNamesV2: 1 id, 2 language, 3 name, 4 preferred, 5 short, 6 colloquial,
+    /// 7 historic, 8 from, 9 to) gives the names in the app's languages: of places of 15,000 people or more, their
+    /// districts and every state.
+    public static func places(geonamesTSV: String, admin1TSV: String, alternateNamesTSV: String = "") -> [PlaceRecord] {
+        var admin1: [Substring: (name: String, id: Substring)] = [:]
         for line in admin1TSV.split(separator: "\n") {
             let columns = line.split(separator: "\t", omittingEmptySubsequences: false)
-            if columns.count >= 2, !columns[1].isEmpty { admin1[columns[0]] = String(columns[1]) }
+            if columns.count >= 2, !columns[1].isEmpty { admin1[columns[0]] = (String(columns[1]), columns.count > 3 ? columns[3] : "") }
         }
-        let rows: [(record: PlaceRecord, district: Bool, population: Int, areas: [Substring])] = geonamesTSV.split(separator: "\n").compactMap { line in
+        let rows: [(record: PlaceRecord, id: Substring, admin1: Substring?, district: Bool, population: Int, areas: [Substring])] =
+            geonamesTSV.split(separator: "\n").compactMap { line in
             let c = line.split(separator: "\t", omittingEmptySubsequences: false)
             let population = c.count > 14 ? Int(c[14]) ?? 0 : 0
             guard c.count > 14, !c[1].isEmpty, c[8].count == 2,
                   !["PPLQ", "PPLH", "PPLW"].contains(c[7]), !(1...999).contains(population),
                   let lat = Double(c[4]), let lon = Double(c[5]),
                   (-90...90).contains(lat), (-180...180).contains(lon) else { return nil }
-            let record = PlaceRecord(name: String(c[1]), admin1: c[10].isEmpty ? nil : admin1["\(c[8]).\(c[10])"],
-                                     country: String(c[8]), latitude: lat, longitude: lon)
-            return (record, c[7] == "PPLX", population, [c[10], c[11], c[12], c[13]])
+            let state = c[10].isEmpty ? nil : admin1["\(c[8]).\(c[10])"]
+            let record = PlaceRecord(name: String(c[1]), admin1: state?.name, country: String(c[8]), latitude: lat, longitude: lon)
+            return (record, c[0], state?.id, c[7] == "PPLX", population, [c[10], c[11], c[12], c[13]])
         }
         // Places that aren't districts, by whole degree, to find a district's city among the cells around it.
         var cells: [Int: [Int]] = [:]
         func cell(_ lat: Double, _ lon: Double) -> Int { Int(lat.rounded(.down) + 90) * 400 + Int(lon.rounded(.down) + 180) }
         for (i, row) in rows.enumerated() where !row.district { cells[cell(row.record.latitude, row.record.longitude), default: []].append(i) }
-        return rows.map { row in
-            guard row.district else { return row.record }
+        let cities: [Int?] = rows.map { row in
+            guard row.district else { return nil }
             let lat = row.record.latitude, lon = row.record.longitude
-            var city: (name: String, km: Double)?
+            var city: (index: Int, km: Double)?
             for dLat in -1...1 { for dLon in -1...1 {
                 for i in cells[cell(lat + Double(dLat), lon + Double(dLon))] ?? [] {
                     let other = rows[i]
@@ -50,13 +68,67 @@ public enum PlaceSources {
                           !row.areas[0].isEmpty, other.areas[0] == row.areas[0],
                           zip(row.areas, other.areas).allSatisfy({ $0.isEmpty || $1.isEmpty || $0 == $1 }) else { continue }
                     let km = PlaceTable.distanceKm(lat, lon, other.record.latitude, other.record.longitude)
-                    if km <= 25, km < city?.km ?? .infinity { city = (other.record.name, km) }
+                    if km <= 25, km < city?.km ?? .infinity { city = (i, km) }
                 }
             } }
-            guard let city else { return row.record }
-            var record = row.record
-            record.name = ["DE", "AT", "CH"].contains(record.country) ? "\(city.name)-\(record.name)" : "\(record.name), \(city.name)"
+            return city?.index
+        }
+
+        let translated = rows.indices.filter { rows[$0].population >= translatedPopulation || cities[$0] != nil }
+        let names = alternateNames(alternateNamesTSV, ids: Set(translated.map { rows[$0].id } + admin1.values.map(\.id)))
+        func localized(_ i: Int) -> [String: String] {
+            (names[rows[i].id] ?? [:]).filter { $0.value != rows[i].record.name }
+        }
+        func isLatin(_ s: String) -> Bool { s.applyingTransform(.toLatin, reverse: false) == s }
+        func joined(_ city: String, _ district: String, _ country: String) -> String {
+            ["DE", "AT", "CH"].contains(country) ? "\(city)-\(district)" : "\(district), \(city)"
+        }
+        var admin1Names: [Substring: [String: String]] = [:]
+        for state in admin1.values where !state.id.isEmpty {
+            admin1Names[state.id] = (names[state.id] ?? [:]).filter { $0.value != state.name }
+        }
+
+        return rows.indices.map { i in
+            var record = rows[i].record
+            record.admin1Names = rows[i].admin1.flatMap { admin1Names[$0] } ?? [:]
+            guard let c = cities[i] else {
+                if rows[i].population >= translatedPopulation { record.names = localized(i) }
+                return record
+            }
+            let city = rows[c].record.name, cityNames = localized(c), districtNames = localized(i)
+            record.name = joined(city, record.name, record.country)
+            guard rows[c].population >= translatedPopulation else { return record }
+            for language in Set(cityNames.keys).union(districtNames.keys) {
+                let cityName = cityNames[language] ?? city, districtName = districtNames[language] ?? rows[i].record.name
+                // "ニュルンベルク-Wetzendorf" mixes scripts: the district keeps its own name instead.
+                if isLatin(cityName) == isLatin(districtName) { record.names[language] = joined(cityName, districtName, record.country) }
+            }
             return record
+        }
+    }
+
+    /// Per GeoNames id among `ids`, the best name in each of the app's languages.
+    private static func alternateNames(_ tsv: String, ids: Set<Substring>) -> [Substring: [String: String]] {
+        let codes = languages.flatMap { language, codes in codes.enumerated().map { ($1, (language, $0)) } }
+        let rankOf = Dictionary(uniqueKeysWithValues: codes)
+        var best: [Substring: [String: (rank: (Int, Int), name: Substring)]] = [:]
+        for line in tsv.split(separator: "\n") {
+            let c = line.split(separator: "\t", omittingEmptySubsequences: false)
+            guard c.count > 3, !c[3].isEmpty, ids.contains(c[1]), let (language, codeRank) = rankOf[String(c[2])] else { continue }
+            // Colloquial, historic or dated names never name a place today.
+            if c.count > 6, c[6] == "1" { continue }
+            if c.count > 7, c[7] == "1" { continue }
+            if c.count > 9, !c[8].isEmpty || !c[9].isEmpty { continue }
+            let rank = (codeRank, c[4] == "1" ? 0 : c.count > 5 && c[5] == "1" ? 2 : 1)
+            if let known = best[c[1], default: [:]][language], known.rank <= rank { continue }
+            best[c[1], default: [:]][language] = (rank, c[3])
+        }
+        return best.mapValues { names in
+            var result = names.mapValues { String($0.name) }
+            if result["zh-Hant"] == nil, let simplified = result["zh-Hans"] {
+                result["zh-Hant"] = simplified.applyingTransform(StringTransform("Hans-Hant"), reverse: false)
+            }
+            return result
         }
     }
 
