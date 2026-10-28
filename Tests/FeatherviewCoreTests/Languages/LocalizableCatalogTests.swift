@@ -23,4 +23,14 @@ import Testing
         #expect(keys.contains("Open an image or drop a folder here"))
         #expect(!keys.contains("Open an image with ⌘O, or drop one here"))
     }
+
+    // "1 bits per channel" reads wrong in English, and other languages have more forms.
+    @Test func bitsPerChannelHasPluralForms() throws {
+        let entry = try #require(try StringCatalog.load(StringCatalog.shippedURL).strings["%lld bits per channel"])
+        for language in StringCatalog.languages {
+            let plural = entry.localizations?[language]?.variations?.plural
+            #expect(plural?["other"] != nil, "\(language)")
+        }
+        #expect(entry.localizations?["en"]?.variations?.plural?["one"]?.stringUnit?.value == "%lld bit per channel")
+    }
 }

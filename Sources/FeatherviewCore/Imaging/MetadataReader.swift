@@ -7,67 +7,22 @@ public struct MetadataField: Equatable, Sendable {
 }
 
 public enum MetadataReader {
+    /// The info panel's rows until the panel shows `ImageInfo` itself.
     public static func fields(for url: URL) -> [MetadataField] {
-        let fileSize = url.fileSize
-        if OwnDecoders.format(for: url) != nil {  // ImageIO can't read it; own decoders give dimensions only
-            let size = ImageDecoder.displaySize(of: url)
-            let props: [CFString: Any] = size.map {
-                [kCGImagePropertyPixelWidth: Int($0.width), kCGImagePropertyPixelHeight: Int($0.height)]
-            } ?? [:]
-            return fields(from: props, fileSize: fileSize)
-        }
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
-        else { return fileSize.map { [MetadataField(label: label(.fileSize), value: format(bytes: $0))] } ?? [] }
-        return fields(from: props, fileSize: fileSize)
-    }
-
-    /// Pure mapping from ImageIO properties. Missing values are left out, never shown as blanks.
-    public static func fields(from props: [CFString: Any], fileSize: Int?) -> [MetadataField] {
-        let exif = props[kCGImagePropertyExifDictionary] as? [CFString: Any] ?? [:]
-        let tiff = props[kCGImagePropertyTIFFDictionary] as? [CFString: Any] ?? [:]
-        var out: [MetadataField] = []
-        func add(_ field: Label, _ value: String?) {
-            if let value, !value.isEmpty { out.append(MetadataField(label: label(field), value: value)) }
-        }
-
-        if let width = props[kCGImagePropertyPixelWidth] as? Int,
-           let height = props[kCGImagePropertyPixelHeight] as? Int {
-            let orientation = props[kCGImagePropertyOrientation] as? Int ?? 1
-            add(.dimensions, orientation >= 5 ? "\(height) × \(width)" : "\(width) × \(height)")
-        }
-        add(.fileSize, fileSize.map(format(bytes:)))
-        add(.camera, camera(make: tiff[kCGImagePropertyTIFFMake] as? String,
-                             model: tiff[kCGImagePropertyTIFFModel] as? String))
-        add(.lens, exif[kCGImagePropertyExifLensModel] as? String)
-        add(.taken, (exif[kCGImagePropertyExifDateTimeOriginal] as? String).flatMap(taken))
-        if let seconds = exif[kCGImagePropertyExifExposureTime] as? Double, seconds > 0 {
-            add(.exposure, exposure(seconds))
-        }
-        add(.aperture, (exif[kCGImagePropertyExifFNumber] as? Double)
-            .map { "f/\($0.formatted(.number.precision(.fractionLength(0...1))))" })
-        add(.iso, (exif[kCGImagePropertyExifISOSpeedRatings] as? [Int])?.first.map(String.init))
-        add(.focalLength, (exif[kCGImagePropertyExifFocalLength] as? Double).map {
-            Measurement(value: $0.rounded(), unit: UnitLength.millimeters)
-                .formatted(.measurement(width: .abbreviated, usage: .asProvided))
-        })
-        return out
-    }
-
-    enum Label { case dimensions, fileSize, camera, lens, taken, exposure, aperture, iso, focalLength }
-
-    static func label(_ field: Label) -> String {
-        switch field {
-        case .dimensions: String(localized: "Dimensions", comment: "Info panel label")
-        case .fileSize: String(localized: "File size", comment: "Info panel label")
-        case .camera: String(localized: "Camera", comment: "Info panel label")
-        case .lens: String(localized: "Lens", comment: "Info panel label")
-        case .taken: String(localized: "Taken", comment: "Info panel label")
-        case .exposure: String(localized: "Exposure", comment: "Info panel label")
-        case .aperture: String(localized: "Aperture", comment: "Info panel label")
-        case .iso: String(localized: "ISO", comment: "Info panel label")
-        case .focalLength: String(localized: "Focal length", comment: "Info panel label")
-        }
+        let info = ImageInfo.read(url)
+        let rows: [(String, String?)] = [
+            (String(localized: "Dimensions", comment: "Info panel label"),
+             info.picture.dimensions?.components(separatedBy: " · ").first),
+            (String(localized: "File size", comment: "Info panel label"), url.fileSize.map(format(bytes:))),
+            (String(localized: "Camera", comment: "Info panel label"), info.camera),
+            (String(localized: "Lens", comment: "Info panel label"), info.lens),
+            (String(localized: "Taken", comment: "Info panel label"), info.taken),
+            (String(localized: "Exposure", comment: "Info panel label"), info.exposure.shutter),
+            (String(localized: "Aperture", comment: "Info panel label"), info.exposure.aperture),
+            (String(localized: "ISO", comment: "Info panel label"), info.exposure.iso),
+            (String(localized: "Focal length", comment: "Info panel label"), info.exposure.focal),
+        ]
+        return rows.compactMap { label, value in value.map { MetadataField(label: label, value: $0) } }
     }
 
     /// Model alone when it already names the maker ("Canon" + "Canon EOS R6" -> "Canon EOS R6").
