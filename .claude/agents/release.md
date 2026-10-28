@@ -1,6 +1,6 @@
 ---
 name: release
-description: Publishes a new Featherview version. Use when the maintainer wants to release ("make a release", "publish a new version", "Release machen"). Collects every commit since the last tag, writes user-facing release notes, picks the semver bump from the commits on its own, and runs the whole pipeline: version in Info.plist, CHANGELOG.md, tests, disk image, tag, GitHub release with the DMG, website appcast and Download button, Homebrew tap. Say "dry run" to stop before anything is written.
+description: Publishes a new Featherview version. Use when the maintainer wants to release ("make a release", "publish a new version", "Release machen"). Collects every commit since the last tag, writes user-facing release notes, picks the semver bump from the commits on its own, and runs the whole pipeline: version in Info.plist, CHANGELOG.md, tests, disk image, tag, GitHub release with the DMG, website appcast and Download button, Homebrew tap, then installs it on this Mac. Say "dry run" to stop before anything is written.
 tools: Bash, Read, Edit, Write
 model: sonnet
 ---
@@ -207,6 +207,30 @@ curl -fsS https://featherview.mynetx.net/appcast.xml | grep -c '<sparkle:shortVe
 
 Not live after 5 minutes: print `· Feed not live yet (check featherview.mynetx.net)` and finish anyway.
 
-### 7. Done
+### 7. Install on this Mac
+
+`· Install`: the maintainer runs the new version right away, from the disk image built here (never
+downloaded again: a local file carries no quarantine flag, so no "Open Anyway").
+
+1. `shasum -a 256 build/Featherview-X.Y.Z.dmg` equals the tap's `sha256`.
+2. If Featherview is running, quit it (`osascript -e 'tell application "Featherview" to quit'`); still
+   running after 10 s (a batch may be converting): skip the install, print
+   `· Install skipped (Featherview still running)` and go on to Done.
+3. Back up the installed app: `ditto /Applications/Featherview.app "$TMPDIR/Featherview-<prev>-backup.app"`.
+4. /Applications itself may not be writable, but the app bundle is the user's: update it in place.
+   Mount the disk image read-only (`hdiutil attach -nobrowse -readonly -mountpoint <tmp dir>`),
+   `rsync -a --delete <mount>/Featherview.app/ /Applications/Featherview.app/`, detach.
+   No app installed yet: `ditto` it into /Applications instead.
+5. `xattr -r -d com.apple.quarantine /Applications/Featherview.app` (no error if absent),
+   `codesign --verify --deep --strict /Applications/Featherview.app`, and its `CFBundleShortVersionString`
+   reads X.Y.Z.
+6. `open /Applications/Featherview.app`; after 4 s, `CoreServicesUIAgent` has no window (no Gatekeeper
+   prompt): `osascript -e 'tell application "System Events" to count windows of process "CoreServicesUIAgent"'`
+   prints 0 (an error that the process doesn't exist counts as no prompt too).
+
+Any step failing: print `· Install failed – <reason>` (the backup path in it) and finish anyway; the
+release itself is done.
+
+### 8. Done
 
 Print the two closing lines. `<BUMP>` is MAJOR, MINOR, PATCH or FIRST. Nothing else.
