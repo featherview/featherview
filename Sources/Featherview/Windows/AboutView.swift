@@ -117,7 +117,7 @@ struct AboutView: View {
         .sheet(isPresented: Binding(get: { sheet.text != nil }, set: { if !$0 { sheet.text = nil } })) {
             VStack(alignment: .trailing) {
                 ScrollView {
-                    Text(sheet.text ?? "")
+                    Text(Self.linked(sheet.text ?? ""))
                         .font(Font(Theme.aboutTextFont))
                         .textSelection(.enabled)
                         .frame(width: Theme.aboutTextWidth, alignment: .leading)
@@ -130,6 +130,18 @@ struct AboutView: View {
             }
             .frame(height: Theme.aboutTextHeight)
         }
+    }
+
+    /// The sheet's text with its web addresses clickable.
+    private static func linked(_ text: String) -> AttributedString {
+        var result = AttributedString(text)
+        let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+        for match in detector?.matches(in: text, range: NSRange(text.startIndex..., in: text)) ?? [] {
+            guard let url = match.url, let range = Range(match.range, in: text),
+                  let linkRange = Range(range, in: result) else { continue }
+            result[linkRange].link = url
+        }
+        return result
     }
 
     /// The app icon as the design draws it: the tile gradient with the feather, 128 pt, E4.
