@@ -26717,302 +26717,360 @@
         }
       }
     },
-<<<<<<< HEAD
-    "Auto" : {
-      "comment" : "Info panel, white balance",
-=======
     "Author" : {
       "comment" : "Metadata tag name",
->>>>>>> task-5
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "تلقائي"
-=======
             "value" : "المؤلف"
->>>>>>> task-5
           }
         },
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Automàtic"
-=======
             "value" : "Autor"
->>>>>>> task-5
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Automatické"
-=======
             "value" : "Autor"
->>>>>>> task-5
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Automatisk"
-=======
             "value" : "Forfatter"
->>>>>>> task-5
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Automatisch"
-=======
             "value" : "Autor"
->>>>>>> task-5
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Αυτόματο"
-=======
             "value" : "Δημιουργός"
->>>>>>> task-5
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Automático"
-=======
             "value" : "Autor"
->>>>>>> task-5
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Automaattinen"
-=======
             "value" : "Tekijä"
->>>>>>> task-5
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Auto"
-=======
             "value" : "Auteur"
->>>>>>> task-5
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "אוטומטי"
-=======
             "value" : "יוצר"
->>>>>>> task-5
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "स्वचालित"
-=======
             "value" : "लेखक"
->>>>>>> task-5
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Automatikus"
-=======
             "value" : "Szerző"
->>>>>>> task-5
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Otomatis"
-=======
             "value" : "Pembuat"
->>>>>>> task-5
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Automatico"
-=======
             "value" : "Autore"
->>>>>>> task-5
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "オート"
-=======
             "value" : "作成者"
->>>>>>> task-5
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "자동"
-=======
             "value" : "작성자"
->>>>>>> task-5
           }
         },
         "ms" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Automatik"
-=======
             "value" : "Pengarang"
->>>>>>> task-5
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Automatisch"
-=======
             "value" : "Auteur"
->>>>>>> task-5
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Automatyczny"
-=======
             "value" : "Autor"
->>>>>>> task-5
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Automático"
-=======
             "value" : "Autor"
->>>>>>> task-5
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Automat"
-=======
             "value" : "Autor"
->>>>>>> task-5
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Авто"
-=======
             "value" : "Автор"
->>>>>>> task-5
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Automatiskt"
-=======
             "value" : "Upphovsperson"
->>>>>>> task-5
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "อัตโนมัติ"
-=======
             "value" : "ผู้สร้าง"
->>>>>>> task-5
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Otomatik"
-=======
             "value" : "Yazar"
->>>>>>> task-5
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Авто"
-=======
             "value" : "Автор"
->>>>>>> task-5
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Tự động"
-=======
             "value" : "Tác giả"
->>>>>>> task-5
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "自动"
-=======
             "value" : "作者"
->>>>>>> task-5
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "自動"
-=======
             "value" : "作者"
->>>>>>> task-5
+          }
+        }
+      }
+    },
+    "Auto" : {
+      "comment" : "Info panel, white balance",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تلقائي"
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automàtic"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatické"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisk"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisch"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αυτόματο"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automático"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automaattinen"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אוטומטי"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "स्वचालित"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatikus"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otomatis"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatico"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オート"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "자동"
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatik"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisch"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatyczny"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automático"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automat"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Авто"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatiskt"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อัตโนมัติ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otomatik"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Авто"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tự động"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動"
           }
         }
       }
@@ -40090,302 +40148,360 @@
         }
       }
     },
-<<<<<<< HEAD
     "Cloudy" : {
       "comment" : "Info panel, white balance",
-=======
-    "Color space" : {
-      "comment" : "Metadata tag name",
->>>>>>> task-5
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "غائم"
-=======
-            "value" : "فضاء اللون"
->>>>>>> task-5
           }
         },
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Ennuvolat"
-=======
-            "value" : "Espai de color"
->>>>>>> task-5
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Zataženo"
-=======
-            "value" : "Barevný prostor"
->>>>>>> task-5
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Overskyet"
-=======
-            "value" : "Farverum"
->>>>>>> task-5
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Bewölkt"
-=======
-            "value" : "Farbraum"
->>>>>>> task-5
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Συννεφιά"
-=======
-            "value" : "Χρωματικός χώρος"
->>>>>>> task-5
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Nublado"
-=======
-            "value" : "Espacio de color"
->>>>>>> task-5
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Pilvinen"
-=======
-            "value" : "Väriavaruus"
->>>>>>> task-5
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Nuageux"
-=======
-            "value" : "Espace colorimétrique"
->>>>>>> task-5
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "מעונן"
-=======
-            "value" : "מרחב צבע"
->>>>>>> task-5
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "बादल"
-=======
-            "value" : "रंग स्पेस"
->>>>>>> task-5
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Felhős"
-=======
-            "value" : "Színtér"
->>>>>>> task-5
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Berawan"
-=======
-            "value" : "Ruang warna"
->>>>>>> task-5
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Nuvoloso"
-=======
-            "value" : "Spazio colore"
->>>>>>> task-5
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "曇天"
-=======
-            "value" : "色空間"
->>>>>>> task-5
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "흐림"
-=======
-            "value" : "색 공간"
->>>>>>> task-5
           }
         },
         "ms" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Mendung"
-=======
-            "value" : "Ruang warna"
->>>>>>> task-5
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Bewolkt"
-=======
-            "value" : "Kleurruimte"
->>>>>>> task-5
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Pochmurno"
-=======
-            "value" : "Przestrzeń barw"
->>>>>>> task-5
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Nublado"
-=======
-            "value" : "Espaço de cor"
->>>>>>> task-5
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Înnorat"
-=======
-            "value" : "Spațiu de culoare"
->>>>>>> task-5
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Облачно"
-=======
-            "value" : "Цветовое пространство"
->>>>>>> task-5
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Molnigt"
-=======
-            "value" : "Färgrymd"
->>>>>>> task-5
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "มีเมฆ"
-=======
-            "value" : "ปริภูมิสี"
->>>>>>> task-5
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Bulutlu"
-=======
-            "value" : "Renk alanı"
->>>>>>> task-5
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Хмарно"
-=======
-            "value" : "Колірний простір"
->>>>>>> task-5
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Nhiều mây"
-=======
-            "value" : "Không gian màu"
->>>>>>> task-5
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "阴天"
-=======
-            "value" : "色彩空间"
->>>>>>> task-5
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "陰天"
-=======
+          }
+        }
+      }
+    },
+    "Color space" : {
+      "comment" : "Metadata tag name",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فضاء اللون"
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espai de color"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barevný prostor"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Farverum"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Farbraum"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Χρωματικός χώρος"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espacio de color"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Väriavaruus"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espace colorimétrique"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מרחב צבע"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "रंग स्पेस"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Színtér"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ruang warna"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spazio colore"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "色空間"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "색 공간"
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ruang warna"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kleurruimte"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przestrzeń barw"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espaço de cor"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spațiu de culoare"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цветовое пространство"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Färgrymd"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ปริภูมิสี"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renk alanı"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Колірний простір"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không gian màu"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "色彩空间"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
             "value" : "色彩空間"
->>>>>>> task-5
           }
         }
       }
@@ -59215,20 +59331,12 @@
       }
     },
     "Flash" : {
-<<<<<<< HEAD
-      "comment" : "Info panel, the flash fired",
-=======
-      "comment" : "Metadata tag name",
->>>>>>> task-5
+      "comment" : "Info panel, the flash fired\nMetadata tag name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "فلاش"
-=======
-            "value" : "الفلاش"
->>>>>>> task-5
           }
         },
         "ca" : {
@@ -59330,21 +59438,13 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Flits"
-=======
-            "value" : "Flitser"
->>>>>>> task-5
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
             "value" : "Flesz"
-=======
-            "value" : "Lampa błyskowa"
->>>>>>> task-5
           }
         },
         "pt-BR" : {
@@ -63686,300 +63786,180 @@
         }
       }
     },
-<<<<<<< HEAD
-    "Gain map, up to %@×" : {
-      "comment" : "Info panel",
-=======
     "GPS date" : {
       "comment" : "Metadata tag name",
->>>>>>> task-5
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "خريطة الكسب، حتى %@×"
-=======
             "value" : "تاريخ GPS"
->>>>>>> task-5
           }
         },
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Mapa de guany, fins a %@×"
-=======
             "value" : "Data GPS"
->>>>>>> task-5
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Gain mapa, až %@×"
-=======
             "value" : "Datum GPS"
->>>>>>> task-5
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Gain map, op til %@×"
-=======
             "value" : "GPS-dato"
->>>>>>> task-5
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Gain Map, bis %@×"
-=======
             "value" : "GPS-Datum"
->>>>>>> task-5
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Χάρτης ενίσχυσης, έως %@×"
-=======
             "value" : "Ημερομηνία GPS"
->>>>>>> task-5
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Mapa de ganancia, hasta %@×"
-=======
             "value" : "Fecha GPS"
->>>>>>> task-5
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Vahvistuskartta, enintään %@×"
-=======
             "value" : "GPS-päivämäärä"
->>>>>>> task-5
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Carte de gain, jusqu’à %@×"
-=======
             "value" : "Date GPS"
->>>>>>> task-5
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "מפת הגבר, עד %@×"
-=======
             "value" : "תאריך GPS"
->>>>>>> task-5
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "गेन मैप, %@× तक"
-=======
             "value" : "GPS तारीख"
->>>>>>> task-5
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Erősítési térkép, legfeljebb %@×"
-=======
             "value" : "GPS-dátum"
->>>>>>> task-5
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Peta gain, hingga %@×"
-=======
             "value" : "Tanggal GPS"
->>>>>>> task-5
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Mappa di guadagno, fino a %@×"
-=======
             "value" : "Data GPS"
->>>>>>> task-5
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "ゲインマップ、最大 %@×"
-=======
             "value" : "GPS日付"
->>>>>>> task-5
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "게인 맵, 최대 %@×"
-=======
             "value" : "GPS 날짜"
->>>>>>> task-5
           }
         },
         "ms" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Peta gandaan, sehingga %@×"
-=======
             "value" : "Tarikh GPS"
->>>>>>> task-5
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Gain map, tot %@×"
-=======
             "value" : "GPS-datum"
->>>>>>> task-5
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Mapa wzmocnienia, do %@×"
-=======
             "value" : "Data GPS"
->>>>>>> task-5
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Mapa de ganho, até %@×"
-=======
             "value" : "Data do GPS"
->>>>>>> task-5
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Hartă de câștig, până la %@×"
-=======
             "value" : "Data GPS"
->>>>>>> task-5
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Карта усиления, до %@×"
-=======
             "value" : "Дата GPS"
->>>>>>> task-5
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Förstärkningskarta, upp till %@×"
-=======
             "value" : "GPS-datum"
->>>>>>> task-5
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "เกนแมป สูงสุด %@×"
-=======
             "value" : "วันที่ GPS"
->>>>>>> task-5
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Kazanç haritası, en fazla %@×"
-=======
             "value" : "GPS tarihi"
->>>>>>> task-5
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Карта підсилення, до %@×"
-=======
             "value" : "Дата GPS"
->>>>>>> task-5
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "Bản đồ gain, tối đa %@×"
-=======
             "value" : "Ngày GPS"
->>>>>>> task-5
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "增益图，最高 %@×"
-=======
             "value" : "GPS 日期"
->>>>>>> task-5
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-<<<<<<< HEAD
-            "value" : "增益圖，最高 %@×"
-=======
             "value" : "GPS 日期"
           }
         }
@@ -64160,7 +64140,185 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "GPS 時間"
->>>>>>> task-5
+          }
+        }
+      }
+    },
+    "Gain map, up to %@×" : {
+      "comment" : "Info panel",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "خريطة الكسب، حتى %@×"
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mapa de guany, fins a %@×"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gain mapa, až %@×"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gain map, op til %@×"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gain Map, bis %@×"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Χάρτης ενίσχυσης, έως %@×"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mapa de ganancia, hasta %@×"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vahvistuskartta, enintään %@×"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carte de gain, jusqu’à %@×"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מפת הגבר, עד %@×"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "गेन मैप, %@× तक"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erősítési térkép, legfeljebb %@×"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Peta gain, hingga %@×"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mappa di guadagno, fino a %@×"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ゲインマップ、最大 %@×"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "게인 맵, 최대 %@×"
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Peta gandaan, sehingga %@×"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gain map, tot %@×"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mapa wzmocnienia, do %@×"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mapa de ganho, até %@×"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hartă de câștig, până la %@×"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карта усиления, до %@×"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Förstärkningskarta, upp till %@×"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เกนแมป สูงสุด %@×"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kazanç haritası, en fazla %@×"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карта підсилення, до %@×"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bản đồ gain, tối đa %@×"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "增益图，最高 %@×"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "增益圖，最高 %@×"
           }
         }
       }
