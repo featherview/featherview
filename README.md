@@ -127,6 +127,9 @@ Disk image: `scripts/dmg.sh` writes `build/Featherview-<version>.dmg`.
   (BSD-3-Clause), for writing JPEG XL, vendored in `Sources/CJPEGXL` and built from source by SwiftPM.
 - [Sparkle](https://sparkle-project.org) 2.10.0 (MIT), for automatic updates, from its Swift package
   (a prebuilt framework).
+- Place names from [GeoNames](https://www.geonames.org) (CC BY 4.0) and sea, desert and mountain
+  outlines from [Natural Earth](https://www.naturalearthdata.com) (public domain), simplified, for the
+  info panel. Built per release by `scripts/places.sh` into `places.fvpl`, never committed.
 
 ## License
 

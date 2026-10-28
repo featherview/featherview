@@ -115,10 +115,16 @@ number + 1, in `Resources/Info.plist` (PlistBuddy `Set`). bundle.sh copies both 
 
 ```bash
 swift test 2>&1 | tail -5
+scripts/places.sh
 scripts/test-dmg.sh
 scripts/dmg.sh
 ls -l build/Featherview-X.Y.Z.dmg
 ```
+
+`scripts/places.sh` builds the info panel's place data fresh before the disk image. Print one line
+from its output: `· place data: fresh`, or `· place data: cached from <date>` when it fell back to
+cached downloads (or its warning's date, when it kept the last built file); that is no reason to abort.
+It failing with no earlier file is: abort, the app would ship without place names.
 
 `scripts/dmg.sh` needs Finder; if another volume called Featherview is mounted it stops and says so:
 abort with that reason. On any failure: `git checkout -- Resources/Info.plist CHANGELOG.md` (or
