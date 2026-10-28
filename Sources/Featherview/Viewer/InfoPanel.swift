@@ -105,7 +105,13 @@ struct InfoPanel: View {
         .onChange(of: shownGroups) { lastGroups = $1 }
         // A control that went away with the image (a group the next file hasn't) hands the focus on, never to nothing.
         .onChange(of: focus.wrappedValue) { old, new in
-            if new == nil, let old, let next = InfoPanelFocus.repair(lost: old, order: focusOrder) { focus.wrappedValue = next }
+            if new == nil, let old, let next = InfoPanelFocus.repair(lost: old, order: focusOrder) {
+                state.keyboardMove = state.ringShown
+                focus.wrappedValue = next
+                return
+            }
+            if new != nil { state.ringShown = state.keyboardMove }
+            state.keyboardMove = false
         }
         .task(id: readKey) {
             guard let key = readKey else { readInfo = nil; infoKey = nil; return }
@@ -437,7 +443,10 @@ struct InfoPanel: View {
         let order = focusOrder
         guard let current = focus.wrappedValue, let index = order.firstIndex(of: current) else { return .ignored }
         let next = back ? index - 1 : index + 1
-        if order.indices.contains(next) { focus.wrappedValue = order[next] } else { leave() }
+        if order.indices.contains(next) {
+            state.keyboardMove = true
+            focus.wrappedValue = order[next]
+        } else { leave() }
         return .handled
     }
 
@@ -492,7 +501,7 @@ private struct InfoControl: ViewModifier {
                 return .handled
             }
             .overlay {
-                if focus.wrappedValue == id {
+                if focus.wrappedValue == id, InfoPanelState.shared.ringShown {
                     RoundedRectangle(cornerRadius: radius + reach)
                         .strokeBorder(Theme.focusRing, lineWidth: Theme.focusRingWidth)
                         .padding(-reach)

@@ -57,7 +57,7 @@ toolbar, title bar and glass with it. Use system dynamic colours where one exist
 | Clip mark (off) | rgba(255,255,255,0.45) | rgba(0,0,0,0.45) | Outlined clip mark; filled in the accent when more than 0.1 % clips. |
 | Tile fill | rgba(255,255,255,0.06) | rgba(0,0,0,0.05) | Info panel exposure tiles. |
 | Chip fill / line | rgba(255,255,255,0.06) / 0.10 | rgba(0,0,0,0.04) / 0.10 | Info panel chips (exposure bias, flash, white balance, metering). |
-| Focus ring | accent, 2 pt, 1 pt outside the shape | same | Keyboard focus in the info panel, shown whether or not keyboard navigation is on in System Settings. |
+| Focus ring | accent at 50 % (as the system's `keyboardFocusIndicatorColor`), 2 pt, 1 pt outside the shape | same | Keyboard focus in the info panel, shown whether or not keyboard navigation is on in System Settings; a click focuses without it. |
 
 ## Materials
 
@@ -189,7 +189,7 @@ behaviour in `docs/spec.md` "Info panel".
 | Settings | 560 wide, the app's appearance. Viewer › Appearance: three 128 × 82 miniature viewer windows (System split corner to corner, Light, Dark), radius 8, chosen one with a 3 pt accent ring and its name semibold in the accent. Header 96: pane title 13 Semibold in the top 40; tab row of 72 × 46 pills (gap 4), glyph 22 + label 11 Medium, selected pill 0.10 / 0.07 with accent glyph and label. Content padding 22 × 24, sections 22 apart: header 13 Semibold, 8 gap, card radius 10, rows 44 (52 two-line), padding 0 × 14, inset separators. Push buttons 28 radius 7; pop-ups 26 with accent chevron square 16 × 16 radius 4; switches 38 × 22, system. Browsing › Default app: one row per common type, its current app secondary and a "Use Featherview" push button trailing. |
 | About | 320 × 440, close button only, the app's appearance, never restored at launch. Icon tile 128, radius 28.8, gradient #23232C → #101015, E4. Behind it a 280 pt radial glow in the feather colours (0.26 → 0 dark, 0.45 → 0 light). Name 22 / 28 Semibold, tagline 13 secondary, "Version" tertiary with the build in a key cap (tabular), hairline, copyright 11 tertiary, two accent links 11. Featherview keeps About's other content (Report a Problem, formats, licence) below the hairline. |
 | Update notice | 480 wide, About's background, close button only, never restored. 44 pt feather mark leading, 12 gap; title 15 Semibold, "You have …" secondary 6 below; release notes in a card (radius 10, Settings card fill and line) 180 tall, scrolling; Skip This Version leading, Later and Download (default) trailing. Padding 40 / 24 / 20 / 24. |
-| Accessibility · focus | Info panel controls take the keyboard whether or not keyboard navigation is on and show the focus ring (accent 2 pt, 1 pt outside the shape) only while focused. |
+| Accessibility · focus | Info panel controls take the keyboard whether or not keyboard navigation is on and show the focus ring (accent at 50 %, 2 pt, 1 pt outside the shape) only while the keyboard focused them, never after a click. |
 | Accessibility · Increase Contrast | Info panel: secondary text becomes primary, hairlines (card lines, separators, grid) 1.5 pt. Also with Differentiate Without Colour. |
 | Accessibility · Reduce Motion | Info panel groups open and close as a cut; scrolling to the focused control jumps. |
 | Batch window | Three columns stay. Sidebar rows 32 tall, 8 pt radius, selected row accent with on-accent text; "on" badges secondary tabular; cards as in Settings. |

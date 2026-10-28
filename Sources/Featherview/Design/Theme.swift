@@ -106,7 +106,8 @@ enum Theme {
     static let chipFill = colour(dark: white(0.06), light: black(0.04))
     static let chipLine = colour(dark: white(0.10), light: black(0.10))
     /// Keyboard focus ring in the info panel: accent, 2 pt, 1 pt outside the control's shape.
-    static let focusRing = accent
+    /// As the system draws it (`keyboardFocusIndicatorColor`): the accent at half opacity.
+    static let focusRing = accent.opacity(0.5)
     static let focusRingWidth = 2.0
     static let focusRingOutset = 1.0
 

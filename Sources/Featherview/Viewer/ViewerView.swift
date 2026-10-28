@@ -557,6 +557,7 @@ struct ViewerView: View {
         // Tab from the picture into the info panel (⇧Tab to its last control); inside the panel it moves on there.
         if model.showInfo, !model.isGrid, panelFocus == nil, modifiers.subtracting(.shift).isEmpty,
            press.key == .tab || press.key == InfoPanel.backtab {
+            InfoPanelState.shared.keyboardMove = true
             panelFocus = press.key == InfoPanel.backtab || modifiers.contains(.shift) ? panelStops.last : panelStops.first
             return .handled
         }

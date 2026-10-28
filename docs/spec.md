@@ -566,8 +566,9 @@ empty rows or cards). Text is selectable. Nothing in the panel uses the network.
   control first), then through the clip marks, each group header, the buttons of open groups, and
   "Show all metadata…"; ⇧Tab goes back; Tab after the last control returns to the picture. Esc puts
   the focus back on the picture. Clicking the picture does too.
-- The focused control shows the accent focus ring (2 pt, 1 pt outside its shape), with or without
-  System Settings › Keyboard › Keyboard navigation; it is never hidden by the panel's scrolling (the
+- The control the keyboard focused shows the focus ring (the accent at half opacity, as the system draws
+  it, 2 pt, 1 pt outside its shape), with or without System Settings › Keyboard › Keyboard navigation;
+  a click focuses without the ring, as elsewhere on the Mac; it is never hidden by the panel's scrolling (the
   panel scrolls the focused control into view).
 - Space or Return acts on the focused control (opens or closes a group, presses a button, switches
   the histogram mode); ← / → on the mode control switch it. All other viewer keys (← / → to browse,
