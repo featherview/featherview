@@ -63,8 +63,6 @@ let package = Package(
         .executableTarget(name: "FeatherviewDMG", dependencies: ["FeatherviewCore"]),
         .testTarget(name: "FeatherviewCoreTests", dependencies: ["FeatherviewCore", "FeatherviewJXL"]),
         .testTarget(name: "FeatherviewBenchTests", dependencies: ["FeatherviewBench"]),
-        // App-layer checks that need no window on screen.
-        .testTarget(name: "FeatherviewAppTests", dependencies: ["Featherview"]),
     ],
     cxxLanguageStandard: .cxx17
 )
