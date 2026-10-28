@@ -133,9 +133,14 @@ enum PlaceFixtures {
                          rings: [(0 ..< 1500).map { k in (Double(k % 360) - 180, Double(k % 170) - 85) }])
         }
         let data = PlaceTable(places: places, regions: regions).encoded()
-        let start = ContinuousClock.now
-        let decoded = try PlaceTable(data: data)
-        let elapsed = ContinuousClock.now - start
+        // The fastest of three reads: a parallel test run or build only ever slows one down.
+        var decoded = try PlaceTable(data: data)
+        var elapsed = Duration.seconds(60)
+        for _ in 0 ..< 3 {
+            let start = ContinuousClock.now
+            decoded = try PlaceTable(data: data)
+            elapsed = min(elapsed, ContinuousClock.now - start)
+        }
         // The budget is 50 ms in a release build (measured ~10 ms); unoptimized, the same reading takes ~170 ms.
         #expect(elapsed < .milliseconds(_isDebugAssertConfiguration() ? 300 : 50), "took \(elapsed)")
         let hit = try #require(decoded.nearest(latitude: places[7].latitude, longitude: places[7].longitude, within: 1))
