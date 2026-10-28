@@ -49,8 +49,12 @@ public enum PlaceSources {
             guard let cls = properties["featurecla"], classes.contains(cls.lowercased()),
                   var name = properties["name"], !name.isEmpty,
                   let geometry = feature["geometry"] as? [String: Any] else { return nil }
-            // Two oceans are named in capitals ("INDIAN OCEAN"); their English name reads like every other one.
-            if name == name.uppercased(), let english = properties["name_en"], !english.isEmpty { name = english }
+            // Some names are in capitals ("INDIAN OCEAN", "AHAGGAR MTS."). The English name often names another
+            // feature ("Ahag"), so it counts only when it spells the same name; otherwise the name is title-cased.
+            if name == name.uppercased() {
+                let english = properties["name_en"] ?? ""
+                name = english.caseInsensitiveCompare(name) == .orderedSame ? english : name.capitalized
+            }
             let polygons: [[[[Double]]]]
             switch geometry["type"] as? String {
             case "Polygon": polygons = (geometry["coordinates"] as? [[[Double]]]).map { [$0] } ?? []

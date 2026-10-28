@@ -73,6 +73,17 @@ import Testing
         #expect(result.first?.rings.count == 1)
     }
 
+    /// Natural Earth's regions file writes many names in capitals, and its English name often names another
+    /// feature ("AHAGGAR MTS." → "Ahag"): the English name counts only when it spells the same name.
+    @Test func capitalisedRegionNameKeepsItsOwnWords() throws {
+        func feature(_ name: String, _ english: String) -> String {
+            #"{"type":"Feature","properties":{"FEATURECLA":"Range/mtn","NAME":"\#(name)","NAME_EN":"\#(english)"},"geometry":{"type":"Polygon","coordinates":[[[0,0],[10,0],[10,10],[0,10],[0,0]]]}}"#
+        }
+        let regions = Data(#"{"type":"FeatureCollection","features":[\#(feature("AHAGGAR MTS.", "Ahag")),\#(feature("CORD. CENTRAL", "Cordillera Blanca")),\#(feature("TAKLIMAKAN DESERT", "Taklimakan Desert"))]}"#.utf8)
+        let result = try PlaceSources.regions(marineGeoJSON: Self.empty, regionsGeoJSON: regions, toleranceKm: 1)
+        #expect(result.map(\.name) == ["Ahaggar Mts.", "Cord. Central", "Taklimakan Desert"])
+    }
+
     @Test func rejectsNonGeoJSON() {
         #expect(throws: (any Error).self) {
             try PlaceSources.regions(marineGeoJSON: Data("nope".utf8), regionsGeoJSON: Self.empty, toleranceKm: 1)
