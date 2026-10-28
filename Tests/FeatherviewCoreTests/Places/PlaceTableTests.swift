@@ -72,6 +72,11 @@ enum PlaceFixtures {
         #expect(table.region(latitude: -40, longitude: 60) == nil)
     }
 
+    @Test func seaAtAntimeridian() {
+        #expect(table.region(latitude: 32, longitude: 180)?.name == "North Pacific Ocean")
+        #expect(table.region(latitude: 32, longitude: -180)?.name == "North Pacific Ocean")
+    }
+
     @Test func poleDoesNotCrash() {
         for lat in [90.0, -90.0] {
             _ = table.nearest(latitude: lat, longitude: 0, within: 500)
