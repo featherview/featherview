@@ -25,6 +25,20 @@ import Testing
         #expect(MetadataCatalog.label(for: "dc:format") == "Format")
     }
 
+    @Test func iptcKeysWithSlashGetTheirNames() {
+        #expect(MetadataCatalog.label(for: kCGImagePropertyIPTCCaptionAbstract as String) == "Caption")
+        #expect(MetadataCatalog.label(for: kCGImagePropertyIPTCProvinceState as String) == "State or province")
+        #expect(MetadataCatalog.label(for: kCGImagePropertyIPTCCountryPrimaryLocationName as String) == "Country")
+    }
+
+    @Test func distinctTagsGetDistinctNames() {
+        let catalog = MetadataCatalog.make(properties: [
+            "{Exif}": ["SceneType": 1, "SceneCaptureType": 0, "ISOSpeed": 100, "ISOSpeedRatings": [100]] as [String: Any],
+        ], xmp: [])
+        let labels = catalog.sections.flatMap(\.entries).map(\.label)
+        #expect(Set(labels).count == labels.count)
+    }
+
     @Test func valuesFormatted() throws {
         let url = try Fixtures.makeTempDir().appendingPathComponent("tags.jpg")
         try Fixtures.writeImage(to: url, width: 8, height: 8, properties: [

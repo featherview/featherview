@@ -63887,6 +63887,185 @@
         }
       }
     },
+    "ISO speed (EXIF 2.3)" : {
+      "comment" : "Metadata tag name",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "سرعة ISO (EXIF 2.3)"
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sensibilitat ISO (EXIF 2.3)"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Citlivost ISO (EXIF 2.3)"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ISO-følsomhed (EXIF 2.3)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ISO-Empfindlichkeit (EXIF 2.3)"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ευαισθησία ISO (EXIF 2.3)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sensibilidad ISO (EXIF 2.3)"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ISO-herkkyys (EXIF 2.3)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sensibilité ISO (EXIF 2.3)"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רגישות ISO (EXIF 2.3)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ISO गति (EXIF 2.3)"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ISO-érzékenység (EXIF 2.3)"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kecepatan ISO (EXIF 2.3)"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sensibilità ISO (EXIF 2.3)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ISO感度 (EXIF 2.3)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ISO 감도 (EXIF 2.3)"
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kelajuan ISO (EXIF 2.3)"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ISO-waarde (EXIF 2.3)"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Czułość ISO (EXIF 2.3)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sensibilidade ISO (EXIF 2.3)"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sensibilitate ISO (EXIF 2.3)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Светочувствительность ISO (EXIF 2.3)"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ISO-tal (EXIF 2.3)"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ความไวแสง ISO (EXIF 2.3)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ISO hızı (EXIF 2.3)"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Світлочутливість ISO (EXIF 2.3)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tốc độ ISO (EXIF 2.3)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ISO 感光度 (EXIF 2.3)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ISO 感光度 (EXIF 2.3)"
+          }
+        }
+      }
+    },
     "Icon" : {
       "localizations" : {
         "ar" : {
@@ -102975,181 +103154,181 @@
         }
       }
     },
-    "Scene type" : {
+    "Scene capture type" : {
       "comment" : "Metadata tag name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "نوع المشهد"
+            "value" : "نوع التقاط المشهد"
           }
         },
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tipus d’escena"
+            "value" : "Tipus de captura d’escena"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Typ scény"
+            "value" : "Typ snímání scény"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Motivtype"
+            "value" : "Optagelsestype"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Motivtyp"
+            "value" : "Aufnahmeart"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Τύπος σκηνής"
+            "value" : "Τύπος λήψης σκηνής"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tipo de escena"
+            "value" : "Tipo de captura de escena"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kuvaustilanne"
+            "value" : "Kuvaustilanteen tyyppi"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Type de scène"
+            "value" : "Type de capture de scène"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "סוג סצנה"
+            "value" : "סוג צילום סצנה"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "दृश्य प्रकार"
+            "value" : "दृश्य कैप्चर प्रकार"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jelenettípus"
+            "value" : "Jelenetrögzítés típusa"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jenis adegan"
+            "value" : "Jenis pengambilan adegan"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tipo di scena"
+            "value" : "Tipo di acquisizione scena"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "シーンタイプ"
+            "value" : "撮影シーンタイプ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "장면 유형"
+            "value" : "장면 촬영 유형"
           }
         },
         "ms" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jenis pemandangan"
+            "value" : "Jenis tangkapan pemandangan"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scènetype"
+            "value" : "Type scèneopname"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Typ sceny"
+            "value" : "Typ ujęcia sceny"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tipo de cena"
+            "value" : "Tipo de captura de cena"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tip de scenă"
+            "value" : "Tip de captură a scenei"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тип сюжета"
+            "value" : "Тип съёмки сюжета"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Motivtyp"
+            "value" : "Typ av motivtagning"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ประเภทฉาก"
+            "value" : "ประเภทการถ่ายฉาก"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sahne türü"
+            "value" : "Sahne çekim türü"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тип сюжету"
+            "value" : "Тип зйомки сюжету"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Loại cảnh"
+            "value" : "Loại chụp cảnh"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "场景类型"
+            "value" : "场景拍摄类型"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "場景類型"
+            "value" : "場景拍攝類型"
           }
         }
       }
