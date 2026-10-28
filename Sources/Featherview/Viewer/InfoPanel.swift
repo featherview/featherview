@@ -78,6 +78,9 @@ struct InfoPanel: View {
                     }
                     .buttonStyle(.plain)
                     .infoControl(.showAll, focus: focus, radius: Theme.Radius.slotKey) { AllMetadataWindow.show() }
+                    // Trailing, inset as the groups' buttons are: one edge for every button in the panel.
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.trailing, Theme.rowPadding)
                 }
                 .padding(Theme.panelPadding)
             }
@@ -255,7 +258,7 @@ struct InfoPanel: View {
             exposure(info.exposure)
             row("Lens", info.lens)
             row("35 mm equivalent", info.exposure.focal35)
-            row("Taken", info.taken)
+            row("Taken", info.taken, short: info.takenShort)
         case .image:
             let p = info.picture
             row("Dimensions", p.dimensions.map(Self.isolated), short: p.size.map(Self.isolated))
@@ -332,7 +335,11 @@ struct InfoPanel: View {
                 .frame(minHeight: Theme.infoRowHeightCompact)
                 .padding(.horizontal, Theme.rowPadding)
             }
-            .accessibilityElement(children: .combine)
+            // Combining loses the text inside ViewThatFits and selectable text: label and value named outright.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(label))
+            .accessibilityValue(Text(verbatim: value))
+            .accessibilityAddTraits(.isStaticText)
         }
     }
 
@@ -359,7 +366,8 @@ struct InfoPanel: View {
                                           : String(localized: "Shutter speed \(v) seconds", comment: "Info panel, VoiceOver")) },
             e.aperture.map { v in Tile(value: v, unit: Text("ƒ stop", comment: "Info panel tile unit: aperture"),
                                        spoken: String(localized: "Aperture f/\(v)", comment: "Info panel, VoiceOver")) },
-            e.iso.map { v in Tile(value: v, unit: Text("ISO speed", comment: "Info panel tile unit"),
+            e.iso.map { v in Tile(value: v, unit: Text(String(localized: "ISO speed tile", defaultValue: "ISO speed",
+                                                                comment: "Info panel tile unit under the ISO value: short, the tile is narrow")),
                                   spoken: String(localized: "ISO \(v)", comment: "Info panel, VoiceOver")) },
             e.focal.map { v in Tile(value: v, glyph: "circle.circle", unit: Text("mm", comment: "Info panel tile unit: millimetres"),
                                     spoken: e.focal35.map { String(localized: "Focal length \(v) millimetres, \($0) equivalent", comment: "Info panel, VoiceOver") }

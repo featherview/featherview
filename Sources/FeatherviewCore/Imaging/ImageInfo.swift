@@ -51,6 +51,8 @@ public struct ImageInfo: Equatable, Sendable {
     public var camera: String?
     public var lens: String?
     public var taken: String?
+    /// `taken` with the date in figures, where the month's name doesn't fit.
+    public var takenShort: String?
     public var exposure = Exposure()
     public var picture = Picture()
     public var gps: GPS?
@@ -121,7 +123,8 @@ public struct ImageInfo: Equatable, Sendable {
         info.camera = nonEmpty(MetadataReader.camera(make: tiff[kCGImagePropertyTIFFMake] as? String,
                                                      model: tiff[kCGImagePropertyTIFFModel] as? String))
         info.lens = nonEmpty(exif[kCGImagePropertyExifLensModel] as? String)
-        info.taken = (exif[kCGImagePropertyExifDateTimeOriginal] as? String).flatMap(MetadataReader.taken)
+        info.taken = (exif[kCGImagePropertyExifDateTimeOriginal] as? String).flatMap { MetadataReader.taken($0) }
+        info.takenShort = (exif[kCGImagePropertyExifDateTimeOriginal] as? String).flatMap { MetadataReader.taken($0, short: true) }
         info.exposure = exposure(exif)
         info.gps = gps(props[kCGImagePropertyGPSDictionary] as? [CFString: Any] ?? [:])
 

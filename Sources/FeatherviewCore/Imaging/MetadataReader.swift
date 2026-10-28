@@ -13,8 +13,8 @@ public enum MetadataReader {
 
     /// EXIF stores local wall time as "yyyy:MM:dd HH:mm:ss" (Gregorian, no time zone); shown in the
     /// system's date format. nil for placeholders like "0000:00:00 00:00:00".
-    static func taken(_ exif: String) -> String? {
-        exifDate(exif)?.formatted(date: .abbreviated, time: .shortened)
+    static func taken(_ exif: String, short: Bool = false) -> String? {
+        exifDate(exif)?.formatted(date: short ? .numeric : .abbreviated, time: .shortened)
     }
 
     /// EXIF "yyyy:MM:dd HH:mm:ss" as a date in the local calendar; nil for placeholders.

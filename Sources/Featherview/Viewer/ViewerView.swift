@@ -1003,8 +1003,10 @@ struct ViewerCommands: Commands {
             // Text fields and selected text (batch window, Info panel) keep their own Copy and Paste.
             Button("Copy") {
                 // Selected text in the Info panel isn't an NSText, but it takes SwiftUI focus from the viewer.
-                // The grid's collection view has the keyboard, not SwiftUI focus.
-                if let model, model.isGrid || model.hasKeyboardFocus, !(NSApp.keyWindow?.firstResponder is NSText) {
+                // The grid's collection view has the keyboard, not SwiftUI focus. A panel in front (All Metadata)
+                // copies its own selection, though the viewer behind it keeps its focus.
+                if let model, model.isGrid || model.hasKeyboardFocus, !(NSApp.keyWindow?.firstResponder is NSText),
+                   !(NSApp.keyWindow is NSPanel) {
                     model.copyImage()
                 } else {
                     NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)

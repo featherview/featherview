@@ -158,7 +158,7 @@ behaviour in `docs/spec.md` "Info panel".
 | Tiles | Camera, inset 2 × 8 (10 bottom): four tiles 4 apart, tile fill, radius 8, padding 6 × 2 × 5: number 14 Semibold primary tabular (shrinks to 0.8), under it accent glyph + unit 10 secondary. Shutter "sec" with a timer glyph, aperture "ƒ stop", ISO "ISO speed", focal length "mm" with a lens glyph. |
 | Chips | 8 under the tiles, wrapping, 5 apart: capsule, chip fill and line, padding 3 × 8, accent glyph + text 11 primary. |
 | Place line | Location's first line: full place 13 Semibold primary, up to two lines, padding 0 × 12, 9 below. |
-| Buttons | "Open in Maps" (map glyph), "Show in Finder" (folder glyph) in a trailing row of their group; "Show all metadata…" leading at the bottom. Small button: 22 tall, padding 0 × 10, radius 6, key-cap fill, hairline 0.12, glyph + 12 Medium. |
+| Buttons | "Open in Maps" (map glyph), "Show in Finder" (folder glyph) in a trailing row of their group; "Show all metadata…" at the bottom, trailing and inset by the row padding, so its trailing edge lines up with theirs. Small button: 22 tall, padding 0 × 10, radius 6, key-cap fill, hairline 0.12, glyph + 12 Medium. |
 | Keyboard | Tab from the picture enters at the mode control (⇧Tab at "Show all metadata…"); order: mode, clip marks, each group header with its open group's button, "Show all metadata…"; past either end and Esc go back to the picture. The focused control shows the focus ring and scrolls into view. |
 
 ## Motion

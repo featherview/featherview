@@ -332,6 +332,8 @@ import UniformTypeIdentifiers
         #expect(MetadataReader.taken("garbage") == nil)
         let exif: [CFString: Any] = [kCGImagePropertyExifDateTimeOriginal: "2026:08:14 18:32:05"]
         #expect(pure([kCGImagePropertyExifDictionary: exif]).taken == date.formatted(date: .abbreviated, time: .shortened))
+        // The short form, for a panel too narrow for the month's name ("2. Juni 2…12:00").
+        #expect(pure([kCGImagePropertyExifDictionary: exif]).takenShort == date.formatted(date: .numeric, time: .shortened))
     }
 
     @Test func dateTakenPrefersExif() throws {
