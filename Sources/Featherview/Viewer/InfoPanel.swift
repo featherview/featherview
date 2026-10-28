@@ -424,7 +424,7 @@ struct InfoPanel: View {
 
     /// The panel's controls in Tab order (`InfoPanelFocus.order`).
     private var focusOrder: [InfoFocus] {
-        InfoPanelFocus.order(picture: image != nil, groups: shownGroups, open: state.open, hasFile: url != nil)
+        InfoPanelFocus.order(picture: image != nil, groups: shownGroups, open: state.open, hasContent: info != nil)
     }
 
     private func moveFocus(back: Bool) -> KeyPress.Result {
