@@ -9,6 +9,8 @@ struct ViewerView: View {
     @FocusState private var focused: Bool
     /// The info panel's control with the keyboard; nil while the picture (or nothing in the panel) has it.
     @FocusState private var panelFocus: InfoFocus?
+    /// The panel's controls in Tab order.
+    @State private var panelStops: [InfoFocus] = []
     @Environment(\.controlActiveState) private var activeState
     @Environment(\.layoutDirection) private var layoutDirection
     @AppStorage(AppSettings.rememberWindowFrame.key) private var rememberFrame = AppSettings.rememberWindowFrame.defaultValue
@@ -216,7 +218,8 @@ struct ViewerView: View {
         .focusable()
         .focusEffectDisabled()
         .focused($focused)
-        .onChange(of: focused, initial: true) { model.hasKeyboardFocus = focused }
+        // A panel control has the viewer's keys too (⌘C copies the picture).
+        .onChange(of: focused || panelFocus != nil, initial: true) { model.hasKeyboardFocus = $1 }
         .onAppear {
             focused = true
             ViewerModel.windows.viewerOpened()
@@ -350,7 +353,8 @@ struct ViewerView: View {
     /// Spans the fit area's height, floating on the trailing side (docs/DESIGN.md "Elements").
     @ViewBuilder private var infoPanel: some View {
         if model.showInfo {
-            InfoPanel(url: model.list.current, revision: model.fileRevision, image: model.image, focus: $panelFocus) {
+            InfoPanel(url: model.list.current, revision: model.fileRevision, image: model.image, onScreen: model.onScreen,
+                      fitImage: model.fitImage, decodeFit: model.decodeFit, focus: $panelFocus, stops: $panelStops) {
                 focused = true
             }
                 // Level with the fit area; in full screen (no insets) the panel's own margin.
@@ -553,7 +557,7 @@ struct ViewerView: View {
         // Tab from the picture into the info panel (⇧Tab to its last control); inside the panel it moves on there.
         if model.showInfo, !model.isGrid, panelFocus == nil, modifiers.subtracting(.shift).isEmpty,
            press.key == .tab || press.key == InfoPanel.backtab {
-            panelFocus = press.key == InfoPanel.backtab || modifiers.contains(.shift) || model.image == nil ? .showAll : .mode
+            panelFocus = press.key == InfoPanel.backtab || modifiers.contains(.shift) ? panelStops.last : panelStops.first
             return .handled
         }
         // The grid's keys, when its collection view hasn't the keyboard (the size slider, Tab); the viewer's keys do

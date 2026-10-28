@@ -9,23 +9,30 @@ struct InfoPanel: View {
     let url: URL?
     /// Changes when the file is rewritten (rotation), so everything is read again.
     let revision: Int
-    /// The picture decoded for the screen: the histogram is counted from it.
+    /// The picture on screen, its file and page, and its fit-size decode, which the histogram is counted from.
     let image: CGImage?
+    let onScreen: (url: URL, page: Int)?
+    let fitImage: CGImage?
+    /// A fit-size decode of the picture on screen while zoomed into one never shown at fit.
+    let decodeFit: () async -> CGImage?
     /// The viewer's focus for the panel's controls.
     var focus: FocusState<InfoFocus?>.Binding
+    /// The panel's controls in Tab order, for Tab from the picture.
+    @Binding var stops: [InfoFocus]
     /// Gives the keyboard back to the picture (Esc, Tab past either end).
     let leave: () -> Void
 
     private struct ReadKey: Hashable { var url: URL; var revision: Int }
     private struct PlaceKey: Hashable { var read: ReadKey; var latitude: Double; var longitude: Double }
-    private struct HistogramKey: Hashable { var read: ReadKey?; var image: ObjectIdentifier?; var headroom: Double? }
+    private struct HistogramKey: Hashable { var read: ReadKey; var page: Int; var fit: ObjectIdentifier?; var headroom: Double? }
 
-    @State private var info: ImageInfo?
+    @State private var readInfo: ImageInfo?
     @State private var infoKey: ReadKey?
     /// The place name and the file and coordinate it was looked up for: shown only while they are the panel's.
     @State private var placeName: PlaceName?
     @State private var placeFor: PlaceKey?
-    @State private var histogram: Histogram?
+    @State private var counted: Histogram?
+    @State private var countedFor: HistogramKey?
     private let state = InfoPanelState.shared
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
@@ -38,6 +45,14 @@ struct InfoPanel: View {
     private var secondary: Color { strong ? Theme.labelPrimary : Theme.labelSecondary }
     private var hairline: CGFloat { strong ? Theme.hairlineContrast : 1 }
     private var readKey: ReadKey? { url.map { ReadKey(url: $0, revision: revision) } }
+    /// The file's info, never the last file's while this one's is read.
+    private var info: ImageInfo? { infoKey != nil && infoKey == readKey ? readInfo : nil }
+    /// Set once the picture on screen and the info are both the file's.
+    private var histogramKey: HistogramKey? {
+        guard let key = readKey, let info, image != nil, let onScreen, onScreen.url == key.url else { return nil }
+        return HistogramKey(read: key, page: onScreen.page, fit: fitImage.map(ObjectIdentifier.init), headroom: info.picture.headroom)
+    }
+    private var histogram: Histogram? { countedFor != nil && countedFor == histogramKey ? counted : nil }
     private var placeKey: PlaceKey? {
         guard let key = infoKey, let gps = info?.gps else { return nil }
         return PlaceKey(read: key, latitude: gps.latitude, longitude: gps.longitude)
@@ -55,11 +70,11 @@ struct InfoPanel: View {
                     if let info {
                         ForEach(groups(info), id: \.self) { card($0, info) }
                     }
-                    Button { state.showAllMetadata() } label: {
+                    Button { AllMetadataWindow.show() } label: {
                         SmallButtonLabel(glyph: "list.bullet.rectangle", title: Text("Show all metadata…", comment: "Info panel button"))
                     }
                     .buttonStyle(.plain)
-                    .infoControl(.showAll, focus: focus, radius: Theme.Radius.slotKey) { state.showAllMetadata() }
+                    .infoControl(.showAll, focus: focus, radius: Theme.Radius.slotKey) { AllMetadataWindow.show() }
                 }
                 .padding(Theme.panelPadding)
             }
@@ -83,17 +98,18 @@ struct InfoPanel: View {
             leave()
             return .handled
         }
+        .onChange(of: focusOrder, initial: true) { stops = $1 }
         // A control that went away with the image (a group the next file hasn't) hands the focus to the first one,
         // never to nothing.
         .onChange(of: focus.wrappedValue) { old, new in
             if new == nil, let old, !focusOrder.contains(old), let first = focusOrder.first { focus.wrappedValue = first }
         }
         .task(id: readKey) {
-            guard let key = readKey else { info = nil; infoKey = nil; return }
+            guard let key = readKey else { readInfo = nil; infoKey = nil; return }
             let read = await Task.detached(priority: .userInitiated) { ImageInfo.read(key.url) }.value
             // A newer file or revision cancelled this read: its result never lands.
             guard !Task.isCancelled else { return }
-            info = read
+            readInfo = read
             infoKey = key
         }
         .task(id: placeKey) {
@@ -103,12 +119,14 @@ struct InfoPanel: View {
             placeName = name
             placeFor = key
         }
-        .task(id: HistogramKey(read: infoKey, image: image.map(ObjectIdentifier.init), headroom: info?.picture.headroom)) {
-            guard let image else { histogram = nil; return }
-            let key = infoKey, headroom = info?.picture.headroom
-            let counted = await Task.detached(priority: .userInitiated) { Histogram.compute(image, headroom: headroom) }.value
-            guard !Task.isCancelled, key == infoKey else { return }
-            histogram = counted
+        .task(id: histogramKey) {
+            guard let key = histogramKey else { return }
+            var picture = fitImage
+            if picture == nil { picture = await decodeFit() }
+            guard let picture, let histogram = await Histogram.counted(picture, headroom: key.headroom),
+                  !Task.isCancelled else { return }
+            counted = histogram
+            countedFor = key
         }
     }
 

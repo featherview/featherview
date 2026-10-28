@@ -16,8 +16,6 @@ enum HistogramMode: Hashable {
 
     var open: Set<InfoGroup> = [.camera, .location]
     var mode: HistogramMode = .luminance
-    /// "Show all metadata…": the All Metadata window sets it.
-    var showAllMetadata: () -> Void = {}
 }
 
 /// The panel's keyboard stops, in Tab order (spec "Keyboard and accessibility").
