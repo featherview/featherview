@@ -204,6 +204,20 @@ import UniformTypeIdentifiers
         #expect(picture.hdr == "Gain map, up to 4×")
     }
 
+    // XMP text that isn't a finite gain above 1 is SDR: a NaN headroom would never equal itself.
+    @Test func headroomIsAFiniteGainAboveOne() {
+        for text in ["nan", "NaN", "inf", "-inf", "0", "1", "-2", "abc", ""] {
+            #expect(ImageInfo.headroom(text, stops: false) == nil, "\(text)")
+        }
+        #expect(ImageInfo.headroom("nan", stops: true) == nil)
+        #expect(ImageInfo.headroom("inf", stops: true) == nil)
+        #expect(ImageInfo.headroom("2000", stops: true) == nil)
+        #expect(ImageInfo.headroom("0", stops: true) == nil)
+        #expect(ImageInfo.headroom(nil, stops: false) == nil)
+        #expect(ImageInfo.headroom("4", stops: false) == 4)
+        #expect(ImageInfo.headroom("2", stops: true) == 4)
+    }
+
     @Test func formatComesFromTheContents() throws {
         #expect(try info([:], type: .png, name: "photo.jpg").formatLine.hasPrefix("PNG · 8 × 8 · "))
         #expect(try info([:], type: .png, name: "photo").formatLine.hasPrefix("PNG · 8 × 8 · "))
