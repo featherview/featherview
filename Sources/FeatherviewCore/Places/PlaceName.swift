@@ -32,7 +32,9 @@ public struct PlaceName: Equatable, Sendable {
         let country = countryName(place.country)
         switch region.kind {
         case .sea:
-            let sea = region.name.hasSuffix(" Ocean") ? String(region.name.dropLast(" Ocean".count)) : region.name
+            // "North Atlantic Ocean" → "North Atlantic", but "Indian Ocean" stays whole.
+            let shortened = region.name.hasSuffix(" Ocean") ? String(region.name.dropLast(" Ocean".count)) : region.name
+            let sea = shortened.contains(" ") ? shortened : region.name
             return PlaceName(short: String(localized: "\(sea), off \(country)", comment: "Info panel place: sea, off country"),
                              full: String(localized: "\(region.name), off \(place.name), \(country)",
                                           comment: "Info panel place: sea, off nearest town, country"))

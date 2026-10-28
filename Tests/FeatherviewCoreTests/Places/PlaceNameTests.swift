@@ -20,6 +20,13 @@ import Testing
         #expect(describe(13.35, -17.40) == PlaceName(short: "North Atlantic, off Gambia", full: "North Atlantic Ocean, off Banjul, Gambia"))
     }
 
+    @Test func oneWordOceanKeepsOcean() {
+        let table = PlaceTable(places: [PlaceRecord(name: "Galle", admin1: nil, country: "LK", latitude: 6.03, longitude: 80.22)],
+                               regions: [RegionRecord(name: "Indian Ocean", kind: .sea, rings: [[(70, -10), (90, -10), (90, 5), (70, 5)]])])
+        #expect(PlaceName.describe(latitude: 4.8, longitude: 80.2, in: table, countryName: { $0 == "LK" ? "Sri Lanka" : $0 })?.short
+                == "Indian Ocean, off Sri Lanka")
+    }
+
     @Test func regionNearCountry() {
         #expect(describe(31.0, 9.0) == PlaceName(short: "Sahara, near Tunisia", full: "Sahara, near Tunisia"))
     }
