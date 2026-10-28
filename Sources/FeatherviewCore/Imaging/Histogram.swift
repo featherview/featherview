@@ -104,8 +104,9 @@ public struct Histogram: Equatable, Sendable {
         }
         guard drawn else { return empty }
         var counts = empty
-        let scale = Float(255 / headroom), top = Float(headroom)
-        func bin(_ value: Float) -> Int { value.isNaN ? 0 : Int(min(255, max(0, value * scale))) }
+        // Float rounding (the weights' sum, the drawing) leaves a value at the headroom a few ulps low: it still clips.
+        let scale = Float(255 / headroom), top = Float(headroom) * (1 - 1e-6)
+        func bin(_ value: Float) -> Int { value.isNaN ? 0 : value >= top ? 255 : Int(min(255, max(0, value * scale))) }
         for row in 0..<height {
             if row % 64 == 0, Task.isCancelled { break }
             for i in stride(from: row * width * 4, to: (row + 1) * width * 4, by: 4) {

@@ -37,6 +37,16 @@ import Testing
         #expect(abs(histogram.highlightsClipped - 2.0 / 19) < 1e-9)
     }
 
+    @Test(arguments: [2.8, 4.0])
+    func hdrWhiteAtHeadroomClips(headroom: Double) throws {
+        // White at exactly the headroom; at 2.8 the Float-weighted luminance sum rounds one ulp low.
+        let v = Float(headroom)
+        let histogram = Histogram.compute(try hdrImage(2, 1, [v, v, v, 1, v, v, v, 1]), headroom: headroom)
+        #expect(histogram.highlightsClipped == 1)
+        #expect(peak(histogram.luminance) == 255)
+        #expect(peak(histogram.red) == 255)
+    }
+
     @Test func largeHdrSampledKeepsFractions() throws {
         // 2000 × 2000, top half black, bottom half at linear 2.0.
         let half = 2000 * 1000
