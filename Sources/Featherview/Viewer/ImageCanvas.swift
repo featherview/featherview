@@ -223,6 +223,7 @@ struct ImageCanvas: NSViewRepresentable {
                 context.timingFunction = CAMediaTimingFunction(name: panelRefit ? .easeInEaseOut : .easeOut)
                 view.animator().setFrameSize(size)
                 clip.animator().setBoundsOrigin(target)
+                view.animateShadows(from: oldSize, to: size, duration: context.duration, timing: context.timingFunction)
             } completionHandler: {
                 MainActor.assumeIsolated {
                     scrollView.reflectScrolledClipView(clip)
@@ -335,6 +336,8 @@ private final class ImageLayerView: NSView {
         imageLayer.contentsGravity = .resize
         imageLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
         pictureLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+        // Shadows and hairline follow an animated zoom like the picture does.
+        for layer in shadowLayers + [hairline] { layer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable] }
         for shadow in shadowLayers.reversed() { pictureLayer.addSublayer(shadow) }
         hairline.borderWidth = 1
         pictureLayer.addSublayer(hairline)
@@ -371,6 +374,20 @@ private final class ImageLayerView: NSView {
             layer.shadowPath = CGPath(rect: CGRect(origin: .zero, size: bounds.size), transform: nil)
         }
         place(hairline, outset: 1)
+    }
+
+    /// Grows or shrinks the shadows with a zoom: a shadow path doesn't follow its layer's bounds, so without
+    /// this they jump to the new size while the picture still animates to it.
+    func animateShadows(from old: CGSize, to new: CGSize, duration: TimeInterval, timing: CAMediaTimingFunction?) {
+        guard framed else { return }
+        for layer in shadowLayers {
+            let animation = CABasicAnimation(keyPath: "shadowPath")
+            animation.fromValue = CGPath(rect: CGRect(origin: .zero, size: old), transform: nil)
+            animation.toValue = CGPath(rect: CGRect(origin: .zero, size: new), transform: nil)
+            animation.duration = duration
+            animation.timingFunction = timing
+            layer.add(animation, forKey: "zoom")
+        }
     }
 
     /// Bounds and position, not frame: the layers may carry a rotation (`turn`).
