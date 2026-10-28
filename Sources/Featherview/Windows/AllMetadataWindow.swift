@@ -48,6 +48,8 @@ private struct AllMetadataView: View {
 
     /// nil without an image or before its first read.
     @State private var catalog: MetadataCatalog?
+    /// The image `catalog` belongs to.
+    @State private var catalogURL: URL?
     @State private var query = ""
     @State private var selection: Set<MetadataEntry.ID> = []
     @State private var collapsed: Set<MetadataSection.ID> = []
@@ -65,7 +67,7 @@ private struct AllMetadataView: View {
         shown.flatMap(\.entries).filter { selection.contains($0.id) }
     }
     private var title: String {
-        guard let name = key.url?.lastPathComponent else { return String(localized: "All Metadata") }
+        guard let name = catalogURL?.lastPathComponent else { return String(localized: "All Metadata") }
         return String(localized: "\(name) — All Metadata")
     }
 
@@ -76,8 +78,9 @@ private struct AllMetadataView: View {
                     .textFieldStyle(.roundedBorder)
                     .focused($focus, equals: .search)
                     .onSubmit {
-                        // Return moves to the first match.
-                        guard let first = visibleEntries.first else { return }
+                        // Return moves to the first match, opening its group if it was closed.
+                        guard let section = shown.first, let first = section.entries.first else { return }
+                        collapsed.remove(section.id)
                         selection = [first.id]
                         focus = .list
                     }
@@ -140,11 +143,14 @@ private struct AllMetadataView: View {
         }
         .onChange(of: title, initial: true) { AllMetadataWindow.panel?.title = title }
         .task(id: key) {
-            guard let url = key.url else { catalog = nil; return }
+            // Another image: never show the last one's entries under its name while this one is read.
+            if key.url != catalogURL { catalog = nil; catalogURL = nil; selection = [] }
+            guard let url = key.url else { return }
             let read = await Task.detached(priority: .userInitiated) { MetadataCatalog.read(url) }.value
             // A later image's read replaced this one: its task was cancelled.
             guard !Task.isCancelled else { return }
             catalog = read
+            catalogURL = url
             selection = []
         }
     }
