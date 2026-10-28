@@ -19,7 +19,7 @@ import Testing
 
     @Test func transparentPixelsNotCounted() throws {
         var image = Fixtures.solid(100, 100, (255, 255, 255, 255))
-        for y in 0..<50 { for x in 0..<100 { image[x, y] = (0, 0, 0, 0) } }
+        for y in 0..<50 { for x in 0..<100 { image[x, y] = (200, 50, 50, 0) } }
         let histogram = Histogram.compute(try #require(image.makeCGImage()), headroom: nil)
         #expect(histogram.shadowsClipped == 0)
         #expect(histogram.highlightsClipped == 1)
@@ -47,7 +47,7 @@ import Testing
         #expect(peak(histogram.red) == 255)
     }
 
-    @Test func largeHdrSampledKeepsFractions() throws {
+    @Test func largeHdrCountsEveryPixel() throws {
         // 2000 × 2000, top half black, bottom half at linear 2.0.
         let half = 2000 * 1000
         let floats = [Float](unsafeUninitializedCapacity: 2 * half * 4) { buffer, count in
@@ -58,23 +58,45 @@ import Testing
             count = 2 * half * 4
         }
         let histogram = Histogram.compute(try hdrImage(2000, 2000, floats), headroom: 4)
-        #expect(abs(histogram.shadowsClipped - 0.5) < 0.01)
+        #expect(histogram.shadowsClipped == 0.5)
         #expect(histogram.highlightsClipped == 0)
-        #expect(peak(histogram.luminance) == 0 || peak(histogram.luminance) == 127)
+        #expect(histogram.luminance[0] == 1)
+        #expect(histogram.luminance[127] == 1)
     }
 
-    @Test func largeSdrSampledKeepsFractions() throws {
-        // 2400 × 2400, top half black, bottom half white, and a 1 px white column that sampling steps over.
-        let width = 2400, half = width * width / 2
-        var pixels = [UInt8](repeating: 255, count: width * width * 4)
-        for i in 0..<half { pixels[i * 4] = 0; pixels[i * 4 + 1] = 0; pixels[i * 4 + 2] = 0 }
-        for y in 0..<(width / 2) { let i = (y * width + 1) * 4; pixels[i] = 255; pixels[i + 1] = 255; pixels[i + 2] = 255 }
+    @Test func onePixelColumnCountedExactly() throws {
+        // 2400 × 2400 black with a 1 px white column: every pixel counts.
+        let width = 2400
+        var pixels = [UInt8](repeating: 0, count: width * width * 4)
+        for i in stride(from: 3, to: pixels.count, by: 4) { pixels[i] = 255 }
+        for y in 0..<width { let i = (y * width + 1) * 4; pixels[i] = 255; pixels[i + 1] = 255; pixels[i + 2] = 255 }
         let image = try #require(RGBAImage(width: width, height: width, pixels: pixels).makeCGImage())
         let histogram = Histogram.compute(image, headroom: nil)
-        #expect(abs(histogram.shadowsClipped - 0.5) < 0.01)
-        #expect(abs(histogram.highlightsClipped - 0.5) < 0.01)
-        // Full size would count the column's 1200 pixels: (half + 1200) / total.
-        #expect(histogram.highlightsClipped != Double(half + width / 2) / Double(width * width))
+        #expect(histogram.highlightsClipped == Double(width) / Double(width * width))
+        #expect(histogram.shadowsClipped == Double(width * width - width) / Double(width * width))
+    }
+
+    @Test func displayP3CountedInItsOwnSpace() throws {
+        // A saturated P3 red at (230, 20, 20): in sRGB it would clamp to 255 / 0 and look clipped.
+        let pixels = [UInt8]((0..<64).flatMap { _ in [230, 20, 20, 255] as [UInt8] })
+        let image = try #require(CGImage(
+            width: 8, height: 8, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: 32,
+            space: CGColorSpace(name: CGColorSpace.displayP3)!,
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+            provider: CGDataProvider(data: Data(pixels) as CFData)!, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+        let histogram = Histogram.compute(image, headroom: nil)
+        #expect(peak(histogram.red) == 230)
+        #expect(peak(histogram.green) == 20)
+        #expect(histogram.highlightsClipped == 0)
+        #expect(histogram.shadowsClipped == 0)
+    }
+
+    @Test func faintPixelsNotClipped() throws {
+        let image = try #require(Fixtures.solid(10, 10, (128, 128, 128, 1)).makeCGImage())
+        let histogram = Histogram.compute(image, headroom: nil)
+        #expect(histogram.shadowsClipped == 0)
+        #expect(histogram.highlightsClipped == 0)
+        #expect(peak(histogram.luminance) == 128)
     }
 
     @Test func solidMidGreyFillsOneBin() throws {
