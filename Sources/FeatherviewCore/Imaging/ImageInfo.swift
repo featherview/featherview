@@ -230,15 +230,24 @@ public struct ImageInfo: Equatable, Sendable {
 
     /// The gain map's headroom (linear, 4 = two stops), nil without one.
     private static func gainMapHeadroom(_ source: CGImageSource) -> Double? {
-        func value(_ type: CFString, _ path: String) -> Double? {
+        func value(_ type: CFString, _ path: String) -> String? {
             let info = CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, type) as? [CFString: Any]
             let metadata = info?[kCGImageAuxiliaryDataInfoMetadata].map { $0 as! CGImageMetadata }
-            return strings(metadata, path).first.flatMap(Double.init)
+            return strings(metadata, path).first
         }
-        if #available(macOS 15, *), let stops = value(kCGImageAuxiliaryDataTypeISOGainMap, "HDRToneMap:AlternateHeadroom") { return pow(2, stops) }
+        if #available(macOS 15, *), let iso = headroom(value(kCGImageAuxiliaryDataTypeISOGainMap, "HDRToneMap:AlternateHeadroom"), stops: true) {
+            return iso
+        }
         // shortcut: Apple gain maps without HDRGainMapHeadroom (older iPhones keep it in the maker note) show as SDR,
         // read the maker note when users miss their HDR row.
-        return value(kCGImageAuxiliaryDataTypeHDRGainMap, "HDRGainMap:HDRGainMapHeadroom")
+        return headroom(value(kCGImageAuxiliaryDataTypeHDRGainMap, "HDRGainMap:HDRGainMapHeadroom"), stops: false)
+    }
+
+    /// A headroom from XMP text (in stops for ISO gain maps), nil unless it is a finite gain above 1: anything else is SDR.
+    static func headroom(_ text: String?, stops: Bool) -> Double? {
+        guard let value = text.flatMap(Double.init) else { return nil }
+        let linear = stops ? pow(2, value) : value
+        return linear.isFinite && linear > 1 ? linear : nil
     }
 
     /// The JPEG COM segment's text, which ImageIO leaves out. Reads segment headers only, up to the scan, with plain

@@ -283,7 +283,7 @@ public enum ImageDecoder {
             && type.flatMap { UTType($0 as String) }.map { t in hdrFormats.contains { t.conforms(to: $0) } } == true
     }
 
-    private static func isHDR(_ space: CGColorSpace?) -> Bool {
+    static func isHDR(_ space: CGColorSpace?) -> Bool {
         space.map { CGColorSpaceUsesITUR_2100TF($0) || CGColorSpaceUsesExtendedRange($0) } ?? false
     }
 

@@ -134,6 +134,25 @@ import Testing
         #expect(peak(histogram.blue) == 0)
     }
 
+    @Test func sdrPictureIgnoresTheFilesHeadroom() throws {
+        // A gain-map file decoded SDR (macOS 14): its 8-bit picture is binned as SDR, white clips.
+        let image = try #require(Fixtures.solid(8, 8, (255, 255, 255, 255)).makeCGImage())
+        let histogram = Histogram.compute(image, headroom: 4)
+        #expect(histogram.headroom == nil)
+        #expect(histogram.highlightsClipped == 1)
+        #expect(peak(histogram.luminance) == 255)
+    }
+
+    @Test func cancelledCountGivesNothing() async throws {
+        let image = try #require(Fixtures.solid(64, 64, (128, 128, 128, 255)).makeCGImage())
+        let cancelled = await Task { () -> Histogram? in
+            withUnsafeCurrentTask { $0?.cancel() }
+            return await Histogram.counted(image, headroom: nil)
+        }.value
+        #expect(cancelled == nil)
+        #expect(await Histogram.counted(image, headroom: nil) == Histogram.compute(image, headroom: nil))
+    }
+
     @Test func hdrSpansHeadroom() throws {
         // One extended linear sRGB pixel at 2.0 in every channel.
         let floats: [Float] = [2, 2, 2, 1]
@@ -148,6 +167,28 @@ import Testing
         #expect(histogram.headroom == 4)
         #expect(peak(histogram.luminance) == 127)
         #expect(peak(histogram.red) == 127)
+    }
+
+    // A zoom decode larger than the screen is counted at the screen-fit size, never copied at full size.
+    @Test func fittedScalesDownToTheScreen() throws {
+        let screens = [PixelSize(width: 400, height: 400)]
+        let large = try #require(Fixtures.solid(1000, 500, (200, 50, 50, 255)).makeCGImage())
+        let fitted = try #require(Histogram.fitted(large, screens: screens))
+        #expect((fitted.width, fitted.height) == (400, 200))
+        let histogram = Histogram.compute(fitted, headroom: nil)
+        #expect(peak(histogram.red) == 200)
+        #expect(peak(histogram.green) == 50)
+        let small = try #require(Fixtures.solid(400, 300, (1, 2, 3, 255)).makeCGImage())
+        #expect(Histogram.fitted(small, screens: screens) === small)
+    }
+
+    @Test func fittedHdrStaysHdr() throws {
+        let floats = [Float](repeating: 2, count: 3000 * 10 * 4).enumerated().map { $0.offset % 4 == 3 ? 1 : $0.element }
+        let fitted = try #require(Histogram.fitted(try hdrImage(3000, 10, floats), screens: [PixelSize(width: 1500, height: 1000)]))
+        #expect((fitted.width, fitted.height) == (1500, 5))
+        let histogram = Histogram.compute(fitted, headroom: 4)
+        #expect(histogram.headroom == 4)
+        #expect(peak(histogram.luminance) == 127)
     }
 
     @Test func clippedText() {

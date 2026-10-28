@@ -1,6 +1,7 @@
 import Accelerate
 import CoreGraphics
 import Foundation
+import os
 
 /// The info panel's histogram: 256 bins per channel, computed from the picture already decoded for the screen.
 public struct Histogram: Equatable, Sendable {
@@ -22,8 +23,25 @@ public struct Histogram: Equatable, Sendable {
     /// Rec. 709 luminance weights for R, G, B.
     private static let weights: (Float, Float, Float) = (0.2126, 0.7152, 0.0722)
 
-    public static func compute(_ image: CGImage, headroom: Double?) -> Histogram {
-        let counts = if let headroom, headroom > 1 { hdrCounts(image, headroom: headroom) } else { sdrCounts(image) }
+    /// Counts `image` off the caller's actor, in a child of the calling task: nil once that task is cancelled,
+    /// which also stops the count.
+    /// `fitting`: scale `image` down to fit these screens first (a zoom decode, which can be full size).
+    public static func counted(_ image: CGImage, headroom: Double?, fitting screens: [PixelSize]? = nil) async -> Histogram? {
+        let stopped = OSAllocatedUnfairLock(initialState: false)
+        let result: Histogram? = await withTaskCancellationHandler {
+            guard !Task.isCancelled, let image = screens.map({ fitted(image, screens: $0) }) ?? image else { return nil }
+            return compute(image, headroom: headroom, stop: { stopped.withLock { $0 } })
+        } onCancel: {
+            stopped.withLock { $0 = true }
+        }
+        return Task.isCancelled ? nil : result
+    }
+
+    /// `headroom` is the file's; a picture decoded SDR (no extended range, no PQ/HLG, as before macOS 15) is counted
+    /// as SDR whatever it is. `stop` is polled from every worker thread; a stopped count is incomplete.
+    public static func compute(_ image: CGImage, headroom: Double?, stop: @Sendable () -> Bool = { false }) -> Histogram {
+        let headroom = ImageDecoder.isHDR(image.colorSpace) ? headroom : nil
+        let counts = if let headroom, headroom > 1 { hdrCounts(image, headroom: headroom, stop: stop) } else { sdrCounts(image, stop: stop) }
         let pixels = Double(max(1, counts.total))
         let tallest = Float(counts.luminance.max() ?? 0)
         let scale: ([UInt]) -> [Float] = { bins in bins.map { tallest > 0 ? Float($0) / tallest : 0 } }
@@ -31,6 +49,27 @@ public struct Histogram: Equatable, Sendable {
             luminance: scale(counts.luminance), red: scale(counts.red), green: scale(counts.green), blue: scale(counts.blue),
             shadowsClipped: Double(counts.shadows) / pixels, highlightsClipped: Double(counts.highlights) / pixels,
             headroom: headroom.flatMap { $0 > 1 ? $0 : nil })
+    }
+
+    /// `image` scaled down to the size that fits `screens` when it is larger, so a count copies no more pixels than a
+    /// fit decode has; `image` itself when it already fits. HDR is drawn in extended linear sRGB, which the count
+    /// converts to anyway. nil if no context can be made.
+    public static func fitted(_ image: CGImage, screens: [PixelSize]) -> CGImage? {
+        let longest = max(image.width, image.height)
+        let target = ImageDecoder.fitNeededSize(image: PixelSize(width: image.width, height: image.height), screens: screens)
+        guard target < longest else { return image }
+        let width = max(1, (image.width * target + longest / 2) / longest)
+        let height = max(1, (image.height * target + longest / 2) / longest)
+        let hdr = ImageDecoder.isHDR(image.colorSpace)
+        let space = hdr ? CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!
+            : image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? CGColorSpace(name: CGColorSpace.sRGB)!
+        let info = CGImageAlphaInfo.premultipliedLast.rawValue
+            | (hdr ? CGBitmapInfo.floatComponents.rawValue | CGBitmapInfo.byteOrder16Little.rawValue : 0)
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: hdr ? 16 : 8,
+                                      bytesPerRow: 0, space: space, bitmapInfo: info) else { return nil }
+        context.interpolationQuality = .medium
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage()
     }
 
     /// Bins, the pixels at black and at the brightest level, and all pixels counted (transparent ones are left out).
@@ -42,7 +81,7 @@ public struct Histogram: Equatable, Sendable {
 
     /// RGBA8 levels in the picture's own RGB space (sRGB for other spaces), straight alpha, every pixel;
     /// luminance from the encoded values as photo editors show it.
-    private static func sdrCounts(_ image: CGImage) -> Counts {
+    private static func sdrCounts(_ image: CGImage, stop: @Sendable () -> Bool) -> Counts {
         let space = image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? CGColorSpace(name: CGColorSpace.sRGB)!
         guard image.width > 0, image.height > 0,
               let format = vImage_CGImageFormat(bitsPerComponent: 8, bitsPerPixel: 32, colorSpace: space,
@@ -60,7 +99,7 @@ public struct Histogram: Equatable, Sendable {
                 nonisolated(unsafe) let source = source, parts = partsBuffer, plane = planeBuffer
                 DispatchQueue.concurrentPerform(iterations: strips) { strip in
                     let first = strip * stripRows, rows = min(stripRows, height - first)
-                    guard rows > 0 else { return }
+                    guard rows > 0, !stop() else { return }
                     var part = vImage_Buffer(data: source.data + first * source.rowBytes, height: vImagePixelCount(rows),
                                              width: source.width, rowBytes: source.rowBytes)
                     let bins = parts.baseAddress! + strip * 5 * 256
@@ -96,7 +135,7 @@ public struct Histogram: Equatable, Sendable {
 
     /// Extended linear sRGB floats, straight alpha, every pixel, binned over 0...headroom; values outside land in
     /// the end bins. Clipping is counted from the values themselves: luminance <= 0 and >= headroom.
-    private static func hdrCounts(_ image: CGImage, headroom: Double) -> Counts {
+    private static func hdrCounts(_ image: CGImage, headroom: Double, stop: @Sendable () -> Bool) -> Counts {
         guard image.width > 0, image.height > 0,
               let format = vImage_CGImageFormat(
                   bitsPerComponent: 32, bitsPerPixel: 128, colorSpace: CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!,
@@ -121,7 +160,7 @@ public struct Histogram: Equatable, Sendable {
                     value >= top ? 255 : Int((min(255, max(0, value * scale)).rounded(.down) + 0x1p23).bitPattern & 0xFF)
                 }
                 for row in (strip * stripRows)..<min(height, (strip + 1) * stripRows) {
-                    if row % 64 == 0, Task.isCancelled { break }
+                    if row % 64 == 0, stop() { break }
                     let pixels = (source.data + row * source.rowBytes).assumingMemoryBound(to: Float.self)
                     for i in Swift.stride(from: 0, to: width * 4, by: 4) where pixels[i + 3] > 0 {
                         let r = pixels[i], g = pixels[i + 1], b = pixels[i + 2]

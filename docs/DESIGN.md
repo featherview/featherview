@@ -52,6 +52,12 @@ toolbar, title bar and glass with it. Use system dynamic colours where one exist
 | Accent | #FF7A59 (feather coral) | #B8552B (feather brown) | The app's accent colour (`Resources/Assets.xcassets`, `NSAccentColorName`): selected row fill and prominent buttons with on-accent text (white in light, graphite #1C1C20 in dark: white on the coral is 2.6:1), toggled-on toolbar glyph, switches, Settings tab. macOS uses it while the system accent is Multicolor. |
 | Toggled pill | rgba(255,255,255,0.12) | rgba(0,0,0,0.08) | Behind an active toolbar item (Info while the panel is open), 14 pt radius. |
 | Feather mark | #FFC766 → #FF7A59, linear 0,0 → 1,1 | same | Only the empty-window hint and About. The one warm note in the app. |
+| Histogram line / fill | accent / accent 0.14 | same | Info panel luminance histogram. |
+| Histogram channels | rgb(255,105,105,0.85) · rgb(110,225,140,0.85) · rgb(120,170,255,0.9) | same | RGB mode: thin red, green, blue lines under the luminance. |
+| Clip mark (off) | rgba(255,255,255,0.45) | rgba(0,0,0,0.45) | Outlined clip mark; filled in the accent when more than 0.1 % clips. |
+| Tile fill | rgba(255,255,255,0.06) | rgba(0,0,0,0.05) | Info panel exposure tiles. |
+| Chip fill / line | rgba(255,255,255,0.06) / 0.10 | rgba(0,0,0,0.04) / 0.10 | Info panel chips (exposure bias, flash, white balance, metering). |
+| Focus ring | accent, 2 pt, 1 pt outside the shape | same | Keyboard focus in the info panel, shown whether or not keyboard navigation is on in System Settings. |
 
 ## Materials
 
@@ -132,11 +138,28 @@ are not available there and become the system's group gaps.
 |---|---|---|
 | Status strip | 1196 × 28 · x 12 · y 664 · capsule · glass fill · E2 | Padding 0 × 14; items: pixel size · zoom % · file size · position · date; gap 12; separators 1 × 12 (0.16 dark). Strip token, 11 Regular, tabular. |
 | Empty hint card | 300 × 168 · centred in the fit area · radius 18 · flat, not glass: card fill and card line (the info panel's), E0 | Padding 24 × 28, column, gap 12: feather 44 × 44 (no tile) · hint 13 Regular secondary · key caps ⌘O and O, gap 6. Toolbar disabled; no strip. |
-| Info panel (I) | 280 × 596 · trailing inset 12 · y 60 · radius 16 · panel fill · E3 | Padding 16, column, gap 12. Header 24 tall, 4 pt side padding: file name 13 Semibold, ellipsis; format badge 11 Medium (fill 0.08, line 0.12, radius 4). Rows in a 10 pt card (fill 0.04, line 0.06): rows 40 tall, padding 0 × 12, label primary · value secondary tabular, 1 pt inset separators. Slides in from trailing 180 ms; picture and strip refit in the same animation. |
+| Info panel (I) | 280 wide, full fit-area height · trailing inset 12 · radius 16 · panel fill · E3 | Design B2-1b-2 (<https://claude.ai/artifact/Lf6bXo8PaC2Exi6A6Unvmx>), see "Info panel" below. Padding 16, column, gap 10, scrolls as a whole. Slides in from trailing 180 ms; picture and strip refit in the same animation. |
 | Folder chooser | 400 wide · centred in the fit area · radius 16 · sheet fill · E4 | Padding 16, column, gap 12. Header 20 tall: folder glyph 16 secondary · folder name 15 Semibold · trailing caption "end of folder" tertiary. Rows 40 tall, radius 9, padding 0 × 12, gap 10: glyph 16 · label 13 · count secondary tabular. Highlighted row: accent fill, on-accent label Medium, count on-accent 0.75. Footer: key caps → ← ↩ esc with their verbs, 11 tertiary, separated by 1 × 10 lines. |
 | Move to Folder (F7 / F8) | 480 wide · centred in the fit area · radius 16 · sheet fill · E4 | Padding 16, column, gap 12. Header 20 tall: "Move to Folder" 15 Semibold · trailing "F7" tertiary (F8: "Copy to Folder" / "F8"). 14 rows × 32, radius 8, padding 0 6 0 5, gap 10: key cap 22 × 22 · label 13 (folder primary, "Empty" tertiary) · "Choose…" 22 tall. Highlighted row: accent fill; key cap and button on-accent fills (white 0.22 / 0.20 in light, black 0.14 / 0.12 in dark) with on-accent text. Footer hint 11 tertiary with ↩ and esc key caps. |
 | Slideshow controls (full screen) | auto × 36 · centred · 24 above the bottom edge · radius 18 · glass fill · E3 | Padding 4, row, gap 4: four borderless items 36 × 28 — chevron.backward · play.fill / pause.fill · chevron.forward (13 Semibold) · xmark (15 Medium), label primary. Shows when the pointer moves, fades out after 2 s at rest unless the pointer is over it (in 120 ms, out 200 ms, opacity only); the pointer hides with it when "Hide the pointer" is on. Paused or finished, it stays up with play. Not shown while playing in the window. |
 | Key caps | auto × 20 · radius 5 (footer: 4) | Key-cap token. ⌘ and arrows as text (→ ← ↑ ↩), "esc" lower case. Never an icon font. |
+
+## Info panel
+
+Design B2-1b-2 (canvas <https://claude.ai/artifact/Lf6bXo8PaC2Exi6A6Unvmx>, board "B2-1b-2 · Dark (main)");
+behaviour in `docs/spec.md` "Info panel".
+
+| Part | Spec |
+|---|---|
+| Header | 4 pt side padding, lines 2 apart: file name 13 Semibold title colour, cut in the middle, full name as tooltip; format line 11 secondary tabular ("JPEG · 3,000 × 2,000 · 476 KB"); with a place, 3 below: accent pin + short place 11 primary, up to two lines. |
+| Histogram | "Histogram" 11 Semibold secondary and the Luminance / RGB control trailing (segments 10 Medium, padding 2 × 7, radius 5; on segment toggled-pill fill, accent text; track card fill, radius 6, padding 2). Plot 60 tall, full width, card fill, card line, radius 6, quarter grid lines (row separator). Luminance: 1.5 pt accent line over an accent 0.14 fill; RGB adds 1 pt channel lines under it. Clip marks: 11 × 10 triangles 3 pt in from the bottom corners, outlined (clip mark off, 1.2 pt) or filled accent; a click shows "Highlights: 2.4 % clipped" in a small bubble (11, background colour, chip line, radius 4) at the top of the plot. HDR: dashed 1.0 marker at 1 / headroom of the width, a 10 pt scale row under the plot ("1.0" at the marker, "3.2×" trailing). The plot never mirrors. |
+| Groups | Cards: card fill, card line, radius 10. Header 36 tall, padding 0 × 12, gap 7: accent glyph · title 12 Semibold · closed summary 12 secondary tabular, trailing, one line · chevron (forward closed, down open) secondary. Order Camera, Image, Location, Description, File; empty groups left out. |
+| Rows | 32 tall, padding 0 × 12, 1 pt separator above each (row separator), label 12 secondary · value 12 primary tabular, trailing, one line cut in the middle with the full value as tooltip; Description's texts wrap (9 pt vertical padding). |
+| Tiles | Camera, inset 2 × 8 (10 bottom): four tiles 4 apart, tile fill, radius 8, padding 6 × 2 × 5: number 14 Semibold primary tabular (shrinks to 0.8), under it accent glyph + unit 10 secondary. Shutter "sec" with a timer glyph, aperture "ƒ stop", ISO "ISO speed", focal length "mm" with a lens glyph. |
+| Chips | 8 under the tiles, wrapping, 5 apart: capsule, chip fill and line, padding 3 × 8, accent glyph + text 11 primary. |
+| Place line | Location's first line: full place 13 Semibold primary, up to two lines, padding 0 × 12, 9 below. |
+| Buttons | "Open in Maps" (map glyph), "Show in Finder" (folder glyph) in a trailing row of their group; "Show all metadata…" leading at the bottom. Small button: 22 tall, padding 0 × 10, radius 6, key-cap fill, hairline 0.12, glyph + 12 Medium. |
+| Keyboard | Tab from the picture enters at the mode control (⇧Tab at "Show all metadata…"); order: mode, clip marks, each group header with its open group's button, "Show all metadata…"; past either end and Esc go back to the picture. The focused control shows the focus ring and scrolls into view. |
 
 ## Motion
 
@@ -166,4 +189,7 @@ are not available there and become the system's group gaps.
 | Settings | 560 wide, the app's appearance. Viewer › Appearance: three 128 × 82 miniature viewer windows (System split corner to corner, Light, Dark), radius 8, chosen one with a 3 pt accent ring and its name semibold in the accent. Header 96: pane title 13 Semibold in the top 40; tab row of 72 × 46 pills (gap 4), glyph 22 + label 11 Medium, selected pill 0.10 / 0.07 with accent glyph and label. Content padding 22 × 24, sections 22 apart: header 13 Semibold, 8 gap, card radius 10, rows 44 (52 two-line), padding 0 × 14, inset separators. Push buttons 28 radius 7; pop-ups 26 with accent chevron square 16 × 16 radius 4; switches 38 × 22, system. Browsing › Default app: one row per common type, its current app secondary and a "Use Featherview" push button trailing. |
 | About | 320 × 440, close button only, the app's appearance, never restored at launch. Icon tile 128, radius 28.8, gradient #23232C → #101015, E4. Behind it a 280 pt radial glow in the feather colours (0.26 → 0 dark, 0.45 → 0 light). Name 22 / 28 Semibold, tagline 13 secondary, "Version" tertiary with the build in a key cap (tabular), hairline, copyright 11 tertiary, two accent links 11. Featherview keeps About's other content (Report a Problem, formats, licence) below the hairline. |
 | Update notice | 480 wide, About's background, close button only, never restored. 44 pt feather mark leading, 12 gap; title 15 Semibold, "You have …" secondary 6 below; release notes in a card (radius 10, Settings card fill and line) 180 tall, scrolling; Skip This Version leading, Later and Download (default) trailing. Padding 40 / 24 / 20 / 24. |
+| Accessibility · focus | Info panel controls take the keyboard whether or not keyboard navigation is on and show the focus ring (accent 2 pt, 1 pt outside the shape) only while focused. |
+| Accessibility · Increase Contrast | Info panel: secondary text becomes primary, hairlines (card lines, separators, grid) 1.5 pt. Also with Differentiate Without Colour. |
+| Accessibility · Reduce Motion | Info panel groups open and close as a cut; scrolling to the focused control jumps. |
 | Batch window | Three columns stay. Sidebar rows 32 tall, 8 pt radius, selected row accent with on-accent text; "on" badges secondary tabular; cards as in Settings. |

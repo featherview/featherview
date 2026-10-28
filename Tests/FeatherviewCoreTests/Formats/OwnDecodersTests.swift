@@ -61,9 +61,10 @@ import Testing
 
     @Test func infoPanelShowsOwnFormatDimensions() throws {
         let url = try toyFile(width: 4, height: 2)
-        let labels = MetadataReader.fields(for: url).map(\.label)
-        #expect(labels == ["Dimensions", "File size"])
-        #expect(MetadataReader.fields(for: url).first?.value == "4 × 2")
+        let info = ImageInfo.read(url)
+        #expect(info.picture.dimensions?.hasPrefix("4 × 2 · ") == true)
+        #expect(info.formatLine.contains("4 × 2"))
+        #expect(info.camera == nil && info.taken == nil && info.gps == nil && info.picture.profile == nil)
     }
 
     @Test func registeringAgainReplacesTheFormat() {

@@ -40,9 +40,13 @@ final class ViewerModel {
     var image: CGImage? {
         didSet {
             isLeaving = false
+            if image == nil { fitImage = nil }
             if compareSession != nil, image !== oldValue { updateAvailability(); updateDifference() }
         }
     }
+    /// The fit-size decode of the file and page on screen, for the info panel's histogram (spec: counted from the
+    /// screen-size picture); nil while zoomed into one never shown at fit.
+    private(set) var fitImage: CGImage?
     var pendingChanges = PendingChanges()
     var pendingTransform: PictureTransform { pendingChanges.transform }
     /// True while a trashed or moved picture fades out before the next one shows.
@@ -628,7 +632,7 @@ final class ViewerModel {
         navigation = (Signposts.poster.beginInterval("Navigate", id: Signposts.poster.makeSignpostID(),
                                                      "\(url.lastPathComponent, privacy: .public)"),
                       url, prefetched != nil, nil)
-        if let prefetched { shown(prefetched, url: url, page: page, started: started) }
+        if let prefetched { shown(prefetched, url: url, page: page, fit: true, started: started) }
         shownStep = nil
         loadTask = Task {
             // Set while zoomed (page 0): its neighbours are prefetched.
@@ -666,7 +670,7 @@ final class ViewerModel {
                     decoded = try await decode.cache.image(for: url, target: decode.target)
                 }
                 guard !Task.isCancelled else { return }
-                if prefetched == nil { shown(decoded, url: url, page: page, started: started) }
+                if prefetched == nil { shown(decoded, url: url, page: page, fit: size != nil, started: started) }
                 if page == 0 { play(url, target: target, first: decoded) }
                 // Read again unless the prefetch's read is still current: our own rewrites drop it, and a stat
                 // catches an app that changed the file elsewhere (the folder watch sees only entries come and go).
@@ -745,6 +749,11 @@ final class ViewerModel {
         return neighbors
     }
 
+    /// The kept fit-size decode of the picture on screen, for the info panel's histogram while `fitImage` is nil.
+    func keptFit() -> CGImage? {
+        onScreen.flatMap { cache.fitPicture($0.url, page: $0.page, screens: screens) }
+    }
+
     /// The halving step to decode zoomed `url` at, for the current factor, and the cache it goes in: `cache`
     /// when that step is no larger than the fit decode, else the one-image `fullSizeCache`. Full size in
     /// `fullSizeCache` when the size can't be read (the decode then reports the file). `size` is the file's pixel size.
@@ -812,7 +821,7 @@ final class ViewerModel {
 
     /// Puts a decoded image on screen with its file info, in the same update: the status bar would
     /// otherwise draw without size and date first.
-    private func shown(_ decoded: CGImage, url: URL, page: Int, started: ContinuousClock.Instant) {
+    private func shown(_ decoded: CGImage, url: URL, page: Int, fit: Bool, started: ContinuousClock.Instant) {
         let info = FileInfo.shown(url: url, page: page, known: knownInfo[url], current: fileInfo)
         if info != fileInfo { fileInfo = info }
         if let navigation, navigation.url == url {
@@ -822,6 +831,11 @@ final class ViewerModel {
         if image !== decoded { pendingChanges.decoded(url) }
         if image == nil || onScreen.map({ $0.url != url || $0.page != page }) ?? true {
             arrival = (arrival.id + 1, AppSettings.keepZoom.value() ? .keep : zoom.start)
+        }
+        if fit {
+            fitImage = decoded
+        } else if onScreen.map({ $0.url != url || $0.page != page }) ?? true {
+            fitImage = nil
         }
         onScreen = (url, page)
         if shownZoom != zoom { shownZoom = zoom }
@@ -1806,7 +1820,7 @@ final class ViewerModel {
     var isFullScreen = false
     /// Window › Float on Top, per window, not remembered.
     var isFloating = false { didSet { window?.level = isFloating ? .floating : .normal } }
-    /// True while the viewer itself has the keyboard, not a text field or selected text beside it;
+    /// True while the viewer itself or an info panel control has the keyboard, not a text field or selected text beside it;
     /// ⌘C copies the image only then. Kept up to date by the view.
     var hasKeyboardFocus = false
 

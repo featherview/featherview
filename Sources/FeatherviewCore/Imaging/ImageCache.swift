@@ -94,6 +94,12 @@ public actor ImageCache {
         return image
     }
 
+    /// The kept fit decode of `url`'s `page` (the info panel's histogram while zoomed), never a new decode: the
+    /// spec counts the histogram from a picture already decoded. Only page 0 is kept.
+    public nonisolated func fitPicture(_ url: URL, page: Int, screens: [PixelSize]) -> CGImage? {
+        page == 0 ? cached(url, target: .fit(screens)) : nil
+    }
+
     private func leave(_ task: Task<CGImage, Error>) {
         guard let count = waiters[task] else { return }
         waiters[task] = count - 1

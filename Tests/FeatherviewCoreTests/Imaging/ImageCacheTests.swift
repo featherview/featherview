@@ -118,6 +118,28 @@ import os
         #expect(await !cache.isDecoding(url))
     }
 
+    /// The info panel's histogram while zoomed: a kept fit decode serves as is, without decoding again.
+    @Test func fitPictureServesTheKeptFitDecode() async throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("f.jpg"), width: 80, height: 40)
+        let cache = ImageCache()
+        let screens = [PixelSize(width: 100, height: 100)]
+        let kept = try await cache.image(for: url, target: .fit(screens))
+        #expect(cache.fitPicture(url, page: 0, screens: screens) === kept)
+    }
+
+    /// Spec "Histogram": counted from the picture already decoded, never an extra decode next to the zoom decode.
+    @Test func fitPictureWithoutAKeptOneDecodesNothing() async throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("g.jpg"), width: 80, height: 40)
+        let queue = DecodeQueue(width: 1)
+        let cache = ImageCache(queue: queue)
+        let release = try await hold(queue)
+        defer { release.signal() }
+        let picture = cache.fitPicture(url, page: 0, screens: [PixelSize(width: 100, height: 100)])
+        #expect(picture == nil)
+        #expect(queue.waitingCount == 0)
+        #expect(await cache.count == 0)
+    }
+
     @Test func cancellingOneWaiterKeepsTheSharedDecode() async throws {
         let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("d.jpg"), width: 80, height: 40)
         let queue = DecodeQueue(width: 1)

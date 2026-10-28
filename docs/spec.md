@@ -540,7 +540,7 @@ empty rows or cards). Text is selectable. Nothing in the panel uses the network.
   it. A clip mark sits in each bottom corner: outlined, filled in the accent when more than 0.1 % of
   the pixels are at the darkest or brightest level; clicking it shows "Shadows: 2.4 % clipped" /
   "Highlights: 0.0 % clipped". 256 levels per channel, computed from the screen-size picture
-  already decoded (no extra decode). An HDR picture shows the standard range up to a dashed
+  already decoded (no extra decode; zoomed into a picture never shown at fit, from the zoomed one). An HDR picture shows the standard range up to a dashed
   1.0 marker, then the brighter part up to its headroom ("3.2×").
 - **Groups,** each a card with a glyph, a title, a chevron and, when closed, a one-line summary.
   Clicking the header (or Space / Return on it) opens and closes it. Which groups are open holds for

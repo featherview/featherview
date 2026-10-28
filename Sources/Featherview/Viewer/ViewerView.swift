@@ -7,6 +7,10 @@ struct ViewerView: View {
     @Environment(\.displayScale) private var displayScale
     @Environment(\.openWindow) private var openWindow
     @FocusState private var focused: Bool
+    /// The info panel's control with the keyboard; nil while the picture (or nothing in the panel) has it.
+    @FocusState private var panelFocus: InfoFocus?
+    /// The panel's controls in Tab order.
+    @State private var panelStops: [InfoFocus] = []
     @Environment(\.controlActiveState) private var activeState
     @Environment(\.layoutDirection) private var layoutDirection
     @AppStorage(AppSettings.rememberWindowFrame.key) private var rememberFrame = AppSettings.rememberWindowFrame.defaultValue
@@ -214,7 +218,8 @@ struct ViewerView: View {
         .focusable()
         .focusEffectDisabled()
         .focused($focused)
-        .onChange(of: focused, initial: true) { model.hasKeyboardFocus = focused }
+        // A panel control has the viewer's keys too (⌘C copies the picture).
+        .onChange(of: focused || panelFocus != nil, initial: true) { model.hasKeyboardFocus = $1 }
         .onAppear {
             focused = true
             ViewerModel.windows.viewerOpened()
@@ -305,6 +310,8 @@ struct ViewerView: View {
         }
         // The grid's collection view takes the keyboard; while SwiftUI's focus stays on, it takes it back.
         .onChange(of: model.isGrid) { focused = !$1 }
+        // I (or the menu) closes the panel while a control in it has the keyboard: back to the picture.
+        .onChange(of: model.showInfo) { if !$1, !focused, !model.isGrid, !model.renaming { focused = true } }
         // The rename field takes the keyboard from AppKit behind SwiftUI's back; it comes back once the field goes.
         .onChange(of: model.renaming) { if !model.isGrid { focused = !$1 } }
         // The F7 / F8 panel's keys go through `handle`, not the grid's collection view.
@@ -346,7 +353,10 @@ struct ViewerView: View {
     /// Spans the fit area's height, floating on the trailing side (docs/DESIGN.md "Elements").
     @ViewBuilder private var infoPanel: some View {
         if model.showInfo {
-            InfoPanel(url: model.list.current, revision: model.fileRevision)
+            InfoPanel(url: model.list.current, revision: model.fileRevision, image: model.image, onScreen: model.onScreen,
+                      fitImage: model.fitImage, keptFit: model.keptFit, screens: model.screens, focus: $panelFocus, stops: $panelStops) {
+                focused = true
+            }
                 // Level with the fit area; in full screen (no insets) the panel's own margin.
                 .padding(.top, model.isFullScreen ? CanvasInsets.infoPanelMargin : canvasInsets.top - toolbarHeight)
                 .padding(.bottom, model.isFullScreen ? CanvasInsets.infoPanelMargin : canvasInsets.bottom)
@@ -544,6 +554,12 @@ struct ViewerView: View {
         feedAutoHide(.key(browsing: browsing))
         if model.isChooserOpen { return handleChooser(press, modifiers) }
         if model.destinationPanel != nil { return handleDestinations(press, modifiers) }
+        // Tab from the picture into the info panel (⇧Tab to its last control); inside the panel it moves on there.
+        if model.showInfo, !model.isGrid, panelFocus == nil, modifiers.subtracting(.shift).isEmpty,
+           press.key == .tab || press.key == InfoPanel.backtab {
+            panelFocus = press.key == InfoPanel.backtab || modifiers.contains(.shift) ? panelStops.last : panelStops.first
+            return .handled
+        }
         // The grid's keys, when its collection view hasn't the keyboard (the size slider, Tab); the viewer's keys do
         // nothing there (Decision 13).
         if model.isGrid {
@@ -855,73 +871,6 @@ private struct FirstImageGate: NSViewRepresentable {
 extension FocusedValues {
     /// The viewer of the focused window; menu commands act on it.
     @Entry var viewer: ViewerModel?
-}
-
-/// The info panel (I): file name and format, then the fields in a grouped card (docs/DESIGN.md "Elements").
-struct InfoPanel: View {
-    let url: URL?
-    /// Changes when the file is rewritten (rotation), so the fields are read again.
-    let revision: Int
-    @State private var fields: [MetadataField] = []
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.panelGap) {
-            HStack(spacing: Theme.panelGap) {
-                Text(verbatim: url?.lastPathComponent ?? "")
-                    .font(Theme.panelHeader)
-                    .foregroundStyle(Theme.labelPrimary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer(minLength: 0)
-                if let format = url.flatMap({ UTType(filenameExtension: $0.pathExtension)?.preferredFilenameExtension }) {
-                    Text(verbatim: format.uppercased())
-                        .font(Theme.badge)
-                        .foregroundStyle(Theme.labelSecondary)
-                        .padding(Theme.footerKeyCapPadding)
-                        .background(Theme.badgeFill, in: .rect(cornerRadius: Theme.Radius.small))
-                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small).strokeBorder(Theme.badgeLine, lineWidth: 1))
-                }
-            }
-            .frame(height: Theme.infoHeaderHeight)
-            .padding(.horizontal, Theme.infoHeaderPadding)
-            if !fields.isEmpty {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(Array(fields.enumerated()), id: \.offset) { index, field in
-                            if index > 0 {
-                                Theme.rowSeparator.frame(height: 1).padding(.leading, Theme.rowPadding)
-                            }
-                            HStack(spacing: Theme.panelGap) {
-                                Text(field.label).font(Theme.row).foregroundStyle(Theme.labelPrimary)
-                                Spacer(minLength: 0)
-                                Text(verbatim: field.value)
-                                    .font(Theme.rowValue)
-                                    .foregroundStyle(Theme.labelSecondary)
-                                    .multilineTextAlignment(.trailing)
-                            }
-                            .frame(minHeight: Theme.infoRowHeight)
-                            .padding(.horizontal, Theme.rowPadding)
-                        }
-                    }
-                    .background(Theme.cardFill, in: .rect(cornerRadius: Theme.Radius.group))
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.group).strokeBorder(Theme.cardLine, lineWidth: 1))
-                }
-                .scrollIndicators(.automatic)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(Theme.panelPadding)
-        .frame(width: Theme.infoPanelWidth)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .glass(.panel, cornerRadius: Theme.Radius.panel)
-        // Reads the file off the main thread.
-        .task(id: "\(revision) \(url?.path ?? "")") {
-            guard let url else { return fields = [] }
-            let read = await Task.detached { MetadataReader.fields(for: url) }.value
-            if !Task.isCancelled { fields = read }
-        }
-        .textSelection(.enabled)
-    }
 }
 
 /// Whether viewer windows hide their toolbar (View › Hide Toolbar).
