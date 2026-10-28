@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.12.0 – 2026-10-28
+
+- A new info panel shows a histogram with clipping marks, an exposure card and foldable groups for the current picture.
+- Geotagged pictures show their place name in the app's language, offline, with Open in Maps.
+- Image › All Metadata opens a window with every tag in the file, searchable and fully keyboard-driven.
+- The info panel takes the keyboard (Tab, Space, Return, Esc), and VoiceOver reads each row's label and value.
+- The histogram handles HDR and 10-bit pictures correctly and never slows browsing.
+- Web addresses in About's text sheets are now clickable.
+- Plus smaller fixes, among them sturdier handling of odd GPS, XMP and exposure values in the info panel.
+
 ## 0.11.0 – 2026-10-26
 
 - Featherview now updates itself: it checks for new versions and installs them with your OK.
