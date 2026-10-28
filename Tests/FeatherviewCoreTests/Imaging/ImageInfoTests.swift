@@ -1,0 +1,221 @@
+import Foundation
+import ImageIO
+import Testing
+import UniformTypeIdentifiers
+@testable import FeatherviewCore
+
+@Suite struct ImageInfoTests {
+    private func info(_ properties: [CFString: Any], type: UTType = .jpeg, name: String = "a.jpg") throws -> ImageInfo {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent(name), width: 8, height: 8, type: type,
+                                          properties: properties)
+        return ImageInfo.read(url)
+    }
+
+    private func exif(_ values: [CFString: Any]) throws -> ImageInfo {
+        try info([kCGImagePropertyExifDictionary: values])
+    }
+
+    private func pure(_ props: [CFString: Any], metadata: CGImageMetadata? = nil, fileSize: Int? = nil) -> ImageInfo {
+        ImageInfo.read(properties: props, metadata: metadata, url: URL(fileURLWithPath: "/tmp/a.jpg"), fileSize: fileSize)
+    }
+
+    @Test func exposureTilesAreBareNumbers() throws {
+        let e = try exif([
+            kCGImagePropertyExifExposureTime: 1.0 / 250,
+            kCGImagePropertyExifFNumber: 8.0,
+            kCGImagePropertyExifISOSpeedRatings: [100],
+            kCGImagePropertyExifFocalLength: 35.0,
+        ]).exposure
+        #expect(e.shutter == "1/250")
+        #expect(e.aperture == "8")
+        #expect(e.iso == "100")
+        #expect(e.focal == "35")
+    }
+
+    @Test func focal35OnlyWhenDifferent() throws {
+        let differs = try exif([kCGImagePropertyExifFocalLength: 35.0, kCGImagePropertyExifFocalLenIn35mmFilm: 53])
+        #expect(differs.exposure.focal35 == "53 mm")
+        let same = try exif([kCGImagePropertyExifFocalLength: 35.0, kCGImagePropertyExifFocalLenIn35mmFilm: 35])
+        #expect(same.exposure.focal35 == nil)
+    }
+
+    @Test func chips() {
+        func e(_ values: [CFString: Any]) -> ImageInfo.Exposure { pure([kCGImagePropertyExifDictionary: values]).exposure }
+        #expect(e([kCGImagePropertyExifExposureBiasValue: -0.7]).bias == "−0.7 EV")
+        #expect(e([kCGImagePropertyExifFlash: 16]).flash == "No flash")
+        #expect(e([kCGImagePropertyExifFlash: 1]).flash == "Flash")
+        #expect(e([kCGImagePropertyExifWhiteBalance: 0]).whiteBalance == "Auto")
+        #expect(e([kCGImagePropertyExifMeteringMode: 5]).metering == "Multi-segment")
+        #expect(e([kCGImagePropertyExifMeteringMode: 2]).metering == "Centre-weighted")
+        #expect(e([kCGImagePropertyExifMeteringMode: 3]).metering == "Spot")
+    }
+
+    // ByteCountFormatter's file style counts 1,000 bytes to the KB, as Finder does: 487,424 bytes is 487 KB.
+    @Test func formatLine() {
+        let props: [CFString: Any] = [kCGImagePropertyPixelWidth: 3000, kCGImagePropertyPixelHeight: 2000]
+        #expect(pure(props, fileSize: 487_424).formatLine == "JPEG · 3,000 × 2,000 · 487 KB")
+        var turned = props
+        turned[kCGImagePropertyOrientation] = 6
+        #expect(pure(turned, fileSize: 487_424).formatLine == "JPEG · 2,000 × 3,000 · 487 KB")
+        #expect(pure(props).picture.dimensions == "3,000 × 2,000 · 6.0 MP")
+    }
+
+    @Test func formatLineFollowsSymlinks() throws {
+        let dir = try Fixtures.makeTempDir()
+        let target = try Fixtures.writeImage(to: dir.appendingPathComponent("r.jpg"), width: 8, height: 8)
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+        #expect(ImageInfo.read(target).formatLine.components(separatedBy: " · ").count == 3)  // size included
+        #expect(ImageInfo.read(link).formatLine == ImageInfo.read(target).formatLine)
+    }
+
+    @available(macOS 15, *)
+    @Test func pictureSummary() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeHDRGainMap(to: dir.appendingPathComponent("hdr.heic"))
+        let picture = ImageInfo.read(url).picture
+        #expect(picture.summary == "P3 · 8-bit · HDR")
+        #expect(picture.profile == "Display P3")
+        #expect(picture.bitDepth == "8 bits per channel")
+        #expect((picture.headroom ?? 0) > 1)
+        #expect(picture.hdr?.hasPrefix("Gain map, up to ") == true)
+        #expect(picture.hdr?.hasSuffix("×") == true)
+    }
+
+    private func gps(_ values: [CFString: Any]) -> ImageInfo.GPS? {
+        pure([kCGImagePropertyGPSDictionary: values]).gps
+    }
+
+    @Test func gpsSignsFromRefs() throws {
+        let north = try info([kCGImagePropertyGPSDictionary: [
+            kCGImagePropertyGPSLatitude: 46.6356, kCGImagePropertyGPSLatitudeRef: "N",
+            kCGImagePropertyGPSLongitude: 8.5939, kCGImagePropertyGPSLongitudeRef: "E",
+            kCGImagePropertyGPSAltitude: 1447.0,
+        ] as [CFString: Any]]).gps
+        #expect(north == ImageInfo.GPS(latitude: 46.6356, longitude: 8.5939, altitude: 1447))
+        let south = gps([
+            kCGImagePropertyGPSLatitude: 33.8688, kCGImagePropertyGPSLatitudeRef: "S",
+            kCGImagePropertyGPSLongitude: 151.2093, kCGImagePropertyGPSLongitudeRef: "W",
+        ])
+        #expect(south == ImageInfo.GPS(latitude: -33.8688, longitude: -151.2093, altitude: nil))
+    }
+
+    @Test func gpsMissingHalfIsDropped() {
+        #expect(gps([kCGImagePropertyGPSLatitude: 46.6356, kCGImagePropertyGPSLatitudeRef: "N"]) == nil)
+    }
+
+    @Test func nullIslandIsNoFix() {
+        #expect(gps([kCGImagePropertyGPSLatitude: 0.0, kCGImagePropertyGPSLongitude: 0.0]) == nil)
+        #expect(gps([kCGImagePropertyGPSLatitude: 0.0, kCGImagePropertyGPSLongitude: 0.0,
+                     kCGImagePropertyGPSAltitude: 12.0]) != nil)
+    }
+
+    @Test func descriptionMergesSourcesOnce() {
+        let xmp = CGImageMetadataCreateMutable()
+        #expect(CGImageMetadataSetValueWithPath(xmp, nil, "dc:creator" as CFString, ["A"] as CFArray))
+        let d = pure([
+            kCGImagePropertyIPTCDictionary: [kCGImagePropertyIPTCByline: ["B"]] as [CFString: Any],
+            kCGImagePropertyTIFFDictionary: [kCGImagePropertyTIFFArtist: "C"] as [CFString: Any],
+        ], metadata: xmp).description
+        #expect(d.creator == "A")
+        let withoutXMP = pure([
+            kCGImagePropertyIPTCDictionary: [kCGImagePropertyIPTCByline: ["B"]] as [CFString: Any],
+            kCGImagePropertyTIFFDictionary: [kCGImagePropertyTIFFArtist: "C"] as [CFString: Any],
+        ]).description
+        #expect(withoutXMP.creator == "B")
+        #expect(pure([kCGImagePropertyTIFFDictionary: [kCGImagePropertyTIFFArtist: "C"] as [CFString: Any]])
+            .description.creator == "C")
+    }
+
+    @Test func keywordsCapped() {
+        let words = (0..<10_000).map { "k\($0)" }
+        let d = pure([kCGImagePropertyIPTCDictionary: [kCGImagePropertyIPTCKeywords: words] as [CFString: Any]]).description
+        #expect(d.keywords == Array(words.prefix(50)))
+    }
+
+    @Test func missingValuesLeftOut() throws {
+        let info = try info([:], type: .png, name: "a.png")
+        #expect(info.camera == nil)
+        #expect(info.lens == nil)
+        #expect(info.taken == nil)
+        #expect(info.gps == nil)
+        #expect(info.exposure == ImageInfo.Exposure())
+        #expect(info.fileName == "a.png")
+        #expect(info.formatLine.hasPrefix("PNG · 8 × 8 · "))
+    }
+
+    @Test func coordinateText() {
+        #expect(InfoText.latitude(-33.8688) == "33.8688° S")
+        #expect(InfoText.latitude(46.6356) == "46.6356° N")
+        #expect(InfoText.longitude(-160) == "160.0000° W")
+        #expect(InfoText.longitude(8.5939) == "8.5939° E")
+        #expect(InfoText.altitude(1447) == "1,447 m")
+    }
+
+    @Test func stars() {
+        #expect(InfoText.stars(4) == "★★★★☆")
+    }
+
+    // Moved from MetadataReaderTests.
+
+    @Test func cameraDoesNotRepeatTheMake() {
+        #expect(MetadataReader.camera(make: "Canon", model: "Canon EOS R6") == "Canon EOS R6")
+        #expect(MetadataReader.camera(make: "Canon ", model: "EOS R6") == "Canon EOS R6")
+        #expect(MetadataReader.camera(make: "NIKON CORPORATION", model: "NIKON D850") == "NIKON D850")
+        #expect(MetadataReader.camera(make: "Apple", model: "iPhone 15 Pro") == "Apple iPhone 15 Pro")
+        #expect(MetadataReader.camera(make: "   ", model: "X100") == "X100")
+        #expect(MetadataReader.camera(make: "", model: "X100") == "X100")
+        #expect(MetadataReader.camera(make: "FUJIFILM", model: nil) == "FUJIFILM")
+        let tiff: [CFString: Any] = [kCGImagePropertyTIFFMake: "Canon", kCGImagePropertyTIFFModel: "EOS R6"]
+        #expect(pure([kCGImagePropertyTIFFDictionary: tiff]).camera == "Canon EOS R6")
+    }
+
+    @Test func formatsExposureTimes() {
+        let decimal = { (x: Double) in
+            Measurement(value: x, unit: UnitDuration.seconds).formatted(.measurement(width: .abbreviated, usage: .asProvided))
+        }
+        #expect(MetadataReader.exposure(0.004) == "1/250 s")
+        #expect(MetadataReader.exposure(1.0 / 3) == "1/3 s")
+        #expect(MetadataReader.exposure(0.5) == "1/2 s")
+        #expect(MetadataReader.exposure(0.8) == decimal(0.8))
+        #expect(MetadataReader.exposure(0.6) == decimal(0.6))
+        #expect(MetadataReader.exposure(1) == decimal(1))
+        #expect(MetadataReader.exposure(2.5) == decimal(2.5))
+        func shutter(_ s: Double) -> String? {
+            pure([kCGImagePropertyExifDictionary: [kCGImagePropertyExifExposureTime: s] as [CFString: Any]]).exposure.shutter
+        }
+        #expect(shutter(0.004) == "1/250")
+        #expect(shutter(1.0 / 3) == "1/3")
+        #expect(shutter(0.8) == "0.8")
+        #expect(shutter(2) == "2")
+    }
+
+    @Test func formatsDateTakenWithTheSystemFormatter() {
+        let date = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2026, month: 8, day: 14, hour: 18, minute: 32, second: 5))!
+        #expect(MetadataReader.taken("2026:08:14 18:32:05") == date.formatted(date: .abbreviated, time: .shortened))
+        #expect(MetadataReader.taken("0000:00:00 00:00:00") == nil)  // cameras without a clock write this
+        #expect(MetadataReader.taken("garbage") == nil)
+        let exif: [CFString: Any] = [kCGImagePropertyExifDateTimeOriginal: "2026:08:14 18:32:05"]
+        #expect(pure([kCGImagePropertyExifDictionary: exif]).taken == date.formatted(date: .abbreviated, time: .shortened))
+    }
+
+    @Test func dateTakenPrefersExif() throws {
+        let dir = try Fixtures.makeTempDir()
+        let exif: [CFString: Any] = [
+            kCGImagePropertyExifDictionary: [kCGImagePropertyExifDateTimeOriginal: "2024:03:05 14:30:00"] as [CFString: Any],
+        ]
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.jpg"), width: 8, height: 8, properties: exif)
+        let local = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2024, month: 3, day: 5, hour: 14, minute: 30))
+        #expect(MetadataReader.dateTaken(of: url) == local)
+    }
+
+    @Test func dateTakenFallsBackToModificationDate() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("a.png"), width: 8, height: 8, type: .png)
+        let modified = Date(timeIntervalSince1970: 1_700_000_000)
+        try FileManager.default.setAttributes([.modificationDate: modified], ofItemAtPath: url.path)
+        #expect(MetadataReader.dateTaken(of: url) == modified)
+        #expect(MetadataReader.dateTaken(of: dir.appendingPathComponent("missing.jpg")) == nil)
+    }
+}
