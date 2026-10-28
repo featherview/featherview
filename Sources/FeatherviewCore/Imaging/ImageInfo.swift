@@ -19,6 +19,8 @@ public struct ImageInfo: Equatable, Sendable {
     public struct Picture: Equatable, Sendable {
         /// "3,000 × 2,000 · 6.0 MP"
         public var dimensions: String?
+        /// "3,000 × 2,000", for where the megapixels don't fit.
+        public var size: String?
         public var profile: String?
         public var bitDepth: String?
         public var hdr: String?
@@ -95,6 +97,7 @@ public struct ImageInfo: Equatable, Sendable {
             let (w, h) = turned ? (height, width) : (width, height)
             dimensions = "\(w.formatted()) × \(h.formatted())"
             let megapixels = (Double(w * h) / 1_000_000).formatted(.number.precision(.fractionLength(1)))
+            picture.size = dimensions
             picture.dimensions = String(localized: "\(dimensions!) · \(megapixels) MP", comment: "Info panel, dimensions and megapixels")
         }
         let format = (type ?? UTType(filenameExtension: url.pathExtension))?.preferredFilenameExtension ?? url.pathExtension

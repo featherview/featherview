@@ -59,6 +59,7 @@ import UniformTypeIdentifiers
         turned[kCGImagePropertyOrientation] = 6
         #expect(pure(turned, fileSize: 487_424).formatLine == "JPEG · 2,000 × 3,000 · 487 KB")
         #expect(pure(props).picture.dimensions == "3,000 × 2,000 · 6.0 MP")
+        #expect(pure(props).picture.size == "3,000 × 2,000")
     }
 
     @Test func formatLineFollowsSymlinks() throws {

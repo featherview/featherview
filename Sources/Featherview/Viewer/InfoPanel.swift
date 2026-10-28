@@ -110,7 +110,7 @@ struct InfoPanel: View {
                 focus.wrappedValue = next
                 return
             }
-            if new != nil { state.ringShown = state.keyboardMove }
+            if new != nil, state.keyboardMove { state.ringShown = true }
             state.keyboardMove = false
         }
         .task(id: readKey) {
@@ -258,7 +258,7 @@ struct InfoPanel: View {
             row("Taken", info.taken)
         case .image:
             let p = info.picture
-            row("Dimensions", p.dimensions.map(Self.isolated))
+            row("Dimensions", p.dimensions.map(Self.isolated), short: p.size.map(Self.isolated))
             row("Colour profile", p.profile)
             row("Bit depth", p.bitDepth)
             row("HDR", p.hdr)
@@ -304,20 +304,29 @@ struct InfoPanel: View {
     }
 
     /// Label secondary, value primary; a missing value leaves the row out. Long text (captions, keywords) wraps.
-    @ViewBuilder private func row(_ label: LocalizedStringKey, _ value: String?, wraps: Bool = false) -> some View {
+    /// `short`: the value to show whole when `value` doesn't fit, before it is cut in the middle.
+    @ViewBuilder private func row(_ label: LocalizedStringKey, _ value: String?, short: String? = nil, wraps: Bool = false) -> some View {
         if let value {
             VStack(spacing: 0) {
                 separator
                 HStack(alignment: wraps ? .firstTextBaseline : .center, spacing: Theme.panelGap) {
-                    Text(label).font(Theme.infoRow).foregroundStyle(secondary).lineLimit(1)
+                    // The label whole; the value takes the rest.
+                    Text(label).font(Theme.infoRow).foregroundStyle(secondary).lineLimit(1).fixedSize()
                     Spacer(minLength: 0)
-                    Text(verbatim: value)
+                    let text = Text(verbatim: value)
                         .font(Theme.infoRowValue)
                         .foregroundStyle(Theme.labelPrimary)
                         .multilineTextAlignment(.trailing)
-                        .lineLimit(wraps ? nil : 1)
-                        .truncationMode(.middle)
-                        .help(wraps ? "" : value)
+                    if wraps {
+                        text
+                    } else {
+                        // Whole where it fits, else the short form whole ("4,032 × 3,024" without its megapixels), else cut.
+                        ViewThatFits(in: .horizontal) {
+                            text.fixedSize()
+                            if let short { Text(verbatim: short).font(Theme.infoRowValue).foregroundStyle(Theme.labelPrimary).fixedSize().help(value) }
+                            text.lineLimit(1).truncationMode(.middle).help(value)
+                        }
+                    }
                 }
                 .padding(.vertical, wraps ? 9 : 0)
                 .frame(minHeight: Theme.infoRowHeightCompact)

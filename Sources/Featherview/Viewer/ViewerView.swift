@@ -153,7 +153,12 @@ struct ViewerView: View {
     }
 
     var body: some View {
+        // Only the picture takes the focus: a focusable container would keep it from the info panel's controls.
+        // Keys the panel leaves reach `handle` below either way.
         canvasWithBars
+        .focusable()
+        .focusEffectDisabled()
+        .focused($focused)
         .modifier(ViewerToolbarPlacement(model: model, ready: toolbarReady))
         .onChange(of: toolbarMayBuild, initial: true) { if $1, model.image == nil { ViewerModel.afterFrame { toolbarReady = true } } }
         .toolbar(toolbarHidden || hidesToolbarForFullScreen ? .hidden : .visible, for: .windowToolbar)
@@ -215,9 +220,6 @@ struct ViewerView: View {
             model.open(url)
             return true
         }
-        .focusable()
-        .focusEffectDisabled()
-        .focused($focused)
         // A panel control has the viewer's keys too (⌘C copies the picture).
         .onChange(of: focused || panelFocus != nil, initial: true) { model.hasKeyboardFocus = $1 }
         .onAppear {
@@ -554,6 +556,13 @@ struct ViewerView: View {
         feedAutoHide(.key(browsing: browsing))
         if model.isChooserOpen { return handleChooser(press, modifiers) }
         if model.destinationPanel != nil { return handleDestinations(press, modifiers) }
+        // An info panel control has the keyboard: this handler runs before the panel's, so leave the panel its keys
+        // (Space and Return act, Esc leaves, Tab moves on, ← / → switch the histogram mode); the rest browse as ever.
+        if let focus = panelFocus, modifiers.subtracting(.shift).isEmpty,
+           [.space, .return, .escape, .tab, InfoPanel.backtab].contains(press.key)
+            || focus == .mode && [.leftArrow, .rightArrow].contains(press.key) {
+            return .ignored
+        }
         // Tab from the picture into the info panel (⇧Tab to its last control); inside the panel it moves on there.
         if model.showInfo, !model.isGrid, panelFocus == nil, modifiers.subtracting(.shift).isEmpty,
            press.key == .tab || press.key == InfoPanel.backtab {
