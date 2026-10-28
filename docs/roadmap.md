@@ -36,7 +36,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 21 | Grid columns that fill the window, right-click menu, drag out | `docs/superpowers/plans/2026-10-25-milestone-21-grid-columns-menu-drag.md` | done |
 | — | Automatic updates through Sparkle (spec "Updates") | no plan; commits 0949b8d, a5f9bd3 | done |
 | 22 | Photos library: browse albums, drops from Photos, batch from and into the library | `docs/superpowers/plans/2026-10-26-milestone-22-photos-library.md` | planned |
-| 23 | Info panel: histogram, exposure card, foldable groups, location, all metadata | no plan yet; design in progress | idea |
+| 23 | Info panel: histogram, exposure card, foldable groups, place names, all metadata | `docs/superpowers/plans/2026-10-28-milestone-23-info-panel.md` | planned |
 
 ## 1. Core viewer and batch
 

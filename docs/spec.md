@@ -156,7 +156,7 @@ menu is open, so typing in the batch window's text fields never triggers viewer 
 Like Finder and Preview, File holds what acts on the file (Open, Open Recent, Save As…, Rename…, Share, Move /
 Copy to Folder…, Move to Trash, Show in Finder, Open With, Always Open with Featherview, Batch Convert…) and Image
 what moves through or changes the picture (Next / Previous, pages and frames, rotate and flip, Adjust Date
-Taken…, Set as Desktop Picture, Show Info). View lists "Zoom to Fit  (0)", "Actual Size  (1)", "Zoom to
+Taken…, Set as Desktop Picture, Show Info, All Metadata…). View lists "Zoom to Fit  (0)", "Actual Size  (1)", "Zoom to
 Width  (2)", "Zoom to Height  (3)", Zoom In, Zoom Out, then "Keep Zoom  (⇧L)"; Image has "Flip Horizontal  (H)"
 and "Flip Vertical  (V)" after the rotate items. File starts with New from Clipboard, Open…, Open Recent, Compare With… (and Stop Comparing while
 comparing); Rename…
@@ -526,9 +526,64 @@ The grid is a mode of the viewer window, not a window of its own.
 
 ### Info panel
 
-Side panel listing whatever is present: dimensions (orientation applied), file size, camera,
-lens, date taken, exposure, aperture, ISO, focal length. Missing values are left out.
-Text is selectable.
+I (Image › Show Info) toggles a 280 pt side panel. Design: <https://claude.ai/artifact/Lf6bXo8PaC2Exi6A6Unvmx>
+(B2-1b-2); look in `docs/DESIGN.md` "Info panel". Everything is read off the main thread from the file
+and the already decoded picture; missing values, and groups with nothing in them, are left out (no
+empty rows or cards). Text is selectable. Nothing in the panel uses the network.
+
+- **Header:** file name (cut in the middle, full name as tooltip); one line "JPEG · 3,000 × 2,000 ·
+  476 KB" (format, dimensions with orientation applied, file size; a RAW file shows its own size);
+  when the photo has a place, a pin and the short place name ("Andermatt, Switzerland").
+- **Histogram:** 60 pt tall, full panel width, quarter grid. Luminance (default) or RGB, switched
+  with a small Luminance / RGB control; the choice holds for every image until the app quits.
+  Luminance is a line with a faint fill in the accent; RGB adds thin red, green and blue lines under
+  it. A clip mark sits in each bottom corner: outlined, filled in the accent when more than 0.1 % of
+  the pixels are at the darkest or brightest level; clicking it shows "Shadows: 2.4 % clipped" /
+  "Highlights: 0.0 % clipped". 256 levels per channel, computed from the screen-size picture
+  already decoded (no extra decode). An HDR picture shows the standard range up to a dashed
+  1.0 marker, then the brighter part up to its headroom ("3.2×").
+- **Groups,** each a card with a glyph, a title, a chevron and, when closed, a one-line summary.
+  Clicking the header (or Space / Return on it) opens and closes it. Which groups are open holds for
+  every image and every window until the app quits; at launch Camera and Location are open.
+  - **Camera** (closed: the camera model): four tiles with the bare number big and a glyph and unit
+    under it: shutter "1/250 · sec", aperture "8 · ƒ stop", ISO "100 · ISO speed", focal length
+    "35 · mm" (tooltip "53 mm equivalent"). Chips: exposure bias ("−0.7 EV"), flash ("Flash" /
+    "No flash"), white balance ("Auto" / "Daylight" / "Manual"…), metering ("Multi-segment",
+    "Centre-weighted", "Spot"…). Rows: Lens, 35 mm equivalent (only when it differs from the focal
+    length), Taken.
+  - **Image** (closed: "P3 · 8-bit · HDR"): Dimensions with megapixels ("3,000 × 2,000 · 6.0 MP"),
+    Colour profile, Bit depth ("8 bits per channel"), HDR ("Gain map, up to 3.2×"), Software.
+  - **Location** (closed: the altitude, or nothing at sea): the full place name as the first line
+    (13 pt semibold, up to two lines), then Latitude ("46.6356° N"), Longitude, Altitude, and
+    "Open in Maps" (opens the coordinate in the Maps app; nothing loads before the click).
+  - **Description** (closed: the rating as stars): Title, Caption, Keywords, Rating, Creator,
+    Copyright, Comment — merged from EXIF, IPTC, XMP and the JPEG/PNG comment, read only.
+  - **File** (closed: the modification date): Folder, Modified, Created, "Show in Finder".
+- **"Show all metadata…"** at the bottom opens the All Metadata window (below).
+
+**Place names** come from data shipped in the app (GeoNames places with at least 1,000 people;
+Natural Earth seas, oceans, deserts and mountain ranges), looked up on the Mac:
+1. A place within 25 km: header "Andermatt, Switzerland", Location "near Andermatt, Uri,
+   Switzerland" (the nearest by distance, never weighted by population).
+2. Else, a sea or ocean containing the point, with a place within 200 km: "North Atlantic, off
+   Gambia" / "North Atlantic Ocean, off Banjul, Gambia".
+3. Else, a desert or mountain range containing the point, with a place within 500 km: "Sahara,
+   near Tunisia" (both forms).
+4. Else the sea, ocean or region alone ("North Pacific Ocean"); else no place, coordinates only.
+Country names follow the app's language (from macOS); place, sea and region names are as the data
+gives them. The data loads on the first geotagged picture, off the main thread; launch and browsing
+budgets stay as they are. The Quick Look extensions don't carry it.
+
+**All Metadata window** (also Image › All Metadata…, ⌥⌘I): a separate window, "Alpine Dusk.jpg — All
+Metadata", that follows the current image of the frontmost viewer (a sheet would block the arrow
+keys). Groups EXIF, GPS, IPTC, XMP, TIFF (and others ImageIO reports), each with a count; every row
+shows a readable name with the raw tag name under it and the value on the trailing side. Internal
+entries (offsets, thumbnail data, binary maker notes) are hidden; the footer says how many. A search
+field filters names, tags and values. Fully usable from the keyboard: ⌘F focuses the search field,
+Tab moves between search field and list, ↑ / ↓ move the selection (⇧ extends it), ← / → close and
+open the selected row's group, Home / End jump to the first / last row, Return in the search field
+moves to the first match, Esc clears the search, then closes the window; ⌘C copies the selected rows
+("Exposure time (ExposureTime): 1/250 s", one per line), ⇧⌘C copies everything; ⌘W closes it.
 
 ### Moving past the end of a folder
 
@@ -854,8 +909,8 @@ window, nothing to configure.
 - "Supported formats": two lists, read and write, built at runtime from ImageIO plus our own
   encoders (see "Formats"), with the macOS version they come from.
 - "MIT License" and "Acknowledgements": the licence text of every bundled library (libwebp, jxrlib, libjxl with
-  Highway, Brotli and skcms), each
-  in a scrollable sheet. Copyright line.
+  Highway, Brotli and skcms) and the credits for the place data (GeoNames, CC BY 4.0, simplified;
+  Natural Earth, public domain), each in a scrollable sheet with clickable links. Copyright line.
 - Clicking the version shows a small "Copy" bubble (as a value in iOS settings does); it copies
   version, macOS version and Mac model as text, for bug reports.
 - Translated like the rest of the UI; no third-party names except in the acknowledgements.
@@ -1038,6 +1093,11 @@ tile colour with faint feather lines; drawn by code at 1× and 2×, no copied ar
 for every language, built by `scripts/dmg.sh`; its help text is English (a background holds one
 language), the app inside follows the Mac's language. Revisit if someone sponsors
 the $99/year Apple Developer Program; then sign with Developer ID and notarize.
+
+Every release builds the place data (Info panel, "Place names") fresh from GeoNames and Natural
+Earth (`scripts/places.sh`), so it never goes stale; the file is not committed. A build without
+network uses the last file in the local cache and says so; a build with no file at all ships without
+place names (coordinates only).
 
 ## Updates
 
