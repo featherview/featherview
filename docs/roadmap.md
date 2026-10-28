@@ -311,9 +311,12 @@ Ideas from the maintainer's QA that no spec covers yet; each gets a plan and a s
     contains the point, with the nearest country ("Sahara, near Tunisia", "South Atlantic, off
     Gambia" within ~200 km of a coast, else just "North Pacific Ocean"). GeoNames is CC BY 4.0
     (accepted): credit with links to GeoNames and the licence, noting the data is simplified, in
-    the About window and README. Open: how the data file is built and refreshed.
+    the About window and README. The data file is generated fresh by every release (not committed),
+    cached locally; without network the build takes the last cached file and the release report says
+    so. Shown short in the panel header ("Andermatt, Switzerland") and in full as the first line of
+    Location ("near Andermatt, Uri, Switzerland").
   - **Show all metadata…:** every EXIF, GPS, IPTC, XMP and TIFF tag with readable labels, search and
     copy; internal entries hidden.
-  - Design options: <https://claude.ai/artifact/Lf6bXo8PaC2Exi6A6Unvmx> (variant B2 chosen, colour
-    being explored). Reference behaviour: `docs/parity.md`, "Metadata".
+  - Design: <https://claude.ai/artifact/Lf6bXo8PaC2Exi6A6Unvmx>, option B2-1b-2 chosen (coral line
+    histogram, coral glyphs, place under the file line). Reference behaviour: `docs/parity.md`, "Metadata".
   - **Not planned:** editing metadata in the panel (Adjust Date Taken stays the only metadata edit).
