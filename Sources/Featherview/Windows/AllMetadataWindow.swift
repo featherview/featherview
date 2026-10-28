@@ -8,20 +8,37 @@ import SwiftUI
     fileprivate static var panel: NSPanel?
 
     static func show() {
-        if panel == nil {
-            let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 480, height: 600),
-                                styleMask: [.titled, .closable, .resizable, .utilityWindow], backing: .buffered, defer: false)
-            panel.isFloatingPanel = false
-            panel.level = .normal
-            panel.hidesOnDeactivate = false
-            panel.isRestorable = false
-            panel.isReleasedWhenClosed = false
-            panel.contentMinSize = NSSize(width: 360, height: 280)
-            panel.contentViewController = NSHostingController(rootView: AllMetadataView())
-            panel.center()
-            self.panel = panel
+        let panel = panel ?? makePanel()
+        self.panel = panel
+        attachContent(panel)
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    /// The panel with its view, not yet on screen; the panel (and its frame) outlives closing, the view doesn't.
+    static func makePanel() -> NSPanel {
+        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 480, height: 600),
+                            styleMask: [.titled, .closable, .resizable, .utilityWindow], backing: .buffered, defer: false)
+        panel.isFloatingPanel = false
+        panel.level = .normal
+        panel.hidesOnDeactivate = false
+        panel.isRestorable = false
+        panel.isReleasedWhenClosed = false
+        panel.contentMinSize = NSSize(width: 360, height: 280)
+        attachContent(panel)
+        panel.center()
+        // Closing drops the view: it follows the current image and would read every image's metadata while
+        // browsing, for a window nobody sees. show() attaches a new one.
+        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: panel, queue: .main) {
+            [weak panel] _ in MainActor.assumeIsolated { panel?.contentViewController = nil }
         }
-        panel?.makeKeyAndOrderFront(nil)
+        return panel
+    }
+
+    static func attachContent(_ panel: NSPanel) {
+        guard panel.contentViewController == nil else { return }
+        let frame = panel.frame
+        panel.contentViewController = NSHostingController(rootView: AllMetadataView())
+        panel.setFrame(frame, display: false)
     }
 }
 
