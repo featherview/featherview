@@ -1096,6 +1096,9 @@ struct ViewerCommands: Commands {
             DesktopPictureMenu(model: model)
             Button("Show Info  (I)") { model?.showInfo.toggle() }
                 .disabled(model?.availability.canShowInfo != true)
+            Button("All Metadata…") { AllMetadataWindow.show() }
+                .keyboardShortcut("i", modifiers: [.command, .option])
+                .disabled(model?.availability.canShowInfo != true)
             if model?.isGrid == true {
                 // The two selected cells, in list order.
                 Button("Compare") {

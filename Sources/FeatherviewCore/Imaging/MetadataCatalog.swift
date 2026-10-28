@@ -230,9 +230,10 @@ public struct MetadataCatalog: Equatable, Sendable {
         return MetadataCatalog(sections: sections, hiddenCount: hiddenCount)
     }
 
-    /// "Exposure time (ExposureTime): 1/250 s", one entry per line.
-    public static func copyText(_ entries: [MetadataEntry]) -> String {
-        entries.map { "\($0.label) (\($0.tag)): \($0.value)" }.joined(separator: "\n")
+    /// "Exposure time (ExposureTime): 1/250 s", one entry per line; nil for no entries, so nothing is copied.
+    public static func copyText(_ entries: [MetadataEntry]) -> String? {
+        guard !entries.isEmpty else { return nil }
+        return entries.map { "\($0.label) (\($0.tag)): \($0.value)" }.joined(separator: "\n")
     }
 
     static func isInternal(_ tag: String) -> Bool {
