@@ -69,10 +69,11 @@ public struct ImageInfo: Equatable, Sendable {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
             return read(properties: [:], metadata: nil, url: url, fileSize: fileSize)
         }
+        let type = CGImageSourceGetType(source).flatMap { UTType($0 as String) }
         var info = read(properties: CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any] ?? [:],
                         metadata: CGImageSourceCopyMetadataAtIndex(source, 0, nil), url: url, fileSize: fileSize,
-                        type: CGImageSourceGetType(source).flatMap { UTType($0 as String) }, headroom: gainMapHeadroom(source))
-        if info.description.comment == nil { info.description.comment = jpegComment(url) }
+                        type: type, headroom: gainMapHeadroom(source))
+        if info.description.comment == nil, type == .jpeg { info.description.comment = jpegComment(url) }
         return info
     }
 
@@ -232,22 +233,29 @@ public struct ImageInfo: Equatable, Sendable {
         return value(kCGImageAuxiliaryDataTypeHDRGainMap, "HDRGainMap:HDRGainMapHeadroom")
     }
 
-    /// The JPEG COM segment's text, which ImageIO leaves out; only segments before the scan are read.
+    /// The JPEG COM segment's text, which ImageIO leaves out. Reads segment headers only, up to the scan, with plain
+    /// reads: a mapped file that shrinks or vanishes (a network volume, a rewrite) would crash with SIGBUS.
     static func jpegComment(_ url: URL) -> String? {
-        guard let data = try? Data(contentsOf: url, options: .alwaysMapped), data.starts(with: [0xFF, 0xD8]) else { return nil }
-        var i = 2
-        while i + 4 <= data.count, data[i] == 0xFF {
-            let marker = data[i + 1]
-            if marker == 0xFF { i += 1; continue }  // fill byte
+        guard let file = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? file.close() }
+        func read(_ count: Int) -> [UInt8]? {
+            guard let data = try? file.read(upToCount: count), data.count == count else { return nil }
+            return [UInt8](data)
+        }
+        guard read(2) == [0xFF, 0xD8] else { return nil }
+        var offset: UInt64 = 2
+        while (try? file.seek(toOffset: offset)) != nil, let header = read(4), header[0] == 0xFF {
+            let marker = header[1]
+            if marker == 0xFF { offset += 1; continue }  // fill byte
             if marker == 0xDA || marker == 0xD9 { return nil }
-            let length = Int(data[i + 2]) << 8 | Int(data[i + 3])
-            guard length >= 2, i + 2 + length <= data.count else { return nil }
+            let length = Int(header[2]) << 8 | Int(header[3])
+            guard length >= 2 else { return nil }
             if marker == 0xFE {
-                let text = data[(i + 4)..<(i + 2 + length)]
-                return nonEmpty((String(data: text, encoding: .utf8) ?? String(data: text, encoding: .isoLatin1))?
+                guard let text = read(length - 2) else { return nil }
+                return nonEmpty((String(bytes: text, encoding: .utf8) ?? String(bytes: text, encoding: .isoLatin1))?
                     .trimmingCharacters(in: CharacterSet(charactersIn: "\0")))
             }
-            i += 2 + length
+            offset += 2 + UInt64(length)
         }
         return nil
     }

@@ -195,6 +195,21 @@ import UniformTypeIdentifiers
         #expect(e([kCGImagePropertyExifExposureTime: 5e-324]).shutter == nil)
     }
 
+    @Test func jpegCommentAfterLargeSegmentsAndOnlyForJPEG() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("c.jpg"), width: 8, height: 8)
+        var data = try Data(contentsOf: url)
+        let text = Array("late comment".utf8)
+        let app = [UInt8](repeating: 0x41, count: 65_533)
+        let filler: [UInt8] = (0..<8).flatMap { _ in [0xFF, 0xE9, 0xFF, 0xFF] + app }  // 8 × 64 KB APP9 segments
+        data.insert(contentsOf: filler + [0xFF, 0xFE, 0, UInt8(text.count + 2)] + text, at: 2)
+        try data.write(to: url)
+        #expect(ImageInfo.read(url).description.comment == "late comment")
+        try data.prefix(100_000).write(to: url)  // cut inside the segments
+        #expect(ImageInfo.jpegComment(url) == nil)
+        #expect(try info([:], type: .png, name: "p.png").description.comment == nil)
+    }
+
     @Test func coordinateText() {
         #expect(InfoText.latitude(-33.8688) == "33.8688° S")
         #expect(InfoText.latitude(46.6356) == "46.6356° N")
