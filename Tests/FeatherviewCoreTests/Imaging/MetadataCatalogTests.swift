@@ -61,6 +61,43 @@ import Testing
         #expect(entry(catalog, "XMP.dc:subject")?.value == "snow, dusk")
     }
 
+    private func packet(_ body: String) -> String {
+        #"<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">"#
+            + #"<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/""#
+            + #" xmlns:photoshop="http://ns.adobe.com/photoshop/1.0/" xmlns:xmp="http://ns.adobe.com/xap/1.0/">"#
+            + body + "</rdf:Description></rdf:RDF></x:xmpmeta>"
+    }
+
+    @Test func xmpListsOnlyThePacketsTags() throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("artist.jpg"),
+                                          width: 8, height: 8, properties: [
+            kCGImagePropertyTIFFDictionary: [kCGImagePropertyTIFFArtist: "X"] as [CFString: Any],
+        ])
+        try Fixtures.insertJPEGMetadata(into: url, xmp: packet(
+            #"<dc:title><rdf:Alt><rdf:li xml:lang="x-default">T</rdf:li></rdf:Alt></dc:title>"#))
+        let catalog = MetadataCatalog.read(url)
+        #expect(catalog.sections.first { $0.id == "XMP" }?.entries.map(\.tag) == ["dc:title"])
+        #expect(!catalog.sections.contains { $0.id == "IPTC" })
+    }
+
+    @Test func iptcShowsTheFilesOwnRecords() throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("both.jpg"),
+                                          width: 8, height: 8)
+        try Fixtures.insertJPEGMetadata(into: url, xmp: packet(
+            "<dc:subject><rdf:Bag><rdf:li>alpha</rdf:li></rdf:Bag></dc:subject>"
+            + "<dc:creator><rdf:Seq><rdf:li>Me</rdf:li></rdf:Seq></dc:creator>"
+            + #"<dc:title><rdf:Alt><rdf:li xml:lang="x-default">Hello</rdf:li></rdf:Alt></dc:title>"#
+            + "<photoshop:City>Zug</photoshop:City><xmp:Rating>4</xmp:Rating>"),
+            iptc: [(25, "alpha"), (25, "beta"), (120, "Andermatt")])
+        let catalog = MetadataCatalog.read(url)
+        #expect(entry(catalog, "IPTC.Keywords")?.value == "alpha, beta")
+        #expect(entry(catalog, "IPTC.Caption/Abstract")?.value == "Andermatt")
+        #expect(catalog.sections.first { $0.id == "IPTC" }?.entries.map(\.tag).sorted()
+                == ["Caption/Abstract", "Keywords"])
+        #expect(entry(catalog, "XMP.dc:subject")?.value == "alpha")
+        #expect(entry(catalog, "XMP.dc:description") == nil)
+    }
+
     @Test func binaryEntriesHidden() {
         let catalog = MetadataCatalog.make(properties: [
             "{Exif}": ["MakerNote": Data(count: 1_000_000), "ExposureTime": 0.004,

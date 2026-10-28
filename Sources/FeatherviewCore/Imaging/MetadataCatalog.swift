@@ -28,22 +28,72 @@ public struct MetadataCatalog: Equatable, Sendable {
 
     public static func read(_ url: URL) -> MetadataCatalog {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any]
+              var props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any]
         else { return MetadataCatalog(sections: [], hiddenCount: 0) }
-        var xmp: [(String, String)] = []
-        if let metadata = CGImageSourceCopyMetadataAtIndex(source, 0, nil),
-           CGImageMetadataCopyTagWithPath(metadata, nil, "iio:hasXMP" as CFString)
-               .flatMap({ CGImageMetadataTagCopyValue($0) as? String }) == "True" {
-            for tag in CGImageMetadataCopyTags(metadata) as? [CGImageMetadataTag] ?? [] {
-                guard let prefix = CGImageMetadataTagCopyPrefix(tag) as String?,
-                      let name = CGImageMetadataTagCopyName(tag) as String?,
-                      // ImageIO mirrors EXIF and TIFF into these namespaces; their own sections show them.
-                      !["iio", "exif", "exifEX", "tiff"].contains(prefix),
-                      let value = xmpValue(tag) else { continue }
-                xmp.append(("\(prefix):\(name)", value))
-            }
+        let bytes = (try? Data(contentsOf: url, options: .alwaysMapped)) ?? Data()
+        props["{IPTC}"] = iptc(in: bytes)
+        return make(properties: props, xmp: xmp(in: bytes))
+    }
+
+    /// The tags of the file's own XMP packet. ImageIO's metadata also holds tags it builds from EXIF,
+    /// TIFF and IPTC, which their own sections show.
+    /// shortcut: a compressed packet (PNG zTXt) or one without <x:xmpmeta> isn't found, parse the container if files show up.
+    static func xmp(in bytes: Data) -> [(String, String)] {
+        guard let start = find("<x:xmpmeta", in: bytes),
+              let end = find("</x:xmpmeta>", in: bytes, from: start.upperBound),
+              let metadata = CGImageMetadataCreateFromXMPData(bytes[start.lowerBound..<end.upperBound] as CFData)
+        else { return [] }
+        return (CGImageMetadataCopyTags(metadata) as? [CGImageMetadataTag] ?? []).compactMap { tag in
+            guard let prefix = CGImageMetadataTagCopyPrefix(tag) as String?, prefix != "iio",  // iio:hasXMP
+                  let name = CGImageMetadataTagCopyName(tag) as String?,
+                  let value = xmpValue(tag) else { return nil }
+            return ("\(prefix):\(name)", value)
         }
-        return make(properties: props, xmp: xmp)
+    }
+
+    /// The file's own IPTC records. ImageIO's merged "{IPTC}" fills in values from XMP and TIFF.
+    /// shortcut: only records in a Photoshop resource (JPEG APP13, PSD, TIFF tag 34377) up to 64 KB; a TIFF
+    /// with just the IPTC-NAA tag shows none, read that tag if such files show up.
+    static func iptc(in bytes: Data) -> [String: Any]? {
+        guard let resource = find("8BIM\u{4}\u{4}", in: bytes) else { return nil }
+        var i = resource.upperBound
+        guard i < bytes.count else { return nil }
+        i += (Int(bytes[i]) + 2) & ~1  // Pascal name, padded to even
+        guard i + 4 <= bytes.count else { return nil }
+        let size = bytes[i..<i + 4].reduce(0) { $0 << 8 | Int($1) }
+        i += 4
+        let resourceBytes = Array("8BIM".utf8) + [4, 4, 0, 0]
+        let header = Array("Photoshop 3.0\0".utf8) + resourceBytes
+        guard size > 0, i + size <= bytes.count, size + header.count + 6 <= 0xFFFF, blankJPEG.count > 2 else { return nil }
+        // Standing alone in a small JPEG, the records have nothing for ImageIO to merge them with.
+        let body = header + [24, 16, 8, 0].map { UInt8(truncatingIfNeeded: size >> $0) } + bytes[i..<i + size]
+        var jpeg = blankJPEG
+        jpeg.insert(contentsOf: [0xFF, 0xED, UInt8((body.count + 2) >> 8), UInt8((body.count + 2) & 0xFF)] + body, at: 2)
+        guard let source = CGImageSourceCreateWithData(jpeg as CFData, nil) else { return nil }
+        return (CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any])?["{IPTC}"] as? [String: Any]
+    }
+
+    static let blankJPEG: Data = {
+        let data = NSMutableData()
+        guard let context = CGContext(data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue),
+              let image = context.makeImage(),
+              let destination = CGImageDestinationCreateWithData(data, "public.jpeg" as CFString, 1, nil)
+        else { return Data() }
+        CGImageDestinationAddImage(destination, image, nil)
+        CGImageDestinationFinalize(destination)
+        return data as Data
+    }()
+
+    static func find(_ needle: String, in bytes: Data, from offset: Int = 0) -> Range<Int>? {
+        let needle = Array(needle.utf8)
+        guard offset < bytes.count else { return nil }
+        return bytes.withUnsafeBytes { raw -> Range<Int>? in
+            guard let base = raw.baseAddress,
+                  let hit = memmem(base + offset, raw.count - offset, needle, needle.count) else { return nil }
+            let at = base.distance(to: UnsafeRawPointer(hit))
+            return at..<at + needle.count
+        }
     }
 
     /// Groups ImageIO's property dictionaries ("{Exif}", "{GPS}", …) and XMP tags ("dc:title").

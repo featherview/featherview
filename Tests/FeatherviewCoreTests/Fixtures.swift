@@ -308,4 +308,26 @@ enum Fixtures {
         try Data(red).write(to: url)
         return url
     }
+
+    /// Puts an XMP packet (APP1) and IPTC records (APP13, `(dataset, value)` in record 2) right after a
+    /// JPEG's start marker, as other apps write them, without ImageIO mirroring one into the other.
+    @discardableResult
+    static func insertJPEGMetadata(into url: URL, xmp: String? = nil, iptc: [(UInt8, String)] = []) throws -> URL {
+        func segment(_ marker: UInt8, _ body: [UInt8]) -> [UInt8] { [0xFF, marker] + be16(body.count + 2) + body }
+        var segments: [UInt8] = []
+        if !iptc.isEmpty {
+            var records: [UInt8] = []
+            for (dataset, value) in iptc { records += [0x1C, 2, dataset] + be16(value.utf8.count) + Array(value.utf8) }
+            if records.count % 2 == 1 { records.append(0) }
+            segments += segment(0xED, Array("Photoshop 3.0\0".utf8) + Array("8BIM".utf8) + [0x04, 0x04, 0, 0]
+                                + be32(records.count) + records)
+        }
+        if let xmp {
+            segments += segment(0xE1, Array("http://ns.adobe.com/xap/1.0/\0".utf8) + Array(xmp.utf8))
+        }
+        var bytes = [UInt8](try Data(contentsOf: url))
+        bytes.insert(contentsOf: segments, at: 2)
+        try Data(bytes).write(to: url)
+        return url
+    }
 }
