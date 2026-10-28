@@ -13,8 +13,8 @@ struct InfoPanel: View {
     let image: CGImage?
     let onScreen: (url: URL, page: Int)?
     let fitImage: CGImage?
-    /// A fit-size decode of the picture on screen while zoomed into one never shown at fit.
-    let decodeFit: () async -> CGImage?
+    /// The kept fit-size decode of the picture on screen while zoomed into one never shown at fit, if there is one.
+    let keptFit: () -> CGImage?
     /// The viewer's focus for the panel's controls.
     var focus: FocusState<InfoFocus?>.Binding
     /// The panel's controls in Tab order, for Tab from the picture.
@@ -122,9 +122,8 @@ struct InfoPanel: View {
         }
         .task(id: histogramKey) {
             guard let key = histogramKey else { return }
-            var picture = fitImage
-            if picture == nil { picture = await decodeFit() }
-            guard let picture, let histogram = await Histogram.counted(picture, headroom: key.headroom),
+            // Spec: never an extra decode; zoomed into a picture never shown at fit, the zoom decode is counted.
+            guard let picture = fitImage ?? keptFit() ?? image, let histogram = await Histogram.counted(picture, headroom: key.headroom),
                   !Task.isCancelled else { return }
             counted = histogram
             countedFor = key

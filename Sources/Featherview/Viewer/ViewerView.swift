@@ -354,7 +354,7 @@ struct ViewerView: View {
     @ViewBuilder private var infoPanel: some View {
         if model.showInfo {
             InfoPanel(url: model.list.current, revision: model.fileRevision, image: model.image, onScreen: model.onScreen,
-                      fitImage: model.fitImage, decodeFit: model.decodeFit, focus: $panelFocus, stops: $panelStops) {
+                      fitImage: model.fitImage, keptFit: model.keptFit, focus: $panelFocus, stops: $panelStops) {
                 focused = true
             }
                 // Level with the fit area; in full screen (no insets) the panel's own margin.

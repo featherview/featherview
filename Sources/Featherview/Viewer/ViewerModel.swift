@@ -45,7 +45,7 @@ final class ViewerModel {
         }
     }
     /// The fit-size decode of the file and page on screen, for the info panel's histogram (spec: counted from the
-    /// screen-size picture, never a zoom decode); nil while zoomed into one never shown at fit.
+    /// screen-size picture); nil while zoomed into one never shown at fit.
     private(set) var fitImage: CGImage?
     var pendingChanges = PendingChanges()
     var pendingTransform: PictureTransform { pendingChanges.transform }
@@ -749,11 +749,9 @@ final class ViewerModel {
         return neighbors
     }
 
-    /// A fit-size decode of the picture on screen, for the info panel's histogram while `fitImage` is nil: the kept
-    /// one, else decoded on `decodes` (ranked first, as the file shown) and not kept, so the caches' memory budget holds.
-    func decodeFit() async -> CGImage? {
-        guard let onScreen else { return nil }
-        return try? await cache.fitPicture(onScreen.url, page: onScreen.page, screens: screens)
+    /// The kept fit-size decode of the picture on screen, for the info panel's histogram while `fitImage` is nil.
+    func keptFit() -> CGImage? {
+        onScreen.flatMap { cache.fitPicture($0.url, page: $0.page, screens: screens) }
     }
 
     /// The halving step to decode zoomed `url` at, for the current factor, and the cache it goes in: `cache`

@@ -124,34 +124,20 @@ import os
         let cache = ImageCache()
         let screens = [PixelSize(width: 100, height: 100)]
         let kept = try await cache.image(for: url, target: .fit(screens))
-        #expect(try await cache.fitPicture(url, page: 0, screens: screens) === kept)
+        #expect(cache.fitPicture(url, page: 0, screens: screens) === kept)
     }
 
-    /// Not kept: decoded on the queue's threads, never on the cooperative pool, and not kept either.
-    @Test func fitPictureDecodesOnTheQueueWithoutKeeping() async throws {
+    /// Spec "Histogram": counted from the picture already decoded, never an extra decode next to the zoom decode.
+    @Test func fitPictureWithoutAKeptOneDecodesNothing() async throws {
         let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("g.jpg"), width: 80, height: 40)
         let queue = DecodeQueue(width: 1)
         let cache = ImageCache(queue: queue)
         let release = try await hold(queue)
-        let task = Task { try await cache.fitPicture(url, page: 0, screens: [PixelSize(width: 100, height: 100)]) }
-        while queue.waitingCount == 0 { try await Task.sleep(for: .milliseconds(1)) }
-        release.signal()
-        #expect(try await task.value.width == 80)
-        #expect(await cache.count == 0)
-    }
-
-    /// A held arrow key: the panel's decode for an image left behind is dropped while it waits.
-    @Test func fitPictureCancelledWhileWaitingDecodesNothing() async throws {
-        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("h.jpg"), width: 80, height: 40)
-        let queue = DecodeQueue(width: 1)
-        let cache = ImageCache(queue: queue)
-        let release = try await hold(queue)
-        let task = Task { try await cache.fitPicture(url, page: 0, screens: [PixelSize(width: 100, height: 100)]) }
-        while queue.waitingCount == 0 { try await Task.sleep(for: .milliseconds(1)) }
-        task.cancel()
-        await #expect(throws: CancellationError.self) { try await task.value }
+        defer { release.signal() }
+        let picture = cache.fitPicture(url, page: 0, screens: [PixelSize(width: 100, height: 100)])
+        #expect(picture == nil)
         #expect(queue.waitingCount == 0)
-        release.signal()
+        #expect(await cache.count == 0)
     }
 
     @Test func cancellingOneWaiterKeepsTheSharedDecode() async throws {
