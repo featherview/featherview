@@ -134,6 +134,25 @@ import Testing
         #expect(peak(histogram.blue) == 0)
     }
 
+    @Test func sdrPictureIgnoresTheFilesHeadroom() throws {
+        // A gain-map file decoded SDR (macOS 14): its 8-bit picture is binned as SDR, white clips.
+        let image = try #require(Fixtures.solid(8, 8, (255, 255, 255, 255)).makeCGImage())
+        let histogram = Histogram.compute(image, headroom: 4)
+        #expect(histogram.headroom == nil)
+        #expect(histogram.highlightsClipped == 1)
+        #expect(peak(histogram.luminance) == 255)
+    }
+
+    @Test func cancelledCountGivesNothing() async throws {
+        let image = try #require(Fixtures.solid(64, 64, (128, 128, 128, 255)).makeCGImage())
+        let cancelled = await Task { () -> Histogram? in
+            withUnsafeCurrentTask { $0?.cancel() }
+            return await Histogram.counted(image, headroom: nil)
+        }.value
+        #expect(cancelled == nil)
+        #expect(await Histogram.counted(image, headroom: nil) == Histogram.compute(image, headroom: nil))
+    }
+
     @Test func hdrSpansHeadroom() throws {
         // One extended linear sRGB pixel at 2.0 in every channel.
         let floats: [Float] = [2, 2, 2, 1]
