@@ -561,6 +561,25 @@ empty rows or cards). Text is selectable. Nothing in the panel uses the network.
   - **File** (closed: the modification date): Folder, Modified, Created, "Show in Finder".
 - **"Show all metadata…"** at the bottom opens the All Metadata window (below).
 
+**Keyboard and accessibility:** the panel works without a mouse and shows where the focus is.
+- With the panel open, Tab moves the focus from the picture into the panel (the Luminance / RGB
+  control first), then through the clip marks, each group header, the buttons of open groups, and
+  "Show all metadata…"; ⇧Tab goes back; Tab after the last control returns to the picture. Esc puts
+  the focus back on the picture. Clicking the picture does too.
+- The focused control shows the accent focus ring (2 pt, 1 pt outside its shape), with or without
+  System Settings › Keyboard › Keyboard navigation; it is never hidden by the panel's scrolling (the
+  panel scrolls the focused control into view).
+- Space or Return acts on the focused control (opens or closes a group, presses a button, switches
+  the histogram mode); ← / → on the mode control switch it. All other viewer keys (← / → to browse,
+  R, L, I, F, …) keep working while the focus is in the panel; when I closes the panel the focus
+  returns to the picture.
+- VoiceOver: the panel is a group named "Info"; each group header is a heading with its state
+  ("Camera, collapsed, Fujifilm X-T5"); tiles and chips read as one phrase ("Shutter speed 1/250
+  second", "Exposure bias minus 0.7"); the histogram reads its mode and clipping ("Luminance
+  histogram, highlights clipped 2.4 %"); clip marks and buttons are buttons with labels.
+- Increase Contrast thickens hairlines and raises secondary text to primary; Reduce Motion makes
+  opening and closing groups a cut; Dynamic Type isn't offered by macOS, so sizes stay as designed.
+
 **Place names** come from data shipped in the app (GeoNames places with at least 1,000 people;
 Natural Earth seas, oceans, deserts and mountain ranges), looked up on the Mac:
 1. A place within 25 km: header "Andermatt, Switzerland", Location "near Andermatt, Uri,

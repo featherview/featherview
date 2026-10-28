@@ -57,7 +57,10 @@ viewer: `docs/parity.md` "Metadata". Roadmap: `docs/roadmap.md` row 23.
 4. Huge or odd metadata (10,000 keywords, a 1 MB maker note, non-UTF-8 IPTC): the panel and All
    Metadata stay responsive; binary values are hidden, long lists end in "…" in the panel — Task 5
    `binaryEntriesHidden`, Task 1 `keywordsCapped`.
-5. Switching images quickly with the panel open: stale reads must never overwrite the new image's
+5. Focus in the panel while browsing or closing it: → with focus on a group header must still go to
+   the next image (and keep the focus on that header), I or Esc must return focus to the picture so
+   single keys work again, never a stuck focus in a hidden panel — Task 6 Step 2; manual check in Task 9.
+6. Switching images quickly with the panel open: stale reads must never overwrite the new image's
    info (late task finishing last) — Task 6 keys the read on url+revision and drops results whose
    key no longer matches; manual check in Task 9.
 
@@ -305,6 +308,7 @@ New tokens (dark / light, from the canvas): `histogramLine` = accent; `histogram
 `histogramChannelRed/Green/Blue` = rgb(255,105,105,.85) / rgb(110,225,140,.85) / rgb(120,170,255,.9);
 `clipMarkOff` = white 0.45 / black 0.45; `tileFill` = white 0.06 / black 0.05; `chipFill`, `chipLine`
 = white 0.06 / 0.10 (light: black 0.04 / 0.10); `infoRowHeightCompact` = 32; `histogramHeight` = 60;
+`focusRing` = accent, `focusRingWidth` = 2, `focusRingOutset` = 1;
 `labelSecondary` stays, but the panel uses secondary for labels and primary for values.
 
 - [ ] **Step 1:** Build the panel per spec and canvas board "B2-1b-2 · Dark (main)": header (name
@@ -316,9 +320,19 @@ New tokens (dark / light, from the canvas): `histogramLine` = accent; `histogram
   first line `PlaceName.full` (`.lineLimit(2)`), "Open in Maps" and "Show in Finder" as the Small button +
   glyph. Reads: `ImageInfo` in a detached task keyed on url+revision; histogram computed from `image` in a
   detached task; place name awaited from `PlaceIndex`; each result applied only if its key still matches.
-- [ ] **Step 2:** `swift build` and `scripts/bundle.sh debug` — Expected: build succeeds, no warnings.
-- [ ] **Step 3:** Update `docs/DESIGN.md` "Info panel" and the Elements table to the new look.
-- [ ] **Step 4: Commit** `feat: info panel with histogram, exposure card, groups and place names`
+- [ ] **Step 2: Keyboard and accessibility** exactly as the spec's "Keyboard and accessibility" list:
+  `@FocusState` chain in the panel (mode control → clip marks → group headers → open groups' buttons →
+  "Show all metadata…"), entered from the picture with Tab and left with Esc / Tab past the end / a
+  click on the picture (the viewer's key handler forwards Tab and ⇧Tab when `showInfo`, and keeps every
+  other viewer key working while the panel has focus); `.focusable()` with a custom accent ring
+  (`Theme.focusRing` 2 pt, 1 pt outset) shown whenever the control is focused; `ScrollViewReader` scrolls
+  the focused control into view; VoiceOver labels, traits and values as the spec words them;
+  `accessibilityDifferentiateWithoutColor` / Increase Contrast → `Theme.labelPrimary` for secondary
+  text and 1.5 pt hairlines; Reduce Motion → group toggles without animation.
+- [ ] **Step 3:** `swift build` and `scripts/bundle.sh debug` — Expected: build succeeds, no warnings.
+- [ ] **Step 4:** Update `docs/DESIGN.md` "Info panel", the Elements table and "Accessibility" rows
+  (focus ring, Increase Contrast) to the new look.
+- [ ] **Step 5: Commit** `feat: info panel with histogram, exposure card, groups, place names, keyboard focus`
 
 ### Task 7: All Metadata window (app)
 
@@ -363,6 +377,9 @@ New tokens (dark / light, from the canvas): `histogramLine` = accent; `histogram
   screenshot); check against the canvas boards: header place, histogram modes and clip bubble, groups
   open/close and stay as left across images and windows, summaries, Open in Maps opens Maps, Show in
   Finder, light mode, Arabic, Tab order and focus rings.
+- [ ] Panel without the mouse: Tab in, through every control with a visible ring, Space/Return act,
+  Esc back to the picture, ← / → still browse with focus in the panel; VoiceOver (⌘F5) reads headers,
+  tiles, chips and the histogram as the spec words them; Increase Contrast and Reduce Motion.
 - [ ] All Metadata: every key in the spec's list works without the mouse; it follows → / ← in the viewer.
 - [ ] Hold → through 200 images with the panel open: `Navigate` p50/p95 within budget (log stream);
   first geotagged image after launch shows its place within 100 ms.

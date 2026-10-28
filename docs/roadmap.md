@@ -36,7 +36,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 21 | Grid columns that fill the window, right-click menu, drag out | `docs/superpowers/plans/2026-10-25-milestone-21-grid-columns-menu-drag.md` | done |
 | — | Automatic updates through Sparkle (spec "Updates") | no plan; commits 0949b8d, a5f9bd3 | done |
 | 22 | Photos library: browse albums, drops from Photos, batch from and into the library | `docs/superpowers/plans/2026-10-26-milestone-22-photos-library.md` | planned |
-| 23 | Info panel: histogram, exposure card, foldable groups, place names, all metadata | `docs/superpowers/plans/2026-10-28-milestone-23-info-panel.md` | planned |
+| 23 | Info panel: histogram, exposure card, foldable groups, place names, all metadata, keyboard focus and VoiceOver (runs before 22) | `docs/superpowers/plans/2026-10-28-milestone-23-info-panel.md` | planned, next |
 
 ## 1. Core viewer and batch
 
@@ -320,3 +320,7 @@ Ideas from the maintainer's QA that no spec covers yet; each gets a plan and a s
   - Design: <https://claude.ai/artifact/Lf6bXo8PaC2Exi6A6Unvmx>, option B2-1b-2 chosen (coral line
     histogram, coral glyphs, place under the file line). Reference behaviour: `docs/parity.md`, "Metadata".
   - **Not planned:** editing metadata in the panel (Adjust Date Taken stays the only metadata edit).
+
+- Accessibility pass for the whole app (idea, after M23): the info panel gets full keyboard focus and
+  VoiceOver in M23; the same for toolbar, grid, batch window, sheets and Settings (focus rings,
+  VoiceOver labels, Increase Contrast) is a separate milestone once M23 shows the pattern.
