@@ -90,7 +90,7 @@ viewer: `docs/parity.md` "Metadata". Roadmap: `docs/roadmap.md` row 23.
       public struct GPS: Equatable, Sendable { public var latitude: Double; public var longitude: Double
           public var altitude: Double? }
       public struct Description: Equatable, Sendable { public var title, caption, creator, copyright, comment: String?
-          public var keywords: [String]; public var rating: Int? }
+          public var keywords: [String]; public var moreKeywords: Bool /* list cut, panel ends it in "…" */; public var rating: Int? }
       public var fileName: String; public var formatLine: String          // "JPEG · 3,000 × 2,000 · 476 KB"
       public var camera: String?; public var lens: String?; public var taken: String?
       public var exposure: Exposure; public var picture: Picture; public var gps: GPS?

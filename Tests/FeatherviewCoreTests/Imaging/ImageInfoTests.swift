@@ -111,6 +111,21 @@ import UniformTypeIdentifiers
                      kCGImagePropertyGPSAltitude: 12.0]) != nil)
     }
 
+    // Bad DMS rationals in a corrupt file give a latitude past 90 or a zero denominator's inf/NaN.
+    @Test func gpsOutOfRangeIsNoFix() {
+        func fix(_ lat: Double, _ lon: Double) -> ImageInfo.GPS? {
+            gps([kCGImagePropertyGPSLatitude: lat, kCGImagePropertyGPSLongitude: lon])
+        }
+        #expect(fix(212, 8) == nil)
+        #expect(fix(46, 181) == nil)
+        #expect(fix(.infinity, 8) == nil)
+        #expect(fix(46, .nan) == nil)
+        #expect(fix(90, -180) != nil)
+        let badAltitude = gps([kCGImagePropertyGPSLatitude: 46.0, kCGImagePropertyGPSLongitude: 8.0,
+                               kCGImagePropertyGPSAltitude: Double.nan])
+        #expect(badAltitude == ImageInfo.GPS(latitude: 46, longitude: 8, altitude: nil))
+    }
+
     @Test func descriptionMergesSourcesOnce() {
         let xmp = CGImageMetadataCreateMutable()
         #expect(CGImageMetadataSetValueWithPath(xmp, nil, "dc:creator" as CFString, ["A"] as CFArray))
@@ -132,6 +147,25 @@ import UniformTypeIdentifiers
         let words = (0..<10_000).map { "k\($0)" }
         let d = pure([kCGImagePropertyIPTCDictionary: [kCGImagePropertyIPTCKeywords: words] as [CFString: Any]]).description
         #expect(d.keywords == Array(words.prefix(50)))
+        #expect(d.moreKeywords)
+        let fifty = Array(words.prefix(50))
+        let exact = pure([kCGImagePropertyIPTCDictionary: [kCGImagePropertyIPTCKeywords: fifty] as [CFString: Any]]).description
+        #expect(exact.keywords == fifty)
+        #expect(!exact.moreKeywords)
+    }
+
+    // Both dates come from the file a symlink points to, as Modified always did.
+    @Test func datesFollowSymlinks() throws {
+        let dir = try Fixtures.makeTempDir()
+        let target = try Fixtures.writeImage(to: dir.appendingPathComponent("t.jpg"), width: 8, height: 8)
+        let old = Date(timeIntervalSince1970: 946_684_800)
+        try FileManager.default.setAttributes([.creationDate: old, .modificationDate: old], ofItemAtPath: target.path)
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+        let info = ImageInfo.read(link)
+        let expected = old.formatted(date: .abbreviated, time: .shortened)
+        #expect(info.modified == expected)
+        #expect(info.created == expected)
     }
 
     @Test func missingValuesLeftOut() throws {

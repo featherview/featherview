@@ -38,6 +38,8 @@ public struct ImageInfo: Equatable, Sendable {
     public struct Description: Equatable, Sendable {
         public var title, caption, creator, copyright, comment: String?
         public var keywords: [String] = []
+        /// The file has more keywords than `keywords` holds; the panel ends the list in "…".
+        public var moreKeywords = false
         public var rating: Int?
     }
 
@@ -130,14 +132,15 @@ public struct ImageInfo: Equatable, Sendable {
         info.description.copyright = first(xmp("dc:rights"), texts(iptc[kCGImagePropertyIPTCCopyrightNotice]),
                                            texts(tiff[kCGImagePropertyTIFFCopyright]))
         info.description.comment = first(texts(exif[kCGImagePropertyExifUserComment]), texts(png[kCGImagePropertyPNGComment]))
-        let keywords = xmp("dc:subject")
-        info.description.keywords = Array((keywords.isEmpty ? texts(iptc[kCGImagePropertyIPTCKeywords]) : keywords)
-            .prefix(keywordLimit))
+        let xmpKeywords = xmp("dc:subject")
+        let keywords = xmpKeywords.isEmpty ? texts(iptc[kCGImagePropertyIPTCKeywords]) : xmpKeywords
+        info.description.keywords = Array(keywords.prefix(keywordLimit))
+        info.description.moreKeywords = keywords.count > keywordLimit
         let rating = xmp("xmp:Rating").first.flatMap { Double($0) }.flatMap { $0.isFinite ? Int(exactly: $0.rounded()) : nil }
             ?? (iptc[kCGImagePropertyIPTCStarRating] as? Int)
         info.description.rating = rating.flatMap { (1...5).contains($0) ? $0 : nil }
 
-        let dates = try? url.resourceValues(forKeys: [.creationDateKey])
+        let dates = try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.creationDateKey])  // as stat() for Modified
         info.modified = url.modificationDate?.formatted(date: .abbreviated, time: .shortened)
         info.created = dates?.creationDate?.formatted(date: .abbreviated, time: .shortened)
         return info
@@ -199,11 +202,12 @@ public struct ImageInfo: Equatable, Sendable {
         }
     }
 
-    /// Signed degrees from the refs; nil when a half is missing, or for 0, 0 written without a fix.
+    /// Signed degrees from the refs; nil when a half is missing or out of range (bad rationals in a corrupt file),
+    /// or for 0, 0 written without a fix.
     private static func gps(_ gps: [CFString: Any]) -> GPS? {
-        guard let lat = gps[kCGImagePropertyGPSLatitude] as? Double,
-              let lon = gps[kCGImagePropertyGPSLongitude] as? Double else { return nil }
-        var altitude = gps[kCGImagePropertyGPSAltitude] as? Double
+        guard let lat = gps[kCGImagePropertyGPSLatitude] as? Double, abs(lat) <= 90,
+              let lon = gps[kCGImagePropertyGPSLongitude] as? Double, abs(lon) <= 180 else { return nil }  // NaN fails too
+        var altitude = (gps[kCGImagePropertyGPSAltitude] as? Double).flatMap { $0.isFinite ? $0 : nil }
         if gps[kCGImagePropertyGPSAltitudeRef] as? Int == 1 { altitude = altitude.map { -$0 } }  // below sea level
         if lat == 0, lon == 0, altitude == nil, gps[kCGImagePropertyGPSDateStamp] == nil { return nil }
         return GPS(latitude: (gps[kCGImagePropertyGPSLatitudeRef] as? String)?.uppercased() == "S" ? -lat : lat,
