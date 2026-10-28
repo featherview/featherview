@@ -82,6 +82,21 @@ enum PlaceFixtures {
         #expect(polar.nearest(latitude: -90, longitude: 0, within: 25)?.0.name == "Pole")
     }
 
+    @Test func badCoordinatesGiveNoPlace() {
+        for (lat, lon) in [(Double.nan, 0.0), (10, .infinity), (.nan, .nan), (-.infinity, 0), (1e20, 0), (0, 1e20), (91, 0), (0, 181)] {
+            #expect(table.nearest(latitude: lat, longitude: lon, within: 25) == nil)
+            #expect(table.region(latitude: lat, longitude: lon) == nil)
+            #expect(PlaceName.describe(latitude: lat, longitude: lon, in: table, countryName: PlaceFixtures.english) == nil)
+        }
+    }
+
+    @Test func emptyRegionsAreDropped() throws {
+        let table = PlaceTable(places: [], regions: [RegionRecord(name: "X", kind: .sea, rings: []),
+                                                     RegionRecord(name: "Y", kind: .sea, rings: [[], [(0, 0), (1, 1)]])])
+        let decoded = try PlaceTable(data: table.encoded())
+        #expect(decoded.region(latitude: 0.5, longitude: 0.5) == nil)
+    }
+
     @Test func rejectsBadData() {
         #expect(throws: (any Error).self) { try PlaceTable(data: Data("NOPE\u{1}\u{0}xxxx".utf8)) }
         #expect(throws: (any Error).self) { try PlaceTable(data: Data()) }

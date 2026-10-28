@@ -72,7 +72,10 @@ public struct PlaceTable: Sendable {
         func q(_ v: Double) -> Double { (v * Self.scale).rounded() / Self.scale }
         let quantized = places.map { PlaceRecord(name: $0.name, admin1: $0.admin1, country: $0.country,
                                                  latitude: q($0.latitude), longitude: q($0.longitude)) }
-        let regionsQ = regions.map { RegionRecord(name: $0.name, kind: $0.kind, rings: $0.rings.map { $0.map { (q($0.0), q($0.1)) } }) }
+        // Rings of fewer than 3 points enclose nothing; a region left without rings has no bounding box.
+        let regionsQ = regions.map { RegionRecord(name: $0.name, kind: $0.kind,
+                                                  rings: $0.rings.filter { $0.count > 2 }.map { $0.map { (q($0.0), q($0.1)) } }) }
+            .filter { !$0.rings.isEmpty }
         let sorted = quantized.enumerated()
             .sorted { (Self.cell($0.element.latitude, $0.element.longitude), $0.offset) < (Self.cell($1.element.latitude, $1.element.longitude), $1.offset) }
             .map(\.element)
@@ -92,6 +95,7 @@ public struct PlaceTable: Sendable {
 
     /// The nearest place by great-circle distance, if one lies within `km`.
     public func nearest(latitude: Double, longitude: Double, within km: Double) -> (PlaceRecord, km: Double)? {
+        guard Self.isValid(latitude, longitude) else { return nil }
         // Every cell the circle of radius `km` can touch: its latitude band, and in each the longitudes it spans.
         let radiusDeg = km / Self.earthKm * 180 / .pi
         let lowRow = Self.row(latitude - radiusDeg), highRow = Self.row(latitude + radiusDeg)
@@ -121,7 +125,8 @@ public struct PlaceTable: Sendable {
 
     /// The sea or ocean containing the point, else the desert or mountain range.
     public func region(latitude: Double, longitude: Double) -> RegionRecord? {
-        regions.first { region in
+        guard Self.isValid(latitude, longitude) else { return nil }
+        return regions.first { region in
             let (minLon, minLat, maxLon, maxLat) = region.box
             guard longitude >= minLon, longitude <= maxLon, latitude >= minLat, latitude <= maxLat else { return false }
             return Self.contains(region.record.rings, x: longitude, y: latitude)
@@ -129,6 +134,11 @@ public struct PlaceTable: Sendable {
     }
 
     // MARK: Geometry
+
+    /// Coordinates come from a file's GPS tags: NaN, infinite or out-of-range values give no place.
+    private static func isValid(_ latitude: Double, _ longitude: Double) -> Bool {
+        latitude.isFinite && longitude.isFinite && abs(latitude) <= 90 && abs(longitude) <= 180
+    }
 
     private static func row(_ latitude: Double) -> Int { min(rows - 1, max(0, Int((latitude + 90).rounded(.down)))) }
 
