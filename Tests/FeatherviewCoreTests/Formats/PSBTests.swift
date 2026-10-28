@@ -30,7 +30,7 @@ import Testing
             let p = image[i % 3, i / 3]
             #expect(abs(Int(p.r) - Int(c.0)) <= 2 && abs(Int(p.g) - Int(c.1)) <= 2 && abs(Int(p.b) - Int(c.2)) <= 2, "pixel \(i): \(p)")
         }
-        #expect(MetadataReader.fields(for: url).contains(MetadataField(label: "Dimensions", value: "3 × 2")))
+        #expect(ImageInfo.read(url).picture.dimensions?.hasPrefix("3 × 2 · ") == true)
     }
 
     @Test(.enabled(if: SampleCorpus.isAvailable)) func psbCorpusMatchesReferences() throws {

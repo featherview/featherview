@@ -1,30 +1,7 @@
 import Foundation
 import ImageIO
 
-public struct MetadataField: Equatable, Sendable {
-    public let label: String
-    public let value: String
-}
-
 public enum MetadataReader {
-    /// The info panel's rows until the panel shows `ImageInfo` itself.
-    public static func fields(for url: URL) -> [MetadataField] {
-        let info = ImageInfo.read(url)
-        let rows: [(String, String?)] = [
-            (String(localized: "Dimensions", comment: "Info panel label"),
-             info.picture.dimensions?.components(separatedBy: " · ").first),
-            (String(localized: "File size", comment: "Info panel label"), url.fileSize.map(format(bytes:))),
-            (String(localized: "Camera", comment: "Info panel label"), info.camera),
-            (String(localized: "Lens", comment: "Info panel label"), info.lens),
-            (String(localized: "Taken", comment: "Info panel label"), info.taken),
-            (String(localized: "Exposure", comment: "Info panel label"), info.exposure.shutter),
-            (String(localized: "Aperture", comment: "Info panel label"), info.exposure.aperture),
-            (String(localized: "ISO", comment: "Info panel label"), info.exposure.iso),
-            (String(localized: "Focal length", comment: "Info panel label"), info.exposure.focal),
-        ]
-        return rows.compactMap { label, value in value.map { MetadataField(label: label, value: $0) } }
-    }
-
     /// Model alone when it already names the maker ("Canon" + "Canon EOS R6" -> "Canon EOS R6").
     static func camera(make: String?, model: String?) -> String {
         let make = make?.trimmingCharacters(in: .whitespaces) ?? ""

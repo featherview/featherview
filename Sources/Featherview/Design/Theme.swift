@@ -90,11 +90,25 @@ enum Theme {
     /// Toggled pill: behind an active toolbar item (Info while the panel is open).
     static let toggledPill = colour(dark: white(0.12), light: black(0.08))
 
-    /// Info panel: format badge fill and line; grouped-rows card (and the empty hint card) fill and line.
-    static let badgeFill = colour(dark: white(0.08), light: black(0.08))
+    /// Small button hairline; grouped-rows card (and the empty hint card) fill and line.
     static let badgeLine = colour(dark: white(0.12), light: black(0.12))
     static let cardFill = colour(dark: white(0.04), light: black(0.04))
     static let cardLine = colour(dark: white(0.06), light: black(0.06))
+    /// Info panel histogram: luminance line and its fill; the RGB mode's channel lines; a clip mark with nothing clipped.
+    static let histogramLine = accent
+    static let histogramFill = accent.opacity(0.14)
+    static let histogramChannelRed = Color(nsColor: rgb(255, 105, 105, 0.85))
+    static let histogramChannelGreen = Color(nsColor: rgb(110, 225, 140, 0.85))
+    static let histogramChannelBlue = Color(nsColor: rgb(120, 170, 255, 0.9))
+    static let clipMarkOff = colour(dark: white(0.45), light: black(0.45))
+    /// Info panel: exposure tiles; chips (exposure bias, flash, white balance, metering) fill and line.
+    static let tileFill = colour(dark: white(0.06), light: black(0.05))
+    static let chipFill = colour(dark: white(0.06), light: black(0.04))
+    static let chipLine = colour(dark: white(0.10), light: black(0.10))
+    /// Keyboard focus ring in the info panel: accent, 2 pt, 1 pt outside the control's shape.
+    static let focusRing = accent
+    static let focusRingWidth = 2.0
+    static let focusRingOutset = 1.0
 
     /// Accent: selections and toggled glyphs; the app's AccentColor (feather coral in dark, brown in light).
     static let accent = Color.accentColor
@@ -225,6 +239,19 @@ enum Theme {
     static let hint = Font.system(size: 11)
     /// Format badge: 11 Medium.
     static let badge = Font.system(size: 11, weight: .medium)
+    /// Info panel (B2-1b-2): format line, place and clip bubble 11; section label 11 Semibold; group title 12
+    /// Semibold; rows 12 (values tabular); tile number 14 Semibold, its unit 10; chips 11; mode control 10 Medium;
+    /// the Location group's place 13 Semibold.
+    static let infoCaption = Font.system(size: 11).monospacedDigit()
+    static let infoSection = Font.system(size: 11, weight: .semibold)
+    static let infoGroupTitle = Font.system(size: 12, weight: .semibold)
+    static let infoRow = Font.system(size: 12)
+    static let infoRowValue = Font.system(size: 12).monospacedDigit()
+    static let infoTile = Font.system(size: 14, weight: .semibold).monospacedDigit()
+    static let infoTileUnit = Font.system(size: 10)
+    static let infoChip = Font.system(size: 11).monospacedDigit()
+    static let infoSegment = Font.system(size: 10, weight: .medium)
+    static let infoPlace = Font.system(size: 13, weight: .semibold)
     /// Error and "No images" message boxes' padding (spec silent).
     static let messagePadding = 8.0
     /// Small button ("Choose…"): 12 Medium.
@@ -261,8 +288,22 @@ enum Theme {
     static let infoPanelWidth = CanvasInsets.infoPanelWidth
     static let panelPadding = 16.0
     static let panelGap = 12.0
-    static let infoHeaderHeight = 24.0
-    static let infoRowHeight = 40.0
+    /// Info panel (B2-1b-2): rows 32, group headers 36 (glyph, title, summary, chevron 7 apart), sections 10 apart,
+    /// histogram 60 tall, small gaps (pin and place, chip glyph and text, histogram label and plot) 4.
+    static let infoRowHeightCompact = 32.0
+    static let infoGroupHeaderHeight = 36.0
+    static let infoGroupHeaderGap = 7.0
+    static let infoGap = 10.0
+    static let histogramHeight = 60.0
+    static let infoSmallGap = 4.0
+    /// Exposure tiles (4 per row, 4 apart) and chips (5 apart, padding 3 × 8), inset 2 × 8 in the Camera card.
+    static let tileGap = 4.0
+    static let tilePadding = EdgeInsets(top: 6, leading: 2, bottom: 5, trailing: 2)
+    static let chipGap = 5.0
+    static let chipPadding = EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8)
+    static let exposurePadding = EdgeInsets(top: 2, leading: 8, bottom: 10, trailing: 8)
+    /// Hairlines in the info panel under Increase Contrast.
+    static let hairlineContrast = 1.5
     /// Info panel header's side padding; rows' side padding (also the separators' leading inset).
     static let infoHeaderPadding = 4.0
     static let rowPadding = 12.0
@@ -345,6 +386,10 @@ enum Theme {
         static let group = 10.0
         /// Chooser rows.
         static let chooserRow = 9.0
+        /// Info panel exposure tiles.
+        static let tile = 8.0
+        /// Info panel histogram plot and its mode control.
+        static let histogram = 6.0
         /// F7 rows.
         static let moveRow = 8.0
         /// Appearance tile in Settings.
