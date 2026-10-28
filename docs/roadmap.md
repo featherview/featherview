@@ -309,8 +309,9 @@ Ideas from the maintainer's QA that no spec covers yet; each gets a plan and a s
     with LZFSE (~2 MB in the app), grid lookup loaded lazily on the first geotagged image, countries
     localized through `Locale`. Beyond 25–50 km from a town: the Natural Earth region or sea that
     contains the point, with the nearest country ("Sahara, near Tunisia", "South Atlantic, off
-    Gambia" within ~200 km of a coast, else just "North Pacific Ocean"). Credits: About window and
-    README. Open: GeoNames is CC BY 4.0, which needs the maintainer's yes.
+    Gambia" within ~200 km of a coast, else just "North Pacific Ocean"). GeoNames is CC BY 4.0
+    (accepted): credit with links to GeoNames and the licence, noting the data is simplified, in
+    the About window and README. Open: how the data file is built and refreshed.
   - **Show all metadata…:** every EXIF, GPS, IPTC, XMP and TIFF tag with readable labels, search and
     copy; internal entries hidden.
   - Design options: <https://claude.ai/artifact/Lf6bXo8PaC2Exi6A6Unvmx> (variant B2 chosen, colour
