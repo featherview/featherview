@@ -207,4 +207,9 @@ import UniformTypeIdentifiers
         #expect(MetadataCatalog.copyText(entries)
                 == "Exposure time (ExposureTime): 1/250 s\nCamera maker (Make): Canon")
     }
+
+    /// Nothing selected copies nothing: ⌘C must leave the pasteboard as it was.
+    @Test func copyTextOfNothingIsNil() {
+        #expect(MetadataCatalog.copyText([]) == nil)
+    }
 }

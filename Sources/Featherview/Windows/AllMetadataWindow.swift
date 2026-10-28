@@ -114,7 +114,7 @@ private struct AllMetadataView: View {
                 .listStyle(.sidebar)
                 .tint(Theme.accent)
                 .focused($focus, equals: .list)
-                .onCopyCommand { [NSItemProvider(object: MetadataCatalog.copyText(selectedEntries) as NSString)] }
+                .onCopyCommand { MetadataCatalog.copyText(selectedEntries).map { [NSItemProvider(object: $0 as NSString)] } ?? [] }
                 .onKeyPress(.leftArrow) { setGroupOfSelection(open: false) }
                 .onKeyPress(.rightArrow) { setGroupOfSelection(open: true) }
                 .onKeyPress(.home) { select(visibleEntries.first, proxy) }
@@ -179,9 +179,9 @@ private struct AllMetadataView: View {
     }
 
     private func copy(_ entries: [MetadataEntry]) {
-        guard !entries.isEmpty else { return }
+        guard let text = MetadataCatalog.copyText(entries) else { return }
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(MetadataCatalog.copyText(entries), forType: .string)
+        NSPasteboard.general.setString(text, forType: .string)
     }
 }
 
