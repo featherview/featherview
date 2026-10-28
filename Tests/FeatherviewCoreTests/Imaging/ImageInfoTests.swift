@@ -145,6 +145,47 @@ import UniformTypeIdentifiers
         #expect(info.formatLine.hasPrefix("PNG · 8 × 8 · "))
     }
 
+    // xmp:Rating is free text from the file: out-of-range numbers must not trap.
+    @Test func badXMPRatingIsDropped() {
+        func rating(_ text: String) -> Int? {
+            let xmp = CGImageMetadataCreateMutable()
+            #expect(CGImageMetadataSetValueWithPath(xmp, nil, "xmp:Rating" as CFString, text as CFString))
+            return pure([:], metadata: xmp).description.rating
+        }
+        #expect(rating("1e30") == nil)
+        #expect(rating("nan") == nil)
+        #expect(rating("inf") == nil)
+        #expect(rating("-1") == nil)
+        #expect(rating("4") == 4)
+        #expect(rating("4.0") == 4)
+    }
+
+    // The summary takes the depth as a number, never back from the translated "8 bits per channel".
+    @Test func hdrSummaryKeepsTheBitDepth() {
+        let props: [CFString: Any] = [kCGImagePropertyDepth: 8, kCGImagePropertyProfileName: "Display P3"]
+        let picture = ImageInfo.read(properties: props, metadata: nil, url: URL(fileURLWithPath: "/tmp/a.heic"),
+                                     fileSize: nil, headroom: 4).picture
+        #expect(picture.summary == "P3 · 8-bit · HDR")
+        #expect(picture.headroom == 4)
+        #expect(picture.hdr == "Gain map, up to 4×")
+    }
+
+    @Test func formatComesFromTheContents() throws {
+        #expect(try info([:], type: .png, name: "photo.jpg").formatLine.hasPrefix("PNG · 8 × 8 · "))
+        #expect(try info([:], type: .png, name: "photo").formatLine.hasPrefix("PNG · 8 × 8 · "))
+    }
+
+    @Test func jpegCommentSegment() throws {
+        let dir = try Fixtures.makeTempDir()
+        let url = try Fixtures.writeImage(to: dir.appendingPathComponent("c.jpg"), width: 8, height: 8)
+        var data = try Data(contentsOf: url)
+        let text = Array("hello comment".utf8)
+        data.insert(contentsOf: [0xFF, 0xFE, 0, UInt8(text.count + 2)] + text, at: 2)
+        try data.write(to: url)
+        #expect(ImageInfo.read(url).description.comment == "hello comment")
+        #expect(try info([:]).description.comment == nil)
+    }
+
     @Test func coordinateText() {
         #expect(InfoText.latitude(-33.8688) == "33.8688° S")
         #expect(InfoText.latitude(46.6356) == "46.6356° N")

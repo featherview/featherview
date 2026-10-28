@@ -70,19 +70,16 @@ public struct ImageInfo: Equatable, Sendable {
             return read(properties: [:], metadata: nil, url: url, fileSize: fileSize)
         }
         var info = read(properties: CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any] ?? [:],
-                        metadata: CGImageSourceCopyMetadataAtIndex(source, 0, nil), url: url, fileSize: fileSize)
-        if let headroom = gainMapHeadroom(source) {
-            info.picture.headroom = headroom
-            let times = headroom.formatted(.number.precision(.fractionLength(0...1)))
-            info.picture.hdr = String(localized: "Gain map, up to \(times)×", comment: "Info panel")
-            info.picture.summary = summary(info.picture)
-        }
+                        metadata: CGImageSourceCopyMetadataAtIndex(source, 0, nil), url: url, fileSize: fileSize,
+                        type: CGImageSourceGetType(source).flatMap { UTType($0 as String) }, headroom: gainMapHeadroom(source))
+        if info.description.comment == nil { info.description.comment = jpegComment(url) }
         return info
     }
 
-    /// Pure mapping from ImageIO properties and XMP metadata.
+    /// Pure mapping from ImageIO properties and XMP metadata. `type` is the file's real format (else the
+    /// extension's), `headroom` the gain map's.
     public static func read(properties props: [CFString: Any], metadata: CGImageMetadata?, url: URL,
-                            fileSize: Int?) -> ImageInfo {
+                            fileSize: Int?, type: UTType? = nil, headroom: Double? = nil) -> ImageInfo {
         let exif = props[kCGImagePropertyExifDictionary] as? [CFString: Any] ?? [:]
         let tiff = props[kCGImagePropertyTIFFDictionary] as? [CFString: Any] ?? [:]
         let iptc = props[kCGImagePropertyIPTCDictionary] as? [CFString: Any] ?? [:]
@@ -97,7 +94,7 @@ public struct ImageInfo: Equatable, Sendable {
             let megapixels = (Double(w * h) / 1_000_000).formatted(.number.precision(.fractionLength(1)))
             picture.dimensions = String(localized: "\(dimensions!) · \(megapixels) MP", comment: "Info panel, dimensions and megapixels")
         }
-        let format = UTType(filenameExtension: url.pathExtension)?.preferredFilenameExtension ?? url.pathExtension
+        let format = (type ?? UTType(filenameExtension: url.pathExtension))?.preferredFilenameExtension ?? url.pathExtension
         let formatLine = [format.isEmpty ? nil : format.uppercased(), dimensions, fileSize.map(MetadataReader.format(bytes:))]
             .compactMap { $0 }.joined(separator: " · ")
 
@@ -105,6 +102,11 @@ public struct ImageInfo: Equatable, Sendable {
         let depth = props[kCGImagePropertyDepth] as? Int
         picture.bitDepth = depth.map { String(localized: "\($0) bits per channel", comment: "Info panel") }
         picture.software = nonEmpty(tiff[kCGImagePropertyTIFFSoftware] as? String)
+        if let headroom {
+            picture.headroom = headroom
+            let times = headroom.formatted(.number.precision(.fractionLength(0...1)))
+            picture.hdr = String(localized: "Gain map, up to \(times)×", comment: "Info panel")
+        }
         picture.summary = summary(picture, depth: depth)
 
         var info = ImageInfo(fileName: url.lastPathComponent, formatLine: formatLine,
@@ -130,7 +132,7 @@ public struct ImageInfo: Equatable, Sendable {
         let keywords = xmp("dc:subject")
         info.description.keywords = Array((keywords.isEmpty ? texts(iptc[kCGImagePropertyIPTCKeywords]) : keywords)
             .prefix(keywordLimit))
-        let rating = xmp("xmp:Rating").first.flatMap { Double($0) }.map { Int($0) }
+        let rating = xmp("xmp:Rating").first.flatMap { Double($0) }.flatMap { $0.isFinite ? Int(exactly: $0.rounded()) : nil }
             ?? (iptc[kCGImagePropertyIPTCStarRating] as? Int)
         info.description.rating = rating.flatMap { (1...5).contains($0) ? $0 : nil }
 
@@ -206,12 +208,11 @@ public struct ImageInfo: Equatable, Sendable {
                    altitude: altitude)
     }
 
-    private static func summary(_ p: Picture, depth: Int? = nil) -> String? {
+    private static func summary(_ p: Picture, depth: Int?) -> String? {
         let profile = p.profile.map { name in
             name.contains("P3") ? "P3" : name.hasPrefix("sRGB") ? "sRGB" : name.contains("Adobe RGB") ? "Adobe RGB" : name
         }
-        let bits = (depth ?? p.bitDepth.flatMap { Int($0.prefix { $0.isNumber }) })
-            .map { String(localized: "\($0)-bit", comment: "Info panel, bit depth in the Image summary") }
+        let bits = depth.map { String(localized: "\($0)-bit", comment: "Info panel, bit depth in the Image summary") }
         let parts = [profile, bits, p.headroom == nil ? nil : "HDR"].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
@@ -227,6 +228,26 @@ public struct ImageInfo: Equatable, Sendable {
         // shortcut: Apple gain maps without HDRGainMapHeadroom (older iPhones keep it in the maker note) show as SDR,
         // read the maker note when users miss their HDR row.
         return value(kCGImageAuxiliaryDataTypeHDRGainMap, "HDRGainMap:HDRGainMapHeadroom")
+    }
+
+    /// The JPEG COM segment's text, which ImageIO leaves out; only segments before the scan are read.
+    static func jpegComment(_ url: URL) -> String? {
+        guard let data = try? Data(contentsOf: url, options: .alwaysMapped), data.starts(with: [0xFF, 0xD8]) else { return nil }
+        var i = 2
+        while i + 4 <= data.count, data[i] == 0xFF {
+            let marker = data[i + 1]
+            if marker == 0xFF { i += 1; continue }  // fill byte
+            if marker == 0xDA || marker == 0xD9 { return nil }
+            let length = Int(data[i + 2]) << 8 | Int(data[i + 3])
+            guard length >= 2, i + 2 + length <= data.count else { return nil }
+            if marker == 0xFE {
+                let text = data[(i + 4)..<(i + 2 + length)]
+                return nonEmpty((String(data: text, encoding: .utf8) ?? String(data: text, encoding: .isoLatin1))?
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "\0")))
+            }
+            i += 2 + length
+        }
+        return nil
     }
 
     /// An XMP property's text: a simple value, or every item of an array (alt-text lists the default language first).
