@@ -1,6 +1,7 @@
 import Foundation
 import ImageIO
 import Testing
+import UniformTypeIdentifiers
 @testable import FeatherviewCore
 
 @Suite struct MetadataCatalogTests {
@@ -96,6 +97,34 @@ import Testing
                 == ["Caption/Abstract", "Keywords"])
         #expect(entry(catalog, "XMP.dc:subject")?.value == "alpha")
         #expect(entry(catalog, "XMP.dc:description") == nil)
+    }
+
+    @Test func onlyTheFilesOwnSegmentsCount() throws {
+        // An IPTC resource and an XMP packet after the image data, as in a placed photo or a second image.
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("trailer.jpg"),
+                                          width: 8, height: 8)
+        let records = [0x1C, 2, 25] + Fixtures.be16(5) + Array("alpha".utf8) + [0]
+        let trailer = Array("8BIM".utf8) + [0x04, 0x04, 0, 0] + Fixtures.be32(records.count) + records
+            + Array(packet("<photoshop:City>Zug</photoshop:City>").utf8)
+        try (Data(contentsOf: url) + trailer).write(to: url)
+        let catalog = MetadataCatalog.read(url)
+        #expect(!catalog.sections.contains { $0.id == "IPTC" || $0.id == "XMP" })
+    }
+
+    @Test(arguments: [UTType.jpeg, .heic]) func gainMapXMPIsNotThePictures(type: UTType) throws {
+        let url = try Fixtures.writeAppleGainMap(to: Fixtures.makeTempDir().appendingPathComponent("hdr")
+            .appendingPathExtension(for: type), type: type)
+        #expect(!MetadataCatalog.read(url).sections.contains { $0.id == "XMP" })
+    }
+
+    @Test func tiffShowsItsOwnIPTCAndXMP() throws {
+        let url = try Fixtures.writeImage(to: Fixtures.makeTempDir().appendingPathComponent("tags.tif"),
+                                          width: 8, height: 8, type: .tiff, properties: [
+            kCGImagePropertyIPTCDictionary: [kCGImagePropertyIPTCKeywords: ["snow", "dusk"]] as [CFString: Any],
+        ])
+        let catalog = MetadataCatalog.read(url)
+        #expect(entry(catalog, "IPTC.Keywords")?.value == "snow, dusk")
+        #expect(entry(catalog, "XMP.dc:subject")?.value == "snow, dusk")
     }
 
     @Test func binaryEntriesHidden() {

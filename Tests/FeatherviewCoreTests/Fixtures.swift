@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreVideo
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
@@ -190,6 +191,27 @@ enum Fixtures {
         CGImageDestinationAddImage(dest, CGImageCreateCopyWithContentHeadroom(4, context.makeImage()!)!, [
             kCGImageDestinationEncodeRequest: pq ? kCGImageDestinationEncodeToISOHDR : kCGImageDestinationEncodeToISOGainmap,
             kCGImagePropertyOrientation: orientation,
+        ] as CFDictionary)
+        guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
+        return url
+    }
+
+    /// An 8 × 8 picture with an Apple HDR gain map whose metadata, as on iPhone photos, is an XMP packet of
+    /// its own (HDRGainMap:HDRGainMapVersion); the picture itself has none.
+    @discardableResult
+    static func writeAppleGainMap(to url: URL, type: UTType) throws -> URL {
+        guard let dest = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil)
+        else { throw CocoaError(.fileWriteUnknown) }
+        CGImageDestinationAddImage(dest, solid(8, 8, (255, 0, 0, 255)).makeCGImage()!, nil)
+        let metadata = CGImageMetadataCreateMutable()
+        CGImageMetadataRegisterNamespaceForPrefix(metadata, "http://ns.apple.com/HDRGainMap/1.0/" as CFString,
+                                                  "HDRGainMap" as CFString, nil)
+        CGImageMetadataSetValueWithPath(metadata, nil, "HDRGainMap:HDRGainMapVersion" as CFString, 65536 as CFNumber)
+        CGImageDestinationAddAuxiliaryDataInfo(dest, kCGImageAuxiliaryDataTypeHDRGainMap, [
+            kCGImageAuxiliaryDataInfoData: Data(count: 16),
+            kCGImageAuxiliaryDataInfoDataDescription: ["Width": 4, "Height": 4, "BytesPerRow": 4,
+                                                       "PixelFormat": kCVPixelFormatType_OneComponent8] as [String: Any],
+            kCGImageAuxiliaryDataInfoMetadata: metadata,
         ] as CFDictionary)
         guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
         return url
