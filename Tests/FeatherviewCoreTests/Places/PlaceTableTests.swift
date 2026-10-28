@@ -121,7 +121,9 @@ enum PlaceFixtures {
         #expect(throws: (any Error).self) { try PlaceTable(data: truncated) }
     }
 
-    @Test func loadsAFullSizeTableQuickly() throws {
+    // CI's virtual Macs take ~400 ms for the debug read; the budget is about real Macs (bench `places --time`).
+    @Test(.disabled(if: ProcessInfo.processInfo.environment["CI"] != nil, "CI's virtual Macs are too slow to time"))
+    func loadsAFullSizeTableQuickly() throws {
         // About GeoNames cities1000 (170,000 places) and the Natural Earth outlines (300 regions, 450,000 points).
         var g = SystemRandomNumberGenerator()
         let places = (0 ..< 170_000).map { i in
