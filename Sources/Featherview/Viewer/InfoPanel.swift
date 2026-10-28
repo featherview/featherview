@@ -214,12 +214,12 @@ struct InfoPanel: View {
     }
 
     private func groupHeader(_ group: InfoGroup, _ info: ImageInfo?, open: Bool) -> some View {
-        let summary = open ? "" : info.map { summary(group, $0) } ?? ""
+        let closed = open ? "" : info.map { summary(group, $0) } ?? ""
         return Button { toggle(group) } label: {
             HStack(spacing: Theme.infoGroupHeaderGap) {
                 Image(systemName: glyph(group)).foregroundStyle(Theme.accent)
                 title(group).font(Theme.infoGroupTitle).foregroundStyle(Theme.labelTitle).lineLimit(1).layoutPriority(1)
-                Text(verbatim: Self.isolated(summary))
+                Text(verbatim: Self.isolated(closed))
                     .font(Theme.infoRowValue)
                     .foregroundStyle(secondary)
                     .lineLimit(1)
@@ -238,8 +238,8 @@ struct InfoPanel: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title(group))
         .accessibilityValue(open ? String(localized: "expanded", comment: "Info panel group state, VoiceOver")
-                            : summary.isEmpty ? String(localized: "collapsed", comment: "Info panel group state, VoiceOver")
-                            : String(localized: "collapsed, \(summary)", comment: "Info panel group state and its summary, VoiceOver"))
+                            : closed.isEmpty ? String(localized: "collapsed", comment: "Info panel group state, VoiceOver")
+                            : String(localized: "collapsed, \(closed)", comment: "Info panel group state and its summary, VoiceOver"))
         .accessibilityAddTraits(.isHeader)
     }
 
