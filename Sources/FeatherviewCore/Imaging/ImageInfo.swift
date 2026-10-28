@@ -147,12 +147,14 @@ public struct ImageInfo: Equatable, Sendable {
         let oneDecimal = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0...1))
         if let seconds = exif[kCGImagePropertyExifExposureTime] as? Double, seconds > 0 {
             let n = (1 / seconds).rounded()
-            e.shutter = n >= 2 && (seconds <= 0.25 || abs(1 / seconds - n) < 0.01) ? "1/\(Int(n))" : seconds.formatted(oneDecimal)
+            e.shutter = n >= 2 && (seconds <= 0.25 || abs(1 / seconds - n) < 0.01)
+                ? Int(exactly: n).map { "1/\($0)" }  // nil past Int.max: a corrupt file, no row
+                : seconds.formatted(oneDecimal)
         }
         e.aperture = (exif[kCGImagePropertyExifFNumber] as? Double).map { $0.formatted(oneDecimal) }
         e.iso = (exif[kCGImagePropertyExifISOSpeedRatings] as? [Int])?.first.map { $0.formatted() }
         let focal = (exif[kCGImagePropertyExifFocalLength] as? Double)?.rounded()
-        e.focal = focal.map { Int($0).formatted() }
+        e.focal = focal.flatMap { Int(exactly: $0) }?.formatted()
         if let focal35 = exif[kCGImagePropertyExifFocalLenIn35mmFilm] as? Int, focal35 > 0, Double(focal35) != focal {
             e.focal35 = Measurement(value: Double(focal35), unit: UnitLength.millimeters)
                 .formatted(.measurement(width: .abbreviated, usage: .asProvided))

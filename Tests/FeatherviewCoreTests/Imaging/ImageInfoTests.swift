@@ -186,6 +186,15 @@ import UniformTypeIdentifiers
         #expect(try info([:]).description.comment == nil)
     }
 
+    // EXIF numbers are file data, and ImageIO copies XMP values in unchecked: absurd ones must not trap.
+    @Test func absurdExposureNumbersAreDropped() {
+        func e(_ values: [CFString: Any]) -> ImageInfo.Exposure { pure([kCGImagePropertyExifDictionary: values]).exposure }
+        #expect(e([kCGImagePropertyExifFocalLength: 9.223372036854776e18]).focal == nil)
+        #expect(e([kCGImagePropertyExifFocalLength: Double.nan]).focal == nil)
+        #expect(e([kCGImagePropertyExifExposureTime: 1.084202172485504e-19]).shutter == nil)
+        #expect(e([kCGImagePropertyExifExposureTime: 5e-324]).shutter == nil)
+    }
+
     @Test func coordinateText() {
         #expect(InfoText.latitude(-33.8688) == "33.8688° S")
         #expect(InfoText.latitude(46.6356) == "46.6356° N")
