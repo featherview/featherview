@@ -77,6 +77,17 @@ enum PlaceFixtures {
         #expect(table.region(latitude: 32, longitude: -180)?.name == "North Pacific Ocean")
     }
 
+    @Test func seaAtPoles() {
+        let polar = PlaceTable(places: [], regions: [
+            RegionRecord(name: "Arctic Ocean", kind: .sea, rings: [PlaceFixtures.box(lat: 66...90, lon: -180...180)]),
+            RegionRecord(name: "Southern Ocean", kind: .sea, rings: [PlaceFixtures.box(lat: -90 ... -60, lon: -180...180)]),
+        ])
+        for lon in [-180.0, 0, 45, 180] {
+            #expect(polar.region(latitude: 90, longitude: lon)?.name == "Arctic Ocean")
+            #expect(polar.region(latitude: -90, longitude: lon)?.name == "Southern Ocean")
+        }
+    }
+
     @Test func poleDoesNotCrash() {
         for lat in [90.0, -90.0] {
             _ = table.nearest(latitude: lat, longitude: 0, within: 500)

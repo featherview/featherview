@@ -149,6 +149,8 @@ public struct PlaceTable: Sendable {
         guard Self.isValid(latitude, longitude) else { return nil }
         // Rings are split at ±180 and the ray-cast test is strict, so +180 is only found as -180.
         let longitude = longitude == 180 ? -180 : longitude
+        // The test is half-open in latitude too: a ring's northern edge is outside, so the North Pole is taken just below it.
+        let latitude = latitude == 90 ? 90.0.nextDown : latitude
         return regions.first { region in
             let (minLon, minLat, maxLon, maxLat) = region.box
             guard longitude >= minLon, longitude <= maxLon, latitude >= minLat, latitude <= maxLat else { return false }
