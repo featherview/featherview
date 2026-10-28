@@ -105,6 +105,27 @@ enum PlaceFixtures {
         #expect(throws: (any Error).self) { try PlaceTable(data: truncated) }
     }
 
+    @Test func loadsAFullSizeTableQuickly() throws {
+        // About GeoNames cities1000 (170,000 places) and the Natural Earth outlines (300 regions, 450,000 points).
+        var g = SystemRandomNumberGenerator()
+        let places = (0 ..< 170_000).map { i in
+            PlaceRecord(name: "Place number \(i)", admin1: i % 3 == 0 ? nil : "Province \(i % 3000)", country: "CH",
+                        latitude: .random(in: -89...89, using: &g), longitude: .random(in: -179...179, using: &g))
+        }
+        let regions = (0 ..< 300).map { i in
+            RegionRecord(name: "Region \(i)", kind: i % 2 == 0 ? .sea : .region,
+                         rings: [(0 ..< 1500).map { k in (Double(k % 360) - 180, Double(k % 170) - 85) }])
+        }
+        let data = PlaceTable(places: places, regions: regions).encoded()
+        let start = ContinuousClock.now
+        let decoded = try PlaceTable(data: data)
+        let elapsed = ContinuousClock.now - start
+        // The budget is 50 ms in a release build (measured ~10 ms); unoptimized, the same reading takes ~170 ms.
+        #expect(elapsed < .milliseconds(_isDebugAssertConfiguration() ? 300 : 50), "took \(elapsed)")
+        let hit = try #require(decoded.nearest(latitude: places[7].latitude, longitude: places[7].longitude, within: 1))
+        #expect(hit.0.name == places[7].name || hit.km == 0)
+    }
+
     @Test func indexLoadsLazily() async throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
