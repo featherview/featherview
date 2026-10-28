@@ -94,6 +94,17 @@ public actor ImageCache {
         return image
     }
 
+    /// A fit decode of `url`'s `page` (the info panel's histogram while zoomed): page 0's kept one if there is one,
+    /// else decoded on the queue, ranked with the viewer's decodes and dropped while it waits if the caller is
+    /// cancelled, and not kept, so the cache's budget holds.
+    public func fitPicture(_ url: URL, page: Int, screens: [PixelSize]) async throws -> CGImage {
+        if page == 0, let kept = cached(url, target: .fit(screens)) { return kept }
+        let hdr = hdr, colorSpace = colorSpace
+        return try await queue.run(url) {
+            try ImageDecoder.decode(url, halvingSteps: true, fitting: screens, page: page, hdr: hdr, colorSpace: colorSpace)
+        }
+    }
+
     private func leave(_ task: Task<CGImage, Error>) {
         guard let count = waiters[task] else { return }
         waiters[task] = count - 1

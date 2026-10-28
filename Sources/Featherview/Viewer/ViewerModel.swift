@@ -749,18 +749,11 @@ final class ViewerModel {
         return neighbors
     }
 
-    /// A fit-size decode of the picture on screen, for the info panel's histogram while `fitImage` is nil; not kept,
-    /// so the caches' memory budget holds.
+    /// A fit-size decode of the picture on screen, for the info panel's histogram while `fitImage` is nil: the kept
+    /// one, else decoded on `decodes` (ranked first, as the file shown) and not kept, so the caches' memory budget holds.
     func decodeFit() async -> CGImage? {
         guard let onScreen else { return nil }
-        return try? await Self.fitDecode(onScreen.url, page: onScreen.page, screens: screens, space: screenSpace)
-    }
-
-    /// Off the main actor, in the calling task: a cancelled one starts no decode.
-    private nonisolated static func fitDecode(_ url: URL, page: Int, screens: [PixelSize], space: CGColorSpace?) async throws -> CGImage {
-        try Task.checkCancellation()
-        return try ImageDecoder.decode(url, halvingSteps: true, fitting: screens, page: page, hdr: ImageDecoder.supportsHDR,
-                                       colorSpace: space)
+        return try? await cache.fitPicture(onScreen.url, page: onScreen.page, screens: screens)
     }
 
     /// The halving step to decode zoomed `url` at, for the current factor, and the cache it goes in: `cache`
