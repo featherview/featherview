@@ -119,8 +119,8 @@ struct HistogramView: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        // Never disabled while the next picture is counted: a disabled mark drops the focus to nothing.
         .infoControl(mark, focus: focus, radius: Theme.Radius.small) { bubble = bubble == mark ? nil : mark }
-        .disabled(histogram == nil)
         .accessibilityLabel(mark == .shadowsClip ? Text("Shadows clipping", comment: "Info panel histogram clip mark, VoiceOver")
                             : Text("Highlights clipping", comment: "Info panel histogram clip mark, VoiceOver"))
         .accessibilityValue(fraction(mark).map { HistogramText.clipped($0, highlights: mark == .highlightsClip) } ?? "")

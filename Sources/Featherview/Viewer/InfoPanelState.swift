@@ -1,9 +1,5 @@
+import FeatherviewCore
 import Observation
-
-/// The info panel's groups, in the order the panel shows them.
-enum InfoGroup: CaseIterable, Hashable {
-    case camera, image, location, description, file
-}
 
 enum HistogramMode: Hashable {
     case luminance, rgb
@@ -16,12 +12,4 @@ enum HistogramMode: Hashable {
 
     var open: Set<InfoGroup> = [.camera, .location]
     var mode: HistogramMode = .luminance
-}
-
-/// The panel's keyboard stops, in Tab order (spec "Keyboard and accessibility").
-enum InfoFocus: Hashable {
-    case mode, shadowsClip, highlightsClip
-    case header(InfoGroup)
-    case button(InfoGroup)
-    case showAll
 }

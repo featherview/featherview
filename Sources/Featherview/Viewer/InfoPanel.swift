@@ -33,6 +33,8 @@ struct InfoPanel: View {
     @State private var placeFor: PlaceKey?
     @State private var counted: Histogram?
     @State private var countedFor: HistogramKey?
+    /// The groups last shown, kept while the next file's info is read so their headers (and the focus) stay.
+    @State private var lastGroups: [InfoGroup] = []
     private let state = InfoPanelState.shared
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
@@ -58,6 +60,7 @@ struct InfoPanel: View {
         return PlaceKey(read: key, latitude: gps.latitude, longitude: gps.longitude)
     }
     private var place: PlaceName? { placeFor != nil && placeFor == placeKey ? placeName : nil }
+    private var shownGroups: [InfoGroup] { url == nil ? [] : InfoPanelFocus.groups(info, last: lastGroups) }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -67,9 +70,7 @@ struct InfoPanel: View {
                     if image != nil {
                         HistogramView(histogram: histogram, focus: focus, secondary: secondary, hairline: hairline)
                     }
-                    if let info {
-                        ForEach(groups(info), id: \.self) { card($0, info) }
-                    }
+                    ForEach(shownGroups, id: \.self) { card($0, info) }
                     Button { AllMetadataWindow.show() } label: {
                         SmallButtonLabel(glyph: "list.bullet.rectangle", title: Text("Show all metadata…", comment: "Info panel button"))
                     }
@@ -99,10 +100,10 @@ struct InfoPanel: View {
             return .handled
         }
         .onChange(of: focusOrder, initial: true) { stops = $1 }
-        // A control that went away with the image (a group the next file hasn't) hands the focus to the first one,
-        // never to nothing.
+        .onChange(of: shownGroups) { lastGroups = $1 }
+        // A control that went away with the image (a group the next file hasn't) hands the focus on, never to nothing.
         .onChange(of: focus.wrappedValue) { old, new in
-            if new == nil, let old, !focusOrder.contains(old), let first = focusOrder.first { focus.wrappedValue = first }
+            if new == nil, let old, let next = InfoPanelFocus.repair(lost: old, order: focusOrder) { focus.wrappedValue = next }
         }
         .task(id: readKey) {
             guard let key = readKey else { readInfo = nil; infoKey = nil; return }
@@ -159,22 +160,6 @@ struct InfoPanel: View {
 
     // MARK: Groups
 
-    private func groups(_ info: ImageInfo) -> [InfoGroup] {
-        let e = info.exposure, p = info.picture, d = info.description
-        return InfoGroup.allCases.filter { group in
-            switch group {
-            case .camera:
-                [info.camera, info.lens, info.taken, e.shutter, e.aperture, e.iso, e.focal, e.focal35, e.bias, e.flash,
-                 e.whiteBalance, e.metering].contains { $0 != nil }
-            case .image: [p.dimensions, p.profile, p.bitDepth, p.hdr, p.software].contains { $0 != nil }
-            case .location: info.gps != nil
-            case .description:
-                [d.title, d.caption, d.creator, d.copyright, d.comment].contains { $0 != nil } || !d.keywords.isEmpty || d.rating != nil
-            case .file: true
-            }
-        }
-    }
-
     private func title(_ group: InfoGroup) -> Text {
         switch group {
         case .camera: Text("Camera", comment: "Info panel group")
@@ -206,11 +191,12 @@ struct InfoPanel: View {
         }
     }
 
-    private func card(_ group: InfoGroup, _ info: ImageInfo) -> some View {
+    /// `info` is nil while the file's info is read: the header only, without summary.
+    private func card(_ group: InfoGroup, _ info: ImageInfo?) -> some View {
         let open = state.open.contains(group)
         return VStack(alignment: .leading, spacing: 0) {
             groupHeader(group, info, open: open)
-            if open { content(group, info) }
+            if open, let info { content(group, info) }
         }
         .background(Theme.cardFill, in: .rect(cornerRadius: Theme.Radius.group))
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.group).strokeBorder(Theme.cardLine, lineWidth: hairline))
@@ -222,8 +208,8 @@ struct InfoPanel: View {
         }
     }
 
-    private func groupHeader(_ group: InfoGroup, _ info: ImageInfo, open: Bool) -> some View {
-        let summary = open ? "" : summary(group, info)
+    private func groupHeader(_ group: InfoGroup, _ info: ImageInfo?, open: Bool) -> some View {
+        let summary = open ? "" : info.map { summary(group, $0) } ?? ""
         return Button { toggle(group) } label: {
             HStack(spacing: Theme.infoGroupHeaderGap) {
                 Image(systemName: glyph(group)).foregroundStyle(Theme.accent)
@@ -437,17 +423,9 @@ struct InfoPanel: View {
         if let link = components.url { NSWorkspace.shared.open(link) }
     }
 
-    /// The panel's controls in Tab order: mode, clip marks, then each group's header and, when open, its button,
-    /// then "Show all metadata…".
+    /// The panel's controls in Tab order (`InfoPanelFocus.order`).
     private var focusOrder: [InfoFocus] {
-        var order: [InfoFocus] = image == nil ? [] : [.mode, .shadowsClip, .highlightsClip]
-        for group in info.map(groups) ?? [] {
-            order.append(.header(group))
-            let hasButton = group == .file ? url != nil : group == .location
-            if hasButton, state.open.contains(group) { order.append(.button(group)) }
-        }
-        order.append(.showAll)
-        return order
+        InfoPanelFocus.order(picture: image != nil, groups: shownGroups, open: state.open, hasFile: url != nil)
     }
 
     private func moveFocus(back: Bool) -> KeyPress.Result {
