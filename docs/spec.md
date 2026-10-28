@@ -591,7 +591,8 @@ Natural Earth seas, oceans, deserts and mountain ranges), looked up on the Mac:
    near Tunisia" (both forms).
 4. Else the sea, ocean or region alone ("North Pacific Ocean"); else no place, coordinates only.
 Country names follow the app's language (from macOS); place, sea and region names are as the data
-gives them. The data loads on the first geotagged picture, off the main thread; launch and browsing
+gives them, except that names the data writes in capitals are title-cased ("AHAGGAR MTS." reads
+"Ahaggar Mts."). The data loads on the first geotagged picture, off the main thread; launch and browsing
 budgets stay as they are. The Quick Look extensions don't carry it.
 
 **All Metadata window** (also Image › All Metadata…, ⌥⌘I): a separate window, "Alpine Dusk.jpg — All

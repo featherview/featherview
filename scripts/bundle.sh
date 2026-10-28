@@ -31,6 +31,12 @@ xcrun actool Resources/Assets.xcassets --compile "$APP/Contents/Resources" --pla
   --output-partial-info-plist build/assets-info.plist >/dev/null
 cp LICENSE "$APP/Contents/Resources/LICENSE"
 cp Resources/Acknowledgements.txt "$APP/Contents/Resources/Acknowledgements.txt"
+# Place names for the info panel (scripts/places.sh builds them); the Quick Look extensions never carry them.
+if [ -f build/places/places.fvpl ]; then
+  cp build/places/places.fvpl "$APP/Contents/Resources/places.fvpl"
+else
+  echo "warning: no place data; build/places/places.fvpl missing (run scripts/places.sh)" >&2
+fi
 # The string catalog compiles into one .lproj per language; en.lproj always, so macOS lists English.
 xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory "$APP/Contents/Resources" \
   --serialization-format binary
