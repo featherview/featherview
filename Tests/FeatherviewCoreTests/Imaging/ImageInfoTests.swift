@@ -229,6 +229,26 @@ import UniformTypeIdentifiers
         #expect(e([kCGImagePropertyExifExposureTime: 5e-324]).shutter == nil)
     }
 
+    // EXIF writes 0 for "unknown"; a corrupt rational reads as 4,294,967,295 or ±2,147,483,647.
+    @Test func unknownAndImplausibleExposureValuesAreLeftOut() {
+        func e(_ values: [CFString: Any]) -> ImageInfo.Exposure { pure([kCGImagePropertyExifDictionary: values]).exposure }
+        for f in [0.0, -2, 0.4, 129, 4_294_967_295] { #expect(e([kCGImagePropertyExifFNumber: f]).aperture == nil, "\(f)") }
+        #expect(e([kCGImagePropertyExifFNumber: 0.95]).aperture == "1")
+        #expect(e([kCGImagePropertyExifFNumber: 128.0]).aperture == "128")
+        for f in [0.0, -35, 0.05, 10_001, 4_294_967_295] { #expect(e([kCGImagePropertyExifFocalLength: f]).focal == nil, "\(f)") }
+        #expect(e([kCGImagePropertyExifFocalLength: 4.25]).focal == "4")
+        #expect(e([kCGImagePropertyExifFocalLength: 800.0]).focal == "800")
+        for iso in [0, -100, 10_000_001, 4_294_967_295] { #expect(e([kCGImagePropertyExifISOSpeedRatings: [iso]]).iso == nil, "\(iso)") }
+        #expect(e([kCGImagePropertyExifISOSpeedRatings: [6_400]]).iso == "6,400")
+        for b in [20.5, -21, 2_147_483_647, -2_147_483_647, Double.nan] {
+            #expect(e([kCGImagePropertyExifExposureBiasValue: b]).bias == nil, "\(b)")
+        }
+        #expect(e([kCGImagePropertyExifExposureBiasValue: 0.0]).bias == "0 EV")
+        #expect(e([kCGImagePropertyExifExposureBiasValue: 20.0]).bias == "+20 EV")
+        for s in [0.0, -1, 86_400, 4_294_967_295, Double.infinity] { #expect(e([kCGImagePropertyExifExposureTime: s]).shutter == nil, "\(s)") }
+        #expect(e([kCGImagePropertyExifExposureTime: 30.0]).shutter == "30")
+    }
+
     @Test func jpegCommentAfterLargeSegmentsAndOnlyForJPEG() throws {
         let dir = try Fixtures.makeTempDir()
         let url = try Fixtures.writeImage(to: dir.appendingPathComponent("c.jpg"), width: 8, height: 8)

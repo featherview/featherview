@@ -149,21 +149,25 @@ public struct ImageInfo: Equatable, Sendable {
     private static func exposure(_ exif: [CFString: Any]) -> Exposure {
         var e = Exposure()
         let oneDecimal = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0...1))
-        if let seconds = exif[kCGImagePropertyExifExposureTime] as? Double, seconds > 0 {
+        // 0 is EXIF's "unknown"; values outside these ranges come from corrupt rationals. NaN fails every range.
+        func plausible(_ key: CFString, _ range: ClosedRange<Double>) -> Double? {
+            (exif[key] as? Double).flatMap { range.contains($0) ? $0 : nil }
+        }
+        if let seconds = plausible(kCGImagePropertyExifExposureTime, .leastNonzeroMagnitude...86_399) {
             let n = (1 / seconds).rounded()
             e.shutter = n >= 2 && (seconds <= 0.25 || abs(1 / seconds - n) < 0.01)
                 ? Int(exactly: n).map { "1/\($0)" }  // nil past Int.max: a corrupt file, no row
                 : seconds.formatted(oneDecimal)
         }
-        e.aperture = (exif[kCGImagePropertyExifFNumber] as? Double).map { $0.formatted(oneDecimal) }
-        e.iso = (exif[kCGImagePropertyExifISOSpeedRatings] as? [Int])?.first.map { $0.formatted() }
-        let focal = (exif[kCGImagePropertyExifFocalLength] as? Double)?.rounded()
+        e.aperture = plausible(kCGImagePropertyExifFNumber, 0.5...128)?.formatted(oneDecimal)
+        e.iso = (exif[kCGImagePropertyExifISOSpeedRatings] as? [Int])?.first.flatMap { (1...10_000_000).contains($0) ? $0.formatted() : nil }
+        let focal = plausible(kCGImagePropertyExifFocalLength, 0.5...10_000)?.rounded()
         e.focal = focal.flatMap { Int(exactly: $0) }?.formatted()
         if let focal35 = exif[kCGImagePropertyExifFocalLenIn35mmFilm] as? Int, focal35 > 0, Double(focal35) != focal {
             e.focal35 = Measurement(value: Double(focal35), unit: UnitLength.millimeters)
                 .formatted(.measurement(width: .abbreviated, usage: .asProvided))
         }
-        if let bias = exif[kCGImagePropertyExifExposureBiasValue] as? Double {
+        if let bias = plausible(kCGImagePropertyExifExposureBiasValue, -20...20) {
             let number = bias.formatted(oneDecimal.sign(strategy: .always(includingZero: false)))
                 .replacingOccurrences(of: "-", with: "−")
             e.bias = String(localized: "\(number) EV", comment: "Info panel, exposure bias")
