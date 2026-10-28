@@ -9,7 +9,8 @@ public struct Histogram: Equatable, Sendable {
     public var red: [Float]
     public var green: [Float]
     public var blue: [Float]
-    /// Fractions 0...1 of the pixels whose luminance is in the darkest / brightest bin.
+    /// Fractions 0...1 of the non-transparent pixels whose luminance is at black / at the brightest level
+    /// (255 for SDR, the headroom for HDR).
     public var shadowsClipped: Double
     public var highlightsClipped: Double
     /// nil for SDR; > 1 for HDR, where the bins span linear 0...headroom.
@@ -23,19 +24,24 @@ public struct Histogram: Equatable, Sendable {
 
     public static func compute(_ image: CGImage, headroom: Double?) -> Histogram {
         let counts = if let headroom, headroom > 1 { hdrCounts(image, headroom: headroom) } else { sdrCounts(image) }
-        let pixels = Double(max(1, image.width * image.height))
+        let pixels = Double(max(1, counts.total))
         let tallest = Float(counts.luminance.max() ?? 0)
         let scale: ([UInt]) -> [Float] = { bins in bins.map { tallest > 0 ? Float($0) / tallest : 0 } }
         return Histogram(
             luminance: scale(counts.luminance), red: scale(counts.red), green: scale(counts.green), blue: scale(counts.blue),
-            shadowsClipped: Double(counts.luminance[0]) / pixels, highlightsClipped: Double(counts.luminance[255]) / pixels,
+            shadowsClipped: Double(counts.shadows) / pixels, highlightsClipped: Double(counts.highlights) / pixels,
             headroom: headroom.flatMap { $0 > 1 ? $0 : nil })
     }
 
-    private typealias Counts = (luminance: [UInt], red: [UInt], green: [UInt], blue: [UInt])
+    /// Bins, the pixels at black and at the brightest level, and all pixels counted (transparent ones are left out).
+    private typealias Counts = (luminance: [UInt], red: [UInt], green: [UInt], blue: [UInt],
+                                shadows: UInt, highlights: UInt, total: Int)
 
     private static let empty: Counts = ([UInt](repeating: 0, count: 256), [UInt](repeating: 0, count: 256),
-                                        [UInt](repeating: 0, count: 256), [UInt](repeating: 0, count: 256))
+                                        [UInt](repeating: 0, count: 256), [UInt](repeating: 0, count: 256), 0, 0, 0)
+
+    /// HDR pictures are sampled down to about this many pixels: the scalar loop stays within a few ms.
+    private static let hdrSamplePixels = 1 << 18
 
     /// sRGB RGBA8 levels, luminance from the encoded values as photo editors show it.
     private static func sdrCounts(_ image: CGImage) -> Counts {
@@ -43,10 +49,11 @@ public struct Histogram: Equatable, Sendable {
         guard width > 0, height > 0,
               let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
                                       space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                      bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
               let data = context.data else { return empty }
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
         var source = vImage_Buffer(data: data, height: vImagePixelCount(height), width: vImagePixelCount(width), rowBytes: width * 4)
+        _ = vImageUnpremultiplyData_RGBA8888(&source, &source, vImage_Flags(kvImageNoFlags))
 
         var channels = [UInt](repeating: 0, count: 4 * 256)
         channels.withUnsafeMutableBufferPointer { bins in
@@ -65,33 +72,49 @@ public struct Histogram: Equatable, Sendable {
                                                        vImage_Flags(kvImageNoFlags))
             _ = vImageHistogramCalculation_Planar8(&destination, &luminance, vImage_Flags(kvImageNoFlags))
         }
-        return (luminance, Array(channels[0..<256]), Array(channels[256..<512]), Array(channels[512..<768]))
+        // Fully transparent pixels are (0, 0, 0, 0) here: take them out of every bin 0 and the total.
+        let transparent = channels[768]
+        for bin in [0, 256, 512] { channels[bin] -= transparent }
+        luminance[0] -= transparent
+        return (luminance, Array(channels[0..<256]), Array(channels[256..<512]), Array(channels[512..<768]),
+                luminance[0], luminance[255], width * height - Int(transparent))
     }
 
-    /// Extended linear sRGB floats binned over 0...headroom; values outside land in the end bins.
+    /// Extended linear sRGB floats binned over 0...headroom; values outside land in the end bins. Clipping is
+    /// counted from the values themselves: luminance <= 0 and >= headroom.
     private static func hdrCounts(_ image: CGImage, headroom: Double) -> Counts {
-        let width = image.width, height = image.height
+        let factor = min(1, (Double(hdrSamplePixels) / Double(max(1, image.width * image.height))).squareRoot())
+        let width = max(1, Int(Double(image.width) * factor)), height = max(1, Int(Double(image.height) * factor))
         var pixels = [Float](repeating: 0, count: width * height * 4)
         let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
-            guard width > 0, height > 0,
+            guard image.width > 0, image.height > 0,
                   let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 32,
                                           bytesPerRow: width * 16, space: CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!,
-                                          bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
                                               | CGBitmapInfo.floatComponents.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
             else { return false }
+            context.interpolationQuality = .none  // samples, so clipped values stay clipped
             context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
             return true
         }
         guard drawn else { return empty }
         var counts = empty
-        let scale = Float(255 / headroom)
+        let scale = Float(255 / headroom), top = Float(headroom)
         func bin(_ value: Float) -> Int { value.isNaN ? 0 : Int(min(255, max(0, value * scale))) }
-        for i in stride(from: 0, to: pixels.count, by: 4) {
-            let r = pixels[i], g = pixels[i + 1], b = pixels[i + 2]
-            counts.red[bin(r)] += 1
-            counts.green[bin(g)] += 1
-            counts.blue[bin(b)] += 1
-            counts.luminance[bin(weights.0 * r + weights.1 * g + weights.2 * b)] += 1
+        for row in 0..<height {
+            if row % 64 == 0, Task.isCancelled { break }
+            for i in stride(from: row * width * 4, to: (row + 1) * width * 4, by: 4) {
+                let a = pixels[i + 3]
+                guard a > 0 else { continue }
+                let r = pixels[i] / a, g = pixels[i + 1] / a, b = pixels[i + 2] / a
+                let y = weights.0 * r + weights.1 * g + weights.2 * b
+                counts.red[bin(r)] += 1
+                counts.green[bin(g)] += 1
+                counts.blue[bin(b)] += 1
+                counts.luminance[bin(y)] += 1
+                if y <= 0 { counts.shadows += 1 } else if y >= top { counts.highlights += 1 }
+                counts.total += 1
+            }
         }
         return counts
     }

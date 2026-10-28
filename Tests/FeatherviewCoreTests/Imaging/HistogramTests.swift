@@ -6,6 +6,53 @@ import Testing
 @Suite struct HistogramTests {
     private func peak(_ bins: [Float]) -> Int { bins.indices.max { bins[$0] < bins[$1] }! }
 
+    /// Extended linear sRGB floats, R, G, B, A per pixel, straight alpha.
+    private func hdrImage(_ width: Int, _ height: Int, _ floats: [Float]) throws -> CGImage {
+        let data = floats.withUnsafeBytes { Data($0) }
+        return try #require(CGImage(
+            width: width, height: height, bitsPerComponent: 32, bitsPerPixel: 128, bytesPerRow: width * 16,
+            space: CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!,
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue | CGBitmapInfo.floatComponents.rawValue
+                                     | CGBitmapInfo.byteOrder32Little.rawValue),
+            provider: CGDataProvider(data: data as CFData)!, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+    }
+
+    @Test func transparentPixelsNotCounted() throws {
+        var image = Fixtures.solid(100, 100, (255, 255, 255, 255))
+        for y in 0..<50 { for x in 0..<100 { image[x, y] = (0, 0, 0, 0) } }
+        let histogram = Histogram.compute(try #require(image.makeCGImage()), headroom: nil)
+        #expect(histogram.shadowsClipped == 0)
+        #expect(histogram.highlightsClipped == 1)
+        #expect(histogram.luminance[0] == 0)
+        #expect(histogram.red[0] == 0)
+        #expect(histogram.luminance[255] == 1)
+    }
+
+    @Test func hdrClipsOnlyAtBlackAndHeadroom() throws {
+        // 20 pixels: 10 at linear 0.01 (dark, not black), 5 at 2.0, 2 at 0, 2 at the headroom 4, 1 transparent.
+        let pixels: [[Float]] = Array(repeating: [0.01, 0.01, 0.01, 1], count: 10) + Array(repeating: [2, 2, 2, 1], count: 5)
+            + Array(repeating: [0, 0, 0, 1], count: 2) + Array(repeating: [4, 4, 4, 1], count: 2) + [[0, 0, 0, 0]]
+        let histogram = Histogram.compute(try hdrImage(20, 1, pixels.flatMap { $0 }), headroom: 4)
+        #expect(abs(histogram.shadowsClipped - 2.0 / 19) < 1e-9)
+        #expect(abs(histogram.highlightsClipped - 2.0 / 19) < 1e-9)
+    }
+
+    @Test func largeHdrSampledKeepsFractions() throws {
+        // 2000 × 2000, top half black, bottom half at linear 2.0.
+        let half = 2000 * 1000
+        let floats = [Float](unsafeUninitializedCapacity: 2 * half * 4) { buffer, count in
+            for i in 0..<(2 * half) {
+                let v: Float = i < half ? 0 : 2
+                buffer[i * 4] = v; buffer[i * 4 + 1] = v; buffer[i * 4 + 2] = v; buffer[i * 4 + 3] = 1
+            }
+            count = 2 * half * 4
+        }
+        let histogram = Histogram.compute(try hdrImage(2000, 2000, floats), headroom: 4)
+        #expect(abs(histogram.shadowsClipped - 0.5) < 0.01)
+        #expect(histogram.highlightsClipped == 0)
+        #expect(peak(histogram.luminance) == 0 || peak(histogram.luminance) == 127)
+    }
+
     @Test func solidMidGreyFillsOneBin() throws {
         let image = try #require(Fixtures.solid(64, 64, (128, 128, 128, 255)).makeCGImage())
         let histogram = Histogram.compute(image, headroom: nil)
