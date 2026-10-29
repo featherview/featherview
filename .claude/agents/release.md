@@ -192,8 +192,7 @@ abort line with what is left to do by hand.
    Check it parses: `xmllint --noout appcast.xml`.
 2. `index.html`: the hero's primary Download button links straight to the disk image,
    `https://github.com/featherview/featherview/releases/download/vX.Y.Z/Featherview-X.Y.Z.dmg`, and
-   reads "Download X.Y.Z"; the pill (a link to the latest release) reads "Version X.Y.Z · for macOS
-   Sonoma and later".
+   reads "Download X.Y.Z".
 3. Homebrew tap (`featherview/homebrew-tap`, clone it to `$TMPDIR` if needed): in
    `Casks/featherview.rb` set `version` and `sha256` (`shasum -a 256 build/Featherview-X.Y.Z.dmg`),
    and make sure it has `auto_updates true` (the app updates itself through Sparkle), commit `feat: featherview X.Y.Z`, push.
