@@ -214,6 +214,16 @@ import Testing
         #expect(Self.pixel(half, 0, 16)[0] <= 2 && Self.pixel(half, 31, 16)[0] >= 253)
     }
 
+    /// "Snap to pixel" (sn2P) puts a vector mask's points on whole canvas pixels: an edge at 2.4 px covers pixel 2 fully.
+    @Test func snappedVectorMasksHaveWholePixelEdges() throws {
+        let path = Self.vectorMask(Self.square(2.4 / 8, 5.6 / 8))
+        let loose = try #require(try PSDFills.vectorMask(try Self.fillLayer(["vmsk": path], width: 8, height: 8), canvas: (8, 8), scale: 1))
+        let snapped = try #require(try PSDFills.vectorMask(try Self.fillLayer(["vmsk": path, "sn2P": Data([0, 0, 0, 1])], width: 8, height: 8),
+                                                           canvas: (8, 8), scale: 1))
+        #expect(loose.rect == (2, 2, 6, 6) && loose.pixels[0] < 200)
+        #expect(snapped.rect == (2, 2, 6, 6) && snapped.pixels.allSatisfy { $0 == 255 })
+    }
+
     @Test func radialAndReflectedGradients() throws {
         let stops: [(V, Int)] = [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)]
         let radial = try #require(try PSDFills.content(

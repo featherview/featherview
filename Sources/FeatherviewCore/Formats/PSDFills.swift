@@ -75,9 +75,14 @@ public enum PSDFills {
         let sw = PSDLayers.scaledSize(canvas.width, scale), sh = PSDLayers.scaledSize(canvas.height, scale)
         // Knots: preceding control point, anchor, leaving control point; each vertical then horizontal,
         // signed 8.24 fractions of the canvas.
+        // "Snap to pixel" (sn2P) puts each point on the nearest canvas pixel corner, as Photoshop's composites show.
+        let snaps = blocks["sn2P"].map { $0.contains { $0 != 0 } } ?? false
         func point(_ at: Int) -> CGPoint {
             func fixed(_ at: Int) -> Double { Double(Int32(truncatingIfNeeded: be(at, 4))) / 16_777_216 }
-            return CGPoint(x: fixed(at + 4) * Double(sw), y: fixed(at) * Double(sh))
+            func place(_ f: Double, _ full: Int, _ scaled: Int) -> Double {
+                (snaps ? (f * Double(full)).rounded() / Double(full) : f) * Double(scaled)
+            }
+            return CGPoint(x: place(fixed(at + 4), canvas.width, sw), y: place(fixed(at), canvas.height, sh))
         }
         var subpaths: [(closed: Bool, operation: Int, knots: [[CGPoint]])] = []
         var startsFull = false
