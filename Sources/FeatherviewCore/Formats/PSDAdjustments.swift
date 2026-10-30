@@ -320,8 +320,11 @@ public enum PSDAdjustments {
             let whites = max(0, 2 * lo - 1), blacks = max(0, 1 - 2 * hi)
             // The brightest channel's primary (reds, greens, blues) and the two brightest's secondary
             // (by the darkest: cyans, magentas, yellows).
-            let change = (hi - mid) * records[1 + h * 2] + (mid - lo) * records[l == 0 ? 4 : l == 1 ? 6 : 2]
-                + whites * whitesRecord + max(0, 1 - whites - blacks - (hi - lo)) * neutralsRecord + blacks * blacksRecord
+            // Split into typed parts: as one expression it overruns the type checker on slower machines (CI).
+            let secondary: SIMD3<Float> = records[l == 0 ? 4 : l == 1 ? 6 : 2]
+            let colours: SIMD3<Float> = (hi - mid) * records[1 + h * 2] + (mid - lo) * secondary
+            let neutrals: Float = max(0, 1 - whites - blacks - (hi - lo))
+            let change: SIMD3<Float> = colours + whites * whitesRecord + neutrals * neutralsRecord + blacks * blacksRecord
             var ink = 1 - c
             ink += change * (relative ? ink : .one)
             c = clamp01(1 - ink)
