@@ -370,6 +370,18 @@ import Testing
         #expect(largest.withLock { $0 } <= (1 << 20) * 11 / 10)
     }
 
+    /// A wide zip layer whose canvas rows start more than one inflate chunk into its stream.
+    @Test(arguments: [2, 3])
+    func zipLayerFarAboveTheCanvasReadsItsCanvasRows(compression: Int) throws {
+        let pixels = [UInt8](repeating: 90, count: 2048 * 2010 * 4)
+        let file = try Self.open(PSDFixture.makeLayered(width: 2048, height: 10, layers: [
+            Layer(name: "Tall", rect: (-2000, 0, 10, 2048), pixels: pixels, compression: compression),
+        ]))
+        let layer = try #require(Self.layers(file.nodes).first)
+        let image = try #require(try layer.channels(scale: 1))
+        #expect(image.width == 2048 && image.height == 10 && image.pixels.allSatisfy { $0 == 90 })
+    }
+
     static func be(_ value: Int, _ count: Int) -> [UInt8] { (0..<count).reversed().map { UInt8(truncatingIfNeeded: value >> ($0 * 8)) } }
 
     static func rect(_ r: PSDRect) -> [UInt8] { [r.top, r.left, r.bottom, r.right].flatMap { be($0, 4) } }

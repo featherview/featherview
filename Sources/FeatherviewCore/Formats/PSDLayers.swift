@@ -751,7 +751,7 @@ final class ZipRows: @unchecked Sendable {  // `PSDChannelSource.reading` hands 
             while row < rows.upperBound {
                 let n = min(chunk, rows.upperBound - row)
                 try fill(s, n * width)
-                for i in max(0, rows.lowerBound - row) ..< n {
+                for i in min(n, max(0, rows.lowerBound - row)) ..< n {  // a chunk wholly above `rows` is only inflated
                     let at = s + i * width
                     if predicted { for x in 1 ..< columns.upperBound { at[x] &+= at[x - 1] } }
                     (out + (row + i - rows.lowerBound) * columns.count).update(from: at + columns.lowerBound, count: columns.count)
