@@ -84,6 +84,23 @@ import Testing
         #expect(descriptor["Aftr"] == .int(3))
     }
 
+    /// A `name` item holds a class name, a class ID and the name, as Photoshop's putName writes it.
+    @Test func readsNameReferenceItems() throws {
+        var b = Bytes()
+        b.header("null", count: 2)
+        b.id("null"); b.os("obj ")
+        let start = b.data.count
+        b.u32(2)
+        b.os("name"); b.unicode(""); b.id("Lyr "); b.unicode("Layer 1")
+        b.os("Idnt"); b.u32(5)
+        let reference = Array(b.data[start...])
+        b.id("Aftr"); b.os("long"); b.u32(3)
+
+        let descriptor = try PSDDescriptor(b.data[...])
+        #expect(descriptor["null"] == .raw(Data(reference)))
+        #expect(descriptor["Aftr"] == .int(3))
+    }
+
     @Test func rejectsUnknownTypeAndOverruns() throws {
         var unknown = Bytes()
         unknown.header("null", count: 1)

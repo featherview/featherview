@@ -168,7 +168,7 @@ private struct DescriptorReader {
             case "Enmr": _ = try unicode(); _ = try id(); _ = try id(); _ = try id()
             case "rele": _ = try unicode(); _ = try id(); _ = try take(4)
             case "Idnt", "indx": _ = try take(4)
-            case "name": _ = try unicode()
+            case "name": _ = try unicode(); _ = try id(); _ = try unicode()
             default: throw OwnDecodeError.corrupt
             }
         }
