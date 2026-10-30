@@ -239,7 +239,9 @@ public enum ImageDecoder {
     /// `budgetPixels` for what the render holds at once); any other
     /// decode (batch, Save As) draws at the size asked, or throws when that is over 4 × `PSDCompositor.maxPixels`.
     private static func layerComposite(_ url: URL, display: Bool, longest: (CGSize) -> Int) throws -> CGImage? {
-        guard ["psd", "psb"].contains(url.pathExtension.lowercased()), PSDComposite(url: url) == nil else { return nil }
+        guard ["psd", "psb"].contains(url.pathExtension.lowercased()), PSDComposite(url: url) == nil,
+              // Version info's "has real merged data" byte, read before the layers: most files have the picture stored.
+              psdResource(url, 1057).map({ $0.count >= 5 && $0[4] == 0 }) == true else { return nil }
         if let failed = failedReads.withLock({ $0[url] }), failed == fileStamp(url) { return nil }
         do {
             guard let layers = try PSDLayers(url: url), !layers.hasRealComposite, !layers.nodes.isEmpty else { return nil }
@@ -253,7 +255,7 @@ public enum ImageDecoder {
             guard scale * scale * pixels <= 4 * limit else { throw DecodeError.unreadable(url) }
             let image = try compositor.render(scale: scale)
             guard let drawn = image.makeCGImage() else { throw OwnDecodeError.corrupt }
-            let space = psdProfile(url).flatMap { CGColorSpace(iccData: $0 as CFData) }.flatMap { $0.model == .rgb ? $0 : nil }
+            let space = psdResource(url, 1039).flatMap { CGColorSpace(iccData: $0 as CFData) }.flatMap { $0.model == .rgb ? $0 : nil }
             return space.flatMap { drawn.copy(colorSpace: $0) } ?? drawn
         } catch let error as DecodeError {
             throw error
@@ -266,8 +268,8 @@ public enum ImageDecoder {
         }
     }
 
-    /// A PSD/PSB's ICC profile (image resource 1039), nil without one or when the resources can't be followed.
-    private static func psdProfile(_ url: URL) -> Data? {
+    /// A PSD/PSB's image resource `id` (1039 the ICC profile), nil without one or when the resources can't be followed.
+    private static func psdResource(_ url: URL, _ id: Int) -> Data? {
         guard let file = try? FileHandle(forReadingFrom: url), let end = try? file.seekToEnd() else { return nil }
         defer { try? file.close() }
         func read(_ offset: Int, _ count: Int) -> [UInt8]? {
@@ -284,7 +286,7 @@ public enum ImageDecoder {
             guard sizeAt + 4 <= resources.count else { return nil }
             let size = be(resources[sizeAt ..< sizeAt + 4])
             guard sizeAt + 4 + size <= resources.count else { return nil }
-            if be(resources[r + 4 ..< r + 6]) == 1039 { return Data(resources[sizeAt + 4 ..< sizeAt + 4 + size]) }
+            if be(resources[r + 4 ..< r + 6]) == id { return Data(resources[sizeAt + 4 ..< sizeAt + 4 + size]) }
             r = sizeAt + 4 + (size + 1) & ~1
         }
         return nil

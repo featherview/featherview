@@ -50,6 +50,18 @@ import Testing
         #expect(decoded[7, 5] == (255, 255, 255, 255))
     }
 
+    /// A layered file with transparency (4 channels, which the own composite reader leaves to ImageIO) whose stored
+    /// composite is the picture goes to ImageIO without its layers being read.
+    @Test(arguments: [true, nil] as [Bool?]) func transparentFileWithCompositeSkipsTheLayers(realComposite: Bool?) throws {
+        let url = try Self.write(PSDFixture.makeLayered(width: 8, height: 6, layers: Self.layers(8, 6), realComposite: realComposite,
+                                                        channels: 4))
+        #expect(PSDComposite(url: url) == nil)
+        let opened = OSAllocatedUnfairLock(initialState: 0)
+        let decoded = try PSDLayers.$opened.withValue(opened) { try #require(RGBAImage(try ImageDecoder.decode(url))) }
+        #expect(opened.withLock { $0 } == 0)
+        #expect(decoded.width == 8 && decoded[0, 0] == (255, 255, 255, 255) && decoded[7, 5] == (255, 255, 255, 255))
+    }
+
     @Test func fitDecodeIsExactSize() throws {
         let url = try Self.write(PSDFixture.makeLayered(width: 400, height: 200, layers: Self.layers(400, 200), realComposite: false))
         let image = try ImageDecoder.decode(url, halvingSteps: true, fitting: [PixelSize(width: 100, height: 100)])

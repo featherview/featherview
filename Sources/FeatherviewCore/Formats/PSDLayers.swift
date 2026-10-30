@@ -26,6 +26,8 @@ public struct PSDLayers: Sendable {
     /// Deepest group nesting accepted: Photoshop allows about 10; deeper files are refused, since drawing and freeing
     /// the tree recurse once per level and each isolated level holds a scaled canvas.
     static let maxGroupDepth = 16
+    /// Test hook: how many files were opened for their layers in this task.
+    @TaskLocal static var opened: OSAllocatedUnfairLock<Int>?
     static let unreadKeys: Set<String> = ["lnk2", "lnkD", "lnk3", "lnkE", "FEid", "FXid", "Layr", "Lr16", "Lr32", "PxSD"]
 
     /// Tagged block keys whose length is 8 bytes in a PSB.
@@ -34,6 +36,7 @@ public struct PSDLayers: Sendable {
     /// Nil for anything but an 8-bit RGB PSD/PSB with 3 or more channels; throws `OwnDecodeError.corrupt`
     /// when the layer section can't be followed.
     public init?(url: URL) throws {
+        Self.opened?.withLock { $0 += 1 }
         let fd = open(url.path, O_RDONLY)
         guard fd >= 0 else { throw FileRead.error() }
         defer { close(fd) }

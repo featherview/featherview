@@ -44,11 +44,11 @@ enum PSDFixture {
 
     /// A white stored composite under a layer and mask section; `realComposite` nil leaves out resource 1057.
     static func makeLayered(width: Int, height: Int, layers: [FixtureLayer], realComposite: Bool? = false,
-                            version: Int = 1) -> Data {
+                            version: Int = 1, channels: Int = 3) -> Data {
         func be(_ value: Int, _ count: Int) -> [UInt8] { (0..<count).reversed().map { UInt8(truncatingIfNeeded: value >> ($0 * 8)) } }
         let long = version == 1 ? 4 : 8
         var bytes = Array("8BPS".utf8) + be(version, 2) + [UInt8](repeating: 0, count: 6)
-        bytes += be(3, 2) + be(height, 4) + be(width, 4) + be(8, 2) + be(3, 2)
+        bytes += be(channels, 2) + be(height, 4) + be(width, 4) + be(8, 2) + be(3, 2)
         bytes += be(0, 4)
         var resources: [UInt8] = []
         if let realComposite {
@@ -105,7 +105,7 @@ enum PSDFixture {
         bytes += be(section.count, long) + section
 
         bytes += be(0, 2)
-        bytes += [UInt8](repeating: 255, count: 3 * width * height)
+        bytes += [UInt8](repeating: 255, count: channels * width * height)
         return Data(bytes)
     }
 
