@@ -26,7 +26,7 @@ public enum PSDAdjustments {
             return legacyBrightness(brightness, contrast, mean / 255)
         case "CgEd":
             let d = try PSDDescriptor.versioned(data)
-            let brightness = number(d["Brgh"]) ?? 0, contrast = number(d["Cntr"]) ?? 0, mean = (number(d["means"]) ?? 127) / 255
+            let brightness = try number(d["Brgh"]) ?? 0, contrast = try number(d["Cntr"]) ?? 0, mean = (try number(d["means"]) ?? 127) / 255
             if d["useLegacy"] == .bool(true) { return legacyBrightness(brightness, contrast, mean) }
             // Photoshop doesn't publish its curve; this one keeps black and white where they are.
             let exponent = pow(2, -brightness / 100), factor = 1 + contrast / 100
@@ -52,7 +52,7 @@ public enum PSDAdjustments {
             }
         case "vibA":
             let d = try PSDDescriptor.versioned(data)
-            let vibrance = (number(d["vibrance"]) ?? 0) / 100, saturation = (number(d["Strt"]) ?? 0) / 100
+            let vibrance = (try number(d["vibrance"]) ?? 0) / 100, saturation = (try number(d["Strt"]) ?? 0) / 100
             return { c in c = saturate(c, by: min(max(saturation + vibrance * (1 - (c.max() - c.min())), -1), 1)) }
         case "phfl": return try photoFilter(&r)
         case "selc": return try selectiveColour(&r)
@@ -252,14 +252,10 @@ public enum PSDAdjustments {
 
     private static func blackAndWhite(_ d: PSDDescriptor) throws -> Adjust {
         // Weights of red, yellow, green, cyan, blue, magenta, Photoshop's defaults where a key is missing.
-        let w = zip(["Rd  ", "Yllw", "Grn ", "Cyn ", "Bl  ", "Mgnt"], [40, 60, 40, 60, 20, 80] as [Float]).map { (number(d[$0]) ?? $1) / 100 }
+        let w = try zip(["Rd  ", "Yllw", "Grn ", "Cyn ", "Bl  ", "Mgnt"], [40, 60, 40, 60, 20, 80] as [Float]).map { (try number(d[$0]) ?? $1) / 100 }
         let tint: SIMD3<Float>? = if d["useTint"] == .bool(true), case .object(let colour)? = d["tintColor"] {
-            SIMD3(number(colour["Rd  "]) ?? 0, number(colour["Grn "]) ?? 0, number(colour["Bl  "]) ?? 0) / 255
+            SIMD3(try number(colour["Rd  "]) ?? 0, try number(colour["Grn "]) ?? 0, try number(colour["Bl  "]) ?? 0) / 255
         } else { nil }
-        // A NaN or infinite weight would leak NaN pixels into the next table lookup.
-        guard w.allSatisfy(\.isFinite), tint.map({ $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }) ?? true else {
-            throw OwnDecodeError.corrupt
-        }
         let primaries = SIMD3(w[0], w[2], w[4]), secondaries = SIMD3(w[3], w[5], w[1])  // by darkest: cyan, magenta, yellow
         return { c in
             // The grey is the darkest channel plus the part shared by the two brightest (a secondary
@@ -389,13 +385,16 @@ public enum PSDAdjustments {
         }
     }
 
-    private static func number(_ value: PSDValue?) -> Float? {
-        switch value {
+    /// Throws on NaN or infinity (also a double too large for a Float), which would paint NaN pixels.
+    private static func number(_ value: PSDValue?) throws -> Float? {
+        let v: Float? = switch value {
         case .int(let v)?: Float(v)
         case .double(let v)?: Float(v)
         case .unit(_, let v)?: Float(v)
         default: nil
         }
+        guard v?.isFinite ?? true else { throw OwnDecodeError.corrupt }
+        return v
     }
 
     /// A 256-entry table read between its entries.

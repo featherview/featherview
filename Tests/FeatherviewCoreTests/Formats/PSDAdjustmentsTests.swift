@@ -160,6 +160,21 @@ import Testing
         #expect(close(try adjust("CgEd", old, (0, 0.5, 1)), (50 / 255, 0.5 + 50 / 255, 1)))
     }
 
+    @Test func descriptorAdjustmentsRejectNonFiniteNumbers() throws {
+        // 1e300 is finite as a double but infinite as a Float.
+        for bad in [Double.infinity, -Double.infinity, Double.nan, 1e300] {
+            for (key, name) in [("CgEd", "Brgh"), ("CgEd", "Cntr"), ("CgEd", "means"), ("vibA", "vibrance"), ("vibA", "Strt")] {
+                for legacy: UInt8 in [0, 1] {
+                    let data = descriptorBlock([], extraCount: 2) {
+                        $0.id(name); $0.os("doub"); $0.double(bad)
+                        $0.id("useLegacy"); $0.os("bool"); $0.data.append(legacy)
+                    }
+                    #expect(throws: OwnDecodeError.corrupt, "\(key) \(name) \(bad)") { try PSDAdjustments.adjustment(key: key, data: data) }
+                }
+            }
+        }
+    }
+
     @Test func exposure() throws {
         var b = Block(); b.u16(1); b.f32(1); b.f32(0); b.f32(1)
         let v = try adjust("expA", Data(b.data), (0.2, 0.4, 0))
