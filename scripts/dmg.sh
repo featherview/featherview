@@ -88,6 +88,14 @@ tell application "Finder"
     end tell
 end tell
 EOF
+    # Finder writes the background into .DS_Store some time after close; detached sooner, the image opens
+    # plain on every other Mac (this one remembers the look in Finder's own cache, so it looks right here).
+    for _ in $(seq 1 20); do
+        grep -qa pBBk "/Volumes/$VOLUME/.DS_Store" 2>/dev/null && break
+        sleep 1
+    done
+    grep -qa pBBk "/Volumes/$VOLUME/.DS_Store" 2>/dev/null ||
+        { echo "Finder didn't store the background in .DS_Store." >&2; exit 1; }
     sync
     hdiutil detach "$DEVICE" -quiet
     DEVICE=""
