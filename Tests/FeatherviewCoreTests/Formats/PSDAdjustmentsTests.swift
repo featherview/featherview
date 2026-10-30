@@ -69,9 +69,10 @@ import Testing
         #expect(close(try adjust("levl", data, (50 / 255, 125 / 255, 200 / 255)), (0, 127.5 / 255, 1), 0.5 / 255))
         // Gamma 2 brightens the middle.
         #expect(try adjust("levl", levelsBlock([(0, 255, 0, 255, 200)]), (0.25, 0.25, 0.25)).x > 0.45)
-        // The composite applies first: it halves red to 128, then red's own 0…128 → 0…255 brings it back.
+        // Each channel's own applies first, then the composite (as Photoshop's composites show): red's 0…128 → 0…255
+        // keeps white, then the composite halves every channel.
         let both = levelsBlock([(0, 255, 0, 128, 100), (0, 128, 0, 255, 100)])
-        #expect(close(try adjust("levl", both, (1, 1, 1)), (1, 128 / 255, 128 / 255), 1 / 255))
+        #expect(close(try adjust("levl", both, (1, 1, 1)), (128 / 255, 128 / 255, 128 / 255), 1 / 255))
         #expect(throws: OwnDecodeError.corrupt) { try PSDAdjustments.adjustment(key: "levl", data: Data([0, 2, 0, 50])) }
     }
 

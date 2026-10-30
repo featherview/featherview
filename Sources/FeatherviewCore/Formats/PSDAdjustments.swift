@@ -65,10 +65,10 @@ public enum PSDAdjustments {
 
     // MARK: - Levels and Curves
 
-    /// Applies the composite table, then each channel's own, folded into one flat table per channel so a
-    /// pixel costs three plain lookups.
+    /// Applies each channel's own table, then the composite one (as Photoshop's composites show), folded into one
+    /// flat table per channel so a pixel costs three plain lookups.
     private static func tables(_ t: [[Float]]) -> Adjust {
-        let flat = (1...3).flatMap { channel in (0...255).map { lookup(t[channel], lookup(t[0], Float($0) / 255)) } }
+        let flat = (1...3).flatMap { channel in (0...255).map { lookup(t[0], lookup(t[channel], Float($0) / 255)) } }
         return { c in
             for i in 0..<3 {
                 let x = min(max(c[i], 0), 1) * 255, j = min(Int(x), 254), k = i * 256 + j
