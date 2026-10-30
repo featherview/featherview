@@ -75,8 +75,10 @@ import Testing
     }
 
     /// A one-layer file with `globalBlocks` (whole tagged blocks) after its layer info.
-    static func fillFile(_ blocks: [String: Data], width: Int, height: Int, globalBlocks: [UInt8] = []) throws -> (file: PSDLayers, layer: PSDLayer) {
-        var data = PSDFixture.makeLayered(width: width, height: height, layers: [Layer(name: "Fill", blocks: blocks)])
+    static func fillFile(_ blocks: [String: Data], width: Int, height: Int, globalBlocks: [UInt8] = [],
+                         more: [[String: Data]] = []) throws -> (file: PSDLayers, layer: PSDLayer) {
+        let layers = ([blocks] + more).map { Layer(name: "Fill", blocks: $0) }
+        var data = PSDFixture.makeLayered(width: width, height: height, layers: layers)
         if !globalBlocks.isEmpty {
             // The section's length sits after the header and resources; the global blocks go at its end.
             let resources = Int(data[30]) << 24 | Int(data[31]) << 16 | Int(data[32]) << 8 | Int(data[33])
@@ -251,15 +253,16 @@ import Testing
         #expect(try PSDFills.content(gradient, canvas: (2, 2), patterns: [:], scale: 1)?.width == 2)
     }
 
-    /// A Patt block holding one RGB pattern of the claimed size whose channels are `channels`, the rest unwritten.
-    static func claimedPattern(width: Int, height: Int, channels: [[UInt8]]) -> [UInt8] {
+    /// A Patt block holding one RGB pattern of the claimed size whose channels are `channels` (red, green,
+    /// blue, user mask, sheet mask), the rest unwritten.
+    static func claimedPattern(width: Int, height: Int, channels: [[UInt8]], id: String = "x") -> [UInt8] {
         var vma = Self.be(0, 4) + Self.be(0, 4) + Self.be(height, 4) + Self.be(width, 4) + Self.be(3, 4)
         for c in 0..<5 {
             guard c < channels.count else { vma += Self.be(0, 4); continue }
             let channel = Self.be(8, 4) + Self.be(0, 4) + Self.be(0, 4) + Self.be(height, 4) + Self.be(width, 4) + Self.be(8, 2) + channels[c]
             vma += Self.be(1, 4) + Self.be(channel.count, 4) + channel
         }
-        var pattern = Self.be(1, 4) + Self.be(3, 4) + Self.be(height, 2) + Self.be(width, 2) + Self.unicode("") + [1, 0x78]
+        var pattern = Self.be(1, 4) + Self.be(3, 4) + Self.be(height, 2) + Self.be(width, 2) + Self.unicode("") + [UInt8(id.utf8.count)] + Array(id.utf8)
         pattern += Self.be(3, 4) + Self.be(vma.count, 4) + vma
         var patt = Self.be(pattern.count, 4) + pattern
         while patt.count % 4 != 0 { patt.append(0) }
@@ -335,5 +338,48 @@ import Testing
         let fill = Self.block([("Ptrn", .obj("Ptrn", [("Nm  ", .text("")), ("Idnt", .text("x"))]))])
         let (used, _) = try Self.fillFile(["PtFl": fill], width: 2, height: 2, globalBlocks: huge)
         #expect(throws: OwnDecodeError.unsupported) { try PSDFills.patterns(used) }
+    }
+
+    @Test func unusedChannelsAreSkipped() throws {
+        // The user mask is never read, so a damaged one is skipped, not decoded (nor taken for transparency).
+        let raw: [UInt8] = [0, 9, 9, 9, 9], damaged: [UInt8] = [9, 0, 0, 0, 0]
+        let fill = Self.block([("Ptrn", .obj("Ptrn", [("Nm  ", .text("")), ("Idnt", .text("x"))]))])
+        let (file, _) = try Self.fillFile(["PtFl": fill], width: 2, height: 2,
+                                          globalBlocks: Self.claimedPattern(width: 2, height: 2, channels: [raw, raw, raw, damaged]))
+        let tile = try #require(try PSDFills.patterns(file)["x"])
+        #expect(tile.pixels == [UInt8]((0..<4).flatMap { _ in [9, 9, 9, 255] }))
+    }
+
+    @Test func usedPatternsShareOneSizeCap() throws {
+        // Two patterns, each under the cap, together over it: the file falls back instead of holding both.
+        let side = 2900
+        #expect(side * side <= PSDFills.maxPatternPixels && 2 * side * side > PSDFills.maxPatternPixels)
+        let row = PSDFixture.packBits([UInt8](repeating: 0, count: side))
+        let plane: [UInt8] = [1] + (0..<side).flatMap { _ in Self.be(row.count, 2) } + (0..<side).flatMap { _ in row }
+        func fill(_ id: String) -> Data { Self.block([("Ptrn", .obj("Ptrn", [("Nm  ", .text("")), ("Idnt", .text(id))]))]) }
+        // Both in one Patt block: the patterns after each block's 12-byte header.
+        let both = ["a", "b"].flatMap { Self.claimedPattern(width: side, height: side, channels: [plane, plane, plane], id: $0).dropFirst(12) }
+        let global = Array("8BIMPatt".utf8) + Self.be(both.count, 4) + both
+        let (file, _) = try Self.fillFile(["PtFl": fill("a")], width: 2, height: 2, globalBlocks: global, more: [["PtFl": fill("b")]])
+        #expect(throws: OwnDecodeError.unsupported) { _ = try PSDFills.patterns(file) }
+    }
+
+    @Test func manyShapesCostTheirOwnArea() throws {
+        // 400 small squares (a logo's glyphs) over a 1,000 × 1,000 mask: drawn in milliseconds, not one
+        // pass over the whole mask per shape.
+        let squares = (0..<400).map { i -> (operation: Int, points: [(Double, Double)]) in
+            let x = Double(i % 20) / 20, y = Double(i / 20) / 20
+            return (1, [(x, y), (x + 0.025, y), (x + 0.025, y + 0.025), (x, y + 0.025)])
+        }
+        let layer = try Self.fillLayer(["SoCo": Self.block([("Clr ", Self.rgb(1, 2, 3))]), "vmsk": Self.vectorMask(subpaths: squares)],
+                                       width: 1000, height: 1000)
+        let clock = ContinuousClock()
+        var mask: (rect: PSDRect, pixels: [UInt8], bounds: PSDRect)?
+        let elapsed = try clock.measure { mask = try PSDFills.vectorMask(layer, canvas: (1000, 1000), scale: 1) }
+        let m = try #require(mask)
+        let w = m.rect.right - m.rect.left
+        #expect(m.rect.top == 0 && m.rect.left == 0 && (975...976).contains(w))
+        #expect(m.pixels[10 * w + 10] == 255 && m.pixels[30 * w + 30] == 0)
+        #expect(elapsed < .milliseconds(500))
     }
 }

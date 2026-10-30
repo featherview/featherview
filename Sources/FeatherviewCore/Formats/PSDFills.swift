@@ -103,35 +103,30 @@ public enum PSDFills {
             guard rect.bottom > rect.top, rect.right > rect.left else { return ((0, 0, 0, 0), [], bounds) }
         }
         let w = rect.right - rect.left, h = rect.bottom - rect.top
-        func fill(_ path: CGPath) -> [UInt8] {
-            var plane = [UInt8](repeating: 0, count: w * h)
-            plane.withUnsafeMutableBytes { buffer in
-                guard let context = CGContext(data: buffer.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w,
-                                              space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return }
-                // Rows top down, origin at the rect's top-left.
-                context.translateBy(x: 0, y: CGFloat(h))
-                context.scaleBy(x: 1, y: -1)
-                context.translateBy(x: CGFloat(-rect.left), y: CGFloat(-rect.top))
-                context.setShouldAntialias(true)
-                context.setFillColor(gray: 1, alpha: 1)
-                context.addPath(path)
-                context.fillPath(using: .evenOdd)
-            }
-            return plane
-        }
         var pixels = [UInt8](repeating: 0, count: w * h)
-        for (index, shape) in shapes.enumerated() {
-            let plane = fill(shape.path)
-            // A first subtraction or intersection starts from everything.
-            if index == 0, shape.operation == 2 || shape.operation == 3 { pixels = [UInt8](repeating: 255, count: w * h) }
-            for i in pixels.indices {
-                let a = Int(pixels[i]), b = Int(plane[i])
-                switch shape.operation {
-                case 1: pixels[i] = UInt8(a + b - (a * b + 127) / 255)
-                case 2: pixels[i] = UInt8((a * (255 - b) + 127) / 255)
-                case 3: pixels[i] = UInt8((a * b + 127) / 255)
-                default: pixels[i] = UInt8(a + b - 2 * ((a * b + 127) / 255))
+        pixels.withUnsafeMutableBytes { buffer in
+            guard let context = CGContext(data: buffer.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w,
+                                          space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return }
+            // Rows top down, origin at the rect's top-left.
+            context.translateBy(x: 0, y: CGFloat(h))
+            context.scaleBy(x: 1, y: -1)
+            context.translateBy(x: CGFloat(-rect.left), y: CGFloat(-rect.top))
+            context.setShouldAntialias(true)
+            let whole = CGRect(x: rect.left, y: rect.top, width: w, height: h)
+            // Each shape is drawn over the ones before it, so its cost is its own area and Core Graphics' coverage
+            // blend does the combining: white over is combine (a + b − ab), black over subtract (a(1 − b)),
+            // black over everything outside the shape intersect (ab), white difference exclude (a + b − 2ab).
+            for (index, shape) in shapes.enumerated() {
+                // A first subtraction or intersection starts from everything.
+                if index == 0, shape.operation == 2 || shape.operation == 3 {
+                    context.setFillColor(gray: 1, alpha: 1)
+                    context.fill(whole)
                 }
+                context.setBlendMode([1, 2, 3].contains(shape.operation) ? .normal : .difference)
+                context.setFillColor(gray: shape.operation == 2 || shape.operation == 3 ? 0 : 1, alpha: 1)
+                if shape.operation == 3 { context.addRect(whole) }
+                context.addPath(shape.path)
+                context.fillPath(using: .evenOdd)
             }
         }
         if inverted { for i in pixels.indices { pixels[i] = 255 - pixels[i] } }
@@ -140,7 +135,7 @@ public enum PSDFills {
 
     /// The patterns that `PtFl` layers use, from the file's `Patt`/`Pat2`/`Pat3` blocks, by their unique
     /// ID, as straight RGBA. Patterns in a mode other than RGB, greyscale or indexed, or deeper than 8 bits,
-    /// are left out. A used pattern over `maxPatternPixels` throws `.unsupported`, so the file falls back.
+    /// are left out. Used patterns over `maxPatternPixels` together throw `.unsupported`, so the file falls back.
     public static func patterns(_ layers: PSDLayers) throws -> [String: RGBAImage] {
         func used(_ nodes: [PSDNode]) -> Set<String> {
             nodes.reduce(into: []) { ids, node in
@@ -156,6 +151,7 @@ public enum PSDFills {
         let wanted = used(layers.nodes)
         var out: [String: RGBAImage] = [:]
         guard !wanted.isEmpty else { return out }
+        var budget = maxPatternPixels
         for key in ["Patt", "Pat2", "Pat3"] {
             guard let data = layers.globalBlocks[key] else { continue }
             var r = Cursor(bytes: [UInt8](data))
@@ -164,7 +160,7 @@ public enum PSDFills {
                 let start = r.at
                 guard length <= r.bytes.count - start else { throw OwnDecodeError.corrupt }
                 var p = Cursor(bytes: Array(r.bytes[start..<start + length]))
-                if let (id, image) = try pattern(&p, wanted: wanted) { out[id] = image }
+                if let (id, image) = try pattern(&p, wanted: wanted, budget: &budget) { out[id] = image }
                 r.at = min(r.bytes.count, start + (length + 3) & ~3)
             }
         }
@@ -173,30 +169,32 @@ public enum PSDFills {
 
     // MARK: Patterns
 
-    /// 16 MP: a pattern's planes and its RGBA stay under about 130 MB whatever the file claims.
+    /// 16 MP across all used patterns: their RGBA stays under 64 MB, and the at most five planes one is
+    /// read from under 80 MB, whatever the file claims.
     static let maxPatternPixels = 4096 * 4096
 
     /// One pattern: version, mode, height, width, name, ID, colour table (indexed), then its virtual
     /// memory array list: version 3, length, rect, channel count, then that many channels plus a user
-    /// mask and a sheet mask, each flagged as written or not.
-    /// Nil for one not in `wanted`, before its pixels are read.
-    private static func pattern(_ r: inout Cursor, wanted: Set<String>) throws -> (String, RGBAImage)? {
+    /// mask and a sheet mask, each flagged as written or not. Only the first four channels and the sheet
+    /// mask are decoded; the others are skipped. Nil for one not in `wanted`, before its pixels are read.
+    private static func pattern(_ r: inout Cursor, wanted: Set<String>, budget: inout Int) throws -> (String, RGBAImage)? {
         _ = try r.int(4)
         let mode = try r.int(4), height = try r.int(2), width = try r.int(2)
         try r.skip(try r.int(4) * 2)
         let id = String(decoding: try r.take(try r.int(1)), as: UTF8.self)
         guard wanted.contains(id) else { return nil }
-        guard width * height <= maxPatternPixels else { throw OwnDecodeError.unsupported }
+        guard width * height <= budget else { throw OwnDecodeError.unsupported }
+        budget -= width * height
         let table = mode == 2 ? Array(try r.take(768)) : []
         guard try r.int(4) == 3 else { throw OwnDecodeError.corrupt }
         try r.skip(4 + 16)
         let count = try r.int(4)
         guard count <= 64, width > 0, height > 0 else { throw OwnDecodeError.corrupt }
         var planes: [[UInt8]?] = []
-        for _ in 0..<count + 2 {
+        for c in 0..<count + 2 {
             guard try r.int(4) != 0 else { planes.append(nil); continue }
             let length = try r.int(4)
-            guard length > 0 else { planes.append(nil); continue }
+            guard length > 0, c < min(count, 4) || c == count + 1 else { try r.skip(length); planes.append(nil); continue }
             var c = Cursor(bytes: Array(try r.take(length)))
             let depth = try c.int(4)
             let top = try c.int(4), left = try c.int(4), bottom = try c.int(4), right = try c.int(4)
