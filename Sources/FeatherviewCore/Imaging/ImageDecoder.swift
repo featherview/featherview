@@ -173,8 +173,8 @@ public enum ImageDecoder {
         else { throw DecodeError.unreadable(url) }
         let full = PixelSize(width: Int(size.width), height: Int(size.height))
         // A reader failure falls back to ImageIO below: it costs speed, not the picture.
-        if let composite = composite(url, source: source),
-           let image = try? decode(composite, longest: min(side, max(full.width, full.height))) {
+        if let reader = regionReader(url, source: source),
+           let image = try? decode(reader, longest: min(side, max(full.width, full.height))) {
             return try display(image)
         }
         // Neither FromImage* flag: ImageIO returns the embedded thumbnail if there is one, else decodes at `side`.
@@ -193,36 +193,46 @@ public enum ImageDecoder {
         return try display(image)
     }
 
-    /// Whether `url` is a PSD/PSB the own reader decodes (`PSDComposite`), so a zoom may decode only a part of it.
+    /// Whether an own reader decodes `url` (`regionReader`), so a zoom may decode only a part of it.
     public static func readsRegions(_ url: URL) -> Bool {
-        composite(url, source: nil) != nil
+        regionReader(url, source: nil) != nil
     }
 
     /// The part `region` (full-size pixels) of a `readsRegions` file at halving step `step`, drawn into `colorSpace`.
     public static func decodeRegion(_ url: URL, region: CGRect, step: Int, colorSpace: CGColorSpace?) throws -> CGImage {
-        guard let composite = composite(url, source: nil),
-              let image = try? composite.decode(region: region, size: RegionZoom.decodeSize(region: region, step: step))
+        guard let reader = regionReader(url, source: nil),
+              let image = try? reader.decode(region: region, size: RegionZoom.decodeSize(region: region, step: step))
         else { throw DecodeError.unreadable(url) }
         return inColorSpace(image, colorSpace)
     }
 
-    /// The own reader for `url` when it is a PSD/PSB the reader accepts, upright (ImageIO's orientation 1 or none).
-    /// `source`: the file's, when already open.
-    private static func composite(_ url: URL, source: CGImageSource?) -> PSDComposite? {
-        guard ["psd", "psb"].contains(url.pathExtension.lowercased()), let composite = PSDComposite(url: url),
+    /// Pictures at least this large (width × height) in a TIFF the own reader accepts go to `TIFFRaster`;
+    /// smaller ones stay with ImageIO, which decodes them fast enough.
+    static let ownTIFFPixels = 100_000_000
+
+    /// The own reader for `url`, upright (ImageIO's orientation 1 or none): `PSDComposite` for a PSD/PSB it accepts,
+    /// `TIFFRaster` for a TIFF it accepts of at least `ownTIFFPixels`. `source`: the file's, when already open.
+    private static func regionReader(_ url: URL, source: CGImageSource?) -> (any RegionReader)? {
+        let reader: (any RegionReader)?
+        switch url.pathExtension.lowercased() {
+        case "psd", "psb": reader = PSDComposite(url: url)
+        case "tif", "tiff": reader = TIFFRaster(url: url).flatMap { $0.width * $0.height >= ownTIFFPixels ? $0 : nil }
+        default: reader = nil
+        }
+        guard let reader,
               let source = source ?? CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary)
         else { return nil }
         let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
-        return (props?[kCGImagePropertyOrientation] as? Int ?? 1) == 1 ? composite : nil
+        return (props?[kCGImagePropertyOrientation] as? Int ?? 1) == 1 ? reader : nil
     }
 
-    /// `composite` whole, its longest side `longest` (at most its own), the short side in proportion, at least 1.
-    private static func decode(_ composite: PSDComposite, longest: Int) throws -> CGImage {
-        let long = max(composite.width, composite.height), side = min(max(longest, 1), long)
+    /// `reader`'s whole picture, its longest side `longest` (at most its own), the short side in proportion, at least 1.
+    private static func decode(_ reader: any RegionReader, longest: Int) throws -> CGImage {
+        let long = max(reader.width, reader.height), side = min(max(longest, 1), long)
         func scaled(_ short: Int) -> Int { max(1, Int((Double(short) * Double(side) / Double(long)).rounded())) }
-        let size = composite.width >= composite.height
-            ? PixelSize(width: side, height: scaled(composite.height)) : PixelSize(width: scaled(composite.width), height: side)
-        return try composite.decode(size: size)
+        let size = reader.width >= reader.height
+            ? PixelSize(width: side, height: scaled(reader.height)) : PixelSize(width: scaled(reader.width), height: side)
+        return try reader.decode(size: size)
     }
 
     /// Whether an embedded thumbnail of `thumb` may stand in for an image of `image` (both upright) at
@@ -295,12 +305,13 @@ public enum ImageDecoder {
             fit(size, exact: exact) ?? (halvingSteps ? decodeSize(full: full, target: maxPixelSize ?? full)
                                                      : min(maxPixelSize ?? full, full))
         }
-        // Own-reader decodes are exact, like `OwnDecoders`; a reader failure falls back to ImageIO.
-        if page == 0, let composite = composite(url, source: source),
-           let image = try? decode(composite, longest: longest(exact: true)) {
+        // At the size ImageIO would decode (PSD/PSB exact, TIFF at a halving step), so the viewer's fit size
+        // doesn't change; a reader failure falls back to ImageIO.
+        let target = longest(exact: decodesAtExactFit(url))
+        if page == 0, let reader = regionReader(url, source: source), let image = try? decode(reader, longest: target) {
             return image
         }
-        var options = thumbnailOptions(maxPixelSize: longest(exact: decodesAtExactFit(url)))
+        var options = thumbnailOptions(maxPixelSize: target)
         let wantsHDR = hdr && supportsHDR
         if wantsHDR { options[kCGImageSourceDecodeRequest] = kCGImageSourceDecodeToHDR }
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, page, options as CFDictionary)
