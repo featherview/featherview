@@ -1151,13 +1151,19 @@ See "Out of scope for v1" in `AGENTS.md`.
 Releases are ad-hoc signed and not notarized (no paid Apple Developer
 account). README.md tells users how to open the app the first time.
 
-The app ships in a disk image whose window shows the app, an arrow to an Applications link, and a
-help box for the first open: open Featherview once, then System Settings › Privacy & Security ›
-Open Anyway (since macOS 15 Control-click › Open no longer does it). Dark background in the icon's
-tile colour with faint feather lines; drawn by code at 1× and 2×, no copied artwork. One disk image
-for every language, built by `scripts/dmg.sh`; its help text is English (a background holds one
-language), the app inside follows the Mac's language. Revisit if someone sponsors
-the $99/year Apple Developer Program; then sign with Developer ID and notarize.
+The app ships in a disk image whose window shows the app, an arrow to an Applications link, and
+along the bottom a help box holding a "Read Me First" text file (English, its extension hidden) and
+the tip to double-click it before the first open. The file gives the steps, with the Terminal line
+to copy (`xattr -dr com.apple.quarantine /Applications/Featherview.app`), which works on any account:
+Open Anyway in System Settings › Privacy & Security needs an administrator, and on macOS 26.4 and
+later it can fail on a standard account (the app then bounces in the Dock without starting, or the
+administrator's password is refused). It also explains why (notarization costs $99 a year) and links
+to GitHub Sponsors. A background picture's text can't be copied, hence the file. Dark background in
+the icon's tile colour with faint feather lines; drawn by code at 1× and 2×, no copied artwork. One
+disk image for every language, built by `scripts/dmg.sh`, which stops if Finder hasn't stored the
+background in the image's `.DS_Store`; its help text is English (a background holds one language),
+the app inside follows the Mac's language. Revisit if someone sponsors the $99/year Apple Developer
+Program; then sign with Developer ID and notarize.
 
 Every release builds the place data (Info panel, "Place names") fresh from GeoNames and Natural
 Earth (`scripts/places.sh`), so it never goes stale; the file is not committed. A build without

@@ -27,8 +27,8 @@ import Testing
     /// so each name sits on a light plate.
     @Test func iconNamesSitOnLightPlates() throws {
         let image = try pixels(DiskImageArt.render(help: "", scale: 1))
-        for x in [300, 620] {
-            let p = image[x, DiskImageArt.labelCentreFromTop]
+        for slot in DiskImageArt.slots {
+            let p = image[Int(slot.x), Int(slot.y) + DiskImageArt.labelBelowIcon]
             let luminance: Double = 0.2126 * Double(p.r) + 0.7152 * Double(p.g) + 0.0722 * Double(p.b)
             #expect(luminance / 255 > 0.8)
         }
@@ -38,15 +38,26 @@ import Testing
     func helpTextAppears(rightToLeft: Bool) throws {
         let empty = try pixels(DiskImageArt.render(help: "", scale: 1, rightToLeft: rightToLeft))
         let help = try pixels(DiskImageArt.render(help: DiskImageText.firstOpenHelp, scale: 1, rightToLeft: rightToLeft))
-        let bottomFifth = empty.height * 4 / 5
         var changedAbove = 0, changedBelow = 0
         for y in 0..<empty.height {
             for x in 0..<empty.width where empty[x, y] != help[x, y] {
-                if y < bottomFifth { changedAbove += 1 } else { changedBelow += 1 }
+                if y < Int(DiskImageArt.helpBoxTop) { changedAbove += 1 } else { changedBelow += 1 }
             }
         }
         #expect(changedAbove == 0)
         #expect(changedBelow > 0)
+    }
+
+    /// The Read Me file's icon and name sit inside the help box, beside the text that points to them.
+    @Test func readMeSitsInTheHelpBox() {
+        let slot = DiskImageArt.readMeSlot, half = 48.0
+        #expect(slot.y - half >= DiskImageArt.helpBoxTop)
+        #expect(slot.y + Double(DiskImageArt.labelBelowIcon) + 10 <= DiskImageArt.size.height)
+        #expect(DiskImageArt.slots.contains(slot))
+        // The app and Applications stay above the box, names included.
+        for other in [DiskImageArt.appSlot, DiskImageArt.applicationsSlot] {
+            #expect(other.y + Double(DiskImageArt.labelBelowIcon) + 10 < DiskImageArt.helpBoxTop)
+        }
     }
 
     @Test func missingTranslationFallsBackToEnglish() {
