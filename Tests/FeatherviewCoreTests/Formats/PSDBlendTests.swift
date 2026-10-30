@@ -97,4 +97,66 @@ struct PSDBlendTests {
         #expect(taken + untouched == 10_000)  // all or nothing per pixel
         #expect(abs(taken - 5_020) < 250)
     }
+
+    /// Every mode through `composite` on random straight-alpha pixels, against the float formula: within 1 step.
+    @Test func compositeMatchesTheFormula() {
+        var rng = SystemRandomNumberGenerator()
+        let n = 2_000
+        let below = RGBAImage(width: n, height: 1, pixels: (0..<n * 4).map { i in
+            i % 4 == 3 ? [0, 255, UInt8.random(in: 0...255, using: &rng)][(i / 4) % 3] : UInt8.random(in: 0...255, using: &rng)
+        })
+        let layer = RGBAImage(width: n, height: 1, pixels: (0..<n * 4).map { i in
+            i % 4 == 3 ? [255, 0, UInt8.random(in: 0...255, using: &rng)][(i / 8) % 3] : UInt8.random(in: 0...255, using: &rng)
+        })
+        let mask = (0..<n).map { _ in UInt8.random(in: 0...255, using: &rng) }
+        for mode in PSDBlend.Mode.allCases where mode != .dissolve {
+            for (alpha, opacity) in [(nil, Float(1)), (mask, Float(0.6))] as [([UInt8]?, Float)] {
+                var canvas = below
+                PSDBlend.composite(mode, onto: &canvas, layer: layer, at: (x: 0, y: 0), alpha: alpha, opacity: opacity, fill: 1)
+                for p in 0..<n {
+                    let d = p * 4
+                    let aS = Float(layer.pixels[d + 3]) / 255 * (Float(opacity * 255).rounded() / 255)
+                        * Float(alpha?[p] ?? 255) / 255
+                    let aB = Float(below.pixels[d + 3]) / 255
+                    let cS = SIMD3(Float(layer.pixels[d]), Float(layer.pixels[d + 1]), Float(layer.pixels[d + 2])) / 255
+                    let cB = SIMD3(Float(below.pixels[d]), Float(below.pixels[d + 1]), Float(below.pixels[d + 2])) / 255
+                    let mixed = (1 - aB) * cS + aB * PSDBlend.blend(mode, backdrop: cB, source: cS)
+                    let aO = aS + aB * (1 - aS)
+                    let cO = aO > 0 ? (aS * mixed + (1 - aS) * aB * cB) / aO : cB
+                    let want = [cO.x, cO.y, cO.z, aO].map { Int(min(max($0, 0), 1) * 255 + 0.5) }
+                    let got = (0..<4).map { Int(canvas.pixels[d + $0]) }
+                    // A pixel the layer leaves out keeps its colour; with nothing left of either, colour does not count.
+                    let channels = aO * 255 < 0.5 ? 3..<4 : 0..<4
+                    #expect(channels.allSatisfy { abs(got[$0] - want[$0]) <= 1 },
+                            "\(mode) pixel \(p): \(got) want \(want), below \(below.pixels[d..<d + 4]) layer \(layer.pixels[d..<d + 4])")
+                    if channels.contains(where: { abs(got[$0] - want[$0]) > 1 }) { break }
+                }
+            }
+        }
+    }
+
+    /// Task 7's budget: a 12 MP layered PSD with 30 layers < 500 ms, about 16 ms a layer in a release build, which
+    /// an opaque normal layer meets (measured ~9 ms; translucent normal ~35 ms, multiply ~55 ms, so those are only
+    /// guarded against regressions). Unoptimized the loops are many times slower, so a debug build times 1/16 of it.
+    @Test func compositeIsFastEnoughFor30Layers() {
+        let debug = _isDebugAssertConfiguration()
+        let width = debug ? 1000 : 4000, height = debug ? 750 : 3000
+        var opaque = [UInt8](repeating: 0, count: width * height * 4)
+        for i in stride(from: 0, to: opaque.count, by: 4) {
+            opaque[i] = UInt8(truncatingIfNeeded: i); opaque[i + 1] = UInt8(truncatingIfNeeded: i >> 8)
+            opaque[i + 2] = UInt8(truncatingIfNeeded: i >> 3); opaque[i + 3] = 255
+        }
+        let layer = RGBAImage(width: width, height: height, pixels: opaque)
+        var canvas = RGBAImage(width: width, height: height, pixels: opaque.reversed())
+        for (mode, opacity, limit) in [(PSDBlend.Mode.normal, Float(1), debug ? 100 : 16), (.normal, 0.5, debug ? 1000 : 80),
+                                       (.multiply, 1, debug ? 1000 : 80)] {
+            var elapsed = Duration.seconds(10)
+            for _ in 0..<3 {
+                let start = ContinuousClock.now
+                PSDBlend.composite(mode, onto: &canvas, layer: layer, at: (x: 0, y: 0), alpha: nil, opacity: opacity, fill: 1)
+                elapsed = min(elapsed, ContinuousClock.now - start)
+            }
+            #expect(elapsed < .milliseconds(limit), "\(mode) \(opacity) took \(elapsed)")
+        }
+    }
 }
