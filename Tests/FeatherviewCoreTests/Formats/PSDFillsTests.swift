@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 @testable import FeatherviewCore
@@ -174,6 +175,55 @@ import Testing
         #expect(Self.pixel(image, 1, 20)[3] == 255)
     }
 
+    /// A noise gradient whose ranges are one colour draws that colour, in RGB, HSB or Lab (each in percent; Lab into the
+    /// file's colour space, here Adobe RGB).
+    @Test func noiseGradientsInEveryColourSpace() throws {
+        for (space, values, expected) in [("RGBC", [80.0, 40, 20], [204, 102, 51]), ("HSBl", [8.3343, 60, 80], [204, 143, 82]),
+                                          ("LbCl", [60.0, 60, 60], [178, 126, 102])] {
+            let range = V.list((values + [100]).map { .doub($0) })
+            let block = Self.block([("Angl", .unit("#Ang", 90)), ("Type", .enm("GrdT", "Lnr ")), ("Grad", .obj("Grdn", [
+                ("GrdF", .enm("GrdF", "ClNs")), ("ClrS", .enm("ClrS", space)), ("Mnm ", range), ("Mxm ", range)]))])
+            let image = try #require(try PSDFills.content(try Self.fillLayer(["GdFl": block], width: 2, height: 2),
+                                                          canvas: (2, 2), patterns: [:], scale: 1,
+                                                          rgb: CGColorSpace(name: CGColorSpace.adobeRGB1998)))
+            let p = Self.pixel(image, 1, 1)
+            #expect(zip(p.prefix(3), expected).allSatisfy { abs(Int($0) - $1) <= 2 }, "\(space): \(p)")
+        }
+    }
+
+    /// The linear interpolation method mixes colours in linear light: half way from black to white is sRGB's 188, not 128.
+    @Test func linearMethodMixesInLinearLight() throws {
+        let method: [(String, V)] = [("gradientsInterpolationMethod", .enm("gradientInterpolationMethodType", "Lnr "))]
+        let layer = try Self.fillLayer(["GdFl": Self.gradient("Lnr ", angle: 0, colours: [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)],
+                                                              extra: method)], width: 64, height: 1)
+        let image = try #require(try PSDFills.content(layer, canvas: (64, 1), patterns: [:], scale: 1))
+        #expect(abs(Int(Self.pixel(image, 32, 0)[0]) - 188) <= 3)
+        #expect(Self.pixel(image, 0, 0)[0] <= 30 && Self.pixel(image, 63, 0)[0] >= 251)
+    }
+
+    /// Smoothness (Intr, of 4096) eases each stretch between stops into a smoothstep, so a quarter of the way along is
+    /// darker than a quarter of the colour; without a box flag the gradient spans the shape, not the canvas.
+    @Test func smoothnessEasesAndShapesAlign() throws {
+        let stops: [(V, Int)] = [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)]
+        let smooth = try Self.fillLayer(["GdFl": Self.gradient("Lnr ", angle: 0, colours: stops)], width: 64, height: 1)
+        let image = try #require(try PSDFills.content(smooth, canvas: (64, 1), patterns: [:], scale: 1))
+        #expect(abs(Int(Self.pixel(image, 16, 0)[0]) - 41) <= 3)  // smoothstep(0.26) · 255
+        let shaped = try Self.fillLayer(["GdFl": Self.gradient("Lnr ", angle: 0, colours: stops),
+                                         "vmsk": Self.vectorMask(Self.square(0.5, 1))], width: 64, height: 64)
+        let half = try #require(try PSDFills.content(shaped, canvas: (64, 64), patterns: [:], scale: 1))
+        #expect(Self.pixel(half, 0, 16)[0] <= 2 && Self.pixel(half, 31, 16)[0] >= 253)
+    }
+
+    /// "Snap to pixel" (sn2P) puts a vector mask's points on whole canvas pixels: an edge at 2.4 px covers pixel 2 fully.
+    @Test func snappedVectorMasksHaveWholePixelEdges() throws {
+        let path = Self.vectorMask(Self.square(2.4 / 8, 5.6 / 8))
+        let loose = try #require(try PSDFills.vectorMask(try Self.fillLayer(["vmsk": path], width: 8, height: 8), canvas: (8, 8), scale: 1))
+        let snapped = try #require(try PSDFills.vectorMask(try Self.fillLayer(["vmsk": path, "sn2P": Data([0, 0, 0, 1])], width: 8, height: 8),
+                                                           canvas: (8, 8), scale: 1))
+        #expect(loose.rect == (2, 2, 6, 6) && loose.pixels[0] < 200)
+        #expect(snapped.rect == (2, 2, 6, 6) && snapped.pixels.allSatisfy { $0 == 255 })
+    }
+
     @Test func radialAndReflectedGradients() throws {
         let stops: [(V, Int)] = [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)]
         let radial = try #require(try PSDFills.content(
@@ -327,7 +377,7 @@ import Testing
         let image = try #require(try PSDFills.content(layer, canvas: (100, 2), patterns: [:], scale: 1))
         #expect(image.width == 50)
         #expect(abs(Int(Self.pixel(image, 0, 0)[0]) - 129) <= 3)
-        #expect(abs(Int(Self.pixel(image, 25, 0)[0]) - 193) <= 3)
+        #expect(abs(Int(Self.pixel(image, 25, 0)[0]) - 217) <= 3)  // three quarters along, eased by full smoothness
     }
 
     @Test func pathOperationsCombineShapes() throws {

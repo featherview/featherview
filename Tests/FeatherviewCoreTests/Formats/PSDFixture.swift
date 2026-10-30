@@ -36,15 +36,19 @@ enum PSDFixture {
         var blendIf: [UInt8]?
         /// Channel bytes by channel ID, compression field included, in place of what `pixels` gives.
         var override: [Int: [UInt8]] = [:]
+        /// The real user mask (channel −3) beside a vector mask's rendering in `mask`.
+        var realMask: FixtureMask?
+        /// The layer mask data record (its length first) in place of the one `mask` gives.
+        var maskRecord: [UInt8]?
     }
 
     /// A white stored composite under a layer and mask section; `realComposite` nil leaves out resource 1057.
     static func makeLayered(width: Int, height: Int, layers: [FixtureLayer], realComposite: Bool? = false,
-                            version: Int = 1) -> Data {
+                            version: Int = 1, channels: Int = 3) -> Data {
         func be(_ value: Int, _ count: Int) -> [UInt8] { (0..<count).reversed().map { UInt8(truncatingIfNeeded: value >> ($0 * 8)) } }
         let long = version == 1 ? 4 : 8
         var bytes = Array("8BPS".utf8) + be(version, 2) + [UInt8](repeating: 0, count: 6)
-        bytes += be(3, 2) + be(height, 4) + be(width, 4) + be(8, 2) + be(3, 2)
+        bytes += be(channels, 2) + be(height, 4) + be(width, 4) + be(8, 2) + be(3, 2)
         bytes += be(0, 4)
         var resources: [UInt8] = []
         if let realComposite {
@@ -62,6 +66,9 @@ enum PSDFixture {
             if let mask = layer.mask {
                 planes.append((-2, mask.pixels, mask.rect.right - mask.rect.left, mask.rect.bottom - mask.rect.top))
             }
+            if let mask = layer.realMask {
+                planes.append((-3, mask.pixels, mask.rect.right - mask.rect.left, mask.rect.bottom - mask.rect.top))
+            }
             records += be(layer.rect.top, 4) + be(layer.rect.left, 4) + be(layer.rect.bottom, 4) + be(layer.rect.right, 4)
             records += be(planes.count, 2)
             for p in planes {
@@ -71,7 +78,9 @@ enum PSDFixture {
             }
             records += Array("8BIM".utf8) + Array(layer.blend.utf8) + [layer.opacity, layer.clipped ? 1 : 0, layer.hidden ? 2 : 0, 0]
             var extra: [UInt8] = []
-            if let mask = layer.mask {
+            if let record = layer.maskRecord {
+                extra += record
+            } else if let mask = layer.mask {
                 extra += be(20, 4) + be(mask.rect.top, 4) + be(mask.rect.left, 4) + be(mask.rect.bottom, 4) + be(mask.rect.right, 4)
                 extra += [mask.defaultColour, mask.disabled ? 2 : 0, 0, 0]
             } else {
@@ -96,7 +105,7 @@ enum PSDFixture {
         bytes += be(section.count, long) + section
 
         bytes += be(0, 2)
-        bytes += [UInt8](repeating: 255, count: 3 * width * height)
+        bytes += [UInt8](repeating: 255, count: channels * width * height)
         return Data(bytes)
     }
 
@@ -123,7 +132,8 @@ enum PSDFixture {
 
     /// RFC 1950: header, deflate, Adler-32.
     static func zlib(_ bytes: [UInt8]) -> [UInt8] {
-        var out = [UInt8](repeating: 0, count: bytes.count + 64)
+        // Stored blocks add 5 bytes per 64 KB of noise.
+        var out = [UInt8](repeating: 0, count: bytes.count + bytes.count / 1000 + 64)
         let n = compression_encode_buffer(&out, out.count, bytes, bytes.count, nil, COMPRESSION_ZLIB)
         var a: UInt32 = 1, b: UInt32 = 0
         for byte in bytes { a = (a + UInt32(byte)) % 65521; b = (b + a) % 65521 }

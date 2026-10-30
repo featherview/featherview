@@ -23,6 +23,19 @@ import Testing
             + [Layer(name: name, blend: blend, opacity: opacity, mask: mask, group: .open)]
     }
 
+    /// A text layer in normal mode blends its colours in a 1.45 gamma (Photoshop's default for text), so its
+    /// antialiased edges come out lighter over a light backdrop than plain source-over.
+    @Test func textBlendsInGamma145() throws {
+        var text = Self.solid("Text", 0, 0, 2, 1, [255, 0, 0, 128])
+        text.blocks["TySh"] = Data([0, 1])
+        let image = try Self.render(2, 1, [Self.solid("White", 0, 0, 2, 1, [255, 255, 255, 255]), text])
+        let expected = UInt8((pow(1 - 128.0 / 255, 1 / 1.45) * 255).rounded())
+        #expect(image[0, 0] == (255, expected, expected, 255))
+        // Over transparency nothing changes: the colour stays the layer's.
+        let alone = try Self.render(2, 1, [text])
+        #expect(alone[1, 0] == (255, 0, 0, 128))
+    }
+
     @Test func normalLayersStackLikeSourceOver() throws {
         let image = try Self.render(3, 1, [
             Layer(name: "A", rect: (0, 0, 1, 2), pixels: [200, 0, 0, 255, 0, 0, 0, 0]),
@@ -91,6 +104,60 @@ import Testing
             Self.solid("Green", 0, 0, 2, 1, [0, 255, 0, 255]),
         ]))
         #expect(image.pixels == [0, 255, 0, 128, 0, 0, 0, 0])
+    }
+
+    @Test(arguments: ["norm", "pass"]) func groupFillActsLikeOpacity(blend: String) throws {
+        var layers = Self.group("G", blend: blend, [Self.solid("Green", 0, 0, 1, 1, [0, 255, 0, 255])])
+        layers[layers.count - 1].blocks["iOpa"] = Data([128])
+        let image = try Self.render(1, 1, layers)
+        #expect(image.pixels == [0, 255, 0, 128])
+    }
+
+    /// Below full fill a pass-through group draws isolated: an adjustment in it changes only the group's own pixels.
+    @Test func passThroughGroupWithFillDrawsIsolated() throws {
+        var layers = [Self.solid("Grey", 0, 0, 2, 1, [100, 100, 100, 255])]
+            + Self.group("G", blend: "pass", [Self.solid("Red", 0, 0, 1, 1, [255, 0, 0, 255]), Layer(name: "Invert")])
+        layers[layers.count - 1].blocks["iOpa"] = Data([255])
+        let invertAll = try Self.render(2, 1, layers) { $0.name == "Invert" ? { image, _ in Self.invert(&image) } : nil }
+        #expect(invertAll.pixels == [0, 255, 255, 255, 155, 155, 155, 255])
+        layers[layers.count - 1].blocks["iOpa"] = Data([254])
+        let isolated = try Self.render(2, 1, layers) { $0.name == "Invert" ? { image, _ in Self.invert(&image) } : nil }
+        #expect(isolated.pixels[4...] == [100, 100, 100, 255])
+    }
+
+    /// Below full fill a pass-through group of pixel layers mixes, by its fill, its layers passed through at that fill
+    /// with them drawn isolated at that fill: linear dodge 50 over 100 at fill 20 % gives 110 and 90, mixed to 106.
+    @Test func passThroughGroupWithFillMixesPassedAndIsolated() throws {
+        var dodge = Self.solid("Dodge", 0, 0, 1, 1, [50, 50, 50, 255])
+        dodge.blend = "lddg"
+        var layers = [Self.solid("Grey", 0, 0, 1, 1, [100, 100, 100, 255])] + Self.group("G", blend: "pass", [dodge])
+        layers[layers.count - 1].blocks["iOpa"] = Data([51])
+        let image = try Self.render(1, 1, layers)
+        #expect(abs(Int(image.pixels[0]) - 106) <= 1 && image.pixels[3] == 255, "\(image.pixels)")
+    }
+
+    /// Nested pass-through groups below full fill draw each layer once, not once per path through the groups.
+    @Test func nestedPassThroughGroupsDrawEachLayerOnce() throws {
+        var dodge = Self.solid("Dodge", 0, 0, 2, 1, [50, 60, 70, 200])
+        dodge.blend = "lddg"
+        var layers = [dodge]
+        for level in 0..<PSDLayers.maxGroupDepth {
+            layers = Self.group("G\(level)", blend: "pass", layers)
+            layers[layers.count - 1].blocks["iOpa"] = Data([200])
+        }
+        let file = try PSDLayersTests.open(PSDFixture.makeLayered(width: 2, height: 1,
+                                                                    layers: [Self.solid("Grey", 0, 0, 2, 1, [100, 100, 100, 255])] + layers))
+        let draws = OSAllocatedUnfairLock(initialState: 0)
+        let image = try PSDCompositor(file, content: { layer, scale in
+            draws.withLock { $0 += 1 }
+            return try layer.channels(scale: scale)
+        }).render(scale: 1)
+        #expect(draws.withLock { $0 } == 2)
+        #expect(image.width == 2 && image.pixels[3] == 255)
+    }
+
+    static func invert(_ image: inout RGBAImage) {
+        for p in 0 ..< image.width * image.height { for c in 0..<3 { image.pixels[p * 4 + c] = 255 - image.pixels[p * 4 + c] } }
     }
 
     @Test func blendIfDropsDarkSourcePixels() throws {

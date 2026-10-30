@@ -9,8 +9,9 @@ public enum PSDFills {
     /// scaled canvas, or over the vector mask's rect (its top-left is `vectorMask(…)`'s). Nil when the layer
     /// has no fill block. A layer that also stores pixels (shape layers do) is drawn from its fill.
     /// Throws `OwnDecodeError.corrupt` on damage or a pattern missing from `patterns`.
+    /// `rgb` is the file's colour space, which Lab colours convert to (sRGB when nil).
     public static func content(_ layer: PSDLayer, canvas: (width: Int, height: Int), patterns: [String: RGBAImage],
-                               scale: Double) throws -> RGBAImage? {
+                               scale: Double, rgb: CGColorSpace? = nil) throws -> RGBAImage? {
         guard let key = ["SoCo", "GdFl", "PtFl"].first(where: { layer.blocks[$0] != nil }) else { return nil }
         let settings = try PSDDescriptor.versioned(layer.blocks[key]!)
         let sw = PSDLayers.scaledSize(canvas.width, scale), sh = PSDLayers.scaledSize(canvas.height, scale)
@@ -25,10 +26,10 @@ public enum PSDFills {
             let c = try colour(settings["Clr "])
             shade = { _, _ in (c.0, c.1, c.2, 255) }
         case "GdFl":
-            // "Align with layer" puts the gradient in the shape's bounds, else in the canvas.
-            let aligned = settings["Algn"] == .bool(true)
+            // "Align with layer" (the default when the flag is missing) puts the gradient in the shape's bounds, else in the canvas.
+            let aligned = settings["Algn"] != .bool(false)
             let box: PSDRect = aligned ? mask?.bounds ?? (0, 0, sh, sw) : (0, 0, sh, sw)
-            shade = try gradient(settings, box: box)
+            shade = try gradient(settings, box: box, rgb: rgb)
         default:
             shade = try pattern(settings, patterns: patterns, sx: Double(sw) / Double(canvas.width), sy: Double(sh) / Double(canvas.height))
         }
@@ -54,10 +55,16 @@ public enum PSDFills {
     /// (a subpath and the ones after it with operation −1) is filled even-odd, then combined with the
     /// shapes before it by its operation: 0 exclude, 1 combine, 2 subtract, 3 intersect. Without shapes, an
     /// initial fill record of 1 reveals the whole canvas, else nothing (the reverse when inverted).
-    /// Nil without a vector mask or when it's disabled.
+    /// Nil without a vector mask or when it's disabled. Below full density the mask covers the whole canvas, lifted.
     public static func vectorMask(_ layer: PSDLayer, canvas: (width: Int, height: Int),
                                   scale: Double) throws -> (rect: PSDRect, pixels: [UInt8], bounds: PSDRect)? {
-        guard let data = layer.blocks["vmsk"] ?? layer.blocks["vsms"] else { return nil }
+        try vectorMask(layer.blocks, density: layer.vectorDensity, feather: layer.vectorFeather, canvas: canvas, scale: scale)
+    }
+
+    /// `vectorMask` of a layer's or group's tagged blocks.
+    static func vectorMask(_ blocks: [String: Data], density: UInt8, feather: Double = 0, canvas: (width: Int, height: Int),
+                           scale: Double) throws -> (rect: PSDRect, pixels: [UInt8], bounds: PSDRect)? {
+        guard let data = blocks["vmsk"] ?? blocks["vsms"] else { return nil }
         let bytes = [UInt8](data)
         guard bytes.count >= 8 else { throw OwnDecodeError.corrupt }
         func be(_ at: Int, _ n: Int) -> Int { bytes[at..<at + n].reduce(0) { $0 << 8 | Int($1) } }
@@ -68,9 +75,14 @@ public enum PSDFills {
         let sw = PSDLayers.scaledSize(canvas.width, scale), sh = PSDLayers.scaledSize(canvas.height, scale)
         // Knots: preceding control point, anchor, leaving control point; each vertical then horizontal,
         // signed 8.24 fractions of the canvas.
+        // "Snap to pixel" (sn2P) puts each point on the nearest canvas pixel corner, as Photoshop's composites show.
+        let snaps = blocks["sn2P"].map { $0.contains { $0 != 0 } } ?? false
         func point(_ at: Int) -> CGPoint {
             func fixed(_ at: Int) -> Double { Double(Int32(truncatingIfNeeded: be(at, 4))) / 16_777_216 }
-            return CGPoint(x: fixed(at + 4) * Double(sw), y: fixed(at) * Double(sh))
+            func place(_ f: Double, _ full: Int, _ scaled: Int) -> Double {
+                (snaps ? (f * Double(full)).rounded() / Double(full) : f) * Double(scaled)
+            }
+            return CGPoint(x: place(fixed(at + 4), canvas.width, sw), y: place(fixed(at), canvas.height, sh))
         }
         var subpaths: [(closed: Bool, operation: Int, knots: [[CGPoint]])] = []
         var startsFull = false
@@ -101,7 +113,7 @@ public enum PSDFills {
             : (Int(all.minY.rounded(.down)), Int(all.minX.rounded(.down)), Int(all.maxY.rounded(.up)), Int(all.maxX.rounded(.up)))
         // A first subtraction cuts from everything, so it covers the canvas outside the path too.
         var rect: PSDRect = (0, 0, sh, sw)
-        if !inverted, shapes.first?.operation != 2 {
+        if !inverted, density == 255, shapes.first?.operation != 2 {
             guard !all.isNull, !all.isEmpty else { return ((0, 0, 0, 0), [], bounds) }
             rect = (max(0, bounds.top), max(0, bounds.left), min(sh, bounds.bottom), min(sw, bounds.right))
             guard rect.bottom > rect.top, rect.right > rect.left else { return ((0, 0, 0, 0), [], bounds) }
@@ -134,6 +146,12 @@ public enum PSDFills {
             }
         }
         if inverted { for i in pixels.indices { pixels[i] = 255 - pixels[i] } }
+        // A feather blurs the path's edge; a rect over the whole canvas carries on past it.
+        if feather > 0 {
+            let whole = rect == (0, 0, sh, sw)
+            (rect, pixels) = PSDMask.blur(rect, pixels, outside: whole ? nil : 0, sigma: feather * min(scale, 1))
+        }
+        if density < 255 { for i in pixels.indices { pixels[i] = 255 - UInt8((Int(density) * (255 - Int(pixels[i])) + 127) / 255) } }
         return (rect, pixels, bounds)
     }
 
@@ -284,10 +302,13 @@ public enum PSDFills {
     /// box's extent along it; the first stop sits at the line's start. Colour and transparency stops are
     /// interpolated in RGB, each midpoint (on the later stop) where the two meet half-way.
     // shortcut: gradient dither is off, add noise if banding shows.
-    // shortcut: smoothness (Intr) is ignored, colour changes linearly between stops; ease it if the corpus oracle shows the curve.
-    private static func gradient(_ settings: PSDDescriptor, box: PSDRect) throws -> (Int, Int) -> (UInt8, UInt8, UInt8, UInt8) {
+    // Smoothness (Intr, of 4096) eases each stretch between stops toward a smoothstep, which Photoshop's composites come close to.
+    private static func gradient(_ settings: PSDDescriptor, box: PSDRect, rgb: CGColorSpace?) throws -> (Int, Int) -> (UInt8, UInt8, UInt8, UInt8) {
         guard case .object(let grad)? = settings["Grad"] else { throw OwnDecodeError.corrupt }
-        let table = try gradientTable(grad)
+        // The linear method mixes colours in linear light; classic (and perceptual, for now) in the stored values.
+        // shortcut: the perceptual method (Perc) mixes like classic, give it its own space if a file shows it.
+        let linear = settings["gradientsInterpolationMethod"] == .enumerated(type: "gradientInterpolationMethodType", value: "Lnr ")
+        let table = try gradientTable(grad, rgb: rgb, linear: linear)
         let angle = (number(settings["Angl"]) ?? 90) * .pi / 180
         let (cosA, sinA) = (cos(angle), sin(angle))
         let bw = Double(box.right - box.left), bh = Double(box.bottom - box.top)
@@ -319,14 +340,34 @@ public enum PSDFills {
     }
 
     /// The gradient's RGBA at 1,024 even steps from its start to its end.
-    // shortcut: a noise gradient (ClNs) is one solid colour, the middle of its RGB ranges; draw the noise if a file shows it.
-    private static func gradientTable(_ grad: PSDDescriptor) throws -> [UInt8] {
+    // shortcut: a noise gradient (ClNs) is one solid colour, the middle of its ranges; draw the noise if a file shows it.
+    private static func gradientTable(_ grad: PSDDescriptor, rgb: CGColorSpace?, linear: Bool) throws -> [UInt8] {
         let steps = 1024
         if case .enumerated(_, "ClNs")? = grad["GrdF"] {
             var c: [UInt8] = [128, 128, 128]
             if case .list(let low)? = grad["Mnm "], case .list(let high)? = grad["Mxm "], low.count >= 3, high.count >= 3,
-               grad["ClrS"] == .enumerated(type: "ClrS", value: "RGBC") {
-                c = (0..<3).map { UInt8(min(max(((number(low[$0]) ?? 0) + (number(high[$0]) ?? 0)) / 2 * 2.55, 0), 255).rounded()) }
+               case .enumerated(_, let space)? = grad["ClrS"] {
+                // Each range in percent of its channel: RGB, HSB (hue as a share of the circle) or Lab (a, b over −128…127, into the file's colour space).
+                let v = (0..<3).map { min(max(((number(low[$0]) ?? 0) + (number(high[$0]) ?? 0)) / 200, 0), 1) }
+                switch space {
+                case "RGBC": c = v.map { UInt8(($0 * 255).rounded()) }
+                case "HSBl":
+                    let hi = v[2], lo = v[2] * (1 - v[1]), h = v[0] * 6
+                    let rgb = [5.0, 3, 1].map { n -> Double in
+                        let k = (n + h).truncatingRemainder(dividingBy: 6)
+                        return hi - (hi - lo) * max(0, min(k, 4 - k, 1))
+                    }
+                    c = rgb.map { UInt8(($0 * 255).rounded()) }
+                case "LbCl":
+                    let lab: [CGFloat] = [v[0] * 100, v[1] * 255 - 128, v[2] * 255 - 128, 1]
+                    if let space = CGColorSpace(labWhitePoint: [0.9642, 1, 0.8249], blackPoint: [0, 0, 0], range: [-128, 127, -128, 127]),
+                       let target = rgb ?? CGColorSpace(name: CGColorSpace.sRGB),
+                       let values = CGColor(colorSpace: space, components: lab)?.converted(to: target, intent: .relativeColorimetric, options: nil)?.components,
+                       values.count >= 3 {
+                        c = values.prefix(3).map { UInt8((min(max($0, 0), 1) * 255).rounded()) }
+                    }
+                default: break
+                }
             }
             return (0..<steps).flatMap { _ in c + [255] }
         }
@@ -344,6 +385,7 @@ public enum PSDFills {
             let c = try colour(stop["Clr "])
             return [Double(c.0), Double(c.1), Double(c.2)]
         }
+        let smoothness = min(max((number(grad["Intr"]) ?? 0) / 4096, 0), 1)
         let opacities = try stops("Trns") { [min(max((number($0["Opct"]) ?? 100) * 2.55, 0), 255)] }
         func at(_ stops: [Stop], _ t: Double, _ fallback: [Double]) -> [Double] {
             guard let first = stops.first, let last = stops.last else { return fallback }
@@ -354,11 +396,17 @@ public enum PSDFills {
             var u = b.location > a.location ? (t - a.location) / (b.location - a.location) : 1
             let m = min(max(b.midpoint, 0.001), 0.999)
             u = u < m ? u / m / 2 : 0.5 + (u - m) / (1 - m) / 2
+            u += (u * u * (3 - 2 * u) - u) * smoothness
             return zip(a.value, b.value).map { $0 + ($1 - $0) * u }
         }
+        // sRGB's curve to and from linear light, on 0…255.
+        func decode(_ v: Double) -> Double { let c = v / 255; return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
+        func encode(_ l: Double) -> Double { 255 * (l <= 0.0031308 ? l * 12.92 : 1.055 * pow(l, 1 / 2.4) - 0.055) }
+        let mixed = linear ? colours.map { ($0.location, $0.midpoint, $0.value.map(decode)) } : colours
         return (0..<steps).flatMap { i -> [UInt8] in
             let t = Double(i) / Double(steps - 1)
-            return (at(colours, t, [0, 0, 0]) + at(opacities, t, [255])).map { UInt8(min(max($0, 0), 255).rounded()) }
+            let colour = at(mixed, t, [0, 0, 0]).map { linear ? encode(min(max($0, 0), 1)) : $0 }
+            return (colour + at(opacities, t, [255])).map { UInt8(min(max($0, 0), 255).rounded()) }
         }
     }
 

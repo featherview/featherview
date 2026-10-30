@@ -1,3 +1,5 @@
+import Accelerate
+import Compression
 import Foundation
 import os
 
@@ -16,12 +18,16 @@ public struct PSDLayers: Sendable {
     public let hasRealComposite: Bool
     /// The tagged blocks after the layer info (patterns, linked files and the like).
     public let globalBlocks: [String: Data]
+    /// The ICC profile (image resource 1039) the pixels are in, nil without one.
+    public let profile: Data?
 
     /// Tagged block keys left in the file: embedded files, filter data and layer data, which can run to
     /// hundreds of MB and nothing reads. shortcut: dropped, not indexed; record offset and length when one is needed.
     /// Deepest group nesting accepted: Photoshop allows about 10; deeper files are refused, since drawing and freeing
     /// the tree recurse once per level and each isolated level holds a scaled canvas.
     static let maxGroupDepth = 16
+    /// Test hook: how many files were opened for their layers in this task.
+    @TaskLocal static var opened: OSAllocatedUnfairLock<Int>?
     static let unreadKeys: Set<String> = ["lnk2", "lnkD", "lnk3", "lnkE", "FEid", "FXid", "Layr", "Lr16", "Lr32", "PxSD"]
 
     /// Tagged block keys whose length is 8 bytes in a PSB.
@@ -30,11 +36,12 @@ public struct PSDLayers: Sendable {
     /// Nil for anything but an 8-bit RGB PSD/PSB with 3 or more channels; throws `OwnDecodeError.corrupt`
     /// when the layer section can't be followed.
     public init?(url: URL) throws {
+        Self.opened?.withLock { $0 += 1 }
         let fd = open(url.path, O_RDONLY)
-        guard fd >= 0 else { throw OwnDecodeError.corrupt }
+        guard fd >= 0 else { throw FileRead.error() }
         defer { close(fd) }
         var info = stat()
-        guard fstat(fd, &info) == 0 else { throw OwnDecodeError.corrupt }
+        guard fstat(fd, &info) == 0 else { throw FileRead.error() }
         var r = FileCursor(fd: fd, end: Int(info.st_size))
 
         guard r.end >= 26, try r.bytes(4).elementsEqual("8BPS".utf8) else { return nil }
@@ -47,7 +54,7 @@ public struct PSDLayers: Sendable {
 
         try r.skip(try r.int(4))
         let resources = try r.bytes(try r.int(4))
-        var hasRealComposite = true
+        var hasRealComposite = true, profile: Data?
         var i = resources.startIndex
         func be(_ b: ArraySlice<UInt8>) -> Int { b.reduce(0) { $0 << 8 | Int($1) } }
         while i + 12 <= resources.endIndex {
@@ -57,6 +64,7 @@ public struct PSDLayers: Sendable {
             let size = be(resources[sizeAt ..< sizeAt + 4])
             guard size <= resources.endIndex - sizeAt - 4 else { throw OwnDecodeError.corrupt }
             if id == 1057, size >= 5 { hasRealComposite = resources[sizeAt + 8] != 0 }
+            if id == 1039 { profile = Data(resources[sizeAt + 4 ..< sizeAt + 4 + size]) }
             i = sizeAt + 4 + (size + 1) & ~1
         }
 
@@ -103,7 +111,8 @@ public struct PSDLayers: Sendable {
                     let blend = section.count >= 12 ? String(decoding: section.dropFirst(8).prefix(4), as: UTF8.self) : layer.blend
                     stack[stack.count - 1].append(.group(PSDGroup(
                         name: layer.name, blend: blend, opacity: layer.opacity, visible: layer.visible, mask: layer.mask,
-                        clipped: layer.clipped, blendIf: layer.blendIf, children: children)))
+                        clipped: layer.clipped, blendIf: layer.blendIf, fill: layer.fill, vectorDensity: layer.vectorDensity,
+                        vectorFeather: layer.vectorFeather, blocks: layer.blocks, children: children)))
                     continue
                 }
             }
@@ -114,6 +123,7 @@ public struct PSDLayers: Sendable {
         self.height = height
         self.nodes = stack[0]
         self.hasRealComposite = hasRealComposite
+        self.profile = profile
     }
 
     /// A scaled canvas side: `n × scale` rounded, at least 1.
@@ -153,6 +163,14 @@ public struct PSDGroup: Sendable {
     public let mask: PSDMask?
     public let clipped: Bool
     public let blendIf: PSDBlendIf?
+    /// Fill opacity (`iOpa`), 255 without one.
+    public let fill: UInt8
+    /// The vector mask's density (`PSDFills.vectorMask`), 255 without one.
+    public let vectorDensity: UInt8
+    /// The vector mask's feather radius in canvas pixels, 0 without one.
+    public let vectorFeather: Double
+    /// The folder record's tagged blocks.
+    public let blocks: [String: Data]
     /// Bottom to top.
     public let children: [PSDNode]
 }
@@ -169,6 +187,10 @@ public struct PSDLayer: Sendable {
     public let visible: Bool
     public let mask: PSDMask?
     public let blendIf: PSDBlendIf?
+    /// The vector mask's density (`PSDFills.vectorMask`), 255 without one.
+    public let vectorDensity: UInt8
+    /// The vector mask's feather radius in canvas pixels, 0 without one.
+    public let vectorFeather: Double
     public let blocks: [String: Data]
     let source: PSDChannelSource
 
@@ -182,39 +204,76 @@ public struct PSDLayer: Sendable {
         let clip = source.clip(rect)
         let w = clip.right - clip.left, h = clip.bottom - clip.top
         guard w > 0, h > 0, try source.holds([-1, 0, 1, 2], rect) else { return nil }
-        return try source.reading(rect) { read in
+        if PSDLayers.isFullSize(source.canvas, scale) {
+            let read = try source.reading(rect, opening: [0, 1, 2, -1]) { read in try [0, 1, 2, -1].map { try read($0, 0..<h) } }
+            let none = read[0...2].contains { $0 == nil } ? [UInt8](repeating: 0, count: w * h) : []
+            let planar = [read[0] ?? none, read[1] ?? none, read[2] ?? none, read[3] ?? [UInt8](repeating: 255, count: w * h)]
+            var pixels = [UInt8](repeating: 0, count: w * h * 4)
+            func buffer(_ p: UnsafeRawPointer, _ bytesPerPixel: Int) -> vImage_Buffer {
+                vImage_Buffer(data: UnsafeMutableRawPointer(mutating: p), height: vImagePixelCount(h), width: vImagePixelCount(w),
+                              rowBytes: w * bytesPerPixel)
+            }
+            planar[0].withUnsafeBytes { r in planar[1].withUnsafeBytes { g in planar[2].withUnsafeBytes { b in
+                planar[3].withUnsafeBytes { a in pixels.withUnsafeMutableBytes { out in
+                    // The planes in the order they land in each pixel: R, G, B, A.
+                    var r = buffer(r.baseAddress!, 1), g = buffer(g.baseAddress!, 1), b = buffer(b.baseAddress!, 1)
+                    var a = buffer(a.baseAddress!, 1), dest = buffer(out.baseAddress!, 4)
+                    vImageConvert_Planar8toARGB8888(&r, &g, &b, &a, &dest, vImage_Flags(kvImageNoFlags))
+                } }
+            } } }
+            return RGBAImage(width: w, height: h, pixels: pixels)
+        }
+        return try source.reading(rect, opening: [0, 1, 2, -1]) { read in
             let target = scaledRect(scale: scale)
             let ow = target.right - target.left, oh = target.bottom - target.top
-            if PSDLayers.isFullSize(source.canvas, scale) {
-                var pixels = [UInt8](repeating: 0, count: w * h * 4)
-                for c in 0..<3 {
-                    guard let plane = try read(c, 0..<h) else { continue }
-                    for p in 0..<w * h { pixels[p * 4 + c] = plane[p] }
-                }
-                let alpha = try read(-1, 0..<h)
-                for p in 0..<w * h { pixels[p * 4 + 3] = alpha?[p] ?? 255 }
-                return RGBAImage(width: w, height: h, pixels: pixels)
-            }
             let cells = source.cells(clip, scale: scale)
             // Colour weighted by alpha, so transparent pixels don't tint their cell.
-            var alphaSums = [Int](repeating: 0, count: ow * oh), sums = [Int](repeating: 0, count: ow * oh * 3)
+            var sums = [Int](repeating: 0, count: ow * oh * 4)  // R·A, G·A, B·A, A
             for band in source.bands(w, h) {
                 let alpha = try read(-1, band), colour = try (0..<3).map { try read($0, band) }
-                for y in band {
-                    for x in 0..<w {
-                        let p = (y - band.lowerBound) * w + x, o = cells.index(x, y)
-                        let a = alpha.map { Int($0[p]) } ?? 255
-                        alphaSums[o] += a
-                        for c in 0..<3 { if let plane = colour[c] { sums[o * 3 + c] += Int(plane[p]) * a } }
-                    }
-                }
+                let none = [UInt8](repeating: 0, count: band.count * w)
+                let planes = colour.map { $0 ?? none } + [alpha ?? [UInt8](repeating: 255, count: band.count * w)]
+                // Runs of rows that start a scaled row, so no two runs add to the same cells: on all cores.
+                let starts = band.filter { $0 == band.lowerBound || cells.rows[$0] != cells.rows[$0 - 1] }
+                let runs = min(starts.count, ProcessInfo.processInfo.activeProcessorCount * 2)
+                planes[0].withUnsafeBufferPointer { r in planes[1].withUnsafeBufferPointer { g in
+                    planes[2].withUnsafeBufferPointer { b in planes[3].withUnsafeBufferPointer { a in
+                        cells.columns.withUnsafeBufferPointer { columns in sums.withUnsafeMutableBufferPointer { sums in
+                            // The planes are only read; each run adds only to its own scaled rows' sums.
+                            nonisolated(unsafe) let r = r.baseAddress!, g = g.baseAddress!, b = b.baseAddress!, a = a.baseAddress!
+                            nonisolated(unsafe) let columns = columns.baseAddress!, sums = sums.baseAddress!  // as above
+                            let width = cells.columnAreas.count
+                            DispatchQueue.concurrentPerform(iterations: runs) { run in
+                                let from = starts[run * starts.count / runs]
+                                let to = run + 1 == runs ? band.upperBound : starts[(run + 1) * starts.count / runs]
+                                for y in from..<to {
+                                    let row = cells.rows[y] * width, start = (y - band.lowerBound) * w
+                                    for x in 0..<w {
+                                        let p = start + x, o = (row + columns[x]) * 4, alpha = Int(a[p])
+                                        sums[o] += Int(r[p]) * alpha
+                                        sums[o + 1] += Int(g[p]) * alpha
+                                        sums[o + 2] += Int(b[p]) * alpha
+                                        sums[o + 3] += alpha
+                                    }
+                                }
+                            }
+                        } }
+                    } }
+                } }
             }
             var pixels = [UInt8](repeating: 0, count: ow * oh * 4)
-            for o in 0..<ow * oh {
-                if alphaSums[o] > 0 { for c in 0..<3 { pixels[o * 4 + c] = UInt8((sums[o * 3 + c] + alphaSums[o] / 2) / alphaSums[o]) } }
-                let area = cells.area(o % ow, o / ow)
-                pixels[o * 4 + 3] = UInt8((alphaSums[o] + area / 2) / area)
-            }
+            sums.withUnsafeBufferPointer { sums in pixels.withUnsafeMutableBufferPointer { pixels in
+                // Each row writes only its own pixels; the sums are only read.
+                nonisolated(unsafe) let sums = sums.baseAddress!, pixels = pixels.baseAddress!
+                DispatchQueue.concurrentPerform(iterations: oh) { y in
+                    for o in y * ow ..< (y + 1) * ow {
+                        let alpha = sums[o * 4 + 3]
+                        if alpha > 0 { for c in 0..<3 { pixels[o * 4 + c] = UInt8((sums[o * 4 + c] + alpha / 2) / alpha) } }
+                        let area = cells.area(o - y * ow, y)
+                        pixels[o * 4 + 3] = UInt8((alpha + area / 2) / area)
+                    }
+                }
+            } }
             return RGBAImage(width: ow, height: oh, pixels: pixels)
         }
     }
@@ -227,12 +286,61 @@ public struct PSDMask: Sendable {
     public let disabled: Bool
     /// The position is relative to the layer.
     public let relative: Bool
+    /// How strongly the mask hides: 255 fully, lower values lift its black toward white.
+    public let density: UInt8
+    /// The radius of the blur that softens its edges, in canvas pixels; 0 for none.
+    public let feather: Double
     let channel: Int
     let source: PSDChannelSource
 
+    /// `value` at the mask's density.
+    func dense(_ value: UInt8) -> UInt8 { 255 - UInt8((Int(density) * (255 - Int(value)) + 127) / 255) }
+
     /// The mask's values over its scaled `rect` on the canvas (see `PSDLayers.scaled`), area-averaged with
-    /// the default colour outside `rect`; one byte per pixel.
+    /// the default colour outside `rect`, at its density; one byte per pixel.
     public func pixels(scale: Double) throws -> (rect: PSDRect, pixels: [UInt8]) {
+        var (rect, pixels) = try values(scale: scale)
+        if feather > 0 { (rect, pixels) = Self.blur(rect, pixels, outside: defaultColour, sigma: feather * min(scale, 1)) }
+        return (rect, density == 255 ? pixels : pixels.map(dense))
+    }
+
+    /// `pixels` over `rect` blurred by a Gaussian of `sigma` (Photoshop's feather radius), over `rect` grown by three
+    /// sigmas: `outside` beyond `rect`, or its nearest edge pixel when nil. Three box blurs make the Gaussian, so the
+    /// cost doesn't grow with the radius.
+    static func blur(_ rect: PSDRect, _ pixels: [UInt8], outside: UInt8?, sigma: Double) -> (PSDRect, [UInt8]) {
+        let margin = Int((3 * sigma).rounded(.up))
+        guard margin > 0, rect.bottom > rect.top, rect.right > rect.left else { return (rect, pixels) }
+        let w = rect.right - rect.left, h = rect.bottom - rect.top, bw = w + 2 * margin, bh = h + 2 * margin
+        var plane = [UInt8](repeating: outside ?? 0, count: bw * bh)
+        for y in 0..<bh {
+            let sy = min(max(y - margin, 0), h - 1)
+            guard outside == nil || (margin..<margin + h).contains(y) else { continue }
+            for x in 0..<bw where outside == nil || (margin..<margin + w).contains(x) {
+                plane[y * bw + x] = pixels[sy * w + min(max(x - margin, 0), w - 1)]
+            }
+        }
+        // Widths of three boxes whose variances add up to sigma² (odd sizes, the smaller ones first).
+        let ideal = (12 * sigma * sigma / 3 + 1).squareRoot()
+        var lower = Int(ideal.rounded(.down)); if lower % 2 == 0 { lower -= 1 }
+        let upper = lower + 2
+        let small = Int(((12 * sigma * sigma - 3 * Double(lower * lower) - 12 * Double(lower) - 9) / Double(-4 * lower - 4)).rounded())
+        var out = plane
+        plane.withUnsafeMutableBytes { a in
+            out.withUnsafeMutableBytes { b in
+                var src = vImage_Buffer(data: a.baseAddress, height: vImagePixelCount(bh), width: vImagePixelCount(bw), rowBytes: bw)
+                var dst = vImage_Buffer(data: b.baseAddress, height: vImagePixelCount(bh), width: vImagePixelCount(bw), rowBytes: bw)
+                for pass in 0..<3 {
+                    let size = UInt32(max(1, pass < small ? lower : upper))
+                    vImageBoxConvolve_Planar8(&src, &dst, nil, 0, 0, size, size, 0, vImage_Flags(kvImageEdgeExtend))
+                    swap(&src, &dst)
+                }
+            }
+        }
+        // Three passes leave the result in the second buffer.
+        return ((rect.top - margin, rect.left - margin, rect.bottom + margin, rect.right + margin), out)
+    }
+
+    private func values(scale: Double) throws -> (rect: PSDRect, pixels: [UInt8]) {
         let clip = source.clip(rect)
         let w = clip.right - clip.left, h = clip.bottom - clip.top
         let target = PSDLayers.scaled(clip, canvas: source.canvas, scale: scale)
@@ -292,19 +400,37 @@ struct PSDChannelSource: Sendable {
     }
 
     /// Runs `body` with a reader of the channels of a layer or mask at `rect`: `read(id, rows)` gives rows `rows`
-    /// of `clip(rect)` (0 its top), row by row; nil when there's no such channel. Any failure is `OwnDecodeError.corrupt`.
-    func reading<T>(_ rect: PSDRect, _ body: ((Int, Range<Int>) throws -> [UInt8]?) throws -> T) throws -> T {
+    /// of `clip(rect)` (0 its top), row by row; nil when there's no such channel. A failed read throws `POSIXError`, any
+    /// other failure `OwnDecodeError.corrupt`.
+    /// Reading rows of one of the channels `opening` reads the same rows of all of them at once, on all cores.
+    func reading<T>(_ rect: PSDRect, opening: [Int] = [],
+                    _ body: ((Int, Range<Int>) throws -> [UInt8]?) throws -> T) throws -> T {
         let fd = open(url.path, O_RDONLY)
-        guard fd >= 0 else { throw OwnDecodeError.corrupt }
+        guard fd >= 0 else { throw FileRead.error() }
         defer { close(fd) }
-        var opened: [Int: Channel] = [:]
+        var opened: [Int: Channel] = [:], ahead: [Int: (rows: Range<Int>, bytes: [UInt8])] = [:]
         do {
             return try body { id, rows in
-                guard let (offset, length) = channels[id] else { return nil }
-                let channel = try opened[id] ?? self.channel(fd, offset, length, rect)
-                opened[id] = channel
-                return try band(fd, channel, rect, rows)
+                guard channels[id] != nil else { return nil }
+                if let read = ahead.removeValue(forKey: id), read.rows == rows { return read.bytes }
+                let ids = opening.contains(id) ? opening.filter { channels[$0] != nil } : [id]
+                for i in ids where opened[i] == nil {
+                    let (offset, length) = channels[i]!
+                    opened[i] = try self.channel(fd, offset, length, rect)
+                }
+                let channels = ids.map { opened[$0]! }, hook = Self.largestRead
+                let read = OSAllocatedUnfairLock(initialState: [Int: Result<[UInt8], Error>]())
+                // Each iteration reads its own channel.
+                DispatchQueue.concurrentPerform(iterations: ids.count) { k in
+                    let bytes = Self.$largestRead.withValue(hook) { Result { try self.band(fd, channels[k], rect, rows) } }
+                    read.withLock { $0[ids[k]] = bytes }
+                }
+                let done = read.withLock { $0 }
+                for i in ids where i != id { ahead[i] = (rows, try done[i]!.get()) }
+                return try done[id]!.get()
             }
+        } catch let error as POSIXError {
+            throw error
         } catch {
             throw OwnDecodeError.corrupt
         }
@@ -323,7 +449,7 @@ struct PSDChannelSource: Sendable {
         let present = ids.compactMap { channels[$0] }
         guard !present.isEmpty else { return false }
         let fd = open(url.path, O_RDONLY)
-        guard fd >= 0 else { throw OwnDecodeError.corrupt }
+        guard fd >= 0 else { throw FileRead.error() }
         defer { close(fd) }
         for (offset, length) in present {
             guard length >= 2 else { throw OwnDecodeError.corrupt }
@@ -346,13 +472,13 @@ struct PSDChannelSource: Sendable {
     }
 
     /// Where a channel's rows of `clip(rect)` are.
-    private enum Channel {
+    private enum Channel: Sendable {
         /// The file offset of the clip's first byte.
         case raw(Int)
         /// The file offsets of the clip's packed rows and the end of the last.
         case rle([Int])
-        /// The clip, inflated.
-        case zip([UInt8])
+        /// The stream, inflated row by row as rows are asked for.
+        case zip(ZipRows)
     }
 
     /// A layer's or mask's channel at `rect`, checked against its compression; only its part on the canvas:
@@ -376,17 +502,7 @@ struct PSDChannelSource: Sendable {
             guard starts[ch] > starts[0], starts[ch] <= offset + length else { throw OwnDecodeError.corrupt }
             return .rle(starts)
         case 2, 3:
-            // shortcut: a zip channel inflates whole (at most 1100 × the stream) and its canvas part stays unpacked
-            // for the whole read, up to four planes per layer; inflate row by row with compression_stream if a file shows the cost.
-            var all = try Inflate.zlib(try FileRead.bytes(fd, offset + 2, length - 2)[...], size: w * h)
-            Self.held(all.count)
-            var out = [UInt8](repeating: 0, count: cw * ch)
-            for y in 0..<ch {
-                let at = (y0 + y) * w
-                if compression == 3 { for x in 1 ..< x0 + cw { all[at + x] &+= all[at + x - 1] } }
-                out.replaceSubrange(y * cw ..< (y + 1) * cw, with: all[at + x0 ..< at + x0 + cw])
-            }
-            return .zip(out)
+            return .zip(try ZipRows(fd: fd, offset: offset + 2, length: length - 2, width: w, predicted: compression == 3))
         default:
             throw OwnDecodeError.corrupt
         }
@@ -416,8 +532,11 @@ struct PSDChannelSource: Sendable {
                     }
                 }
             }
-        case .zip(let plane):
-            out.replaceSubrange(0..<out.count, with: plane[rows.lowerBound * cw ..< rows.upperBound * cw])
+        case .zip(let zip):
+            let y0 = clip.top - rect.top
+            try out.withUnsafeMutableBufferPointer {
+                try zip.rows(y0 + rows.lowerBound ..< y0 + rows.upperBound, x0 ..< x0 + cw, into: $0.baseAddress!)
+            }
         }
         Self.held(out.count)
         return out
@@ -511,8 +630,8 @@ struct Record {
     var channelLengths: [(Int, Int)] = []
     var source = PSDChannelSource()
     let fields: (name: String, rect: PSDRect, blend: String, opacity: UInt8, clipped: Bool, visible: Bool,
-                 mask: (rect: PSDRect, defaultColour: UInt8, flags: UInt8, channel: Int)?, blendIf: PSDBlendIf?,
-                 blocks: [String: Data])
+                 mask: (rect: PSDRect, defaultColour: UInt8, flags: UInt8, channel: Int, density: UInt8, feather: Double)?,
+                 vectorDensity: UInt8, vectorFeather: Double, blendIf: PSDBlendIf?, blocks: [String: Data])
 
     init(_ r: inout FileCursor, version: Int, end: Int) throws {
         let rect = try Self.rect(&r)
@@ -528,21 +647,31 @@ struct Record {
         guard extraEnd <= end else { throw OwnDecodeError.corrupt }
 
         let maskEnd = try r.lengthEnd(4)
-        var mask: (rect: PSDRect, defaultColour: UInt8, flags: UInt8, channel: Int)?
+        var mask: (rect: PSDRect, defaultColour: UInt8, flags: UInt8, channel: Int, density: UInt8, feather: Double)?
+        var vectorDensity: UInt8 = 255, vectorFeather = 0.0, rendered = false
         if maskEnd - r.offset >= 18 {
             let maskRect = try Self.rect(&r)
             let colour = UInt8(try r.int(1)), maskFlags = UInt8(try r.int(1))
-            mask = (maskRect, colour, maskFlags, -2)
-            if maskFlags & 16 != 0 {
-                let parameters = try r.int(1)
-                try r.skip((parameters & 1) + (parameters >> 1 & 1) * 8 + (parameters >> 2 & 1) + (parameters >> 3 & 1) * 8)
-            }
-            // The user mask's own flags, colour and rectangle when a vector mask holds the first ones.
-            if maskEnd - r.offset >= 18, channelLengths.contains(where: { $0.0 == -3 }) {
+            var user = (rect: maskRect, colour: colour, flags: maskFlags, channel: -2)
+            // The user mask's own flags, colour and rectangle when the first ones hold a vector mask's rendering;
+            // the parameters follow them.
+            let real = maskEnd - r.offset >= 18 && channelLengths.contains(where: { $0.0 == -3 })
+            if real {
                 let realFlags = UInt8(try r.int(1)), realColour = UInt8(try r.int(1))
-                let realRect = try Self.rect(&r)
-                mask = (realRect, realColour, realFlags, -3)
+                user = (try Self.rect(&r), realColour, realFlags, -3)
             }
+            var density: UInt8 = 255, feather = 0.0
+            if maskFlags & 16 != 0, r.offset < maskEnd {
+                let parameters = try r.int(1)
+                if parameters & 1 != 0 { density = UInt8(try r.int(1)) }
+                if parameters & 2 != 0 { feather = Double(bitPattern: UInt64(bitPattern: Int64(try r.int(8)))) }
+                if parameters & 4 != 0 { vectorDensity = UInt8(try r.int(1)) }
+                if parameters & 8 != 0 { vectorFeather = Double(bitPattern: UInt64(bitPattern: Int64(try r.int(8)))) }
+            }
+            // A feather past 1,000 px (Photoshop's limit) or not a number is damage.
+            guard [feather, vectorFeather].allSatisfy({ $0.isFinite && (0...1000).contains($0) }) else { throw OwnDecodeError.corrupt }
+            mask = (user.rect, user.colour, user.flags, user.channel, density, feather)
+            rendered = !real && maskFlags & 8 != 0
         }
         guard maskEnd <= extraEnd else { throw OwnDecodeError.corrupt }
         r.offset = maskEnd
@@ -562,7 +691,9 @@ struct Record {
         guard r.offset <= extraEnd else { throw OwnDecodeError.corrupt }
         let blocks = try r.blocks(until: extraEnd, version: version)
         r.offset = extraEnd
-        fields = (name, rect, blend, opacity, clipping != 0, flags & 2 == 0, mask, blendIf, blocks)
+        // Without a real one, a mask flagged as rendered from other data is the vector mask's, which draws from vmsk.
+        if rendered, blocks["vmsk"] ?? blocks["vsms"] != nil { mask = nil }
+        fields = (name, rect, blend, opacity, clipping != 0, flags & 2 == 0, mask, vectorDensity, vectorFeather, blendIf, blocks)
     }
 
     /// A layer or mask rectangle, at most 2^24 per side.
@@ -577,9 +708,81 @@ struct Record {
         let l = fields
         let mask = l.mask.map {
             PSDMask(rect: $0.rect, defaultColour: $0.defaultColour, disabled: $0.flags & 2 != 0, relative: $0.flags & 1 != 0,
-                    channel: $0.channel, source: source)
+                    density: $0.density, feather: $0.feather, channel: $0.channel, source: source)
         }
         return PSDLayer(name: l.name, rect: l.rect, blend: l.blend, opacity: l.opacity, fill: l.blocks["iOpa"]?.first ?? 255,
-                        clipped: l.clipped, visible: l.visible, mask: mask, blendIf: l.blendIf, blocks: l.blocks, source: source)
+                        clipped: l.clipped, visible: l.visible, mask: mask, blendIf: l.blendIf, vectorDensity: l.vectorDensity,
+                        vectorFeather: l.vectorFeather,
+                        blocks: l.blocks, source: source)
+    }
+}
+
+/// A zip channel's rows, inflated in order as they're asked for through about 1 MB of the stream and of rows at a
+/// time, so a layer far larger than the canvas or the decode holds neither its whole stream nor its whole plane.
+/// Asking for rows above the last ones starts the stream again.
+final class ZipRows: @unchecked Sendable {  // `PSDChannelSource.reading` hands each to one thread at a time
+    private let fd: Int32, offset: Int, length: Int, width: Int, predicted: Bool
+    private let stream = UnsafeMutablePointer<compression_stream>.allocate(capacity: 1)
+    private let input = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: 1 << 18)
+    private var live = false, taken = 0, row = 0
+
+    init(fd: Int32, offset: Int, length: Int, width: Int, predicted: Bool) throws {
+        (self.fd, self.offset, self.length, self.width, self.predicted) = (fd, offset, length, width, predicted)
+        try Inflate.zlibHeader(try FileRead.bytes(fd, offset, 2)[...])
+    }
+
+    deinit {
+        if live { compression_stream_destroy(stream) }
+        stream.deallocate()
+        input.deallocate()
+    }
+
+    /// Rows `rows` of the stream's plane, columns `columns` of each, into `out`.
+    func rows(_ rows: Range<Int>, _ columns: Range<Int>, into out: UnsafeMutablePointer<UInt8>) throws {
+        if !live || rows.lowerBound < row {
+            if live { compression_stream_destroy(stream) }
+            live = compression_stream_init(stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB) == COMPRESSION_STATUS_OK
+            guard live else { throw OwnDecodeError.corrupt }
+            (taken, row) = (2, 0)
+            stream.pointee.src_size = 0
+        }
+        let chunk = max(1, min((1 << 20) / width, rows.upperBound - row))
+        var scratch = [UInt8](repeating: 0, count: chunk * width)
+        PSDChannelSource.held(scratch.count)
+        try scratch.withUnsafeMutableBufferPointer { scratch in
+            let s = scratch.baseAddress!
+            while row < rows.upperBound {
+                let n = min(chunk, rows.upperBound - row)
+                try fill(s, n * width)
+                for i in min(n, max(0, rows.lowerBound - row)) ..< n {  // a chunk wholly above `rows` is only inflated
+                    let at = s + i * width
+                    if predicted { for x in 1 ..< columns.upperBound { at[x] &+= at[x - 1] } }
+                    (out + (row + i - rows.lowerBound) * columns.count).update(from: at + columns.lowerBound, count: columns.count)
+                }
+                row += n
+            }
+        }
+    }
+
+    /// The next `count` bytes of the plane into `dst`; a stream that ends or breaks before them throws.
+    private func fill(_ dst: UnsafeMutablePointer<UInt8>, _ count: Int) throws {
+        stream.pointee.dst_ptr = dst
+        stream.pointee.dst_size = count
+        while stream.pointee.dst_size > 0 {
+            if stream.pointee.src_size == 0, taken < length {
+                let n = min(input.count, length - taken)
+                try FileRead.read(fd, offset + taken, n, into: input.baseAddress!)
+                PSDChannelSource.held(n)
+                taken += n
+                stream.pointee.src_ptr = UnsafePointer(input.baseAddress!)
+                stream.pointee.src_size = n
+            }
+            let before = (stream.pointee.src_size, stream.pointee.dst_size)
+            let flags = taken == length ? Int32(COMPRESSION_STREAM_FINALIZE.rawValue) : 0
+            let status = compression_stream_process(stream, flags)
+            guard status != COMPRESSION_STATUS_ERROR, status != COMPRESSION_STATUS_END || stream.pointee.dst_size == 0,
+                  before != (stream.pointee.src_size, stream.pointee.dst_size) || stream.pointee.src_size == 0 && taken < length
+            else { throw OwnDecodeError.corrupt }
+        }
     }
 }

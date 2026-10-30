@@ -17,8 +17,13 @@ public enum PSDAdjustments {
             let level = Float(try r.u16())
             return { c in c = SIMD3(repeating: (lum(c) * 255).rounded() >= level ? 1 : 0) }
         case "post":
+            // On 8-bit values: level k of n from 256·k/n, shown as 255·k/(n − 1) rounded down (as Photoshop's composites show).
             let levels = Float(max(2, try r.u16()))
-            return { c in c = (c * levels).rounded(.down).clamped(lowerBound: .zero, upperBound: SIMD3(repeating: levels - 1)) / (levels - 1) }
+            return { c in
+                let value = (c.clamped(lowerBound: .zero, upperBound: .one) * 255).rounded(.toNearestOrAwayFromZero)
+                let level = (value * levels / 256).rounded(.down)
+                c = (level * 255 / (levels - 1)).rounded(.down) / 255
+            }
         case "levl": return try levels(&r)
         case "curv": return try curves(&r)
         case "brit":
@@ -43,12 +48,10 @@ public enum PSDAdjustments {
             _ = try r.u16()
             let exposure = try r.f32(), offset = try r.f32(), gamma = try r.f32()
             guard exposure.isFinite, offset.isFinite, gamma.isFinite, gamma > 0 else { throw OwnDecodeError.corrupt }
-            let scale = pow(2, exposure)
+            // In a 2.2 gamma, not sRGB's curve, as Photoshop's composites show.
+            let scale = pow(2, exposure), out = 1 / (gamma * 2.2)
             return { c in
-                for i in 0..<3 {
-                    let l = max(0, linear(c[i]) * scale + offset)
-                    c[i] = min(1, encoded(pow(l, 1 / gamma)))
-                }
+                for i in 0..<3 { c[i] = min(1, pow(max(0, pow(max(c[i], 0), 2.2) * scale + offset), out)) }
             }
         case "vibA":
             let d = try PSDDescriptor.versioned(data)
@@ -65,10 +68,10 @@ public enum PSDAdjustments {
 
     // MARK: - Levels and Curves
 
-    /// Applies the composite table, then each channel's own, folded into one flat table per channel so a
-    /// pixel costs three plain lookups.
+    /// Applies each channel's own table, then the composite one (as Photoshop's composites show), folded into one
+    /// flat table per channel so a pixel costs three plain lookups.
     private static func tables(_ t: [[Float]]) -> Adjust {
-        let flat = (1...3).flatMap { channel in (0...255).map { lookup(t[channel], lookup(t[0], Float($0) / 255)) } }
+        let flat = (1...3).flatMap { channel in (0...255).map { lookup(t[0], lookup(t[channel], Float($0) / 255)) } }
         return { c in
             for i in 0..<3 {
                 let x = min(max(c[i], 0), 1) * 255, j = min(Int(x), 254), k = i * 256 + j
@@ -176,23 +179,45 @@ public enum PSDAdjustments {
             let ramp = SIMD4<Float>(Float(try r.i16()), Float(try r.i16()), Float(try r.i16()), Float(try r.i16()))
             ranges.append((ramp, SIMD3(Float(try r.i16()), Float(try r.i16()) / 100, Float(try r.i16()) / 100)))
         }
+        // The rules below are what Photoshop's composites show (Adobe doesn't publish them): HSL throughout; the six
+        // ranges' hue and lightness first, weighted by hue and summed, then the master's, then the saturation of both.
         if colorize {
             let base = rotate(SIMD3(1, 0, 0), by: colorizeHue)
             return { c in
-                c = setLum(0.5 + (base - 0.5) * colorizeSaturation, lum(c))
-                c = lighten(c, by: colorizeLightness)
+                let l = lighten((c.max() + c.min()) / 2, by: colorizeLightness)
+                c = l + (base - 0.5) * (1 - abs(2 * l - 1)) * colorizeSaturation
             }
         }
         return { [ranges] c in
-            var s = master
+            var shift = SIMD3<Float>.zero  // hue, saturation (as `gain`s), lightness
             if c.max() > c.min() {
                 let h = hue(c)
-                for range in ranges { s += weight(h, range.ramp) * range.settings }
+                for range in ranges {
+                    let w = weight(h, range.ramp)
+                    if w > 0 { shift += w * SIMD3(range.settings.x, gain(range.settings.y), range.settings.z) }
+                }
             }
-            c = rotate(c, by: s.x)
-            c = saturate(c, by: min(max(s.y, -1), 1))
-            c = lighten(c, by: min(max(s.z, -1), 1))
+            // A range's lightness moves the colour above its darkest channel: toward that channel's grey or the brightest's.
+            let lightness = min(max(shift.z, -1), 1), lo = c.min(), hi = c.max()
+            c = lightness < 0 ? lo + (c - lo) * (1 + lightness) : c + (hi - c) * lightness
+            c = lighten(rotate(c, by: shift.x), by: master.z)
+            // The ranges' and the master's saturation multiply before the colour is clipped to full.
+            c = scaleSaturation(rotate(c, by: master.x), by: (1 + shift.y) * (1 + gain(master.y)))
         }
+    }
+
+    /// A saturation setting (−1…1) as the change of the HSL saturation's factor: −100 % takes it all, +100 % multiplies
+    /// it by 128.
+    private static func gain(_ amount: Float) -> Float {
+        amount <= 0 ? amount : amount >= 1 ? 127 : amount / (1 - amount)
+    }
+
+    /// The HSL saturation times `factor` (at least 0, at most full), hue and lightness kept.
+    private static func scaleSaturation(_ c: SIMD3<Float>, by factor: Float) -> SIMD3<Float> {
+        let hi = c.max(), lo = c.min(), l = (hi + lo) / 2, room = 1 - abs(hi + lo - 1)
+        guard hi > lo, room > 0 else { return c }
+        let s = (hi - lo) / room
+        return clamp01(l + (c - l) * min(max(factor, 0), 1 / s))
     }
 
     /// How much a hue (degrees) belongs to a range: ramps up from its first value to its second,
@@ -238,6 +263,10 @@ public enum PSDAdjustments {
 
     private static func lighten(_ c: SIMD3<Float>, by amount: Float) -> SIMD3<Float> {
         clamp01(amount >= 0 ? c + (1 - c) * amount : c * (1 + amount))
+    }
+
+    private static func lighten(_ v: Float, by amount: Float) -> Float {
+        min(max(amount >= 0 ? v + (1 - v) * amount : v * (1 + amount), 0), 1)
     }
 
     // MARK: - Colour Balance, Black & White, Channel Mixer, Photo Filter
@@ -414,8 +443,6 @@ public enum PSDAdjustments {
         return t[i] + (t[i + 1] - t[i]) * (x - Float(i))
     }
 
-    private static func linear(_ c: Float) -> Float { c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
-    private static func encoded(_ l: Float) -> Float { l <= 0.0031308 ? l * 12.92 : 1.055 * pow(l, 1 / 2.4) - 0.055 }
 
     /// The channels' indices from brightest to darkest; ties keep red, green, blue order.
     private static func order(_ c: SIMD3<Float>) -> (Int, Int, Int) {

@@ -35,8 +35,6 @@ import Testing
 
     func lum(_ c: SIMD3<Float>) -> Float { 0.3 * c.x + 0.59 * c.y + 0.11 * c.z }
 
-    func linear(_ c: Float) -> Float { c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
-
     @Test func invert() throws {
         #expect(close(try adjust("nvrt", Data(), (0.2, 0.5, 1)), (0.8, 0.5, 0)))
     }
@@ -53,6 +51,11 @@ import Testing
     @Test func posterize() throws {
         var b = Block(); b.u16(4); b.u16(0)
         #expect(close(try adjust("post", Data(b.data), (0.3, 0, 1)), (1.0 / 3, 0, 1)))
+        // Level k of n covers 8-bit values from 256·k/n, and shows 255·k/(n − 1) rounded down (as Photoshop's composites show).
+        var three = Block(); three.u16(3); three.u16(0)
+        #expect(try adjust("post", Data(three.data), (85 / 255, 86 / 255, 171 / 255)) == SIMD3(0, 127 / 255, 1))
+        var seven = Block(); seven.u16(7); seven.u16(0)
+        #expect(try adjust("post", Data(seven.data), (73 / 255, 74 / 255, 37 / 255)) == SIMD3(42 / 255, 85 / 255, 42 / 255))
     }
 
     func levelsBlock(_ records: [(Int, Int, Int, Int, Int)]) -> Data {
@@ -69,9 +72,10 @@ import Testing
         #expect(close(try adjust("levl", data, (50 / 255, 125 / 255, 200 / 255)), (0, 127.5 / 255, 1), 0.5 / 255))
         // Gamma 2 brightens the middle.
         #expect(try adjust("levl", levelsBlock([(0, 255, 0, 255, 200)]), (0.25, 0.25, 0.25)).x > 0.45)
-        // The composite applies first: it halves red to 128, then red's own 0…128 → 0…255 brings it back.
+        // Each channel's own applies first, then the composite (as Photoshop's composites show): red's 0…128 → 0…255
+        // keeps white, then the composite halves every channel.
         let both = levelsBlock([(0, 255, 0, 128, 100), (0, 128, 0, 255, 100)])
-        #expect(close(try adjust("levl", both, (1, 1, 1)), (1, 128 / 255, 128 / 255), 1 / 255))
+        #expect(close(try adjust("levl", both, (1, 1, 1)), (128 / 255, 128 / 255, 128 / 255), 1 / 255))
         #expect(throws: OwnDecodeError.corrupt) { try PSDAdjustments.adjustment(key: "levl", data: Data([0, 2, 0, 50])) }
     }
 
@@ -128,12 +132,20 @@ import Testing
         #expect(try PSDAdjustments.adjustment(key: "curv", data: Data([1, 0, 1, 0, 0, 0, 1] + [UInt8](repeating: 0, count: 256))) == nil)
     }
 
+    func hslLightness(_ c: SIMD3<Float>) -> Float { (c.max() + c.min()) / 2 }
+
     @Test func hueSaturation() throws {
         #expect(close(try adjust("hue2", hueSaturationBlock(master: (180, 0, 0)), (1, 0, 0)), (0, 1, 1)))
-        let colour = SIMD3<Float>(0.8, 0.4, 0.2)
+        // Saturation −100: the grey of the colour's HSL lightness.
         let grey = try adjust("hue2", hueSaturationBlock(master: (0, -100, 0)), (0.8, 0.4, 0.2))
-        #expect(abs(grey.x - grey.y) < 0.001 && abs(grey.y - grey.z) < 0.001)
-        #expect(abs(lum(grey) - lum(colour)) < 0.002)
+        #expect(close(grey, (0.5, 0.5, 0.5)))
+        // Saturation +100 saturates fully, keeping hue and lightness; +50 doubles the saturation (a / (1 − a) more).
+        #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 100, 0)), (0.6, 0.5, 0.4)), (1, 0.5, 0)))
+        #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 50, 0)), (0.6, 0.5, 0.4)), (0.7, 0.5, 0.3)))
+        // The ranges' and the master's saturation multiply before the colour is clipped to full: the reds' +100
+        // outweighs the master's −97, so a saturated red stays (dropped one after the other, it would turn grey).
+        let both = hueSaturationBlock(master: (0, -97, 0), reds: (0, 100, 0))
+        #expect(close(try adjust("hue2", both, (1, 0.2, 0.2)), (1, 0.2, 0.2)))
         // The reds' own setting turns red green and leaves blue alone.
         let redsOnly = hueSaturationBlock(master: (0, 0, 0), reds: (120, 0, 0))
         #expect(close(try adjust("hue2", redsOnly, (1, 0, 0)), (0, 1, 0)))
@@ -141,10 +153,16 @@ import Testing
         // Lightness +100 is white, −100 black.
         #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 0, 100)), (0.3, 0.6, 0.1)), (1, 1, 1)))
         #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 0, -100)), (0.3, 0.6, 0.1)), (0, 0, 0)))
-        // Colorize: one hue for everything, a grey turns blue-ish and keeps its luminosity.
+        // A range's lightness moves the colour above its darkest channel: −100 leaves the grey of that channel,
+        // +100 the grey of the brightest; the master's lightness then applies on top.
+        #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 0, 0), reds: (0, 0, -100)), (0.8, 0.3, 0.2)), (0.2, 0.2, 0.2)))
+        #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 0, 0), reds: (0, 0, 100)), (0.8, 0.3, 0.2)), (0.8, 0.8, 0.8)))
+        #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 0, 50), reds: (0, 0, -100)), (0.8, 0.3, 0.2)), (0.6, 0.6, 0.6)))
+        // Colorize: one hue for everything, at the colour's HSL lightness; a grey turns blue.
         let blue = try adjust("hue2", hueSaturationBlock(colorize: true, colorizeHSL: (240, 50, 0), master: (0, 0, 0)), (0.5, 0.5, 0.5))
-        #expect(blue.z > blue.x && abs(blue.x - blue.y) < 0.001)
-        #expect(abs(lum(blue) - 0.5) < 0.002)
+        #expect(close(blue, (0.25, 0.25, 0.75)))
+        let dark = try adjust("hue2", hueSaturationBlock(colorize: true, colorizeHSL: (0, 100, -50), master: (0, 0, 0)), (0.6, 0.2, 0.4))
+        #expect(close(dark, (0.4, 0, 0)))
     }
 
     @Test func brightnessContrastLegacyAndModern() throws {
@@ -183,10 +201,13 @@ import Testing
 
     @Test func exposure() throws {
         var b = Block(); b.u16(1); b.f32(1); b.f32(0); b.f32(1)
+        // +1 EV doubles light in a 2.2 gamma (as Photoshop's composites show), then the gamma setting applies.
         let v = try adjust("expA", Data(b.data), (0.2, 0.4, 0))
-        #expect(abs(linear(v.x) - 2 * linear(0.2)) < 0.002)
-        #expect(abs(linear(v.y) - 2 * linear(0.4)) < 0.002)
+        #expect(abs(pow(v.x, 2.2) - 2 * pow(0.2, 2.2)) < 0.002)
+        #expect(abs(pow(v.y, 2.2) - 2 * pow(0.4, 2.2)) < 0.002)
         #expect(v.z == 0)
+        var g = Block(); g.u16(1); g.f32(0); g.f32(0.1); g.f32(2)
+        #expect(close(try adjust("expA", Data(g.data), (0.5, 0, 1)), (pow(pow(0.5, 2.2) + 0.1, 1 / 4.4), pow(0.1, 1 / 4.4), 1)))
         #expect(throws: OwnDecodeError.corrupt) { try PSDAdjustments.adjustment(key: "expA", data: Data([0, 1, 0, 0])) }
     }
 
