@@ -177,7 +177,7 @@ public enum PSDAdjustments {
             ranges.append((ramp, SIMD3(Float(try r.i16()), Float(try r.i16()) / 100, Float(try r.i16()) / 100)))
         }
         // The rules below are what Photoshop's composites show (Adobe doesn't publish them): HSL throughout; the six
-        // ranges first, weighted by hue and summed, then the master settings.
+        // ranges' hue and lightness first, weighted by hue and summed, then the master's, then the saturation of both.
         if colorize {
             let base = rotate(SIMD3(1, 0, 0), by: colorizeHue)
             return { c in
@@ -197,15 +197,16 @@ public enum PSDAdjustments {
             // A range's lightness moves the colour above its darkest channel: toward that channel's grey or the brightest's.
             let lightness = min(max(shift.z, -1), 1), lo = c.min(), hi = c.max()
             c = lightness < 0 ? lo + (c - lo) * (1 + lightness) : c + (hi - c) * lightness
-            c = scaleSaturation(rotate(c, by: shift.x), by: 1 + shift.y)
-            c = lighten(c, by: master.z)
-            c = scaleSaturation(rotate(c, by: master.x), by: 1 + gain(master.y))
+            c = lighten(rotate(c, by: shift.x), by: master.z)
+            // The ranges' and the master's saturation multiply before the colour is clipped to full.
+            c = scaleSaturation(rotate(c, by: master.x), by: (1 + shift.y) * (1 + gain(master.y)))
         }
     }
 
-    /// A saturation setting (−1…1) as the change of the HSL saturation's factor: −100 % takes it all, +100 % saturates fully.
+    /// A saturation setting (−1…1) as the change of the HSL saturation's factor: −100 % takes it all, +100 % multiplies
+    /// it by 128.
     private static func gain(_ amount: Float) -> Float {
-        amount <= 0 ? amount : amount >= 1 ? .infinity : amount / (1 - amount)
+        amount <= 0 ? amount : amount >= 1 ? 127 : amount / (1 - amount)
     }
 
     /// The HSL saturation times `factor` (at least 0, at most full), hue and lightness kept.

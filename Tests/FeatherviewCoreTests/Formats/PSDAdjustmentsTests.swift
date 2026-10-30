@@ -139,6 +139,10 @@ import Testing
         // Saturation +100 saturates fully, keeping hue and lightness; +50 doubles the saturation (a / (1 − a) more).
         #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 100, 0)), (0.6, 0.5, 0.4)), (1, 0.5, 0)))
         #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 50, 0)), (0.6, 0.5, 0.4)), (0.7, 0.5, 0.3)))
+        // The ranges' and the master's saturation multiply before the colour is clipped to full: the reds' +100
+        // outweighs the master's −97, so a saturated red stays (dropped one after the other, it would turn grey).
+        let both = hueSaturationBlock(master: (0, -97, 0), reds: (0, 100, 0))
+        #expect(close(try adjust("hue2", both, (1, 0.2, 0.2)), (1, 0.2, 0.2)))
         // The reds' own setting turns red green and leaves blue alone.
         let redsOnly = hueSaturationBlock(master: (0, 0, 0), reds: (120, 0, 0))
         #expect(close(try adjust("hue2", redsOnly, (1, 0, 0)), (0, 1, 0)))
