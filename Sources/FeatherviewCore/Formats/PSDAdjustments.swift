@@ -43,12 +43,10 @@ public enum PSDAdjustments {
             _ = try r.u16()
             let exposure = try r.f32(), offset = try r.f32(), gamma = try r.f32()
             guard exposure.isFinite, offset.isFinite, gamma.isFinite, gamma > 0 else { throw OwnDecodeError.corrupt }
-            let scale = pow(2, exposure)
+            // In a 2.2 gamma, not sRGB's curve, as Photoshop's composites show.
+            let scale = pow(2, exposure), out = 1 / (gamma * 2.2)
             return { c in
-                for i in 0..<3 {
-                    let l = max(0, linear(c[i]) * scale + offset)
-                    c[i] = min(1, encoded(pow(l, 1 / gamma)))
-                }
+                for i in 0..<3 { c[i] = min(1, pow(max(0, pow(max(c[i], 0), 2.2) * scale + offset), out)) }
             }
         case "vibA":
             let d = try PSDDescriptor.versioned(data)
@@ -437,8 +435,6 @@ public enum PSDAdjustments {
         return t[i] + (t[i + 1] - t[i]) * (x - Float(i))
     }
 
-    private static func linear(_ c: Float) -> Float { c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
-    private static func encoded(_ l: Float) -> Float { l <= 0.0031308 ? l * 12.92 : 1.055 * pow(l, 1 / 2.4) - 0.055 }
 
     /// The channels' indices from brightest to darkest; ties keep red, green, blue order.
     private static func order(_ c: SIMD3<Float>) -> (Int, Int, Int) {

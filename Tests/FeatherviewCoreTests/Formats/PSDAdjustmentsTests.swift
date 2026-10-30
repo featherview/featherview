@@ -35,8 +35,6 @@ import Testing
 
     func lum(_ c: SIMD3<Float>) -> Float { 0.3 * c.x + 0.59 * c.y + 0.11 * c.z }
 
-    func linear(_ c: Float) -> Float { c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
-
     @Test func invert() throws {
         #expect(close(try adjust("nvrt", Data(), (0.2, 0.5, 1)), (0.8, 0.5, 0)))
     }
@@ -198,10 +196,13 @@ import Testing
 
     @Test func exposure() throws {
         var b = Block(); b.u16(1); b.f32(1); b.f32(0); b.f32(1)
+        // +1 EV doubles light in a 2.2 gamma (as Photoshop's composites show), then the gamma setting applies.
         let v = try adjust("expA", Data(b.data), (0.2, 0.4, 0))
-        #expect(abs(linear(v.x) - 2 * linear(0.2)) < 0.002)
-        #expect(abs(linear(v.y) - 2 * linear(0.4)) < 0.002)
+        #expect(abs(pow(v.x, 2.2) - 2 * pow(0.2, 2.2)) < 0.002)
+        #expect(abs(pow(v.y, 2.2) - 2 * pow(0.4, 2.2)) < 0.002)
         #expect(v.z == 0)
+        var g = Block(); g.u16(1); g.f32(0); g.f32(0.1); g.f32(2)
+        #expect(close(try adjust("expA", Data(g.data), (0.5, 0, 1)), (pow(pow(0.5, 2.2) + 0.1, 1 / 4.4), pow(0.1, 1 / 4.4), 1)))
         #expect(throws: OwnDecodeError.corrupt) { try PSDAdjustments.adjustment(key: "expA", data: Data([0, 1, 0, 0])) }
     }
 
