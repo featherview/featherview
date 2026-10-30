@@ -1,16 +1,30 @@
 import Compression
 
-/// zlib, gzip and raw DEFLATE, always to an exact size known in advance, so a corrupt or hostile
+/// zlib, gzip and raw DEFLATE, always to a size known in advance, so a corrupt or hostile
 /// stream can't inflate without bound.
 // shortcut: the Adler-32 / CRC-32 trailers aren't checked (a corrupt stream almost always fails to inflate to the exact size), check them if a file decodes to garbage.
 enum Inflate {
     /// RFC 1950: 2-byte header, deflate, Adler-32 trailer.
     static func zlib(_ bytes: ArraySlice<UInt8>, size: Int) throws -> [UInt8] {
+        try zlibHeader(bytes)
+        return try raw(bytes.dropFirst(2), size: size)
+    }
+
+    /// RFC 1950 straight into `out`, which it must fill; a longer stream stops there (TIFF's padded strips).
+    static func zlib(_ bytes: ArraySlice<UInt8>, filling out: UnsafeMutableBufferPointer<UInt8>) throws {
+        try zlibHeader(bytes)
+        guard bytes.count > 2, let dst = out.baseAddress else { throw OwnDecodeError.corrupt }
+        let written = bytes.dropFirst(2).withUnsafeBufferPointer {
+            compression_decode_buffer(dst, out.count, $0.baseAddress!, $0.count, nil, COMPRESSION_ZLIB)
+        }
+        guard written == out.count else { throw OwnDecodeError.corrupt }
+    }
+
+    private static func zlibHeader(_ bytes: ArraySlice<UInt8>) throws {
         guard bytes.count >= 2 else { throw OwnDecodeError.truncated }
         let cmf = Int(bytes[bytes.startIndex]), flg = Int(bytes[bytes.startIndex + 1])
         guard (cmf * 256 + flg) % 31 == 0, cmf & 0x0F == 8, cmf >> 4 <= 7, flg & 0x20 == 0
         else { throw OwnDecodeError.corrupt }
-        return try raw(bytes.dropFirst(2), size: size)
     }
 
     /// RFC 1952 member: header with optional FEXTRA / FNAME / FCOMMENT / FHCRC, deflate, CRC-32 and size.

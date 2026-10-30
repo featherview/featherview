@@ -151,4 +151,90 @@ import Testing
         try data.prefix(20).write(to: url)
         #expect(throws: OwnDecodeError.corrupt) { try raster.decode(size: size) }
     }
+
+    /// Some writers store the last strip as many rows as the others; ImageIO reads only the picture's rows.
+    @Test(arguments: [1, 5, 8]) func readsAPaddedLastStrip(compression: Int) throws {
+        let pixels = Self.noise(width: 37, height: 23)
+        let url = try Self.write(TIFFFixture.make(width: 37, height: 23, pixels: pixels, compression: compression,
+                                                  predictor: compression == 1 ? 1 : 2, rowsPerStrip: 4, paddedLastStrip: true))
+        let raster = try #require(TIFFRaster(url: url))
+        #expect(PSDCompositeTests.same(PSDCompositeTests.pixels(try raster.decode(size: PixelSize(width: 37, height: 23))), pixels))
+        let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
+        let theirs = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil).flatMap { RGBAImage($0) })
+        #expect((0..<23 * 37).allSatisfy { let a = pixels[$0], b = theirs[$0 % 37, $0 / 37]; return a.0 == b.r && a.1 == b.g && a.2 == b.b })
+    }
+
+    /// A strip with byte count 0 (a sparse file) is zero, as ImageIO shows it.
+    @Test(arguments: [1, 5, 8]) func sparseStripIsZero(compression: Int) throws {
+        let pixels = Self.noise(width: 37, height: 23)
+        var data = TIFFFixture.make(width: 37, height: 23, pixels: pixels, compression: compression, rowsPerStrip: 4)
+        let counts = try #require(Self.entry(279, in: data)), at = Int(data[counts + 8]) | Int(data[counts + 9]) << 8
+        data.replaceSubrange(at ..< at + 4, with: [0, 0, 0, 0])
+        let image = try #require(TIFFRaster(url: try Self.write(data))).decode(size: PixelSize(width: 37, height: 23))
+        let expected = pixels.indices.map { $0 < 4 * 37 ? (0, 0, 0) : pixels[$0] }
+        #expect(PSDCompositeTests.same(PSDCompositeTests.pixels(image), expected))
+    }
+
+    /// A tag that repeats declines the file at once: a crafted IFD of 2,000 large offset arrays would
+    /// otherwise take seconds to parse.
+    @Test func declinesARepeatedTag() throws {
+        let (entries, values) = (2_000, 50_000)
+        let arrayAt = 8 + 2 + entries * 12 + 4
+        func le(_ v: Int, _ n: Int) -> [UInt8] { (0..<n).map { UInt8(truncatingIfNeeded: v >> ($0 * 8)) } }
+        var bytes = Array("II".utf8) + le(42, 2) + le(8, 4) + le(entries, 2)
+        for _ in 0..<entries { bytes += le(273, 2) + le(4, 2) + le(values, 4) + le(arrayAt, 4) }
+        bytes += le(0, 4) + [UInt8](repeating: 0, count: values * 4)
+        let url = try Self.write(Data(bytes))
+        let start = ContinuousClock.now
+        #expect(TIFFRaster(url: url) == nil)
+        #expect(ContinuousClock.now - start < .seconds(1))
+        // Compression 1 stored twice (PlanarConfiguration's entry, also 1, retagged), in an otherwise good file.
+        var twice = TIFFFixture.make(width: 3, height: 2, pixels: Self.noise(width: 3, height: 2))
+        let planar = try #require(Self.entry(284, in: twice))
+        (twice[planar], twice[planar + 1]) = (UInt8(259 & 0xFF), UInt8(259 >> 8))
+        #expect(TIFFRaster(url: try Self.write(twice)) == nil)
+    }
+
+    /// A block decodes to at most 16 MB, so the bands decoding at once stay within memory.
+    @Test func declinesBlocksOver16MB() throws {
+        func accepts(rows: Int) throws -> Bool {
+            TIFFRaster(url: try Self.write(TIFFFixture.makeRepeatedStrip(width: 40_000, height: 1_000, rows: rows,
+                                                                       pixels: [(0, 0, 0)]))) != nil
+        }
+        #expect(try accepts(rows: 100))  // 12 MB
+        #expect(try !accepts(rows: 500))  // 60 MB
+        #expect(TIFFRaster.lanes(bands: 10, bytesPerBand: 1 << 20) == 10)
+        #expect(TIFFRaster.lanes(bands: 100, bytesPerBand: 100 << 20) == 2)
+        #expect(TIFFRaster.lanes(bands: 10, bytesPerBand: 400 << 20) == 1)
+    }
+
+    /// 10,240 × 10,241 whose last strip (1 row) stores 16, read by parts through `ImageDecoder`; a part whose
+    /// strip fails goes to ImageIO, which shows it as it can.
+    @Test func partsOfAHugeTIFF() throws {
+        let (width, height) = (10_240, 10_241)
+        let pixels = Self.noise(width: width, height: 16)
+        let data = TIFFFixture.makeRepeatedStrip(width: width, height: height, rows: 16, pixels: pixels)
+        let bottom = CGRect(x: 9000, y: 9800, width: 1240, height: 441)
+        func crop(_ r: CGRect) -> [RGB] {
+            (Int(r.minY)..<Int(r.maxY)).flatMap { y in (Int(r.minX)..<Int(r.maxX)).map { pixels[(y % 16) * width + $0] } }
+        }
+        let url = try PSDCompositeTests.write(data, "huge.tif")
+        #expect(ImageDecoder.readsRegions(url))
+        let part = try ImageDecoder.decodeRegion(url, region: bottom, step: 0, colorSpace: nil)
+        #expect(PSDCompositeTests.same(PSDCompositeTests.pixels(part), crop(bottom)))
+
+        // The last strip cut to 3 bytes: the reader throws there, ImageIO still reads the file.
+        var broken = data
+        let counts = try #require(Self.entry(279, in: broken))
+        let last = (Int(broken[counts + 8]) | Int(broken[counts + 9]) << 8 | Int(broken[counts + 10]) << 16)
+            + ((height + 15) / 16 - 1) * 4
+        broken.replaceSubrange(last ..< last + 4, with: [3, 0, 0, 0])
+        let brokenURL = try PSDCompositeTests.write(broken, "broken.tif")
+        #expect(throws: OwnDecodeError.corrupt) { try TIFFRaster(url: brokenURL)!.decode(region: bottom, size: PixelSize(width: 1240, height: 441)) }
+        let fallback = try ImageDecoder.decodeRegion(brokenURL, region: bottom, step: 0, colorSpace: nil)
+        #expect(fallback.width == 1240 && fallback.height == 441)
+        // Rows above the broken strip are ImageIO's, the same pixels.
+        #expect(PSDCompositeTests.same(Array(PSDCompositeTests.pixels(fallback).prefix(1240 * 400)),
+                                       Array(crop(bottom).prefix(1240 * 400))))
+    }
 }

@@ -62,11 +62,14 @@ public struct TIFFRaster: RegionReader {
         let wanted: Set<Int> = [256, 257, 258, 259, 262, 266, 273, 274, 277, 278, 279, 284, 317, 322, 323, 324, 325, 339]
         var tags: [Int: [Int]] = [:]
         var icc: Data?
+        var seen: Set<Int> = []
         for e in 0..<n {
             let at = e * entrySize
             let tag = int(entries[at ..< at + 2]), type = int(entries[at + 2 ..< at + 4])
             guard tag != 338 else { return nil }  // ExtraSamples: alpha or more
             guard tag == 34675 || wanted.contains(tag) else { continue }
+            // A repeated tag: no writer stores one, and each copy could ask for a file-sized array to be parsed.
+            guard seen.insert(tag).inserted else { return nil }
             // BYTE, SHORT, LONG and LONG8 for numbers; BYTE or UNDEFINED for the profile.
             guard let size = (tag == 34675 ? [1: 1, 7: 1] : [1: 1, 3: 2, 4: 4, 16: 8])[type] else { return nil }
             let count = int(entries[at + 4 ..< at + 4 + fieldSize])
@@ -110,8 +113,8 @@ public struct TIFFRaster: RegionReader {
                   o.count == (height + min(rows, height) - 1) / min(rows, height), c.count == o.count else { return nil }
             (blockWidth, blockHeight, offsets, counts) = (width, min(rows, height), o, c)
         }
-        // shortcut: a block over 64 MB decoded (one strip for the whole picture) goes to ImageIO, since every band would decode all of it; read such raw strips row by row if they turn up.
-        guard blockWidth * blockHeight * 3 <= 64 << 20,
+        // shortcut: a block over 16 MB decoded (one strip for the whole picture, huge tiles) goes to ImageIO, since every band decoding at once holds one; read such raw strips row by row if they turn up.
+        guard blockWidth * blockHeight * 3 <= 16 << 20,
               zip(offsets, counts).allSatisfy({ $0 >= 0 && $1 >= 0 && $0 <= fileSize - $1 }) else { return nil }
 
         self.url = url
@@ -127,7 +130,13 @@ public struct TIFFRaster: RegionReader {
         self.counts = counts
     }
 
-    /// See `RegionReader`; a block whose data decodes short or long throws too.
+    /// How many of `bands` bands decode at once, each holding `bytesPerBand`: as many as fit in 256 MB, at least one.
+    static func lanes(bands: Int, bytesPerBand: Int) -> Int {
+        max(1, min(bands, (256 << 20) / max(1, bytesPerBand)))
+    }
+
+    /// See `RegionReader`; a block whose data decodes short throws too. A block stored longer (a padded last
+    /// strip) is read up to its size, and one of byte count 0 (a sparse file) is zero, as ImageIO reads them.
     public func decode(region: CGRect?, size: PixelSize) throws -> CGImage {
         let (x0, y0, rw, rh, ow, oh) = try bounds(region, size: size)
         let columns = (0...ow).map { x0 + $0 * rw / ow }, rows = (0...oh).map { y0 + $0 * rh / oh }
@@ -145,86 +154,91 @@ public struct TIFFRaster: RegionReader {
         // Each band writes only its own output rows.
         nonisolated(unsafe) let output = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: ow * 4 * oh)
         let failed = OSAllocatedUnfairLock(initialState: false)
-        let (width, height, blockWidth, blockHeight, tiled) = (width, height, blockWidth, blockHeight, tiled)
-        DispatchQueue.concurrentPerform(iterations: (oh + k - 1) / k) { band in
-            let oy0 = band * k, oy1 = min(oy0 + k, oh), s0 = rows[oy0], s1 = rows[oy1]
-            let sums = UnsafeMutableBufferPointer<UInt64>.allocate(capacity: (oy1 - oy0) * ow * 3)
-            sums.initialize(repeating: 0)
-            defer { sums.deallocate() }
-            let block = UnsafeMutablePointer<UInt8>.allocate(capacity: blockWidth * blockHeight * 3)
-            defer { block.deallocate() }
-            // Compressed bytes land in one buffer per band: a fresh one per block costs page faults on every block.
-            var packed: [UInt8] = []
-            do {
-                try columns.withUnsafeBufferPointer { columns in
-                    for by in s0 / blockHeight ... (s1 - 1) / blockHeight {
-                        let top = by * blockHeight, ra = max(s0, top), rb = min(s1, top + blockHeight)
-                        // Tiles are stored full-size at the edges; the last strip is shorter.
-                        let stored = tiled ? blockHeight : min(blockHeight, height - top)
-                        for bx in bx0...bx1 {
-                            let left = bx * blockWidth, xa = max(x0, left), xb = min(x0 + rw, left + blockWidth)
-                            // Up to the region's last column in the last row used: the rest of a strip is never looked at.
-                            try decodeBlock(by * across + bx, rows: stored, needed: ((rb - top - 1) * blockWidth + xb - left) * 3,
-                                            fd: fd, packed: &packed, into: block)
-                            if predictor {
-                                for r in ra..<rb {
-                                    // Three running sums in registers, not each byte read back from the one before.
-                                    var p = block + (r - top) * blockWidth * 3
-                                    var (red, green, blue) = (p[0], p[1], p[2])
-                                    for _ in 1 ..< xb - left {
-                                        p += 3
-                                        red &+= p[0]
-                                        green &+= p[1]
-                                        blue &+= p[2]
-                                        (p[0], p[1], p[2]) = (red, green, blue)
-                                    }
-                                }
-                            }
-                            let firstOX = ((xa - x0 + 1) * ow - 1) / rw
-                            for oy in oy0..<oy1 {
-                                let r0 = max(rows[oy], ra), r1 = min(rows[oy + 1], rb)
-                                guard r0 < r1 else { continue }
-                                let sum = sums.baseAddress! + (oy - oy0) * ow * 3
-                                if ow == rw {
-                                    // One column per output pixel (a 100 % part): add the bytes straight across.
-                                    for r in r0..<r1 {
-                                        let line = block + ((r - top) * blockWidth + xa - left) * 3, to = sum + (xa - x0) * 3
-                                        for i in 0 ..< (xb - xa) * 3 { to[i] += UInt64(line[i]) }
-                                    }
-                                    continue
-                                }
-                                for r in r0..<r1 {
-                                    let line = block + (r - top) * blockWidth * 3
-                                    var ox = firstOX
-                                    while ox < ow, columns[ox] < xb {
-                                        // One row of an output pixel fits in 32 bits: rows are at most 300,000 × 255.
-                                        var s: (UInt32, UInt32, UInt32) = (0, 0, 0)
-                                        for x in max(columns[ox], xa) ..< min(columns[ox + 1], xb) {
-                                            let p = line + (x - left) * 3
-                                            s.0 &+= UInt32(p[0])
-                                            s.1 &+= UInt32(p[1])
-                                            s.2 &+= UInt32(p[2])
+        let (height, blockWidth, blockHeight, tiled) = (height, blockWidth, blockHeight, tiled)
+        let bands = (oh + k - 1) / k
+        // A band holds its block, its compressed bytes and its sums: bounded, so a decode never takes gigabytes.
+        let lanes = Self.lanes(bands: bands, bytesPerBand: blockWidth * blockHeight * 3 + (counts.max() ?? 0) + k * ow * 24)
+        DispatchQueue.concurrentPerform(iterations: lanes) { lane in
+            for band in stride(from: lane, to: bands, by: lanes) {
+                let oy0 = band * k, oy1 = min(oy0 + k, oh), s0 = rows[oy0], s1 = rows[oy1]
+                let sums = UnsafeMutableBufferPointer<UInt64>.allocate(capacity: (oy1 - oy0) * ow * 3)
+                sums.initialize(repeating: 0)
+                defer { sums.deallocate() }
+                let block = UnsafeMutablePointer<UInt8>.allocate(capacity: blockWidth * blockHeight * 3)
+                defer { block.deallocate() }
+                // Compressed bytes land in one buffer per band: a fresh one per block costs page faults on every block.
+                var packed: [UInt8] = []
+                do {
+                    try columns.withUnsafeBufferPointer { columns in
+                        for by in s0 / blockHeight ... (s1 - 1) / blockHeight {
+                            let top = by * blockHeight, ra = max(s0, top), rb = min(s1, top + blockHeight)
+                            // Tiles are stored full-size at the edges; the last strip is shorter.
+                            let stored = tiled ? blockHeight : min(blockHeight, height - top)
+                            for bx in bx0...bx1 {
+                                let left = bx * blockWidth, xa = max(x0, left), xb = min(x0 + rw, left + blockWidth)
+                                // Up to the region's last column in the last row used: the rest of a strip is never looked at.
+                                try decodeBlock(by * across + bx, rows: stored, needed: ((rb - top - 1) * blockWidth + xb - left) * 3,
+                                                fd: fd, packed: &packed, into: block)
+                                if predictor {
+                                    for r in ra..<rb {
+                                        // Three running sums in registers, not each byte read back from the one before.
+                                        var p = block + (r - top) * blockWidth * 3
+                                        var (red, green, blue) = (p[0], p[1], p[2])
+                                        for _ in 1 ..< xb - left {
+                                            p += 3
+                                            red &+= p[0]
+                                            green &+= p[1]
+                                            blue &+= p[2]
+                                            (p[0], p[1], p[2]) = (red, green, blue)
                                         }
-                                        sum[ox * 3] += UInt64(s.0)
-                                        sum[ox * 3 + 1] += UInt64(s.1)
-                                        sum[ox * 3 + 2] += UInt64(s.2)
-                                        ox += 1
+                                    }
+                                }
+                                let firstOX = ((xa - x0 + 1) * ow - 1) / rw
+                                for oy in oy0..<oy1 {
+                                    let r0 = max(rows[oy], ra), r1 = min(rows[oy + 1], rb)
+                                    guard r0 < r1 else { continue }
+                                    let sum = sums.baseAddress! + (oy - oy0) * ow * 3
+                                    if ow == rw {
+                                        // One column per output pixel (a 100 % part): add the bytes straight across.
+                                        for r in r0..<r1 {
+                                            let line = block + ((r - top) * blockWidth + xa - left) * 3, to = sum + (xa - x0) * 3
+                                            for i in 0 ..< (xb - xa) * 3 { to[i] += UInt64(line[i]) }
+                                        }
+                                        continue
+                                    }
+                                    for r in r0..<r1 {
+                                        let line = block + (r - top) * blockWidth * 3
+                                        var ox = firstOX
+                                        while ox < ow, columns[ox] < xb {
+                                            // One row of an output pixel fits in 32 bits: rows are at most 300,000 × 255.
+                                            var s: (UInt32, UInt32, UInt32) = (0, 0, 0)
+                                            for x in max(columns[ox], xa) ..< min(columns[ox + 1], xb) {
+                                                let p = line + (x - left) * 3
+                                                s.0 &+= UInt32(p[0])
+                                                s.1 &+= UInt32(p[1])
+                                                s.2 &+= UInt32(p[2])
+                                            }
+                                            sum[ox * 3] += UInt64(s.0)
+                                            sum[ox * 3 + 1] += UInt64(s.1)
+                                            sum[ox * 3 + 2] += UInt64(s.2)
+                                            ox += 1
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+                } catch {
+                    failed.withLock { $0 = true }
+                    return
                 }
-            } catch {
-                failed.withLock { $0 = true }
-                return
-            }
-            for oy in oy0..<oy1 {
-                for ox in 0..<ow {
-                    let count = UInt64((rows[oy + 1] - rows[oy]) * (columns[ox + 1] - columns[ox]))
-                    let i = oy * ow * 4 + ox * 4, s = (oy - oy0) * ow * 3 + ox * 3
-                    for c in 0..<3 { output[i + c] = UInt8((sums[s + c] + count / 2) / count) }
-                    output[i + 3] = 255
+                for oy in oy0..<oy1 {
+                    for ox in 0..<ow {
+                        let count = UInt64((rows[oy + 1] - rows[oy]) * (columns[ox + 1] - columns[ox]))
+                        let i = oy * ow * 4 + ox * 4, s = (oy - oy0) * ow * 3 + ox * 3
+                        for c in 0..<3 { output[i + c] = UInt8((sums[s + c] + count / 2) / count) }
+                        output[i + 3] = 255
+                    }
                 }
             }
         }
@@ -240,6 +254,7 @@ public struct TIFFRaster: RegionReader {
     private func decodeBlock(_ index: Int, rows: Int, needed: Int, fd: Int32, packed: inout [UInt8],
                              into buffer: UnsafeMutablePointer<UInt8>) throws {
         let size = rows * blockWidth * 3
+        if counts[index] == 0 { return buffer.initialize(repeating: 0, count: size) }
         if compression == 1 {
             guard counts[index] >= size else { throw OwnDecodeError.corrupt }
             return try FileRead.read(fd, offsets[index], needed, into: buffer)
@@ -253,13 +268,13 @@ public struct TIFFRaster: RegionReader {
                              stoppingAt: needed)
             }
         } else {
-            try Inflate.zlib(packed[..<count], size: size).withUnsafeBufferPointer { buffer.update(from: $0.baseAddress!, count: size) }
+            try Inflate.zlib(packed[..<count], filling: UnsafeMutableBufferPointer(start: buffer, count: size))
         }
     }
 
     /// TIFF LZW (MSB-first codes of 9 to 12 bits, Clear 256, EOI 257, each width change one code early) into
-    /// exactly `out`. Throws on a code past the table, output past `out`, or a stream that ends before `out` is
-    /// full, which also turns away old-style LSB-first LZW. `stop`: returns once that many bytes are out.
+    /// `out`. Throws on a code past the table or a stream that ends before `out` is full, which also turns away
+    /// old-style LSB-first LZW; codes past a full `out` (a padded strip) are left. `stop`: returns once that many bytes are out.
     static func lzw(_ packed: UnsafeBufferPointer<UInt8>, into out: UnsafeMutableBufferPointer<UInt8>,
                     stoppingAt stop: Int? = nil) throws {
         guard let base = out.baseAddress, let input = packed.baseAddress else { throw OwnDecodeError.corrupt }
@@ -310,7 +325,8 @@ public struct TIFFRaster: RegionReader {
                     code = first
                 } while code == 256
                 if code == 257 { break }
-                guard code < 256, n < end else { throw OwnDecodeError.corrupt }
+                guard code < 256 else { throw OwnDecodeError.corrupt }
+                guard n < end else { return }
                 base[n] = UInt8(code)
                 (oldStart, oldLength) = (UnsafePointer(base + n), 1)
                 n += 1
@@ -320,7 +336,7 @@ public struct TIFFRaster: RegionReader {
             let length: Int
             if code < next {
                 length = lengths[code]
-                guard n + length <= end else { throw OwnDecodeError.corrupt }
+                guard n + length <= end else { return (base + n).update(from: starts[code], count: end - n) }
                 let from = UnsafeRawPointer(starts[code]), to = UnsafeMutableRawPointer(base + n)
                 // Short strings as one or two 8-byte copies, all loads before any store: the bytes past the
                 // string are rewritten by the codes after it.
@@ -336,7 +352,7 @@ public struct TIFFRaster: RegionReader {
             } else if code == next, oldLength > 0 {
                 // The string not yet in the table: the previous one plus its own first byte.
                 length = oldLength + 1
-                guard n + length <= end else { throw OwnDecodeError.corrupt }
+                guard n + length <= end else { return (base + n).update(from: oldStart, count: end - n) }
                 (base + n).update(from: oldStart, count: oldLength)
                 base[n + oldLength] = oldStart[0]
             } else {

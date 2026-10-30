@@ -267,4 +267,20 @@ import UniformTypeIdentifiers
         #expect(try ImageDecoder.decode(deep, maxPixelSize: 32).bitsPerComponent == 16)  // batch and Save As
         #expect(try ImageDecoder.decode(deep).bitsPerComponent == 16)
     }
+
+    /// A part drawn into the screen's colour space band by band, on all cores, is the same as drawn whole.
+    @Test func colourConversionInBandsMatchesWhole() throws {
+        let (width, height) = (61, 523)
+        let pixels = PSDCompositeTests.noise(width: width, height: height)
+        let adobe = try #require(CGColorSpace(name: CGColorSpace.adobeRGB1998))
+        let context = try #require(CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                                             space: adobe, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
+        let bytes = context.data!.assumingMemoryBound(to: UInt8.self)
+        for (i, p) in pixels.enumerated() { (bytes[i * 4], bytes[i * 4 + 1], bytes[i * 4 + 2]) = p }
+        let image = try #require(context.makeImage())
+        let p3 = try #require(CGColorSpace(name: CGColorSpace.displayP3))
+        let whole = ImageDecoder.inColorSpace(image, p3), banded = ImageDecoder.inColorSpaceInBands(image, p3)
+        #expect(banded.colorSpace == p3 && banded.width == width && banded.height == height)
+        #expect(PSDCompositeTests.same(PSDCompositeTests.pixels(banded), PSDCompositeTests.pixels(whole)))
+    }
 }

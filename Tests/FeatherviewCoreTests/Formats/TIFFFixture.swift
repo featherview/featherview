@@ -9,7 +9,7 @@ enum TIFFFixture {
     static func make(width: Int, height: Int, pixels: [RGB], bigEndian: Bool = false, bigTIFF: Bool = false,
                      compression: Int = 1, predictor: Int = 1, rowsPerStrip: Int? = nil, tile: (Int, Int)? = nil,
                      icc: Data? = nil, samples: Int = 3, bits: Int = 8, photometric: Int = 2, planar: Int = 1,
-                     orientation: Int? = nil, pages: Int = 1) -> Data {
+                     orientation: Int? = nil, pages: Int = 1, paddedLastStrip: Bool = false) -> Data {
         let bytesPerSample = bits / 8
         func sample(_ x: Int, _ y: Int, _ s: Int) -> UInt8 {
             guard x < width, y < height else { return 0 }  // tiles are padded past the picture's edges
@@ -22,7 +22,8 @@ enum TIFFFixture {
         for plane in planes {
             for ty in 0 ..< (height + bh - 1) / bh {
                 for tx in 0 ..< (width + bw - 1) / bw {
-                    let rows = tile == nil ? min(bh, height - ty * bh) : bh
+                    // Some writers store the last strip full-size too, its rows past the picture zero.
+                    let rows = tile == nil && !paddedLastStrip ? min(bh, height - ty * bh) : bh
                     var raw: [UInt8] = []
                     for y in 0..<rows {
                         var row: [UInt8] = []

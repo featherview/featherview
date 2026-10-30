@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import ImageIO
+import os
 import UniformTypeIdentifiers
 
 public enum DecodeError: Error, Equatable {
@@ -200,10 +201,18 @@ public enum ImageDecoder {
 
     /// The part `region` (full-size pixels) of a `readsRegions` file at halving step `step`, drawn into `colorSpace`.
     public static func decodeRegion(_ url: URL, region: CGRect, step: Int, colorSpace: CGColorSpace?) throws -> CGImage {
-        guard let reader = regionReader(url, source: nil),
-              let image = try? reader.decode(region: region, size: RegionZoom.decodeSize(region: region, step: step))
+        let size = RegionZoom.decodeSize(region: region, step: step)
+        if let reader = regionReader(url, source: nil), let image = try? reader.decode(region: region, size: size) {
+            return inColorSpaceInBands(image, colorSpace)
+        }
+        // A block the reader can't read (old-style LZW, a damaged strip): ImageIO reads the part as it can, slower.
+        let uncached = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, uncached),
+              let part = CGImageSourceCreateImageAtIndex(source, 0, uncached)?.cropping(to: region),
+              let space = colorSpace ?? part.colorSpace,
+              let image = redrawn(part, width: size.width, height: size.height, in: space)
         else { throw DecodeError.unreadable(url) }
-        return inColorSpace(image, colorSpace)
+        return image
     }
 
     /// Pictures at least this large (width × height) in a TIFF the own reader accepts go to `TIFFRaster`;
@@ -252,6 +261,31 @@ public enum ImageDecoder {
     static func inColorSpace(_ image: CGImage, _ colorSpace: CGColorSpace?) -> CGImage {
         guard let colorSpace, image.bitsPerComponent == 8, image.colorSpace != colorSpace else { return image }
         return redrawn(image, width: image.width, height: image.height, in: colorSpace) ?? image
+    }
+
+    /// `inColorSpace` in row bands on all cores: a 100 % part of a huge picture is ~100 MB to convert.
+    static func inColorSpaceInBands(_ image: CGImage, _ colorSpace: CGColorSpace?) -> CGImage {
+        guard let colorSpace, image.bitsPerComponent == 8, image.colorSpace != colorSpace else { return image }
+        let (width, height) = (image.width, image.height)
+        let opaque = [.none, .noneSkipFirst, .noneSkipLast].contains(image.alphaInfo)
+        let info = (opaque ? CGImageAlphaInfo.noneSkipLast : .premultipliedLast).rawValue
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: colorSpace, bitmapInfo: info),
+              let data = context.data else { return inColorSpace(image, colorSpace) }
+        let bytesPerRow = context.bytesPerRow, bands = min(height, ProcessInfo.processInfo.activeProcessorCount * 2)
+        let failed = OSAllocatedUnfairLock(initialState: false)
+        // Each band draws its rows of the picture into its rows of the one buffer.
+        nonisolated(unsafe) let base = data
+        DispatchQueue.concurrentPerform(iterations: bands) { band in
+            let y0 = band * height / bands, rows = (band + 1) * height / bands - y0
+            guard let part = image.cropping(to: CGRect(x: 0, y: y0, width: width, height: rows)),
+                  let rowsContext = CGContext(data: base + y0 * bytesPerRow, width: width, height: rows, bitsPerComponent: 8,
+                                              bytesPerRow: bytesPerRow, space: colorSpace, bitmapInfo: info)
+            else { return failed.withLock { $0 = true } }
+            rowsContext.draw(part, in: CGRect(x: 0, y: 0, width: width, height: rows))
+        }
+        guard !failed.withLock({ $0 }), let banded = context.makeImage() else { return inColorSpace(image, colorSpace) }
+        return banded
     }
 
     /// The longest side to decode an image of `size` at for `screens` (`fitDecodeSize`, or with `exact`
