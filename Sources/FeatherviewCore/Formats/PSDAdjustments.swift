@@ -53,7 +53,7 @@ public enum PSDAdjustments {
         case "vibA":
             let d = try PSDDescriptor.versioned(data)
             let vibrance = (number(d["vibrance"]) ?? 0) / 100, saturation = (number(d["Strt"]) ?? 0) / 100
-            return { c in c = saturate(c, by: saturation + vibrance * (1 - (c.max() - c.min()))) }
+            return { c in c = saturate(c, by: min(max(saturation + vibrance * (1 - (c.max() - c.min())), -1), 1)) }
         case "phfl": return try photoFilter(&r)
         case "selc": return try selectiveColour(&r)
         case "grdm": return try gradientMap(&r)
@@ -136,12 +136,17 @@ public enum PSDAdjustments {
         var segment = 0
         return (0...255).map { i in
             let x = Float(i)
-            if x <= p[0].x { return p[0].y / 255 }
-            if x >= p[n - 1].x { return p[n - 1].y / 255 }
-            while x > p[segment + 1].x { segment += 1 }
-            let a = (p[segment + 1].x - x) / h[segment], b = 1 - a
-            let y = a * p[segment].y + b * p[segment + 1].y
-                + ((a * a * a - a) * m[segment] + (b * b * b - b) * m[segment + 1]) * h[segment] * h[segment] / 6
+            let y: Float
+            if x <= p[0].x {
+                y = p[0].y
+            } else if x >= p[n - 1].x {
+                y = p[n - 1].y
+            } else {
+                while x > p[segment + 1].x { segment += 1 }
+                let a = (p[segment + 1].x - x) / h[segment], b = 1 - a
+                y = a * p[segment].y + b * p[segment + 1].y
+                    + ((a * a * a - a) * m[segment] + (b * b * b - b) * m[segment + 1]) * h[segment] * h[segment] / 6
+            }
             return min(max(y, 0), 255) / 255
         }
     }
@@ -335,7 +340,7 @@ public enum PSDAdjustments {
             let space = try r.u16()
             let values = [try r.u16(), try r.u16(), try r.u16(), try r.u16()]
             _ = try r.u16()
-            // shortcut: stops in a colour space other than RGB, Lab or grey draw the layer without the map, until a file has one.
+            // shortcut: stops in a colour book (custom) space draw the layer without the map, until a file has one.
             guard let colour = colour(space: space, values) else { return nil }
             stops.append((location, midpoint, colour))
         }
@@ -358,11 +363,18 @@ public enum PSDAdjustments {
 
     // MARK: - Shared
 
-    /// A colour structure's colour as RGB in 0…1: RGB (0), Lab (7) and grey (8); nil for other spaces.
+    /// A colour structure's colour as RGB in 0…1: RGB (0), HSB (1), CMYK (2), Lab (7) and grey (8); nil for
+    /// colour books and other spaces.
     private static func colour(space: Int, _ v: [Int]) -> SIMD3<Float>? {
         switch space {
         case 0:
             return SIMD3(Float(v[0]), Float(v[1]), Float(v[2])) / 65535
+        case 1:
+            let s = Float(v[1]) / 65535, b = Float(v[2]) / 65535
+            return rotate(SIMD3(b, b * (1 - s), b * (1 - s)), by: Float(v[0]) / 65535 * 360)
+        case 2:
+            // 65535 is no ink; a plain product without an ink profile.
+            return SIMD3(Float(v[0]), Float(v[1]), Float(v[2])) / 65535 * (Float(v[3]) / 65535)
         case 8:
             return SIMD3(repeating: 1 - Float(min(v[0], 10000)) / 10000)
         case 7:

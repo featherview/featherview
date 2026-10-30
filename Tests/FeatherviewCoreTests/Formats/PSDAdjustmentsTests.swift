@@ -99,6 +99,9 @@ import Testing
         // Bit 2 is green alone: red and blue stay.
         let green = curvesBlock(channels: 4, [[(0, 255), (255, 0)]])
         #expect(close(try adjust("curv", green, (0.2, 0.2, 0.2)), (0.2, 0.8, 0.2)))
+        // A damaged end point above 255 still gives values in 0…1.
+        let high = curvesBlock(channels: 4, [[(10, 300), (255, 255)]])
+        #expect(close(try adjust("curv", high, (0, 0, 0)), (0, 1, 0)))
         #expect(throws: OwnDecodeError.corrupt) {
             try PSDAdjustments.adjustment(key: "curv", data: Data([0, 0, 1, 0, 0, 0, 1, 0, 9, 0, 0]))
         }
@@ -265,6 +268,11 @@ import Testing
         let vivid = try adjust("vibA", vibrance, (0.9, 0.5, 0.1))
         #expect((muted.x - muted.z) / 0.1 > (vivid.x - vivid.z) / 0.8)
         #expect(close(try adjust("vibA", vibrance, (0.5, 0.5, 0.5)), (0.5, 0.5, 0.5)))
+        // Both at -100 stop at grey instead of flipping to the complement; both at +100 stop at full saturation.
+        let least = try adjust("vibA", descriptorBlock([("vibrance", -100), ("Strt", -100)]), (0.6, 0.4, 0.4))
+        #expect(close(least, (0.46, 0.46, 0.46)))
+        let most = try adjust("vibA", descriptorBlock([("vibrance", 100), ("Strt", 100)]), (0.55, 0.5, 0.5))
+        #expect(close(most, (0.585, 0.485, 0.485)))
     }
 
     func photoFilterBlock(space: Int, _ colour: [Int], density: Int, preserve: Bool) -> Data {
@@ -284,6 +292,11 @@ import Testing
         let warm = photoFilterBlock(space: 7, [6700, 3200, 7300], density: 25, preserve: true)
         let v = try adjust("phfl", warm, (0.5, 0.5, 0.5))
         #expect(v.x > v.z && abs(lum(v) - 0.5) < 0.002)
+        // HSB (pure green: 120°, full saturation and brightness) and CMYK (cyan; 65535 is no ink).
+        let hsb = photoFilterBlock(space: 1, [21845, 65535, 65535], density: 100, preserve: false)
+        #expect(close(try adjust("phfl", hsb, (1, 1, 1)), (0, 1, 0)))
+        let cmyk = photoFilterBlock(space: 2, [0, 65535, 65535, 65535], density: 100, preserve: false)
+        #expect(close(try adjust("phfl", cmyk, (1, 1, 1)), (0, 1, 1)))
     }
 
     func selectiveBlock(relative: Bool, reds: (Int, Int, Int, Int)) -> Data {
@@ -305,15 +318,15 @@ import Testing
         #expect(close(try adjust("selc", selectiveBlock(relative: false, reds: (0, 0, 0, 100)), (1, 0, 0)), (0, 0, 0)))
     }
 
-    func gradientMapBlock(reverse: Bool, stops: [(location: Int, rgb: (Int, Int, Int))]) -> Data {
+    func gradientMapBlock(reverse: Bool, space: Int = 0, stops: [(location: Int, rgb: (Int, Int, Int))]) -> Data {
         var b = Block()
         b.u16(1); b.u8(reverse ? 1 : 0); b.u8(0)
         let name = Array("Map".utf16) + [0]
         b.u32(name.count); for u in name { b.u16(Int(u)) }
         b.u16(stops.count)
         for stop in stops {
-            b.u32(stop.location); b.u32(50); b.u16(0)
-            b.u16(stop.rgb.0); b.u16(stop.rgb.1); b.u16(stop.rgb.2); b.u16(0); b.u16(0)
+            b.u32(stop.location); b.u32(50); b.u16(space)
+            b.u16(stop.rgb.0); b.u16(stop.rgb.1); b.u16(stop.rgb.2); b.u16(space == 2 ? 65535 : 0); b.u16(0)
         }
         b.u16(2)
         for location in [0, 4096] { b.u32(location); b.u32(50); b.u16(255) }
@@ -327,6 +340,12 @@ import Testing
         #expect(close(try adjust("grdm", data, (0.5, 0.5, 0.5)), (0.5, 0, 0.5)))
         let reversed = gradientMapBlock(reverse: true, stops: [(0, (65535, 0, 0)), (4096, (0, 0, 65535))])
         #expect(close(try adjust("grdm", reversed, (0, 0, 0)), (0, 0, 1)))
+        let hsb = gradientMapBlock(reverse: false, space: 1, stops: [(0, (0, 65535, 65535)), (4096, (43690, 65535, 32768))])
+        #expect(close(try adjust("grdm", hsb, (0, 0, 0)), (1, 0, 0)))
+        #expect(close(try adjust("grdm", hsb, (1, 1, 1)), (0, 0, 0.5)))
+        let cmyk = gradientMapBlock(reverse: false, space: 2, stops: [(0, (65535, 0, 65535)), (4096, (65535, 65535, 65535))])
+        #expect(close(try adjust("grdm", cmyk, (0, 0, 0)), (1, 0, 1)))
+        #expect(close(try adjust("grdm", cmyk, (1, 1, 1)), (1, 1, 1)))
         #expect(throws: OwnDecodeError.corrupt) {
             try PSDAdjustments.adjustment(key: "grdm", data: Data([0, 1, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF]))
         }
