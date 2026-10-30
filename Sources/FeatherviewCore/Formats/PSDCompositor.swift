@@ -108,9 +108,20 @@ public struct PSDCompositor: Sendable {
             guard base.visible else { continue }
 
             // Below full fill opacity a pass-through group draws isolated, as Photoshop's composites show.
-            if case .group(let group) = base, group.blend == "pass", group.fill == 255, clipped.isEmpty {
-                let weights = try masks(base, scale, origin, target.width, target.height)
-                if weights == nil, group.opacity == 255 {
+            if case .group(let group) = base, group.blend == "pass", group.fill == 255 {
+                var weights = try masks(base, scale, origin, target.width, target.height)
+                if !clipped.isEmpty {
+                    // As a clipping base it still passes through, but only where it has content of its own (an
+                    // adjustment alone has none), with the clipped layers over it; its layers bring their own alpha.
+                    var content = Self.canvas(target.width, target.height)
+                    try draw(group.children, onto: &content, at: origin, scale)
+                    var copy = target
+                    try draw(group.children, onto: &copy, at: origin, scale)
+                    for node in clipped { try draw([node], onto: &copy, at: origin, scale) }
+                    let alphas = stride(from: 3, to: content.pixels.count, by: 4).map { content.pixels[$0] > 0 ? UInt8(255) : 0 }
+                    weights = weights.map { zip($0, alphas).map { UInt8((Int($0) * Int($1) + 127) / 255) } } ?? alphas
+                    Self.mix(&target, copy, weights, Int(group.opacity))
+                } else if weights == nil, group.opacity == 255 {
                     try draw(group.children, onto: &target, at: origin, scale)
                 } else {
                     var copy = target

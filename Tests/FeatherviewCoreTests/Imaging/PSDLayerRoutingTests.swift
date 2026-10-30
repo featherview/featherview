@@ -162,6 +162,23 @@ import Testing
         }
     }
 
+    /// A pass-through group that is a clipping base still passes its blend modes through, inside its own content: an
+    /// adjustment alone in it has no content, so it changes nothing.
+    @Test func passThroughClippingBaseBlendsInsideItsContent() throws {
+        let grey = Layer(name: "Grey", blocks: ["SoCo": PSDFillsTests.block([("Clr ", PSDFillsTests.rgb(100, 100, 100))])])
+        var dodge = PSDCompositorTests.solid("Dodge", 0, 0, 2, 2, [50, 50, 50, 255])
+        dodge.blend = "lddg"
+        var empty = Layer(name: "Empty")
+        empty.clipped = true
+        let invert = Layer(name: "Invert", blocks: ["nvrt": Data()])
+        for (child, expected) in [(dodge, UInt8(150)), (invert, UInt8(100))] {
+            let layers = [grey] + PSDCompositorTests.group("G", blend: "pass", [child]) + [empty]
+            let url = try Self.write(PSDFixture.makeLayered(width: 2, height: 2, layers: layers, realComposite: false))
+            let image = try PSDCompositor.photoshop(try #require(try PSDLayers(url: url))).render(scale: 1)
+            #expect(image[1, 1] == (expected, expected, expected, 255))
+        }
+    }
+
     /// A vector mask limits an adjustment layer to its path, with the layer mask.
     @Test func vectorMaskLimitsAdjustments() throws {
         let fill = Layer(name: "Fill", blocks: ["SoCo": PSDFillsTests.block([("Clr ", PSDFillsTests.rgb(255, 128, 0))])])
