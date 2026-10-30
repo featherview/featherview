@@ -122,6 +122,26 @@ import Testing
         return Data(b.data)
     }
 
+    /// A non-zero first byte stores each curve as 256 output bytes, one per input value; the curves extra
+    /// data ('Crv ') may follow.
+    @Test func curvesMap() throws {
+        var b = Block()
+        b.u8(1); b.u16(1); b.u32(0b101)
+        for i in 0...255 { b.u8(UInt8(255 - i)) }
+        for i in 0...255 { b.u8(UInt8(i / 2)) }
+        for byte in "Crv ".utf8 { b.u8(byte) }
+        b.u16(4); b.u32(2)
+        b.u16(0); for i in 0...255 { b.u8(UInt8(255 - i)) }
+        b.u16(2); for i in 0...255 { b.u8(UInt8(i / 2)) }
+        // Composite inverts, then green halves; red and blue only invert.
+        #expect(close(try adjust("curv", Data(b.data), (0, 1, 1)), (1, 0, 0)))
+        #expect(close(try adjust("curv", Data(b.data), (1, 0, 0)), (0, 127 / 255, 1)))
+        #expect(close(try adjust("curv", Data(b.data), (0.2, 0.2, 0.2)), (0.8, 102 / 255, 0.8), 0.5 / 255))
+        #expect(throws: OwnDecodeError.corrupt) {
+            try PSDAdjustments.adjustment(key: "curv", data: Data([1, 0, 1, 0, 0, 0, 1] + [UInt8](repeating: 0, count: 255)))
+        }
+    }
+
     @Test func hueSaturation() throws {
         #expect(close(try adjust("hue2", hueSaturationBlock(master: (180, 0, 0)), (1, 0, 0)), (0, 1, 1)))
         let colour = SIMD3<Float>(0.8, 0.4, 0.2)
@@ -333,9 +353,10 @@ import Testing
         #expect(close(try adjust("selc", selectiveBlock(relative: false, reds: (0, 0, 0, 100)), (1, 0, 0)), (0, 0, 0)))
     }
 
-    func gradientMapBlock(reverse: Bool, space: Int = 0, stops: [(location: Int, rgb: (Int, Int, Int))]) -> Data {
+    func gradientMapBlock(reverse: Bool, space: Int = 0, interpolation: String? = nil, stops: [(location: Int, rgb: (Int, Int, Int))]) -> Data {
         var b = Block()
-        b.u16(1); b.u8(reverse ? 1 : 0); b.u8(0)
+        b.u16(interpolation == nil ? 1 : 3); b.u8(reverse ? 1 : 0); b.u8(0)
+        if let interpolation { for u in interpolation.utf8 { b.u8(u) } }
         let name = Array("Map".utf16) + [0]
         b.u32(name.count); for u in name { b.u16(Int(u)) }
         b.u16(stops.count)
@@ -363,6 +384,16 @@ import Testing
         #expect(close(try adjust("grdm", cmyk, (1, 1, 1)), (1, 1, 1)))
         #expect(throws: OwnDecodeError.corrupt) {
             try PSDAdjustments.adjustment(key: "grdm", data: Data([0, 1, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF]))
+        }
+    }
+
+    /// Version 3 (current Photoshop) puts the interpolation method's key between the dither byte and the name.
+    @Test func gradientMapVersion3() throws {
+        for method in ["Gcls", "Perc", "Lnr ", "Smth"] {
+            let data = gradientMapBlock(reverse: false, interpolation: method, stops: [(0, (65535, 0, 0)), (4096, (0, 0, 65535))])
+            #expect(close(try adjust("grdm", data, (0, 0, 0)), (1, 0, 0)))
+            #expect(close(try adjust("grdm", data, (1, 1, 1)), (0, 0, 1)))
+            #expect(close(try adjust("grdm", data, (0.5, 0.5, 0.5)), (0.5, 0, 0.5)))
         }
     }
 }
