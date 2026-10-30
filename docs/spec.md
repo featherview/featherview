@@ -1045,7 +1045,8 @@ the About window.
     mixer, exposure, vibrance, photo filter, invert, threshold, posterize, selective colour and
     gradient map. Text, shape and smart object layers show the pixels Photoshop stores for them.
     Known limits, drawn without them: layer effects (shadows, glows, strokes, bevels, overlays),
-    colour lookup adjustments, 3D and video layers. 16- and 32-bit, grey, CMYK, Lab and other
+    colour lookup adjustments, photo filters that store their colour as XYZ (version 3), photo filter
+    and gradient map colours from a colour book, 3D and video layers. 16- and 32-bit, grey, CMYK, Lab and other
     files without a real composite go through ImageIO as before. A file that does store Photoshop's
     composite always shows that one.
     8-bit RGB TIFF of at least 100 megapixels (one page, three samples, chunky, upright; strips or
