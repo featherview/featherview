@@ -17,8 +17,13 @@ public enum PSDAdjustments {
             let level = Float(try r.u16())
             return { c in c = SIMD3(repeating: (lum(c) * 255).rounded() >= level ? 1 : 0) }
         case "post":
+            // On 8-bit values: level k of n from 256·k/n, shown as 255·k/(n − 1) rounded down (as Photoshop's composites show).
             let levels = Float(max(2, try r.u16()))
-            return { c in c = (c * levels).rounded(.down).clamped(lowerBound: .zero, upperBound: SIMD3(repeating: levels - 1)) / (levels - 1) }
+            return { c in
+                let value = (c.clamped(lowerBound: .zero, upperBound: .one) * 255).rounded(.toNearestOrAwayFromZero)
+                let level = (value * levels / 256).rounded(.down)
+                c = (level * 255 / (levels - 1)).rounded(.down) / 255
+            }
         case "levl": return try levels(&r)
         case "curv": return try curves(&r)
         case "brit":

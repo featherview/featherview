@@ -51,6 +51,11 @@ import Testing
     @Test func posterize() throws {
         var b = Block(); b.u16(4); b.u16(0)
         #expect(close(try adjust("post", Data(b.data), (0.3, 0, 1)), (1.0 / 3, 0, 1)))
+        // Level k of n covers 8-bit values from 256·k/n, and shows 255·k/(n − 1) rounded down (as Photoshop's composites show).
+        var three = Block(); three.u16(3); three.u16(0)
+        #expect(try adjust("post", Data(three.data), (85 / 255, 86 / 255, 171 / 255)) == SIMD3(0, 127 / 255, 1))
+        var seven = Block(); seven.u16(7); seven.u16(0)
+        #expect(try adjust("post", Data(seven.data), (73 / 255, 74 / 255, 37 / 255)) == SIMD3(42 / 255, 85 / 255, 42 / 255))
     }
 
     func levelsBlock(_ records: [(Int, Int, Int, Int, Int)]) -> Data {
