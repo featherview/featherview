@@ -29,7 +29,8 @@ Done for the next release:
 ## Planned
 
 - Photoshop layers: files saved without "Maximize Compatibility" show the picture Photoshop shows,
-  drawn from their layers with every blend mode, groups, masks, fill and adjustment layers
+  drawn from their layers with every blend mode, groups, masks, fill and adjustment layers (in
+  progress: drawn already, but not yet close enough to Photoshop or fast enough)
 - Photos library: browse albums from Apple's Photos with the arrow keys, drag pictures in from
   Photos, and batch convert from it or into it, without exporting first
 
