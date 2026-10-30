@@ -99,7 +99,12 @@ private struct DescriptorReader {
         return String(decoding: utf16, as: UTF16.self)
     }
 
-    mutating func double() throws -> Double { Double(bitPattern: try u64()) }
+    /// NaN and infinities are damage: they'd trap the moment a reader turns them into an integer.
+    mutating func double() throws -> Double {
+        let d = Double(bitPattern: try u64())
+        guard d.isFinite else { throw OwnDecodeError.corrupt }
+        return d
+    }
 
     mutating func descriptor(depth: Int) throws -> PSDDescriptor {
         guard depth <= PSDDescriptor.maxDepth else { throw OwnDecodeError.corrupt }
