@@ -92,27 +92,24 @@ public enum PSDAdjustments {
         return tables(t)
     }
 
-    /// The curves stored for the channels in the bitmap, as point lists or (a non-zero first byte) as maps
-    /// of 256 output bytes; the curves extra data ('Crv ') that may follow repeats them and is left unread.
-    private static func curves(_ r: inout Reader) throws -> Adjust {
-        let isMap = try r.u8() != 0
+    /// The curves stored for the channels in the bitmap, as point lists; the curves extra data ('Crv ') that may
+    /// follow repeats them and is left unread.
+    private static func curves(_ r: inout Reader) throws -> Adjust? {
+        // shortcut: a non-zero first byte is a curves form Adobe's spec doesn't describe and no corpus file uses; the layer
+        // is drawn without it, until a real file shows its layout.
+        guard try r.u8() == 0 else { return nil }
         _ = try r.u16()
         let channels = try r.u32()
         let identity = (0...255).map { Float($0) / 255 }
         var t = Array(repeating: identity, count: 4)
         for bit in 0..<32 where channels & 1 << bit != 0 {
-            let curve: [Float]
-            if isMap {
-                curve = try (0...255).map { _ in Float(try r.u8()) / 255 }
-            } else {
-                let count = try r.u16()
-                var points: [(x: Float, y: Float)] = []
-                for _ in 0..<count {
-                    let output = Float(try r.u16()), input = Float(try r.u16())
-                    points.append((input, output))
-                }
-                curve = spline(points)
+            let count = try r.u16()
+            var points: [(x: Float, y: Float)] = []
+            for _ in 0..<count {
+                let output = Float(try r.u16()), input = Float(try r.u16())
+                points.append((input, output))
             }
+            let curve = spline(points)
             // Bits past blue belong to other colour modes' channels.
             if bit < 4 { t[bit] = curve }
         }

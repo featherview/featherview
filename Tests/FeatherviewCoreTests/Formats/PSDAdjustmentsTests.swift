@@ -124,22 +124,8 @@ import Testing
 
     /// A non-zero first byte stores each curve as 256 output bytes, one per input value; the curves extra
     /// data ('Crv ') may follow.
-    @Test func curvesMap() throws {
-        var b = Block()
-        b.u8(1); b.u16(1); b.u32(0b101)
-        for i in 0...255 { b.u8(UInt8(255 - i)) }
-        for i in 0...255 { b.u8(UInt8(i / 2)) }
-        for byte in "Crv ".utf8 { b.u8(byte) }
-        b.u16(4); b.u32(2)
-        b.u16(0); for i in 0...255 { b.u8(UInt8(255 - i)) }
-        b.u16(2); for i in 0...255 { b.u8(UInt8(i / 2)) }
-        // Composite inverts, then green halves; red and blue only invert.
-        #expect(close(try adjust("curv", Data(b.data), (0, 1, 1)), (1, 0, 0)))
-        #expect(close(try adjust("curv", Data(b.data), (1, 0, 0)), (0, 127 / 255, 1)))
-        #expect(close(try adjust("curv", Data(b.data), (0.2, 0.2, 0.2)), (0.8, 102 / 255, 0.8), 0.5 / 255))
-        #expect(throws: OwnDecodeError.corrupt) {
-            try PSDAdjustments.adjustment(key: "curv", data: Data([1, 0, 1, 0, 0, 0, 1] + [UInt8](repeating: 0, count: 255)))
-        }
+    @Test func curvesInAnUnknownFormIsLeftOut() throws {
+        #expect(try PSDAdjustments.adjustment(key: "curv", data: Data([1, 0, 1, 0, 0, 0, 1] + [UInt8](repeating: 0, count: 256))) == nil)
     }
 
     @Test func hueSaturation() throws {
