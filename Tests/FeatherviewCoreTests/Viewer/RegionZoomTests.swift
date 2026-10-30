@@ -42,4 +42,13 @@ struct RegionZoomTests {
         #expect(!RegionZoom.needsNewRegion(visible: CGRect(x: 0, y: 0, width: 3000, height: 2000),
                                            decoded: CGRect(x: 0, y: 0, width: 4500, height: 3000), image: image))  // picture's edge
     }
+
+    /// A part asked for mid-zoom (or for the whole picture) is replaced once the settled view is much smaller.
+    @Test func oversizedRegionIsReplaced() {
+        let image = PixelSize(width: 69536, height: 22230)
+        let whole = CGRect(x: 0, y: 0, width: 69536, height: 22230)
+        #expect(RegionZoom.needsNewRegion(visible: CGRect(x: 30000, y: 10000, width: 2400, height: 1400), decoded: whole, image: image))
+        #expect(RegionZoom.needsNewRegion(visible: CGRect(x: 30000, y: 10000, width: 2400, height: 1400),
+                                          decoded: CGRect(x: 25000, y: 7000, width: 11400, height: 6600), image: image))
+    }
 }
