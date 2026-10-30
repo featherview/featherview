@@ -191,6 +191,16 @@ import Testing
         }
     }
 
+    /// The linear interpolation method mixes colours in linear light: half way from black to white is sRGB's 188, not 128.
+    @Test func linearMethodMixesInLinearLight() throws {
+        let method: [(String, V)] = [("gradientsInterpolationMethod", .enm("gradientInterpolationMethodType", "Lnr "))]
+        let layer = try Self.fillLayer(["GdFl": Self.gradient("Lnr ", angle: 0, colours: [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)],
+                                                              extra: method)], width: 64, height: 1)
+        let image = try #require(try PSDFills.content(layer, canvas: (64, 1), patterns: [:], scale: 1))
+        #expect(abs(Int(Self.pixel(image, 32, 0)[0]) - 188) <= 3)
+        #expect(Self.pixel(image, 0, 0)[0] <= 30 && Self.pixel(image, 63, 0)[0] >= 251)
+    }
+
     @Test func radialAndReflectedGradients() throws {
         let stops: [(V, Int)] = [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)]
         let radial = try #require(try PSDFills.content(

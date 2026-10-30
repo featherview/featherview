@@ -300,7 +300,10 @@ public enum PSDFills {
     // shortcut: smoothness (Intr) is ignored, colour changes linearly between stops; ease it if the corpus oracle shows the curve.
     private static func gradient(_ settings: PSDDescriptor, box: PSDRect, rgb: CGColorSpace?) throws -> (Int, Int) -> (UInt8, UInt8, UInt8, UInt8) {
         guard case .object(let grad)? = settings["Grad"] else { throw OwnDecodeError.corrupt }
-        let table = try gradientTable(grad, rgb: rgb)
+        // The linear method mixes colours in linear light; classic (and perceptual, for now) in the stored values.
+        // shortcut: the perceptual method (Perc) mixes like classic, give it its own space if a file shows it.
+        let linear = settings["gradientsInterpolationMethod"] == .enumerated(type: "gradientInterpolationMethodType", value: "Lnr ")
+        let table = try gradientTable(grad, rgb: rgb, linear: linear)
         let angle = (number(settings["Angl"]) ?? 90) * .pi / 180
         let (cosA, sinA) = (cos(angle), sin(angle))
         let bw = Double(box.right - box.left), bh = Double(box.bottom - box.top)
@@ -333,7 +336,7 @@ public enum PSDFills {
 
     /// The gradient's RGBA at 1,024 even steps from its start to its end.
     // shortcut: a noise gradient (ClNs) is one solid colour, the middle of its ranges; draw the noise if a file shows it.
-    private static func gradientTable(_ grad: PSDDescriptor, rgb: CGColorSpace?) throws -> [UInt8] {
+    private static func gradientTable(_ grad: PSDDescriptor, rgb: CGColorSpace?, linear: Bool) throws -> [UInt8] {
         let steps = 1024
         if case .enumerated(_, "ClNs")? = grad["GrdF"] {
             var c: [UInt8] = [128, 128, 128]
@@ -389,9 +392,14 @@ public enum PSDFills {
             u = u < m ? u / m / 2 : 0.5 + (u - m) / (1 - m) / 2
             return zip(a.value, b.value).map { $0 + ($1 - $0) * u }
         }
+        // sRGB's curve to and from linear light, on 0…255.
+        func decode(_ v: Double) -> Double { let c = v / 255; return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
+        func encode(_ l: Double) -> Double { 255 * (l <= 0.0031308 ? l * 12.92 : 1.055 * pow(l, 1 / 2.4) - 0.055) }
+        let mixed = linear ? colours.map { ($0.location, $0.midpoint, $0.value.map(decode)) } : colours
         return (0..<steps).flatMap { i -> [UInt8] in
             let t = Double(i) / Double(steps - 1)
-            return (at(colours, t, [0, 0, 0]) + at(opacities, t, [255])).map { UInt8(min(max($0, 0), 255).rounded()) }
+            let colour = at(mixed, t, [0, 0, 0]).map { linear ? encode(min(max($0, 0), 1)) : $0 }
+            return (colour + at(opacities, t, [255])).map { UInt8(min(max($0, 0), 255).rounded()) }
         }
     }
 
