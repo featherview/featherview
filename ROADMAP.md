@@ -11,9 +11,14 @@ conversion, the extra formats with Finder previews, 30 languages and automatic u
 language, worked out on your Mac, with Open in Maps, every metadata tag on request, and all of it
 usable from the keyboard and with VoiceOver.
 
+0.12.1 makes the first open work on every Mac account. On standard (non-administrator) accounts,
+recent macOS versions refuse "Open Anyway" or leave the app bouncing in the Dock; the disk image now
+has a "Read Me First" file with the one Terminal line that opens it, Homebrew installs open straight
+away, and the disk image keeps its look on other Macs.
+
 - Fix what beta testers find. Please tell us in
   [Beta feedback](https://github.com/featherview/featherview/discussions/categories/beta-feedback).
-- Signed and notarized releases, so the first launch needs no "Open Anyway", once
+- Signed and notarized releases, so the first launch needs no extra step, once
   [sponsorships](https://github.com/sponsors/mynetx) cover Apple's $99/year developer membership.
 
 Done for the next release:
