@@ -239,7 +239,11 @@ public enum ImageDecoder {
         do {
             guard let layers = try PSDLayers(url: url), !layers.hasRealComposite, !layers.nodes.isEmpty else { return nil }
             let side = longest(CGSize(width: layers.width, height: layers.height))
-            let image = try PSDCompositor.photoshop(layers).render(scale: Double(side) / Double(max(layers.width, layers.height)))
+            let scale = Double(side) / Double(max(layers.width, layers.height))
+            // A canvas too large to hold (a full-size decode of a huge PSB) is ImageIO's, without marking the file failed.
+            guard PSDLayers.scaledSize(layers.width, scale) * PSDLayers.scaledSize(layers.height, scale) <= PSDCompositor.maxPixels
+            else { return nil }
+            let image = try PSDCompositor.photoshop(layers).render(scale: scale)
             guard let drawn = image.makeCGImage() else { throw OwnDecodeError.corrupt }
             let space = psdProfile(url).flatMap { CGColorSpace(iccData: $0 as CFData) }.flatMap { $0.model == .rgb ? $0 : nil }
             return space.flatMap { drawn.copy(colorSpace: $0) } ?? drawn

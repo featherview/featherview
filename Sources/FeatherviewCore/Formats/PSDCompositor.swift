@@ -32,6 +32,9 @@ public struct PSDCompositor: Sendable {
         self.adjustment = adjustment
     }
 
+    /// The most pixels of a picture `ImageDecoder` draws from layers (256 MB a canvas); larger ones go to ImageIO.
+    static let maxPixels = 1 << 26
+
     /// The picture at `scale` (≤ 1), `PSDLayers.scaledSize` per side.
     public func render(scale: Double) throws -> RGBAImage { try render(scale: scale, maxPixels: 1 << 24) }
 

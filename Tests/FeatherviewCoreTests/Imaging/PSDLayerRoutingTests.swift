@@ -73,6 +73,19 @@ import Testing
         #expect(image.width == 8 && image.height == 6 && image == imageIO)
     }
 
+    /// A full-size decode of a canvas too large to draw goes to ImageIO (which can't read this one) instead of
+    /// allocating it; the thumbnail still draws the layers.
+    @Test func hugeCanvasAtFullSizeDoesNotDraw() throws {
+        var data = PSDFixture.makeLayered(width: 2, height: 2, layers: Self.layers(2, 2), realComposite: false)
+        let side: [UInt8] = [0x00, 0x04, 0x93, 0xE0]  // 300,000
+        data.replaceSubrange(14..<18, with: side)
+        data.replaceSubrange(18..<22, with: side)
+        let url = try Self.write(data)
+        #expect(throws: DecodeError.self) { try ImageDecoder.decode(url) }
+        let thumbnail = try ImageDecoder.thumbnail(url, side: 256, colorSpace: nil)
+        #expect(thumbnail.width == 256 && thumbnail.height == 256)
+    }
+
     @Test func sixteenBitStaysWithImageIO() throws {
         let pixels = PSDRoutingTests.gradient(width: 20, height: 10)
         let url = try Self.write(PSDFixture.make(width: 20, height: 10, pixels: pixels, realMerged: false, depth: 16))
