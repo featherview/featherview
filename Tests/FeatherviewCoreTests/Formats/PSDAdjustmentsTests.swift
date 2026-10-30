@@ -129,12 +129,16 @@ import Testing
         #expect(try PSDAdjustments.adjustment(key: "curv", data: Data([1, 0, 1, 0, 0, 0, 1] + [UInt8](repeating: 0, count: 256))) == nil)
     }
 
+    func hslLightness(_ c: SIMD3<Float>) -> Float { (c.max() + c.min()) / 2 }
+
     @Test func hueSaturation() throws {
         #expect(close(try adjust("hue2", hueSaturationBlock(master: (180, 0, 0)), (1, 0, 0)), (0, 1, 1)))
-        let colour = SIMD3<Float>(0.8, 0.4, 0.2)
+        // Saturation −100: the grey of the colour's HSL lightness.
         let grey = try adjust("hue2", hueSaturationBlock(master: (0, -100, 0)), (0.8, 0.4, 0.2))
-        #expect(abs(grey.x - grey.y) < 0.001 && abs(grey.y - grey.z) < 0.001)
-        #expect(abs(lum(grey) - lum(colour)) < 0.002)
+        #expect(close(grey, (0.5, 0.5, 0.5)))
+        // Saturation +100 saturates fully, keeping hue and lightness; +50 doubles the saturation (a / (1 − a) more).
+        #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 100, 0)), (0.6, 0.5, 0.4)), (1, 0.5, 0)))
+        #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 50, 0)), (0.6, 0.5, 0.4)), (0.7, 0.5, 0.3)))
         // The reds' own setting turns red green and leaves blue alone.
         let redsOnly = hueSaturationBlock(master: (0, 0, 0), reds: (120, 0, 0))
         #expect(close(try adjust("hue2", redsOnly, (1, 0, 0)), (0, 1, 0)))
@@ -142,10 +146,16 @@ import Testing
         // Lightness +100 is white, −100 black.
         #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 0, 100)), (0.3, 0.6, 0.1)), (1, 1, 1)))
         #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 0, -100)), (0.3, 0.6, 0.1)), (0, 0, 0)))
-        // Colorize: one hue for everything, a grey turns blue-ish and keeps its luminosity.
+        // A range's lightness moves the colour above its darkest channel: −100 leaves the grey of that channel,
+        // +100 the grey of the brightest; the master's lightness then applies on top.
+        #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 0, 0), reds: (0, 0, -100)), (0.8, 0.3, 0.2)), (0.2, 0.2, 0.2)))
+        #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 0, 0), reds: (0, 0, 100)), (0.8, 0.3, 0.2)), (0.8, 0.8, 0.8)))
+        #expect(close(try adjust("hue2", hueSaturationBlock(master: (0, 0, 50), reds: (0, 0, -100)), (0.8, 0.3, 0.2)), (0.6, 0.6, 0.6)))
+        // Colorize: one hue for everything, at the colour's HSL lightness; a grey turns blue.
         let blue = try adjust("hue2", hueSaturationBlock(colorize: true, colorizeHSL: (240, 50, 0), master: (0, 0, 0)), (0.5, 0.5, 0.5))
-        #expect(blue.z > blue.x && abs(blue.x - blue.y) < 0.001)
-        #expect(abs(lum(blue) - 0.5) < 0.002)
+        #expect(close(blue, (0.25, 0.25, 0.75)))
+        let dark = try adjust("hue2", hueSaturationBlock(colorize: true, colorizeHSL: (0, 100, -50), master: (0, 0, 0)), (0.6, 0.2, 0.4))
+        #expect(close(dark, (0.4, 0, 0)))
     }
 
     @Test func brightnessContrastLegacyAndModern() throws {

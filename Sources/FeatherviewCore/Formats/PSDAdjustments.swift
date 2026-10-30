@@ -176,23 +176,44 @@ public enum PSDAdjustments {
             let ramp = SIMD4<Float>(Float(try r.i16()), Float(try r.i16()), Float(try r.i16()), Float(try r.i16()))
             ranges.append((ramp, SIMD3(Float(try r.i16()), Float(try r.i16()) / 100, Float(try r.i16()) / 100)))
         }
+        // The rules below are what Photoshop's composites show (Adobe doesn't publish them): HSL throughout; the six
+        // ranges first, weighted by hue and summed, then the master settings.
         if colorize {
             let base = rotate(SIMD3(1, 0, 0), by: colorizeHue)
             return { c in
-                c = setLum(0.5 + (base - 0.5) * colorizeSaturation, lum(c))
-                c = lighten(c, by: colorizeLightness)
+                let l = lighten((c.max() + c.min()) / 2, by: colorizeLightness)
+                c = l + (base - 0.5) * (1 - abs(2 * l - 1)) * colorizeSaturation
             }
         }
         return { [ranges] c in
-            var s = master
+            var shift = SIMD3<Float>.zero  // hue, saturation (as `gain`s), lightness
             if c.max() > c.min() {
                 let h = hue(c)
-                for range in ranges { s += weight(h, range.ramp) * range.settings }
+                for range in ranges {
+                    let w = weight(h, range.ramp)
+                    if w > 0 { shift += w * SIMD3(range.settings.x, gain(range.settings.y), range.settings.z) }
+                }
             }
-            c = rotate(c, by: s.x)
-            c = saturate(c, by: min(max(s.y, -1), 1))
-            c = lighten(c, by: min(max(s.z, -1), 1))
+            // A range's lightness moves the colour above its darkest channel: toward that channel's grey or the brightest's.
+            let lightness = min(max(shift.z, -1), 1), lo = c.min(), hi = c.max()
+            c = lightness < 0 ? lo + (c - lo) * (1 + lightness) : c + (hi - c) * lightness
+            c = scaleSaturation(rotate(c, by: shift.x), by: 1 + shift.y)
+            c = lighten(c, by: master.z)
+            c = scaleSaturation(rotate(c, by: master.x), by: 1 + gain(master.y))
         }
+    }
+
+    /// A saturation setting (−1…1) as the change of the HSL saturation's factor: −100 % takes it all, +100 % saturates fully.
+    private static func gain(_ amount: Float) -> Float {
+        amount <= 0 ? amount : amount >= 1 ? .infinity : amount / (1 - amount)
+    }
+
+    /// The HSL saturation times `factor` (at least 0, at most full), hue and lightness kept.
+    private static func scaleSaturation(_ c: SIMD3<Float>, by factor: Float) -> SIMD3<Float> {
+        let hi = c.max(), lo = c.min(), l = (hi + lo) / 2, room = 1 - abs(hi + lo - 1)
+        guard hi > lo, room > 0 else { return c }
+        let s = (hi - lo) / room
+        return clamp01(l + (c - l) * min(max(factor, 0), 1 / s))
     }
 
     /// How much a hue (degrees) belongs to a range: ramps up from its first value to its second,
@@ -238,6 +259,10 @@ public enum PSDAdjustments {
 
     private static func lighten(_ c: SIMD3<Float>, by amount: Float) -> SIMD3<Float> {
         clamp01(amount >= 0 ? c + (1 - c) * amount : c * (1 + amount))
+    }
+
+    private static func lighten(_ v: Float, by amount: Float) -> Float {
+        min(max(amount >= 0 ? v + (1 - v) * amount : v * (1 + amount), 0), 1)
     }
 
     // MARK: - Colour Balance, Black & White, Channel Mixer, Photo Filter
