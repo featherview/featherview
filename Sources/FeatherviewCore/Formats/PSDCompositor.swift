@@ -250,3 +250,79 @@ private extension PSDNode {
     var opacity: UInt8 { switch self { case .layer(let l): l.opacity; case .group(let g): g.opacity } }
     var fill: UInt8 { switch self { case .layer(let l): l.fill; case .group: 255 } }
 }
+
+public extension PSDCompositor {
+    /// Tagged blocks that make a layer an adjustment (`PSDAdjustments`).
+    static let adjustmentKeys = ["levl", "curv", "brit", "CgEd", "hue2", "blnc", "blwh", "mixr", "expA", "vibA", "phfl",
+                                 "nvrt", "thrs", "post", "selc", "grdm"]
+
+    /// The compositor as Photoshop draws `layers`: fill layers (`PSDFills`) and vector masks on any layer, and
+    /// adjustment layers (`PSDAdjustments`). Throws `OwnDecodeError.corrupt` when a pattern or adjustment is damaged.
+    // shortcut: layer effects (lfx2, lrFX, lmfx), colour lookup (clrL), 3D and video layers draw without them, add one if files show it often.
+    static func photoshop(_ layers: PSDLayers) throws -> PSDCompositor {
+        let patterns = try PSDFills.patterns(layers)
+        // Checked here, since the adjustment hook can't throw: a damaged block fails the whole file.
+        func check(_ nodes: [PSDNode]) throws {
+            for node in nodes {
+                switch node {
+                case .layer(let layer):
+                    for key in adjustmentKeys { if let data = layer.blocks[key] { _ = try PSDAdjustments.adjustment(key: key, data: data) } }
+                case .group(let group): try check(group.children)
+                }
+            }
+        }
+        try check(layers.nodes)
+        let canvas = (width: layers.width, height: layers.height)
+
+        return PSDCompositor(layers, content: { layer, scale in
+            let width = PSDLayers.scaledSize(canvas.width, scale), height = PSDLayers.scaledSize(canvas.height, scale)
+            if let fill = try PSDFills.content(layer, canvas: canvas, patterns: patterns, scale: scale) {
+                guard fill.width > 0, fill.height > 0 else { return nil }
+                if fill.width == width, fill.height == height { return fill }
+                // Cut by a vector mask, the fill covers only the mask's rect: placed on the canvas here, since the
+                // compositor puts anything smaller at the layer's own rect.
+                guard let rect = try PSDFills.vectorMask(layer, canvas: canvas, scale: scale)?.rect else { return nil }
+                var placed = PSDCompositor.canvas(width, height)
+                let x0 = max(0, -rect.left), x1 = min(fill.width, width - rect.left)
+                if x0 < x1 {
+                    for y in max(0, -rect.top) ..< max(0, min(fill.height, height - rect.top)) {
+                        let to = ((rect.top + y) * width + rect.left) * 4, from = y * fill.width * 4
+                        placed.pixels.replaceSubrange(to + x0 * 4 ..< to + x1 * 4, with: fill.pixels[from + x0 * 4 ..< from + x1 * 4])
+                    }
+                }
+                return placed
+            }
+            guard var image = try layer.channels(scale: scale) else { return nil }
+            if let mask = try PSDFills.vectorMask(layer, canvas: canvas, scale: scale) {
+                // The mask is 0 outside its rect (an inverted one covers the canvas).
+                let at = layer.scaledRect(scale: scale), r = mask.rect, maskWidth = r.right - r.left
+                for y in 0..<image.height {
+                    for x in 0..<image.width {
+                        let cx = at.left + x, cy = at.top + y, i = (y * image.width + x) * 4 + 3
+                        let cover = cx >= r.left && cx < r.right && cy >= r.top && cy < r.bottom
+                            ? Int(mask.pixels[(cy - r.top) * maskWidth + cx - r.left]) : 0
+                        image.pixels[i] = UInt8((Int(image.pixels[i]) * cover + 127) / 255)
+                    }
+                }
+            }
+            return image
+        }, adjustment: { layer in
+            guard let adjust = adjustmentKeys.lazy.compactMap({ key in
+                layer.blocks[key].flatMap { try? PSDAdjustments.adjustment(key: key, data: $0) }
+            }).first else { return nil }
+            return { image, weights in
+                let count = image.width * image.height
+                image.pixels.withUnsafeMutableBufferPointer { p in
+                    for i in 0..<count where p[i * 4 + 3] > 0 && weights.map({ $0[i] > 0 }) ?? true {
+                        var c = SIMD3<Float>(Float(p[i * 4]), Float(p[i * 4 + 1]), Float(p[i * 4 + 2])) / 255
+                        adjust(&c)
+                        let out = (c.clamped(lowerBound: .zero, upperBound: .one) * Float(255)).rounded(.toNearestOrAwayFromZero)
+                        p[i * 4] = UInt8(out.x)
+                        p[i * 4 + 1] = UInt8(out.y)
+                        p[i * 4 + 2] = UInt8(out.z)
+                    }
+                }
+            }
+        })
+    }
+}

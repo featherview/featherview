@@ -169,6 +169,7 @@ public enum ImageDecoder {
             }
             return try display(scaled(image, longestSide: side) ?? image)
         }
+        if let image = layerComposite(url, longest: { min(side, Int(max($0.width, $0.height))) }) { return try display(image) }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary),
               let size = displaySize(of: source, page: 0)
         else { throw DecodeError.unreadable(url) }
@@ -227,6 +228,49 @@ public enum ImageDecoder {
         else { return nil }
         let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
         return (props?[kCGImagePropertyOrientation] as? Int ?? 1) == 1 ? reader : nil
+    }
+
+    /// A layered 8-bit RGB PSD/PSB whose stored composite isn't the picture (version info says so), drawn from its
+    /// layers (`PSDCompositor.photoshop`) with its longest side `longest(full size)`, in the file's ICC profile or
+    /// sRGB. Nil for any other file, and when drawing fails (then ImageIO decodes it, and keeps it until it changes).
+    private static func layerComposite(_ url: URL, longest: (CGSize) -> Int) -> CGImage? {
+        guard ["psd", "psb"].contains(url.pathExtension.lowercased()), PSDComposite(url: url) == nil else { return nil }
+        if let failed = failedReads.withLock({ $0[url] }), failed == fileStamp(url) { return nil }
+        do {
+            guard let layers = try PSDLayers(url: url), !layers.hasRealComposite, !layers.nodes.isEmpty else { return nil }
+            let side = longest(CGSize(width: layers.width, height: layers.height))
+            let image = try PSDCompositor.photoshop(layers).render(scale: Double(side) / Double(max(layers.width, layers.height)))
+            guard let drawn = image.makeCGImage() else { throw OwnDecodeError.corrupt }
+            let space = psdProfile(url).flatMap { CGColorSpace(iccData: $0 as CFData) }.flatMap { $0.model == .rgb ? $0 : nil }
+            return space.flatMap { drawn.copy(colorSpace: $0) } ?? drawn
+        } catch {
+            readerFailed(url)
+            return nil
+        }
+    }
+
+    /// A PSD/PSB's ICC profile (image resource 1039), nil without one or when the resources can't be followed.
+    private static func psdProfile(_ url: URL) -> Data? {
+        guard let file = try? FileHandle(forReadingFrom: url), let end = try? file.seekToEnd() else { return nil }
+        defer { try? file.close() }
+        func read(_ offset: Int, _ count: Int) -> [UInt8]? {
+            guard count >= 0, offset >= 0, offset <= Int(end) - count, (try? file.seek(toOffset: UInt64(offset))) != nil,
+                  let data = try? file.read(upToCount: count), data.count == count else { return nil }
+            return [UInt8](data)
+        }
+        func be(_ b: ArraySlice<UInt8>) -> Int { b.reduce(0) { $0 << 8 | Int($1) } }
+        guard let modeLength = read(26, 4).map({ be($0[...]) }), let length = read(30 + modeLength, 4).map({ be($0[...]) }),
+              let resources = read(34 + modeLength, length) else { return nil }
+        var r = 0
+        while r + 12 <= resources.count {
+            let sizeAt = r + 6 + (1 + Int(resources[r + 6]) + 1) & ~1
+            guard sizeAt + 4 <= resources.count else { return nil }
+            let size = be(resources[sizeAt ..< sizeAt + 4])
+            guard sizeAt + 4 + size <= resources.count else { return nil }
+            if be(resources[r + 4 ..< r + 6]) == 1039 { return Data(resources[sizeAt + 4 ..< sizeAt + 4 + size]) }
+            r = sizeAt + 4 + (size + 1) & ~1
+        }
+        return nil
     }
 
     /// Files whose whole picture the own reader failed on (ImageIO, which tolerates more, showed them), by
@@ -339,17 +383,18 @@ public enum ImageDecoder {
                 throw DecodeError.unreadable(url)
             }
         }
+        func longest(_ size: CGSize, exact: Bool) -> Int {
+            let full = Int(max(size.width, size.height))
+            return fit(size, exact: exact) ?? (halvingSteps ? decodeSize(full: full, target: maxPixelSize ?? full)
+                                                            : min(maxPixelSize ?? full, full))
+        }
+        if page == 0, let image = layerComposite(url, longest: { longest($0, exact: true) }) { return image }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary),
               let size = displaySize(of: source, page: page)
         else { throw DecodeError.unreadable(url) }
-        let full = Int(max(size.width, size.height))
-        func longest(exact: Bool) -> Int {
-            fit(size, exact: exact) ?? (halvingSteps ? decodeSize(full: full, target: maxPixelSize ?? full)
-                                                     : min(maxPixelSize ?? full, full))
-        }
         // At the size ImageIO would decode (PSD/PSB exact, TIFF at a halving step), so the viewer's fit size
         // doesn't change; a reader failure falls back to ImageIO.
-        let target = longest(exact: decodesAtExactFit(url))
+        let target = longest(size, exact: decodesAtExactFit(url))
         if page == 0, let reader = regionReader(url, source: source) {
             if let image = try? decode(reader, longest: target) { return image }
             readerFailed(url)

@@ -17,6 +17,7 @@ let usage = """
       swift run -c release featherview-bench histogram <dir> [--screen WxH] [--runs 10]
       swift run -c release featherview-bench places <out.fvpl>
       swift run -c release featherview-bench places --time <file.fvpl> [--lookups 10000] [--language ja]
+      swift run -c release featherview-bench psdlayers <dir> [--time]
 
     corpus  writes generated test images into <dir> (never commit them).
     decode  times the viewer's fit decode per file and screen, plus one full-size decode per file,
@@ -49,6 +50,10 @@ let usage = """
             --time reads a built file as the app does (load, in --language, default ja, which has the most names)
             and names --lookups random coordinates with it.
             Budgets: load ≤ 50 ms, lookup p95 ≤ 1 ms.
+    psdlayers  for every layered 8-bit RGB PSD/PSB under <dir> with a real stored composite: its layers drawn at full
+            size against that composite, both over white. Per file: mean difference per channel, % of pixels off by
+            more than 8 in a channel, the known limits it uses (layer effects, colour lookup, knockout); then how many
+            files without known limits are within mean ≤ 1 and ≤ 1 % off. --time adds the time to draw the layers.
     Screens are in pixels; default 3024x1964 3456x2234 5120x2880 (decode), 3024x1964 (browse).
     """
 
@@ -103,6 +108,9 @@ let mode = arguments.removeFirst()
 // `places --time <file>` times a built file instead of building one.
 let timePlaces = mode == "places" && arguments.first == "--time"
 if timePlaces { arguments.removeFirst() }
+// `psdlayers --time` adds render times; the flag takes no value.
+let timeLayers = mode == "psdlayers" && arguments.contains("--time")
+if timeLayers { arguments.removeAll { $0 == "--time" } }
 guard !arguments.isEmpty else { fail("Missing folder or file.") }
 let folder = URL(fileURLWithPath: arguments.removeFirst())
 guard knownOptions[mode] != nil else { fail("Unknown mode \(mode).") }
@@ -490,6 +498,7 @@ case "browse": await runBrowse()
 case "grid": await runGrid()
 case "fuzz": runFuzz()
 case "histogram": runHistogram()
+case "psdlayers": runPSDLayers(folder, time: timeLayers)
 case "places" where timePlaces: runPlaceTiming(folder)
 case "places": await runPlaces(out: folder)
 case "thumbnail": await runThumbnail(folder, out: option("--out").map { URL(fileURLWithPath: $0) })
