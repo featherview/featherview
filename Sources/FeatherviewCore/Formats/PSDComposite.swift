@@ -122,7 +122,8 @@ public struct PSDComposite: Sendable {
                         }
                     } else {
                         (stride, start) = (rw, x0)
-                        band = try (r0..<r1).flatMap { r in try Self.read(fd, dataStart + (c * height + r) * width + x0, rw) }
+                        band = try Self.rawBand(channel: c, rows: r0..<r1, x0: x0, rw: rw, width: width, height: height,
+                                                dataStart: dataStart) { try Self.read(fd, $0, $1) }
                     }
                     for row in 0..<(r1 - r0) {
                         let base = row * stride - start
@@ -156,6 +157,13 @@ public struct PSDComposite: Sendable {
                                   provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
         else { throw OwnDecodeError.corrupt }
         return image
+    }
+
+    /// Rows `rows` of raw channel `c`, columns `x0 ..< x0 + rw`: one read for full-width rows, else one per row.
+    static func rawBand(channel c: Int, rows: Range<Int>, x0: Int, rw: Int, width: Int, height: Int, dataStart: Int,
+                        read: (Int, Int) throws -> [UInt8]) rethrows -> [UInt8] {
+        if rw == width { return try read(dataStart + (c * height + rows.lowerBound) * width, rows.count * width) }
+        return try rows.flatMap { try read(dataStart + (c * height + $0) * width + x0, rw) }
     }
 
     /// `count` bytes at `offset`; throws on an error or the end of the file before them.
