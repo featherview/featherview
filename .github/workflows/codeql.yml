@@ -46,4 +46,24 @@ jobs:
       - name: Build
         if: matrix.build-mode == 'manual'
         run: swift build
+      # Results go through a filter before the upload: packages SwiftPM fetches into .build/checkouts (libwebp)
+      # are their projects' code, reported upstream; our vendored C libraries under Sources/ stay in.
       - uses: github/codeql-action/analyze@v4
+        with:
+          upload: never
+          output: sarif
+      - name: Drop results in fetched packages
+        run: |
+          python3 - <<'EOF'
+          import glob, json
+          for path in glob.glob("sarif/*.sarif"):
+              sarif = json.load(open(path))
+              for run in sarif["runs"]:
+                  run["results"] = [r for r in run.get("results", [])
+                                    if not any(l.get("physicalLocation", {}).get("artifactLocation", {}).get("uri", "").startswith(".build/")
+                                               for l in r.get("locations", []))]
+              json.dump(sarif, open(path, "w"))
+          EOF
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: sarif
