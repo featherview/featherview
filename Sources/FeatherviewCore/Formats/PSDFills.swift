@@ -316,12 +316,16 @@ public enum PSDFills {
 
     // MARK: Values
 
+    /// Clamped to ±10⁷ (well past any pixel count, percent or angle a file holds), so products of a few
+    /// numbers stay finite and every conversion to an integer fits.
     static func number(_ value: PSDValue?) -> Double? {
+        let d: Double
         switch value {
-        case .double(let d)?, .unit(_, let d)?: d
-        case .int(let n)?: Double(n)
-        default: nil
+        case .double(let v)?, .unit(_, let v)?: d = v
+        case .int(let n)?: d = Double(n)
+        default: return nil
         }
+        return min(max(d, -1e7), 1e7)
     }
 
     /// An RGB, HSB, greyscale or CMYK colour object as 8-bit RGB.

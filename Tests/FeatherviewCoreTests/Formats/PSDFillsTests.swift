@@ -203,6 +203,43 @@ import Testing
         #expect(image.width == 5 && image.height == 3)
         for y in 0..<3 { for x in 0..<5 { #expect(Self.pixel(image, x, y) == colours[(y % 2) * 2 + x % 2] + [255]) } }
         #expect(throws: OwnDecodeError.corrupt) { try PSDFills.content(layer, canvas: (5, 3), patterns: [:], scale: 1) }
+
+        // A phase far off the canvas still tiles, without overflowing an Int.
+        let far = Self.block([("Ptrn", .obj("Ptrn", [("Nm  ", .text("Four")), ("Idnt", .text(id))])),
+                              ("phase", .obj("Pnt ", [("Hrzn", .doub(1e300)), ("Vrtc", .doub(-1e300))]))])
+        let farLayer = try Self.fillLayer(["PtFl": far], width: 5, height: 3)
+        #expect(try PSDFills.content(farLayer, canvas: (5, 3), patterns: patterns, scale: 1)?.width == 5)
+    }
+
+    @Test func nonFiniteNumbersAreDamage() throws {
+        func throwsCorrupt(_ blocks: [String: Data]) throws {
+            let layer = try Self.fillLayer(blocks, width: 4, height: 4)
+            #expect(throws: OwnDecodeError.corrupt) { try PSDFills.content(layer, canvas: (4, 4), patterns: [:], scale: 1) }
+        }
+        let black = Self.rgb(0, 0, 0), white = Self.rgb(255, 255, 255)
+        try throwsCorrupt(["SoCo": Self.block([("Clr ", Self.rgb(.nan, 0, 0))])])
+        try throwsCorrupt(["SoCo": Self.block([("Clr ", .obj("HSBC", [("H   ", .unit("#Ang", .infinity)), ("Strt", .doub(50)), ("Brgh", .doub(50))]))])])
+        try throwsCorrupt(["GdFl": Self.gradient("Lnr ", angle: .nan, colours: [(black, 0), (white, 4096)])])
+        try throwsCorrupt(["GdFl": Self.gradient("Lnr ", angle: 0, colours: [(black, 0), (white, 4096)], opacities: [(.nan, 0), (100, 4096)])])
+        let nanStops = Self.block([("Angl", .unit("#Ang", 0)), ("Type", .enm("GrdT", "Lnr ")), ("Grad", .obj("Grdn", [
+            ("GrdF", .enm("GrdF", "CstS")),
+            ("Clrs", .list([0, 1].map { _ in .obj("Clrt", [("Clr ", black), ("Lctn", .doub(.nan))]) })),
+        ]))])
+        try throwsCorrupt(["GdFl": nanStops])
+    }
+
+    @Test func hugeFiniteNumbersStayInRange() throws {
+        // Brightness 1e308 with full saturation once made ∞ × 0 = NaN; an offset of 1e300 made ∞ − ∞.
+        let hsb = try Self.fillLayer(["SoCo": Self.block([("Clr ", .obj("HSBC", [("H   ", .doub(0)), ("Strt", .doub(100)), ("Brgh", .doub(1e308))]))])],
+                                     width: 2, height: 2)
+        #expect(try PSDFills.content(hsb, canvas: (2, 2), patterns: [:], scale: 1)?.width == 2)
+        let far = Self.block([("Angl", .unit("#Ang", 45)), ("Type", .enm("GrdT", "Lnr ")),
+                          ("Ofst", .obj("Pnt ", [("Hrzn", .doub(1e300)), ("Vrtc", .doub(1e300))])),
+                          ("Scl ", .unit("#Prc", 1e300)),
+                          ("Grad", .obj("Grdn", [("GrdF", .enm("GrdF", "CstS")),
+                                                 ("Clrs", .list([.obj("Clrt", [("Clr ", Self.rgb(9, 9, 9)), ("Lctn", .doub(1e300))])]))]))])
+        let gradient = try Self.fillLayer(["GdFl": far], width: 2, height: 2)
+        #expect(try PSDFills.content(gradient, canvas: (2, 2), patterns: [:], scale: 1)?.width == 2)
     }
 
     @Test func scaledVectorMask() throws {
