@@ -63,7 +63,8 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
   no larger than the image's fit decode, else into the one-image full-size cache, so browsing images
   that need more than their fit decode isn't prefetched (the not-prefetched budget applies).
 - Very large pictures: when a zoom's halving step would decode more than 4 × the largest screen's
-  pixels and the file can be read in parts (8-bit RGB PSD and PSB through the own reader, see Formats),
+  pixels and the file can be read in parts (8-bit RGB PSD and PSB, and 8-bit RGB TIFF of at least
+  100 megapixels, through the own readers, see Formats),
   only the part on screen plus half a view's width and height on each side is decoded, at that step,
   and drawn over the fit picture shown enlarged; panning near the part's edge decodes the next part
   (the newest wins). Memory stays at the fit decode plus one part (two while the next one decodes), instead of the whole step (6 GB at
@@ -1027,7 +1028,14 @@ the About window.
     orientation other than upright, are read by our own reader instead: it reads only what the size
     needs, in parallel, and averages every pixel into the smaller picture (fine detail such as stars
     stays), in the file's ICC profile. A 4.6 GB, 1.5-gigapixel PSB then fits the screen in under a
-    second instead of 5–15 s. Everything else (16 bits, alpha, grey, CMYK, zip) goes through ImageIO.
+    second instead of 5–15 s. Everything else (16 bits, alpha, grey, CMYK, zip) goes through ImageIO,
+    and so does a file saved without Photoshop's "Maximize Compatibility", whose stored composite isn't
+    the picture.
+    8-bit RGB TIFF of at least 100 megapixels (one page, three samples, chunky, upright; strips or
+    tiles; uncompressed, LZW or Deflate, with or without the horizontal predictor; classic or BigTIFF)
+    is read the same way by our own reader: only the strips or tiles the size or part needs, in
+    parallel, every pixel averaged in, in the file's ICC profile. Smaller TIFFs and every other kind go
+    through ImageIO, which is fast enough for them.
     Procreate (`.procreate`) shows the flattened picture Procreate keeps in the file, at full size,
     in the document's colour profile, and turned and flipped the way the canvas was (as its own
     preview shows it). Its tiles are LZO1X or LZ4 compressed; LZO1X is our own decoder, LZ4 is

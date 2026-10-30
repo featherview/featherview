@@ -1,8 +1,8 @@
 # Milestone 24: Huge pictures Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: run with the `plan-wave` workflow, wave by wave:
-> Wave 1 = Tasks 1 and 2 (independent), Wave 2 = Task 3, Wave 3 = Task 4. Task 5 needs the screen and
-> waits for the maintainer's go. Steps use checkbox (`- [ ]`) syntax for tracking.
+> Wave 1 = Tasks 1 and 2 (independent), Wave 2 = Task 3, Wave 3 = Task 4, Wave 4 = Task 6 (huge TIFF).
+> Task 5 needs the screen and waits for the maintainer's go; it runs after Task 6. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A 1.5-gigapixel Photoshop file (the Hubble Andromeda mosaic, `heic1502a.psb`, 69,536 × 22,230,
 4.6 GB) opens in under a second and zooms to 100 % without holding a 6 GB decode.
@@ -18,7 +18,7 @@ part (plus a margin) over it, decoding the next part when panning nears the marg
 (a sublayer of the canvas's image layer), Swift Testing.
 
 **Spec:** `docs/spec.md` › Viewer (the "Very large pictures" bullet after "A fill mode's zoom…") and
-› Formats (the PSD/PSB reader paragraph under "Layered app formats"). Budgets: AGENTS.md "Huge pictures" row.
+› Formats (the PSD/PSB and TIFF reader paragraphs under "Layered app formats"). Budgets: AGENTS.md "Huge pictures" row.
 
 ## Spike facts (2026-10-30, MacBookPro18,3, 32 GB, `heic1502a.psb`)
 
@@ -385,7 +385,130 @@ With `~/Downloads/hubble/heic1502a.psb` and a folder of 12 MP JPEGs, using the `
 - [ ] App footprint while at 100 % (`footprint -p Featherview` or Activity Monitor's Memory): below
   1 GB (today it would be over 6 GB).
 - [ ] + / − through ½, ¼ and back to Fit: each step's part lands, Fit drops the part.
+- [ ] Both Hubble TIFFs (`heic1502a-40k.tif`, `heic2501a.tif`): open within the TIFF budget, 1 (Actual
+  Size) shows parts as for the PSB, footprint at 100 % below 1 GB.
 - [ ] 12 MP JPEG folder: `Navigate` p50/p95 unchanged against the AGENTS.md numbers; Actual Size on a
   JPEG decodes the whole step as before (no parts).
 - [ ] Record the numbers in AGENTS.md's "Huge pictures" row, mark milestone 24 done in
   `docs/roadmap.md` and `ROADMAP.md`, commit `docs: huge pictures budgets measured`.
+
+---
+
+### Task 6: `TIFFRaster`, huge 8-bit RGB TIFF through the own reader (Core)
+
+**Spike facts:** `heic1502a-40k.tif` 40,000 × 12,788, 1.8 GB, little-endian; `heic2501a.tif` 42,208 × 9,870,
+1.0 GB, big-endian. Both: one IFD, 8-8-8 chunky RGB, LZW with predictor 2, 2-row strips, orientation 1,
+ICC tag. ImageIO (`featherview-bench decode --screen 3024x1964 --runs 3`, warm): fit 5.1 s / 3.4 s, full
+size 7.6 s / 7.4 s (2.0 / 1.7 GB).
+
+**Files:**
+- Create: `Sources/FeatherviewCore/Formats/RegionReader.swift`, `Sources/FeatherviewCore/Formats/TIFFRaster.swift`
+- Modify: `Sources/FeatherviewCore/Formats/PSDComposite.swift` (conforms to `RegionReader`)
+- Modify: `Sources/FeatherviewCore/Imaging/ImageDecoder.swift` (`composite(_:source:)` → `regionReader`)
+- Modify: `AGENTS.md` (the "Huge pictures" budget row)
+- Create: `Tests/FeatherviewCoreTests/Formats/TIFFFixture.swift`
+- Test: `Tests/FeatherviewCoreTests/Formats/TIFFRasterTests.swift`, `Tests/FeatherviewCoreTests/Imaging/PSDRoutingTests.swift`
+
+**Interfaces:**
+- Consumes: `PSDComposite`, `Inflate.zlib(_:size:)`, `ImageDecoder.readsRegions/decodeRegion`, the viewer's parts (Task 4, unchanged).
+- Produces:
+  - `public protocol RegionReader: Sendable { var width: Int { get }; var height: Int { get }; var icc: Data? { get }; func decode(region: CGRect?, size: PixelSize) throws -> CGImage }`, with an extension `decode(size:)` = `decode(region: nil, size:)`. `PSDComposite` conforms (no behaviour change).
+  - `public struct TIFFRaster: RegionReader` with `public init?(url: URL)`, same `decode` contract as
+    `PSDComposite` (region in full-size pixels, area-averaged to `size`, clamped, 8-bit RGB `noneSkipLast`
+    in the ICC profile or sRGB, `OwnDecodeError.corrupt` on any short read or bad data).
+  - `static func lzw(_ packed: UnsafeBufferPointer<UInt8>, into out: UnsafeMutableBufferPointer<UInt8>) throws` (internal, tested).
+  - `ImageDecoder`: `static let ownTIFFPixels = 100_000_000`; private `regionReader(_ url:, source:) -> (any RegionReader)?`
+    replaces `composite(_:source:)`: `psd`/`psb` → `PSDComposite`; `tif`/`tiff` → `TIFFRaster` when
+    `width × height >= ownTIFFPixels`; nil otherwise; ImageIO orientation check as today.
+    `readsRegions`, `decodeRegion`, `decodeFile` and `thumbnail` use it. In `decodeFile` the reader decodes
+    at `longest(exact: decodesAtExactFit(url))` (PSD stays exact; TIFF keeps ImageIO's halving step, so
+    the fit size the viewer expects for a TIFF doesn't change).
+- `TIFFFixture.make(width:height:pixels:bigEndian: Bool = false, bigTIFF: Bool = false, compression: Int = 1, predictor: Int = 1, rowsPerStrip: Int? = nil, tile: (Int, Int)? = nil, icc: Data? = nil, samples: Int = 3, bits: Int = 8, photometric: Int = 2, planar: Int = 1, orientation: Int? = nil, pages: Int = 1) -> Data`
+  plus `static func makeRepeatedTile(...)`: a tiled Deflate file whose tile offsets all point at one
+  compressed tile, so a ≥ 100 MP file stays a few KB. LZW encoder in the fixture (MSB-first, 9–12 bit codes,
+  Clear 256 at start and when the table reaches 4094, EOI 257, early change).
+
+Accepts only: magic 42 (4-byte offsets) or 43 (BigTIFF: 8-byte offsets, entry counts and values; byte
+size 8, constant 0), `II` or `MM`; the first IFD, whose next-IFD offset is 0; BitsPerSample 8,8,8;
+SamplesPerPixel 3; no ExtraSamples; Photometric 2; PlanarConfiguration 1 or absent; Compression 1, 5,
+8 or 32946; Predictor 1, 2 or absent; SampleFormat 1 or absent; FillOrder 1 or absent; Orientation 1 or
+absent; either StripOffsets/StripByteCounts (RowsPerStrip absent = height) or TileWidth/TileLength/
+TileOffsets/TileByteCounts, counts matching the grid, every block inside the file. ICC: tag 34675.
+Declining is never an error (ImageIO reads it, as today).
+`// shortcut: planar (PlanarConfiguration 2), 16-bit and alpha TIFFs go through ImageIO, read them here if huge ones turn up.`
+
+Decode: blocks are strips (full width, `RowsPerStrip` tall, the last one shorter) or tiles (stored
+full-size at the edges). `concurrentPerform` over units of `k` output rows, `k` the smallest count whose
+source rows span at least one block row and about 1 MB of decoded block rows; a unit decodes every block
+that intersects its source rows and the region's columns, one block at a time into a reused buffer
+(pread the compressed bytes; LZW / `Inflate.zlib` to exactly the block's bytes, `rows × blockWidth × 3`;
+predictor 2 undone per row, per sample), adds the block's pixels inside its source rows and region
+columns to unit-local `UInt64` sums (`k × ow × 3`), then writes its output rows rounding half up. Same
+integer box bounds as `PSDComposite`. A block whose data comes out short or long throws.
+LZW: decode into `out` without per-code allocations (a table of prefix code, first byte, last byte and
+length; strings written back to front); throws on a code past the table, output past `out`, or a stream
+that ends before `out` is full (old-style LSB-first LZW thus throws, and ImageIO gets the file).
+
+- [ ] **Step 1: Write the failing tests** (`TIFFRasterTests.swift`)
+
+```swift
+@Test(arguments: [(false, false, 1, 1), (true, false, 5, 1), (false, true, 5, 2), (true, true, 8, 2), (false, false, 32946, 1)])
+func readsStripsLikeImageIO(bigEndian: Bool, bigTIFF: Bool, compression: Int, predictor: Int) throws
+// 37 × 23 noise, rowsPerStrip 4 (last strip 3 rows): decode(size: 37×23) equals the pixels exactly,
+// and CGImageSourceCreateImageAtIndex of the same file agrees on every pixel
+
+@Test(arguments: [1, 5, 8]) func readsTiles(compression: Int) throws
+// 37 × 23 noise in 16 × 16 tiles (edge tiles padded): decode equals the pixels; region (10, 5, 20, 15) equals the crop
+
+@Test func areaAveragesAcrossBlocks() throws
+// 40 × 30 noise, rowsPerStrip 2, decode(size: 7 × 4) == means over the integer boxes (same arithmetic as PSDCompositeTests.regionAtImageEdge)
+
+@Test func lzwRoundTrip() throws
+// 70,000 bytes of noise with runs: the fixture's encoder (it crosses Clear codes and 9→12 bit widths) → TIFFRaster.lzw → the bytes
+
+@Test func takesTheICCProfile() throws
+// as PSDCompositeTests.takesTheICCProfile
+
+@Test func declinesWhatImageIOReads() throws
+// nil for: bits 16, samples 4, photometric 1, planar 2, compression 7 (JPEG), predictor 3, orientation 6, pages 2,
+// a 30-byte file, "II" with magic 41, a strip offset past the end
+
+@Test func corruptDataThrows() throws
+// LZW strip with a code past the table → throws; Deflate strip truncated → throws; file shortened after init → throws
+```
+
+and in `PSDRoutingTests.swift`:
+
+```swift
+@Test func hugeTIFFTakesTheReader() throws
+// makeRepeatedTile 10,240 × 10,240 (512-px tiles, one colour per tile pattern): readsRegions true;
+// decode(url, halvingSteps: true, fitting: [3024×1964]) is 2560 × 2560 (the halving step ImageIO would give) and its colour matches the tile's mean;
+// decodeRegion(url, region: (512, 512, 1024, 512), step: 1, colorSpace: nil) is 512 × 256
+
+@Test func smallTIFFStaysWithImageIO() throws
+// a 64 × 48 LZW TIFF: readsRegions false, decode(url) still works
+```
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `swift test --filter "TIFFRasterTests|PSDRoutingTests"` — Expected: FAIL, `TIFFRaster` not defined.
+
+- [ ] **Step 3: Implement** `RegionReader`, `TIFFRaster`, the conformance and the routing as above.
+
+- [ ] **Step 4: Run the tests** — `swift test --filter "TIFFRasterTests|PSDRoutingTests|PSDCompositeTests|ImageDecoderTests"` — Expected: PASS; then `swift test` — PASS.
+
+- [ ] **Step 5: Bench and budgets**
+
+Run `swift run -c release featherview-bench decode ~/Downloads/hubble --screen 3024x1964 --runs 3` (the
+maintainer's download; skip if absent and say so). Targets, both TIFFs, warm: fit < 1 s, centred 100 %
+part (`region` row) < 300 ms. Also compare each TIFF's fit decode with ImageIO's at the same size
+(mean absolute difference per channel ≤ 2) and say the numbers. Extend AGENTS.md's "Huge pictures" row:
+`8-bit RGB TIFF ≥ 100 MP through the own reader: heic1502a-40k.tif (40,000 × 12,788 LZW) fit < 1 s warm, part < 300 ms. Measured: <fill in>`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add Sources/FeatherviewCore/Formats Sources/FeatherviewCore/Imaging/ImageDecoder.swift Tests/FeatherviewCoreTests AGENTS.md
+git commit -m "feat: huge 8-bit RGB TIFF decodes through the own reader at the size needed, and in parts"
+```
+
