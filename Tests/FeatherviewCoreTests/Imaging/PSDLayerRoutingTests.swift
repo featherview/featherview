@@ -73,17 +73,21 @@ import Testing
         #expect(image.width == 8 && image.height == 6 && image == imageIO)
     }
 
-    /// A full-size decode of a canvas too large to draw goes to ImageIO (which can't read this one) instead of
-    /// allocating it; the thumbnail still draws the layers.
-    @Test func hugeCanvasAtFullSizeDoesNotDraw() throws {
-        var data = PSDFixture.makeLayered(width: 2, height: 2, layers: Self.layers(2, 2), realComposite: false)
-        let side: [UInt8] = [0x00, 0x04, 0x93, 0xE0]  // 300,000
-        data.replaceSubrange(14..<18, with: side)
-        data.replaceSubrange(18..<22, with: side)
-        let url = try Self.write(data)
-        #expect(throws: DecodeError.self) { try ImageDecoder.decode(url) }
-        let thumbnail = try ImageDecoder.thumbnail(url, side: 256, colorSpace: nil)
-        #expect(thumbnail.width == 256 && thumbnail.height == 256)
+    /// A full-size decode of a canvas too large to draw at that size draws the layers at the largest size it may
+    /// (ImageIO would show another picture: it draws no fill layers); the fit decode draws them too.
+    @Test func hugeCanvasAtFullSizeDrawsSmaller() throws {
+        let width = 900, height = 800
+        let layers = [Self.layers(width, height)[0], PSDCompositorTests.solid("Red", 0, 0, 4, 4, [220, 20, 20, 255])]
+        let url = try Self.write(PSDFixture.makeLayered(width: width, height: height, layers: layers, realComposite: false))
+        try PSDCompositor.$maxPixels.withValue(500_000) {
+            let fit = try #require(RGBAImage(try ImageDecoder.decode(url, maxPixelSize: 200)))
+            #expect(fit[fit.width / 2, fit.height / 2] == (0, 128, 255, 255))
+            let full = try ImageDecoder.decode(url)
+            #expect(full.width * full.height <= 500_000 + full.width + full.height)
+            #expect(full.width > 600 && abs(Double(full.width) / Double(full.height) - 9.0 / 8) < 0.01)
+            let pixels = try #require(RGBAImage(full))
+            #expect(pixels[full.width / 2, full.height / 2] == (0, 128, 255, 255))
+        }
     }
 
     @Test func sixteenBitStaysWithImageIO() throws {
