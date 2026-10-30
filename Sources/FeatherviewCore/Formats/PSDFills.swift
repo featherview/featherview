@@ -27,7 +27,7 @@ public enum PSDFills {
         case "GdFl":
             // "Align with layer" puts the gradient in the shape's bounds, else in the canvas.
             let aligned = settings["Algn"] == .bool(true)
-            let box: PSDRect = aligned ? rect : (0, 0, sh, sw)
+            let box: PSDRect = aligned ? mask?.bounds ?? (0, 0, sh, sw) : (0, 0, sh, sw)
             shade = try gradient(settings, box: box)
         default:
             shade = try pattern(settings, patterns: patterns, sx: Double(sw) / Double(canvas.width), sy: Double(sh) / Double(canvas.height))
@@ -48,11 +48,14 @@ public enum PSDFills {
         return RGBAImage(width: w, height: h, pixels: pixels)
     }
 
-    /// The layer's vector mask on the scaled canvas: its rect (the path's bounds, the whole canvas when
-    /// inverted; empty when the path covers nothing) and one byte per pixel of it, antialiased, subpaths
-    /// filled even-odd. Nil without a vector mask or when it's disabled.
+    /// The layer's vector mask on the scaled canvas: its rect (the path's bounds on the canvas, the whole
+    /// canvas when inverted or starting with a subtraction; empty when the path covers nothing), one byte
+    /// per pixel of it, antialiased, and the path's own bounds, which may run past the canvas. Each shape
+    /// (a subpath and the ones after it with operation −1) is filled even-odd, then combined with the
+    /// shapes before it by its operation: 0 exclude, 1 combine, 2 subtract, 3 intersect.
+    /// Nil without a vector mask or when it's disabled.
     public static func vectorMask(_ layer: PSDLayer, canvas: (width: Int, height: Int),
-                                  scale: Double) throws -> (rect: PSDRect, pixels: [UInt8])? {
+                                  scale: Double) throws -> (rect: PSDRect, pixels: [UInt8], bounds: PSDRect)? {
         guard let data = layer.blocks["vmsk"] ?? layer.blocks["vsms"] else { return nil }
         let bytes = [UInt8](data)
         guard bytes.count >= 8 else { throw OwnDecodeError.corrupt }
@@ -68,10 +71,10 @@ public enum PSDFills {
             func fixed(_ at: Int) -> Double { Double(Int32(truncatingIfNeeded: be(at, 4))) / 16_777_216 }
             return CGPoint(x: fixed(at + 4) * Double(sw), y: fixed(at) * Double(sh))
         }
-        var subpaths: [(closed: Bool, knots: [[CGPoint]])] = []
+        var subpaths: [(closed: Bool, operation: Int, knots: [[CGPoint]])] = []
         for at in stride(from: 8, through: bytes.count - 26, by: 26) {
             switch be(at, 2) {
-            case 0, 3: subpaths.append((be(at, 2) == 0, []))
+            case 0, 3: subpaths.append((be(at, 2) == 0, Int(Int16(truncatingIfNeeded: be(at + 4, 2))), []))
             case 1, 2, 4, 5:
                 guard !subpaths.isEmpty else { throw OwnDecodeError.corrupt }
                 subpaths[subpaths.count - 1].knots.append([point(at + 2), point(at + 10), point(at + 18)])
@@ -79,45 +82,80 @@ public enum PSDFills {
             default: break
             }
         }
-        let path = CGMutablePath()
+        var shapes: [(operation: Int, path: CGMutablePath)] = []
         for subpath in subpaths where !subpath.knots.isEmpty {
-            let knots = subpath.knots
+            if subpath.operation != -1 || shapes.isEmpty { shapes.append((subpath.operation, CGMutablePath())) }
+            let path = shapes[shapes.count - 1].path, knots = subpath.knots
             path.move(to: knots[0][1])
             for k in knots.indices.dropFirst() { path.addCurve(to: knots[k][1], control1: knots[k - 1][2], control2: knots[k][0]) }
             if subpath.closed { path.addCurve(to: knots[0][1], control1: knots[knots.count - 1][2], control2: knots[0][0]) }
             path.closeSubpath()
         }
 
+        let all = shapes.reduce(CGRect.null) { $0.union($1.path.boundingBoxOfPath) }
+        let bounds: PSDRect = all.isNull || all.isEmpty ? (0, 0, sh, sw)
+            : (Int(all.minY.rounded(.down)), Int(all.minX.rounded(.down)), Int(all.maxY.rounded(.up)), Int(all.maxX.rounded(.up)))
+        // A first subtraction cuts from everything, so it covers the canvas outside the path too.
         var rect: PSDRect = (0, 0, sh, sw)
-        if !inverted {
-            let bounds = path.boundingBoxOfPath
-            guard !bounds.isNull, !bounds.isEmpty else { return ((0, 0, 0, 0), []) }
-            rect = (max(0, Int(bounds.minY.rounded(.down))), max(0, Int(bounds.minX.rounded(.down))),
-                    min(sh, Int(bounds.maxY.rounded(.up))), min(sw, Int(bounds.maxX.rounded(.up))))
-            guard rect.bottom > rect.top, rect.right > rect.left else { return ((0, 0, 0, 0), []) }
+        if !inverted, shapes.first?.operation != 2 {
+            guard !all.isNull, !all.isEmpty else { return ((0, 0, 0, 0), [], bounds) }
+            rect = (max(0, bounds.top), max(0, bounds.left), min(sh, bounds.bottom), min(sw, bounds.right))
+            guard rect.bottom > rect.top, rect.right > rect.left else { return ((0, 0, 0, 0), [], bounds) }
         }
         let w = rect.right - rect.left, h = rect.bottom - rect.top
+        func fill(_ path: CGPath) -> [UInt8] {
+            var plane = [UInt8](repeating: 0, count: w * h)
+            plane.withUnsafeMutableBytes { buffer in
+                guard let context = CGContext(data: buffer.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w,
+                                              space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return }
+                // Rows top down, origin at the rect's top-left.
+                context.translateBy(x: 0, y: CGFloat(h))
+                context.scaleBy(x: 1, y: -1)
+                context.translateBy(x: CGFloat(-rect.left), y: CGFloat(-rect.top))
+                context.setShouldAntialias(true)
+                context.setFillColor(gray: 1, alpha: 1)
+                context.addPath(path)
+                context.fillPath(using: .evenOdd)
+            }
+            return plane
+        }
         var pixels = [UInt8](repeating: 0, count: w * h)
-        pixels.withUnsafeMutableBytes { buffer in
-            guard let context = CGContext(data: buffer.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w,
-                                          space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return }
-            // Rows top down, origin at the rect's top-left.
-            context.translateBy(x: 0, y: CGFloat(h))
-            context.scaleBy(x: 1, y: -1)
-            context.translateBy(x: CGFloat(-rect.left), y: CGFloat(-rect.top))
-            context.setShouldAntialias(true)
-            context.setFillColor(gray: 1, alpha: 1)
-            context.addPath(path)
-            context.fillPath(using: .evenOdd)
+        for (index, shape) in shapes.enumerated() {
+            let plane = fill(shape.path)
+            // A first subtraction or intersection starts from everything.
+            if index == 0, shape.operation == 2 || shape.operation == 3 { pixels = [UInt8](repeating: 255, count: w * h) }
+            for i in pixels.indices {
+                let a = Int(pixels[i]), b = Int(plane[i])
+                switch shape.operation {
+                case 1: pixels[i] = UInt8(a + b - (a * b + 127) / 255)
+                case 2: pixels[i] = UInt8((a * (255 - b) + 127) / 255)
+                case 3: pixels[i] = UInt8((a * b + 127) / 255)
+                default: pixels[i] = UInt8(a + b - 2 * ((a * b + 127) / 255))
+                }
+            }
         }
         if inverted { for i in pixels.indices { pixels[i] = 255 - pixels[i] } }
-        return (rect, pixels)
+        return (rect, pixels, bounds)
     }
 
-    /// The patterns in the file's `Patt`/`Pat2`/`Pat3` blocks by their unique ID, as straight RGBA.
-    /// Patterns in a mode other than RGB, greyscale or indexed, or deeper than 8 bits, are left out.
+    /// The patterns that `PtFl` layers use, from the file's `Patt`/`Pat2`/`Pat3` blocks, by their unique
+    /// ID, as straight RGBA. Patterns in a mode other than RGB, greyscale or indexed, or deeper than 8 bits,
+    /// are left out. A used pattern over `maxPatternPixels` throws `.unsupported`, so the file falls back.
     public static func patterns(_ layers: PSDLayers) throws -> [String: RGBAImage] {
+        func used(_ nodes: [PSDNode]) -> Set<String> {
+            nodes.reduce(into: []) { ids, node in
+                switch node {
+                case .group(let group): ids.formUnion(used(group.children))
+                case .layer(let layer):
+                    guard let data = layer.blocks["PtFl"], let settings = try? PSDDescriptor.versioned(data),
+                          case .object(let reference)? = settings["Ptrn"], case .text(let id)? = reference["Idnt"] else { return }
+                    ids.insert(id)
+                }
+            }
+        }
+        let wanted = used(layers.nodes)
         var out: [String: RGBAImage] = [:]
+        guard !wanted.isEmpty else { return out }
         for key in ["Patt", "Pat2", "Pat3"] {
             guard let data = layers.globalBlocks[key] else { continue }
             var r = Cursor(bytes: [UInt8](data))
@@ -126,7 +164,7 @@ public enum PSDFills {
                 let start = r.at
                 guard length <= r.bytes.count - start else { throw OwnDecodeError.corrupt }
                 var p = Cursor(bytes: Array(r.bytes[start..<start + length]))
-                if let (id, image) = try pattern(&p) { out[id] = image }
+                if let (id, image) = try pattern(&p, wanted: wanted) { out[id] = image }
                 r.at = min(r.bytes.count, start + (length + 3) & ~3)
             }
         }
@@ -135,14 +173,20 @@ public enum PSDFills {
 
     // MARK: Patterns
 
+    /// 16 MP: a pattern's planes and its RGBA stay under about 130 MB whatever the file claims.
+    static let maxPatternPixels = 4096 * 4096
+
     /// One pattern: version, mode, height, width, name, ID, colour table (indexed), then its virtual
     /// memory array list: version 3, length, rect, channel count, then that many channels plus a user
     /// mask and a sheet mask, each flagged as written or not.
-    private static func pattern(_ r: inout Cursor) throws -> (String, RGBAImage)? {
+    /// Nil for one not in `wanted`, before its pixels are read.
+    private static func pattern(_ r: inout Cursor, wanted: Set<String>) throws -> (String, RGBAImage)? {
         _ = try r.int(4)
         let mode = try r.int(4), height = try r.int(2), width = try r.int(2)
         try r.skip(try r.int(4) * 2)
         let id = String(decoding: try r.take(try r.int(1)), as: UTF8.self)
+        guard wanted.contains(id) else { return nil }
+        guard width * height <= maxPatternPixels else { throw OwnDecodeError.unsupported }
         let table = mode == 2 ? Array(try r.take(768)) : []
         guard try r.int(4) == 3 else { throw OwnDecodeError.corrupt }
         try r.skip(4 + 16)

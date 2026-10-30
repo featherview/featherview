@@ -38,8 +38,9 @@ import Testing
     static func rgb(_ r: Double, _ g: Double, _ b: Double) -> V { .obj("RGBC", [("Rd  ", .doub(r)), ("Grn ", .doub(g)), ("Bl  ", .doub(b))]) }
 
     /// A GdFl block: colour stops (colour, location 0…4096), transparency stops (percent, location).
-    static func gradient(_ type: String, angle: Double, colours: [(V, Int)], opacities: [(Double, Int)] = [(100, 0), (100, 4096)]) -> Data {
-        block([
+    static func gradient(_ type: String, angle: Double, colours: [(V, Int)], opacities: [(Double, Int)] = [(100, 0), (100, 4096)],
+                         extra: [(String, V)] = []) -> Data {
+        block(extra + [
             ("Angl", .unit("#Ang", angle)), ("Type", .enm("GrdT", type)),
             ("Grad", .obj("Grdn", [
                 ("Nm  ", .text("Test")), ("GrdF", .enm("GrdF", "CstS")), ("Intr", .doub(4096)),
@@ -52,10 +53,18 @@ import Testing
     /// A vmsk block: version 3, flags, a fill rule record, the initial fill record, then one closed
     /// subpath through `points` (x, y as fractions of the canvas), corners without handles.
     static func vectorMask(_ points: [(Double, Double)], flags: Int = 0, initialFill: Int = 0) -> Data {
+        vectorMask(subpaths: [(0, points)], flags: flags, initialFill: initialFill)
+    }
+
+    /// A vmsk block with several closed subpaths, each with its path operation (−1 joins the previous shape).
+    static func vectorMask(subpaths: [(operation: Int, points: [(Double, Double)])], flags: Int = 0, initialFill: Int = 0) -> Data {
         func record(_ selector: Int, _ body: [UInt8]) -> [UInt8] { be(selector, 2) + body + [UInt8](repeating: 0, count: 24 - body.count) }
         func fixed(_ f: Double) -> [UInt8] { be(Int((f * 16_777_216).rounded()), 4) }
-        var bytes = be(3, 4) + be(flags, 4) + record(6, []) + record(8, be(initialFill, 2)) + record(0, be(points.count, 2))
-        for (x, y) in points { bytes += record(1, (0..<3).flatMap { _ in fixed(y) + fixed(x) }) }
+        var bytes = be(3, 4) + be(flags, 4) + record(6, []) + record(8, be(initialFill, 2))
+        for subpath in subpaths {
+            bytes += record(0, be(subpath.points.count, 2) + be(subpath.operation, 2))
+            for (x, y) in subpath.points { bytes += record(1, (0..<3).flatMap { _ in fixed(y) + fixed(x) }) }
+        }
         return Data(bytes)
     }
 
@@ -258,10 +267,10 @@ import Testing
     }
 
     @Test func patternSizeIsBoundedByItsData() throws {
-        // 65,535 × 65,535 claimed: no planes at all (17 GB of RGBA before), and PackBits rows of 0 bytes
-        // (a 4.3 GB plane before) both throw before allocating.
-        for channels in [[], [[1] + [UInt8](repeating: 0, count: 65535 * 2)]] as [[[UInt8]]] {
-            let (file, _) = try Self.fillFile([:], width: 2, height: 2, globalBlocks: Self.claimedPattern(width: 65535, height: 65535, channels: channels))
+        // 4,096 × 4,096 claimed: no planes at all, and PackBits rows of 0 bytes both throw before allocating.
+        let fill = Self.block([("Ptrn", .obj("Ptrn", [("Nm  ", .text("")), ("Idnt", .text("x"))]))])
+        for channels in [[], [[1] + [UInt8](repeating: 0, count: 4096 * 2)]] as [[[UInt8]]] {
+            let (file, _) = try Self.fillFile(["PtFl": fill], width: 2, height: 2, globalBlocks: Self.claimedPattern(width: 4096, height: 4096, channels: channels))
             #expect(throws: OwnDecodeError.corrupt) { try PSDFills.patterns(file) }
         }
     }
@@ -275,5 +284,56 @@ import Testing
         #expect(half.rect == (2, 2, 6, 6) && half.pixels == [UInt8](repeating: 255, count: 16))
         let image = try #require(try PSDFills.content(layer, canvas: (16, 16), patterns: [:], scale: 0.5))
         #expect(image.width == 4 && image.height == 4 && Self.pixel(image, 3, 3) == [1, 2, 3, 255])
+    }
+
+    @Test func alignedGradientSpansTheWholeShapeOffTheCanvas() throws {
+        // The shape runs from x = −50 to 50 on a 100 px canvas: the ramp's middle sits at the canvas's left edge.
+        let black = Self.rgb(0, 0, 0), white = Self.rgb(255, 255, 255)
+        let fill = Self.gradient("Lnr ", angle: 0, colours: [(black, 0), (white, 4096)], extra: [("Algn", .bool(true))])
+        let layer = try Self.fillLayer(["GdFl": fill, "vmsk": Self.vectorMask([(-0.5, 0), (0.5, 0), (0.5, 1), (-0.5, 1)])], width: 100, height: 2)
+        let image = try #require(try PSDFills.content(layer, canvas: (100, 2), patterns: [:], scale: 1))
+        #expect(image.width == 50)
+        #expect(abs(Int(Self.pixel(image, 0, 0)[0]) - 129) <= 3)
+        #expect(abs(Int(Self.pixel(image, 25, 0)[0]) - 193) <= 3)
+    }
+
+    @Test func pathOperationsCombineShapes() throws {
+        let a = Self.square(0, 0.5), b = Self.square(0.25, 0.75), hole = Self.square(0.125, 0.375)
+        func coverage(_ subpaths: [(operation: Int, points: [(Double, Double)])], _ points: [(Int, Int)]) throws -> [UInt8] {
+            let layer = try Self.fillLayer(["SoCo": Self.block([("Clr ", Self.rgb(1, 2, 3))]), "vmsk": Self.vectorMask(subpaths: subpaths)],
+                                           width: 16, height: 16)
+            let mask = try #require(try PSDFills.vectorMask(layer, canvas: (16, 16), scale: 1))
+            let w = mask.rect.right - mask.rect.left
+            return points.map { x, y in
+                guard (mask.rect.left..<mask.rect.right).contains(x), (mask.rect.top..<mask.rect.bottom).contains(y) else { return 0 }
+                return mask.pixels[(y - mask.rect.top) * w + x - mask.rect.left]
+            }
+        }
+        // Points in a only, in both, in b only, in neither.
+        let probe = [(2, 2), (6, 6), (10, 10), (14, 1)]
+        #expect(try coverage([(1, a), (1, b)], probe) == [255, 255, 255, 0])
+        #expect(try coverage([(3, a), (3, b)], probe) == [0, 255, 0, 0])
+        #expect(try coverage([(1, a), (2, b)], probe) == [255, 0, 0, 0])
+        #expect(try coverage([(2, a)], probe) == [0, 0, 255, 255])
+        #expect(try coverage([(0, a), (0, b)], probe) == [255, 0, 255, 0])
+        // −1 continues the previous shape: a with a hole, then united with b.
+        #expect(try coverage([(1, a), (-1, hole)], [(1, 1), (4, 4)]) == [255, 0])
+        #expect(try coverage([(1, a), (-1, hole), (1, b)], [(1, 1), (4, 4), (2, 4)]) == [255, 255, 0])
+    }
+
+    @Test func onlyReferencedPatternsAreDecoded() throws {
+        // A damaged pattern no layer uses costs nothing and breaks nothing.
+        let unused = Self.claimedPattern(width: 65535, height: 65535, channels: [])
+        let (file, _) = try Self.fillFile(["SoCo": Self.block([("Clr ", Self.rgb(1, 2, 3))])], width: 2, height: 2, globalBlocks: unused)
+        #expect(try PSDFills.patterns(file).isEmpty)
+
+        // One used but past the size cap is refused, so the file falls back to ImageIO.
+        let side = 4097
+        let row = PSDFixture.packBits([UInt8](repeating: 0, count: side))
+        let plane: [UInt8] = [1] + (0..<side).flatMap { _ in Self.be(row.count, 2) } + (0..<side).flatMap { _ in row }
+        let huge = Self.claimedPattern(width: side, height: side, channels: [plane, plane, plane])
+        let fill = Self.block([("Ptrn", .obj("Ptrn", [("Nm  ", .text("")), ("Idnt", .text("x"))]))])
+        let (used, _) = try Self.fillFile(["PtFl": fill], width: 2, height: 2, globalBlocks: huge)
+        #expect(throws: OwnDecodeError.unsupported) { try PSDFills.patterns(used) }
     }
 }
