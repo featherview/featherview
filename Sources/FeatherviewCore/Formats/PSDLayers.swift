@@ -418,11 +418,11 @@ struct PSDChannelSource: Sendable {
                     let (offset, length) = channels[i]!
                     opened[i] = try self.channel(fd, offset, length, rect)
                 }
-                let channels = ids.map { opened[$0]! }, hook = Self.largestRead
+                let streams = ids.map { opened[$0]! }, hook = Self.largestRead
                 let read = OSAllocatedUnfairLock(initialState: [Int: Result<[UInt8], Error>]())
                 // Each iteration reads its own channel.
                 DispatchQueue.concurrentPerform(iterations: ids.count) { k in
-                    let bytes = Self.$largestRead.withValue(hook) { Result { try self.band(fd, channels[k], rect, rows) } }
+                    let bytes = Self.$largestRead.withValue(hook) { Result { try self.band(fd, streams[k], rect, rows) } }
                     read.withLock { $0[ids[k]] = bytes }
                 }
                 let done = read.withLock { $0 }
