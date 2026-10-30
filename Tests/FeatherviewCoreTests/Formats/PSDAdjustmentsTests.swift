@@ -210,6 +210,42 @@ import Testing
         #expect(sepia.x > sepia.z && abs(lum(sepia) - 0.6) < 0.002)
     }
 
+    @Test func blackAndWhiteRejectsNonFiniteNumbers() throws {
+        for bad in [Double.infinity, -Double.infinity, Double.nan] {
+            let weight = descriptorBlock([], extraCount: 1) { $0.id("Rd  "); $0.os("doub"); $0.double(bad) }
+            #expect(throws: OwnDecodeError.corrupt) { try PSDAdjustments.adjustment(key: "blwh", data: weight) }
+            #expect(throws: OwnDecodeError.corrupt) { try PSDAdjustments.adjustment(key: "blwh", data: blackAndWhiteBlock(tint: (bad, 0, 0))) }
+        }
+    }
+
+    /// These closures run once per pixel, so they must not allocate or chase nested arrays: 12 MP took ~0.5 s
+    /// (levels, curves) to ~1.8 s (selective colour) on one core in a release build, now ~0.1–0.3 s. Unoptimized
+    /// timings say little about that and swing twofold with the parallel suites, so only release builds run it.
+    @Test(.enabled(if: !_isDebugAssertConfiguration())) func perPixelAdjustmentsAreFast() throws {
+        let count = 12_000_000
+        let blocks: [(String, Data)] = [
+            ("levl", levelsBlock([(10, 240, 5, 250, 120), (0, 200, 0, 255, 100)])),
+            ("curv", curvesBlock(channels: 3, [[(0, 0), (128, 200), (255, 255)], [(0, 20), (255, 230)]])),
+            ("selc", selectiveBlock(relative: true, reds: (30, -20, 10, 5))),
+            ("blwh", blackAndWhiteBlock()),
+        ]
+        for (key, data) in blocks {
+            let f = try #require(try PSDAdjustments.adjustment(key: key, data: data))
+            var elapsed = Duration.seconds(100), sum = SIMD3<Float>.zero
+            for _ in 0..<2 {
+                let start = ContinuousClock.now
+                for i in 0..<count {
+                    var c = SIMD3<Float>(Float(i & 255), Float(i >> 8 & 255), Float(i >> 16 & 255)) / 255
+                    f(&c)
+                    sum += c
+                }
+                elapsed = min(elapsed, ContinuousClock.now - start)
+            }
+            #expect(sum.x.isFinite)
+            #expect(elapsed < .milliseconds(400), "\(key) took \(elapsed)")
+        }
+    }
+
     @Test func channelMixer() throws {
         var swap = Block(); swap.u16(1); swap.u16(0)
         for record in [[0, 100, 0, 0, 0], [0, 100, 0, 0, 0], [0, 0, 100, 0, 20], [0, 0, 0, 100, 0]] { for v in record { swap.u16(v) } }

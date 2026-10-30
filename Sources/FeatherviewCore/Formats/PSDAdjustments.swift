@@ -37,7 +37,7 @@ public enum PSDAdjustments {
             }
         case "hue2": return try hueSaturation(&r)
         case "blnc": return try colourBalance(&r)
-        case "blwh": return blackAndWhite(try PSDDescriptor.versioned(data))
+        case "blwh": return try blackAndWhite(try PSDDescriptor.versioned(data))
         case "mixr": return try channelMixer(&r)
         case "expA":
             _ = try r.u16()
@@ -65,10 +65,15 @@ public enum PSDAdjustments {
 
     // MARK: - Levels and Curves
 
-    /// Applies the composite table, then each channel's own.
+    /// Applies the composite table, then each channel's own, folded into one flat table per channel so a
+    /// pixel costs three plain lookups.
     private static func tables(_ t: [[Float]]) -> Adjust {
-        { c in
-            for i in 0..<3 { c[i] = lookup(t[i + 1], lookup(t[0], c[i])) }
+        let flat = (1...3).flatMap { channel in (0...255).map { lookup(t[channel], lookup(t[0], Float($0) / 255)) } }
+        return { c in
+            for i in 0..<3 {
+                let x = min(max(c[i], 0), 1) * 255, j = min(Int(x), 254), k = i * 256 + j
+                c[i] = flat[k] + (flat[k + 1] - flat[k]) * (x - Float(j))
+            }
         }
     }
 
@@ -240,20 +245,23 @@ public enum PSDAdjustments {
         }
     }
 
-    private static func blackAndWhite(_ d: PSDDescriptor) -> Adjust {
+    private static func blackAndWhite(_ d: PSDDescriptor) throws -> Adjust {
         // Weights of red, yellow, green, cyan, blue, magenta, Photoshop's defaults where a key is missing.
         let w = zip(["Rd  ", "Yllw", "Grn ", "Cyn ", "Bl  ", "Mgnt"], [40, 60, 40, 60, 20, 80] as [Float]).map { (number(d[$0]) ?? $1) / 100 }
         let tint: SIMD3<Float>? = if d["useTint"] == .bool(true), case .object(let colour)? = d["tintColor"] {
             SIMD3(number(colour["Rd  "]) ?? 0, number(colour["Grn "]) ?? 0, number(colour["Bl  "]) ?? 0) / 255
         } else { nil }
+        // A NaN or infinite weight would leak NaN pixels into the next table lookup.
+        guard w.allSatisfy(\.isFinite), tint.map({ $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }) ?? true else {
+            throw OwnDecodeError.corrupt
+        }
+        let primaries = SIMD3(w[0], w[2], w[4]), secondaries = SIMD3(w[3], w[5], w[1])  // by darkest: cyan, magenta, yellow
         return { c in
             // The grey is the darkest channel plus the part shared by the two brightest (a secondary
             // colour) plus the brightest's own part (a primary), each weighted by its colour.
-            let order = [0, 1, 2].sorted { c[$0] > c[$1] }
-            let hi = c[order[0]], mid = c[order[1]], lo = c[order[2]]
-            let primary = w[order[0] * 2]
-            let secondary = w[[3, 5, 1][order[2]]]  // cyan, magenta, yellow: the two brightest
-            let grey = min(max(lo + (mid - lo) * secondary + (hi - mid) * primary, 0), 1)
+            let (h, m, l) = order(c)
+            let hi = c[h], mid = c[m], lo = c[l]
+            let grey = min(max(lo + (mid - lo) * secondaries[l] + (hi - mid) * primaries[h], 0), 1)
             c = tint.map { clamp01(setLum($0, grey)) } ?? SIMD3(repeating: grey)
         }
     }
@@ -292,25 +300,23 @@ public enum PSDAdjustments {
     private static func selectiveColour(_ r: inout Reader) throws -> Adjust {
         _ = try r.u16()
         let relative = try r.u16() == 0
-        var records: [SIMD4<Float>] = []
-        for _ in 0..<10 { records.append(SIMD4(Float(try r.i16()), Float(try r.i16()), Float(try r.i16()), Float(try r.i16())) / 100) }
-        // Records 1…9: reds, yellows, greens, cyans, blues, magentas, whites, neutrals, blacks.
+        // Records 0…9: unused, reds, yellows, greens, cyans, blues, magentas, whites, neutrals, blacks; each
+        // as the change to cyan, magenta and yellow ink, black added to all three.
+        var records: [SIMD3<Float>] = []
+        for _ in 0..<10 {
+            let a = SIMD4(Float(try r.i16()), Float(try r.i16()), Float(try r.i16()), Float(try r.i16())) / 100
+            records.append(SIMD3(a.x, a.y, a.z) + a.w)
+        }
+        let whitesRecord = records[7], neutralsRecord = records[8], blacksRecord = records[9]
         return { [records] c in
-            let order = [0, 1, 2].sorted { c[$0] > c[$1] }
-            let hi = c[order[0]], mid = c[order[1]], lo = c[order[2]]
+            let (h, m, l) = order(c)
+            let hi = c[h], mid = c[m], lo = c[l]
             let whites = max(0, 2 * lo - 1), blacks = max(0, 1 - 2 * hi)
-            var weights = [Float](repeating: 0, count: 10)
-            weights[1 + order[0] * 2] = hi - mid
-            weights[[4, 6, 2][order[2]]] = mid - lo
-            weights[7] = whites
-            weights[8] = max(0, 1 - whites - blacks - (hi - lo))
-            weights[9] = blacks
+            // The brightest channel's primary (reds, greens, blues) and the two brightest's secondary
+            // (by the darkest: cyans, magentas, yellows).
+            let change = (hi - mid) * records[1 + h * 2] + (mid - lo) * records[l == 0 ? 4 : l == 1 ? 6 : 2]
+                + whites * whitesRecord + max(0, 1 - whites - blacks - (hi - lo)) * neutralsRecord + blacks * blacksRecord
             var ink = 1 - c
-            var change = SIMD3<Float>.zero
-            for i in 1..<10 where weights[i] > 0 {
-                let a = records[i]
-                change += weights[i] * (SIMD3(a.x, a.y, a.z) + a.w)
-            }
             ink += change * (relative ? ink : .one)
             c = clamp01(1 - ink)
         }
@@ -388,6 +394,15 @@ public enum PSDAdjustments {
 
     private static func linear(_ c: Float) -> Float { c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
     private static func encoded(_ l: Float) -> Float { l <= 0.0031308 ? l * 12.92 : 1.055 * pow(l, 1 / 2.4) - 0.055 }
+
+    /// The channels' indices from brightest to darkest; ties keep red, green, blue order.
+    private static func order(_ c: SIMD3<Float>) -> (Int, Int, Int) {
+        var (a, b, d) = (0, 1, 2)
+        if c[b] > c[a] { swap(&a, &b) }
+        if c[d] > c[b] { swap(&b, &d) }
+        if c[b] > c[a] { swap(&a, &b) }
+        return (a, b, d)
+    }
 
     private static func clamp01(_ v: SIMD3<Float>) -> SIMD3<Float> { v.clamped(lowerBound: .zero, upperBound: .one) }
 
