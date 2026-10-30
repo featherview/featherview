@@ -107,7 +107,25 @@ public struct PSDCompositor: Sendable {
             i = end
             guard base.visible else { continue }
 
-            // Below full fill opacity a pass-through group draws isolated, as Photoshop's composites show.
+            // Below full fill opacity a pass-through group of pixel layers mixes, by its fill, its layers passed through
+            // (themselves at that fill) with them drawn isolated at that fill, as Photoshop's composites show.
+            // shortcut: with adjustment layers in it, it draws isolated (which the composites show when one sits over
+            // a pixel layer); pass them through within its content if a file shows otherwise.
+            if case .group(let group) = base, group.blend == "pass", group.fill < 255, clipped.isEmpty, !adjusts(group.children) {
+                let f = Int(group.fill)
+                var content = Self.canvas(target.width, target.height)
+                try draw(group.children, onto: &content, at: origin, scale)
+                var passed = target
+                try draw(group.children, onto: &passed, at: origin, scale)
+                var mixed = target
+                Self.mix(&mixed, passed, nil, f)
+                var isolated = target
+                PSDBlend.composite(.normal, onto: &isolated, layer: content, at: (0, 0), fill: Float(f) / 255)
+                Self.mix(&mixed, isolated, nil, f)
+                Self.mix(&target, mixed, try masks(base, scale, origin, target.width, target.height), Int(group.opacity))
+                continue
+            }
+            // Below full fill opacity (with adjustments) a pass-through group draws isolated, as Photoshop's composites show.
             if case .group(let group) = base, group.blend == "pass", group.fill == 255 {
                 var weights = try masks(base, scale, origin, target.width, target.height)
                 if !clipped.isEmpty {
@@ -164,6 +182,16 @@ public struct PSDCompositor: Sendable {
                 Self.text(&target, image, at: local, alpha: mask, Float(base.opacity) / 255 * fill)
             } else {
                 PSDBlend.composite(mode, onto: &target, layer: image, at: local, alpha: mask, opacity: Float(base.opacity) / 255, fill: fill)
+            }
+        }
+    }
+
+    /// Whether any of `nodes`, or of their groups' children, is an adjustment layer.
+    private func adjusts(_ nodes: [PSDNode]) -> Bool {
+        nodes.contains {
+            switch $0 {
+            case .layer(let layer): adjustment(layer) != nil
+            case .group(let group): adjusts(group.children)
             }
         }
     }

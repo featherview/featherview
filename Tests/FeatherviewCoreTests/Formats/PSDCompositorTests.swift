@@ -125,6 +125,17 @@ import Testing
         #expect(isolated.pixels[4...] == [100, 100, 100, 255])
     }
 
+    /// Below full fill a pass-through group of pixel layers mixes, by its fill, its layers passed through at that fill
+    /// with them drawn isolated at that fill: linear dodge 50 over 100 at fill 20 % gives 110 and 90, mixed to 106.
+    @Test func passThroughGroupWithFillMixesPassedAndIsolated() throws {
+        var dodge = Self.solid("Dodge", 0, 0, 1, 1, [50, 50, 50, 255])
+        dodge.blend = "lddg"
+        var layers = [Self.solid("Grey", 0, 0, 1, 1, [100, 100, 100, 255])] + Self.group("G", blend: "pass", [dodge])
+        layers[layers.count - 1].blocks["iOpa"] = Data([51])
+        let image = try Self.render(1, 1, layers)
+        #expect(abs(Int(image.pixels[0]) - 106) <= 1 && image.pixels[3] == 255, "\(image.pixels)")
+    }
+
     static func invert(_ image: inout RGBAImage) {
         for p in 0 ..< image.width * image.height { for c in 0..<3 { image.pixels[p * 4 + c] = 255 - image.pixels[p * 4 + c] } }
     }
