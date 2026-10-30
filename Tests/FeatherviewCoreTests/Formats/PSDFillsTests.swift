@@ -201,6 +201,19 @@ import Testing
         #expect(Self.pixel(image, 0, 0)[0] <= 30 && Self.pixel(image, 63, 0)[0] >= 251)
     }
 
+    /// Smoothness (Intr, of 4096) eases each stretch between stops into a smoothstep, so a quarter of the way along is
+    /// darker than a quarter of the colour; without a box flag the gradient spans the shape, not the canvas.
+    @Test func smoothnessEasesAndShapesAlign() throws {
+        let stops: [(V, Int)] = [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)]
+        let smooth = try Self.fillLayer(["GdFl": Self.gradient("Lnr ", angle: 0, colours: stops)], width: 64, height: 1)
+        let image = try #require(try PSDFills.content(smooth, canvas: (64, 1), patterns: [:], scale: 1))
+        #expect(abs(Int(Self.pixel(image, 16, 0)[0]) - 41) <= 3)  // smoothstep(0.26) · 255
+        let shaped = try Self.fillLayer(["GdFl": Self.gradient("Lnr ", angle: 0, colours: stops),
+                                         "vmsk": Self.vectorMask(Self.square(0.5, 1))], width: 64, height: 64)
+        let half = try #require(try PSDFills.content(shaped, canvas: (64, 64), patterns: [:], scale: 1))
+        #expect(Self.pixel(half, 0, 16)[0] <= 2 && Self.pixel(half, 31, 16)[0] >= 253)
+    }
+
     @Test func radialAndReflectedGradients() throws {
         let stops: [(V, Int)] = [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)]
         let radial = try #require(try PSDFills.content(
@@ -344,7 +357,7 @@ import Testing
         let image = try #require(try PSDFills.content(layer, canvas: (100, 2), patterns: [:], scale: 1))
         #expect(image.width == 50)
         #expect(abs(Int(Self.pixel(image, 0, 0)[0]) - 129) <= 3)
-        #expect(abs(Int(Self.pixel(image, 25, 0)[0]) - 193) <= 3)
+        #expect(abs(Int(Self.pixel(image, 25, 0)[0]) - 217) <= 3)  // three quarters along, eased by full smoothness
     }
 
     @Test func pathOperationsCombineShapes() throws {

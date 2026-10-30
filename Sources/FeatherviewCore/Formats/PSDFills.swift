@@ -26,8 +26,8 @@ public enum PSDFills {
             let c = try colour(settings["Clr "])
             shade = { _, _ in (c.0, c.1, c.2, 255) }
         case "GdFl":
-            // "Align with layer" puts the gradient in the shape's bounds, else in the canvas.
-            let aligned = settings["Algn"] == .bool(true)
+            // "Align with layer" (the default when the flag is missing) puts the gradient in the shape's bounds, else in the canvas.
+            let aligned = settings["Algn"] != .bool(false)
             let box: PSDRect = aligned ? mask?.bounds ?? (0, 0, sh, sw) : (0, 0, sh, sw)
             shade = try gradient(settings, box: box, rgb: rgb)
         default:
@@ -297,7 +297,7 @@ public enum PSDFills {
     /// box's extent along it; the first stop sits at the line's start. Colour and transparency stops are
     /// interpolated in RGB, each midpoint (on the later stop) where the two meet half-way.
     // shortcut: gradient dither is off, add noise if banding shows.
-    // shortcut: smoothness (Intr) is ignored, colour changes linearly between stops; ease it if the corpus oracle shows the curve.
+    // Smoothness (Intr, of 4096) eases each stretch between stops toward a smoothstep, which Photoshop's composites come close to.
     private static func gradient(_ settings: PSDDescriptor, box: PSDRect, rgb: CGColorSpace?) throws -> (Int, Int) -> (UInt8, UInt8, UInt8, UInt8) {
         guard case .object(let grad)? = settings["Grad"] else { throw OwnDecodeError.corrupt }
         // The linear method mixes colours in linear light; classic (and perceptual, for now) in the stored values.
@@ -380,6 +380,7 @@ public enum PSDFills {
             let c = try colour(stop["Clr "])
             return [Double(c.0), Double(c.1), Double(c.2)]
         }
+        let smoothness = min(max((number(grad["Intr"]) ?? 0) / 4096, 0), 1)
         let opacities = try stops("Trns") { [min(max((number($0["Opct"]) ?? 100) * 2.55, 0), 255)] }
         func at(_ stops: [Stop], _ t: Double, _ fallback: [Double]) -> [Double] {
             guard let first = stops.first, let last = stops.last else { return fallback }
@@ -390,6 +391,7 @@ public enum PSDFills {
             var u = b.location > a.location ? (t - a.location) / (b.location - a.location) : 1
             let m = min(max(b.midpoint, 0.001), 0.999)
             u = u < m ? u / m / 2 : 0.5 + (u - m) / (1 - m) / 2
+            u += (u * u * (3 - 2 * u) - u) * smoothness
             return zip(a.value, b.value).map { $0 + ($1 - $0) * u }
         }
         // sRGB's curve to and from linear light, on 0…255.
