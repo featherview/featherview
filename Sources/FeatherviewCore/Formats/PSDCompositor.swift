@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Draws a Photoshop file's layer tree, bottom up, for a decode's scale: groups (pass-through or isolated),
 /// clipping, layer masks, Blend If, opacity and fill, through `PSDBlend`. Transparent where nothing is drawn.
@@ -12,6 +13,13 @@ public struct PSDCompositor: Sendable {
     let layers: PSDLayers
     let content: @Sendable (PSDLayer, Double) throws -> RGBAImage?
     let adjustment: @Sendable (PSDLayer) -> Adjust?
+
+    /// Test hook: the most pixels a working canvas (the picture or a group's; a copy for a mix matches its target) had in this task.
+    @TaskLocal static var largestCanvas: OSAllocatedUnfairLock<Int>?
+    static func canvas(_ width: Int, _ height: Int) -> RGBAImage {
+        largestCanvas?.withLock { $0 = max($0, width * height) }
+        return RGBAImage(width: width, height: height, pixels: [UInt8](repeating: 0, count: width * height * 4))
+    }
 
     /// `content` gives a layer's pixels at a scale: at the layer's `scaledRect(scale:)` top-left, or at the
     /// origin when the image has the scaled canvas's size; nil draws nothing. `adjustment` makes a layer an
@@ -27,15 +35,17 @@ public struct PSDCompositor: Sendable {
     /// The picture at `scale` (≤ 1), `PSDLayers.scaledSize` per side.
     public func render(scale: Double) throws -> RGBAImage { try render(scale: scale, maxPixels: 1 << 24) }
 
-    /// Composites at full size, or the largest size of at most `maxPixels` when that is larger than `scale`'s,
-    /// then reduces once: layers reduced before compositing go wrong where an alpha edge cuts a cell over a
-    /// backdrop that varies inside it.
-    // shortcut: above maxPixels such cells can still be off a little, composite in full-size bands if a file shows it.
+    /// Composites at twice `scale` per side (at most full size, and at most `maxPixels` unless `scale` itself
+    /// needs more), then reduces once: layers reduced before compositing go wrong where an alpha edge cuts a cell
+    /// over a backdrop that varies inside it, and twice the scale keeps that small while every working canvas
+    /// stays near the decode size.
+    // shortcut: such cells can still be off a little, composite in full-size bands if a file shows it.
     func render(scale: Double, maxPixels: Int) throws -> RGBAImage {
         let width = PSDLayers.scaledSize(layers.width, scale), height = PSDLayers.scaledSize(layers.height, scale)
-        let fine = max(min(scale, 1), min(1, (Double(maxPixels) / Double(layers.width * layers.height)).squareRoot()))
+        let cap = (Double(maxPixels) / Double(layers.width * layers.height)).squareRoot()
+        let fine = max(min(scale, 1), min(1, 2 * scale, cap))
         let fineWidth = PSDLayers.scaledSize(layers.width, fine), fineHeight = PSDLayers.scaledSize(layers.height, fine)
-        var canvas = RGBAImage(width: fineWidth, height: fineHeight, pixels: [UInt8](repeating: 0, count: fineWidth * fineHeight * 4))
+        var canvas = Self.canvas(fineWidth, fineHeight)
         try draw(layers.nodes, onto: &canvas, at: (0, 0), fine)
         return fineWidth == width && fineHeight == height ? canvas : Self.reduce(canvas, width, height)
     }
@@ -129,7 +139,7 @@ public struct PSDCompositor: Sendable {
             let rect = layer.scaledRect(scale: scale)
             return (image, (rect.left, rect.top))
         case .group(let group):
-            var image = RGBAImage(width: width, height: height, pixels: [UInt8](repeating: 0, count: width * height * 4))
+            var image = Self.canvas(width, height)
             try draw(group.children, onto: &image, at: (0, 0), scale)
             return (image, (0, 0))
         }

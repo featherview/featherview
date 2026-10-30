@@ -1,4 +1,5 @@
 import Foundation
+import os
 import Testing
 @testable import FeatherviewCore
 
@@ -162,6 +163,19 @@ import Testing
         let capped = try PSDCompositor(file).render(scale: 0.25, maxPixels: 16), exact = try PSDCompositor(file).render(scale: 0.25)
         #expect(capped.width == 2 && capped.height == 2)
         for (a, b) in zip(capped.pixels, exact.pixels) { #expect(abs(Int(a) - Int(b)) <= 40) }
+    }
+
+    @Test func smallScaleWorksNearTheDecodeSize() throws {
+        // A 1000 × 1000 canvas with tiny layers in five nested isolated groups and a masked pass-through,
+        // decoded at 20 × 20: no working canvas may be the full canvas.
+        var layers = [Self.solid("Dot", 500, 500, 4, 4, [255, 0, 0, 255])]
+        for level in 0..<5 { layers = Self.group("G\(level)", blend: "norm", [Self.solid("D\(level)", level, level, 2, 2, [0, 0, 255, 255])] + layers) }
+        layers = Self.group("P", blend: "pass", mask: Mask(rect: (0, 0, 1, 1), pixels: [255], defaultColour: 255), layers)
+        let file = try PSDLayersTests.open(PSDFixture.makeLayered(width: 1000, height: 1000, layers: layers))
+        let largest = OSAllocatedUnfairLock(initialState: 0)
+        let image = try PSDCompositor.$largestCanvas.withValue(largest) { try PSDCompositor(file).render(scale: 0.02) }
+        #expect(image.width == 20 && image.height == 20)
+        #expect(largest.withLock { $0 } <= 40 * 40)
     }
 
     @Test func adjustmentHookRunsOnTheCanvasBelow() throws {
