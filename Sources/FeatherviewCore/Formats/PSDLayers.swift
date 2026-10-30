@@ -471,14 +471,15 @@ struct Record {
         guard maskEnd <= extraEnd else { throw OwnDecodeError.corrupt }
         r.offset = maskEnd
 
-        let ranges = try r.bytes(try r.int(4))
+        let rangesEnd = try r.lengthEnd(4)
+        guard rangesEnd <= extraEnd else { throw OwnDecodeError.corrupt }
+        let ranges = try r.bytes(rangesEnd - r.offset)
         var blendIf: PSDBlendIf?
         if ranges.count >= 32, !ranges.prefix(32).enumerated().allSatisfy({ $0.element == ($0.offset % 4 < 2 ? 0 : 255) }) {
             let b = Array(ranges.prefix(32))
             func range(_ k: Int) -> PSDBlendIf.Range { (Array(b[k * 8 ..< k * 8 + 4]), Array(b[k * 8 + 4 ..< k * 8 + 8])) }
             blendIf = PSDBlendIf(gray: range(0), red: range(1), green: range(2), blue: range(3))
         }
-        guard r.offset <= extraEnd else { throw OwnDecodeError.corrupt }
         let nameLength = try r.int(1)
         let name = String(decoding: try r.bytes(nameLength), as: UTF8.self)
         try r.skip((4 - (1 + nameLength) % 4) % 4)

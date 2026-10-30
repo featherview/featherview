@@ -91,6 +91,23 @@ import Testing
         #expect(try layer.channels(scale: 1) == RGBAImage(width: 5, height: 5, pixels: pixels))
     }
 
+    @Test func blendingRangesPastTheRecordThrowsBeforeReadingThem() throws {
+        var data = PSDFixture.makeLayered(width: 2, height: 2, layers: [
+            Layer(name: "A", rect: (0, 0, 1, 1), pixels: [1, 2, 3, 255]),
+        ], realComposite: nil)
+        // Version 1 without resources: the record starts at byte 44, its blending ranges' length at 106.
+        // A length that fits in the file but runs past the record must throw before the bytes are read.
+        Self.patch(&data, 106, data.count - 110, 4)
+        let url = try Fixtures.makeTempDir().appendingPathComponent("a.psd")
+        try data.write(to: url)
+        let fd = Darwin.open(url.path, O_RDONLY)
+        defer { close(fd) }
+        var r = FileCursor(fd: fd, end: data.count)
+        r.offset = 44
+        #expect(throws: OwnDecodeError.corrupt) { try Record(&r, version: 1, end: data.count) }
+        #expect(r.offset == 110)
+    }
+
     @Test func maskDefaultAndDisabled() throws {
         let maskPixels = Self.noise(2 * 3)
         let file = try Self.open(PSDFixture.makeLayered(width: 4, height: 4, layers: [
