@@ -242,6 +242,30 @@ import Testing
         #expect(try PSDFills.content(gradient, canvas: (2, 2), patterns: [:], scale: 1)?.width == 2)
     }
 
+    /// A Patt block holding one RGB pattern of the claimed size whose channels are `channels`, the rest unwritten.
+    static func claimedPattern(width: Int, height: Int, channels: [[UInt8]]) -> [UInt8] {
+        var vma = Self.be(0, 4) + Self.be(0, 4) + Self.be(height, 4) + Self.be(width, 4) + Self.be(3, 4)
+        for c in 0..<5 {
+            guard c < channels.count else { vma += Self.be(0, 4); continue }
+            let channel = Self.be(8, 4) + Self.be(0, 4) + Self.be(0, 4) + Self.be(height, 4) + Self.be(width, 4) + Self.be(8, 2) + channels[c]
+            vma += Self.be(1, 4) + Self.be(channel.count, 4) + channel
+        }
+        var pattern = Self.be(1, 4) + Self.be(3, 4) + Self.be(height, 2) + Self.be(width, 2) + Self.unicode("") + [1, 0x78]
+        pattern += Self.be(3, 4) + Self.be(vma.count, 4) + vma
+        var patt = Self.be(pattern.count, 4) + pattern
+        while patt.count % 4 != 0 { patt.append(0) }
+        return Array("8BIMPatt".utf8) + Self.be(patt.count, 4) + patt
+    }
+
+    @Test func patternSizeIsBoundedByItsData() throws {
+        // 65,535 × 65,535 claimed: no planes at all (17 GB of RGBA before), and PackBits rows of 0 bytes
+        // (a 4.3 GB plane before) both throw before allocating.
+        for channels in [[], [[1] + [UInt8](repeating: 0, count: 65535 * 2)]] as [[[UInt8]]] {
+            let (file, _) = try Self.fillFile([:], width: 2, height: 2, globalBlocks: Self.claimedPattern(width: 65535, height: 65535, channels: channels))
+            #expect(throws: OwnDecodeError.corrupt) { try PSDFills.patterns(file) }
+        }
+    }
+
     @Test func scaledVectorMask() throws {
         let layer = try Self.fillLayer(["SoCo": Self.block([("Clr ", Self.rgb(1, 2, 3))]), "vmsk": Self.vectorMask(Self.square(0.25, 0.75))],
                                        width: 16, height: 16)

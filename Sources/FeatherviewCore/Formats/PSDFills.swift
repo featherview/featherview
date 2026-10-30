@@ -163,6 +163,8 @@ public enum PSDFills {
             guard w == width, h == height else { throw OwnDecodeError.corrupt }
             planes.append(try plane(&c, width: w, height: h, compression: compression))
         }
+        // Every plane came from the data, so one bounds width × height by the file's size.
+        guard planes.contains(where: { $0 != nil }) else { throw OwnDecodeError.corrupt }
         let n = width * height
         func at(_ c: Int) -> [UInt8]? { c < planes.count ? planes[c] : nil }
         // Transparency: a fourth channel, else the sheet mask.
@@ -193,8 +195,8 @@ public enum PSDFills {
             guard width * height <= left else { throw OwnDecodeError.corrupt }
             return Array(try c.take(width * height))
         case 1:
-            // PackBits makes at most 128 bytes of 2, so a row takes at least ⌈width / 64⌉ bytes.
-            guard height <= left / 2, width <= 64 * left else { throw OwnDecodeError.corrupt }
+            // PackBits makes at most 128 bytes of 2, so a row takes at least 2 × ⌈width / 128⌉ bytes after its count.
+            guard height * (2 + (width + 127) / 128 * 2) <= left else { throw OwnDecodeError.corrupt }
             let counts = try (0..<height).map { _ in try c.int(2) }
             var out = [UInt8](repeating: 0, count: width * height)
             try out.withUnsafeMutableBufferPointer { buffer in
