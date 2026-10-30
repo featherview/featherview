@@ -297,36 +297,38 @@ public struct PSDMask: Sendable {
     }
 
     /// `pixels` over `rect` blurred by a Gaussian of `sigma` (Photoshop's feather radius), over `rect` grown by three
-    /// sigmas: `outside` beyond `rect`, or its nearest edge pixel when nil.
+    /// sigmas: `outside` beyond `rect`, or its nearest edge pixel when nil. Three box blurs make the Gaussian, so the
+    /// cost doesn't grow with the radius.
     static func blur(_ rect: PSDRect, _ pixels: [UInt8], outside: UInt8?, sigma: Double) -> (PSDRect, [UInt8]) {
         let margin = Int((3 * sigma).rounded(.up))
         guard margin > 0, rect.bottom > rect.top, rect.right > rect.left else { return (rect, pixels) }
         let w = rect.right - rect.left, h = rect.bottom - rect.top, bw = w + 2 * margin, bh = h + 2 * margin
-        var plane = [Float](repeating: Float(outside ?? 0), count: bw * bh)
+        var plane = [UInt8](repeating: outside ?? 0, count: bw * bh)
         for y in 0..<bh {
-            for x in 0..<bw {
-                let sx = x - margin, sy = y - margin
-                if sx >= 0, sx < w, sy >= 0, sy < h {
-                    plane[y * bw + x] = Float(pixels[sy * w + sx])
-                } else if outside == nil {
-                    plane[y * bw + x] = Float(pixels[min(max(sy, 0), h - 1) * w + min(max(sx, 0), w - 1)])
+            let sy = min(max(y - margin, 0), h - 1)
+            guard outside == nil || (margin..<margin + h).contains(y) else { continue }
+            for x in 0..<bw where outside == nil || (margin..<margin + w).contains(x) {
+                plane[y * bw + x] = pixels[sy * w + min(max(x - margin, 0), w - 1)]
+            }
+        }
+        // Widths of three boxes whose variances add up to sigma² (odd sizes, the smaller ones first).
+        let ideal = (12 * sigma * sigma / 3 + 1).squareRoot()
+        var lower = Int(ideal.rounded(.down)); if lower % 2 == 0 { lower -= 1 }
+        let upper = lower + 2
+        let small = Int(((12 * sigma * sigma - 3 * Double(lower * lower) - 12 * Double(lower) - 9) / Double(-4 * lower - 4)).rounded())
+        var out = plane
+        plane.withUnsafeMutableBytes { a in
+            out.withUnsafeMutableBytes { b in
+                var src = vImage_Buffer(data: a.baseAddress, height: vImagePixelCount(bh), width: vImagePixelCount(bw), rowBytes: bw)
+                var dst = vImage_Buffer(data: b.baseAddress, height: vImagePixelCount(bh), width: vImagePixelCount(bw), rowBytes: bw)
+                for pass in 0..<3 {
+                    let size = UInt32(max(1, pass < small ? lower : upper))
+                    vImageBoxConvolve_Planar8(&src, &dst, nil, 0, 0, size, size, 0, vImage_Flags(kvImageEdgeExtend))
+                    swap(&src, &dst)
                 }
             }
         }
-        let kernel = (-margin...margin).map { Float(exp(-Double($0 * $0) / (2 * sigma * sigma))) }
-        let total = kernel.reduce(0, +), k = kernel.map { $0 / total }
-        var rows = plane
-        for y in 0..<bh { for x in 0..<bw {
-            var sum: Float = 0
-            for (i, weight) in k.enumerated() { sum += weight * plane[y * bw + min(max(x + i - margin, 0), bw - 1)] }
-            rows[y * bw + x] = sum
-        } }
-        var out = [UInt8](repeating: 0, count: bw * bh)
-        for y in 0..<bh { for x in 0..<bw {
-            var sum: Float = 0
-            for (i, weight) in k.enumerated() { sum += weight * rows[min(max(y + i - margin, 0), bh - 1) * bw + x] }
-            out[y * bw + x] = UInt8(min(max(sum.rounded(), 0), 255))
-        } }
+        // Three passes leave the result in the second buffer.
         return ((rect.top - margin, rect.left - margin, rect.bottom + margin, rect.right + margin), out)
     }
 
