@@ -81,14 +81,31 @@ import Testing
         #expect(blendIf.blue.source == [0, 0, 255, 255] && blendIf.blue.backdrop == [30, 40, 50, 60])
     }
 
-    @Test func layerBoundsOutsideCanvas() throws {
+    @Test(arguments: [(1, 0), (1, 1), (2, 1), (1, 2), (2, 3)])  // (version, channel compression)
+    func layerBoundsOutsideCanvas(version: Int, compression: Int) throws {
         let pixels = Self.noise(5 * 5 * 4)
         let file = try Self.open(PSDFixture.makeLayered(width: 4, height: 4, layers: [
-            Layer(name: "Off", rect: (-3, -2, 2, 3), pixels: pixels),
-        ]))
+            Layer(name: "Off", rect: (-3, -2, 2, 3), pixels: pixels, compression: compression),
+        ], version: version))
         let layer = try #require(Self.layers(file.nodes).first)
         #expect(layer.rect == (-3, -2, 2, 3))
-        #expect(try layer.channels(scale: 1) == RGBAImage(width: 5, height: 5, pixels: pixels))
+        // Only the part on the canvas is read: the layer's rows 3 and 4, columns 2 to 4.
+        #expect(layer.scaledRect(scale: 1) == (0, 0, 2, 3))
+        let inside = (3..<5).flatMap { y in pixels[(y * 5 + 2) * 4 ..< (y * 5 + 5) * 4] }
+        #expect(try layer.channels(scale: 1) == RGBAImage(width: 3, height: 2, pixels: inside))
+    }
+
+    @Test func layerFarOutsideCanvasReadsOnlyTheCanvas() throws {
+        // A 1000 × 1000 layer and mask of zip zeros (alpha 255) around a 4 × 4 canvas.
+        let n = 1000 * 1000, rect = (-200, -300, 800, 700)
+        var layer = Layer(name: "Big", rect: rect, mask: .init(rect: rect, pixels: []))
+        for id in -2...2 { layer.override[id] = [0, 2] + PSDFixture.zlib([UInt8](repeating: id == -1 ? 255 : 0, count: n)) }
+        let file = try Self.open(PSDFixture.makeLayered(width: 4, height: 4, layers: [layer]))
+        let big = try #require(Self.layers(file.nodes).first)
+        #expect(big.scaledRect(scale: 0.5) == (0, 0, 2, 2))
+        #expect(try big.channels(scale: 0.5) == RGBAImage(width: 2, height: 2, pixels: Array([[UInt8]](repeating: [0, 0, 0, 255], count: 4).joined())))
+        let (maskRect, maskPixels) = try #require(big.mask).pixels(scale: 0.5)
+        #expect(maskRect == (0, 0, 2, 2) && maskPixels == [0, 0, 0, 0])
     }
 
     @Test func blendingRangesPastTheRecordThrowsBeforeReadingThem() throws {
@@ -224,7 +241,7 @@ import Testing
         Self.patch(&data, 56, 1000, 4)
         let layer = try #require(Self.layers(try Self.open(data).nodes).first)
         #expect(layer.rect == (0, 0, 1000, 1000))
-        #expect(throws: OwnDecodeError.corrupt) { try layer.source.holds([-1, 0, 1, 2], 1000, 1000) }
+        #expect(throws: OwnDecodeError.corrupt) { try layer.source.holds([-1, 0, 1, 2], layer.rect) }
         #expect(throws: OwnDecodeError.corrupt) { try layer.channels(scale: 0.5) }
     }
 
