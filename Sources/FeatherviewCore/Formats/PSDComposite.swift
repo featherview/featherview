@@ -5,7 +5,7 @@ import os
 /// The stored composite of an 8-bit RGB PSD or PSB (raw or PackBits RLE), read straight from the file:
 /// only the rows a decode needs, in parallel bands, area-averaged to the size asked for. Huge pictures
 /// open in a fraction of ImageIO's time and memory this way. Every other PSD/PSB is left to ImageIO.
-public struct PSDComposite: Sendable {
+public struct PSDComposite: RegionReader {
     public let width: Int
     public let height: Int
     /// Image resource 1039's bytes, nil without one.
@@ -30,7 +30,7 @@ public struct PSDComposite: Sendable {
         // Bounded by the file's size, so a damaged length never asks for a huge buffer.
         func bytes(_ offset: Int, _ count: Int) -> [UInt8]? {
             guard count >= 0, offset <= fileSize - count else { return nil }
-            return try? Self.read(fd, offset, count)
+            return try? FileRead.bytes(fd, offset, count)
         }
         func be(_ b: ArraySlice<UInt8>) -> Int { b.reduce(0) { $0 << 8 | Int($1) } }
 
@@ -89,15 +89,9 @@ public struct PSDComposite: Sendable {
         dataStart = offset
     }
 
-    /// `region` in full-size pixels (integral, inside the picture; nil = the whole picture), area-averaged to
-    /// `size`, which is clamped to at most the region and at least 1 × 1 per side. 8-bit RGB in the file's
-    /// ICC profile (sRGB without a usable one). Throws `OwnDecodeError.corrupt` on any short read or bad RLE.
-    public func decode(region: CGRect? = nil, size: PixelSize) throws -> CGImage {
-        let rect = (region ?? CGRect(x: 0, y: 0, width: width, height: height)).integral
-            .intersection(CGRect(x: 0, y: 0, width: width, height: height))
-        guard !rect.isNull, rect.width >= 1, rect.height >= 1 else { throw OwnDecodeError.corrupt }
-        let x0 = Int(rect.minX), y0 = Int(rect.minY), rw = Int(rect.width), rh = Int(rect.height)
-        let ow = min(max(size.width, 1), rw), oh = min(max(size.height, 1), rh)
+    /// See `RegionReader`; bad RLE throws too.
+    public func decode(region: CGRect?, size: PixelSize) throws -> CGImage {
+        let (x0, y0, rw, rh, ow, oh) = try bounds(region, size: size)
         let columns = (0...ow).map { x0 + $0 * rw / ow }
 
         let fd = open(url.path, O_RDONLY)
@@ -140,7 +134,7 @@ public struct PSDComposite: Sendable {
                         }
                         if let offsets = rowOffsets {
                             let first = c * height + a
-                            let packed = try Self.read(fd, offsets[first], offsets[first + b - a] - offsets[first])
+                            let packed = try FileRead.bytes(fd, offsets[first], offsets[first + b - a] - offsets[first])
                             try packed.withUnsafeBufferPointer { packed in
                                 for r in a..<b {
                                     let from = offsets[c * height + r] - offsets[first], to = offsets[c * height + r + 1] - offsets[first]
@@ -151,7 +145,7 @@ public struct PSDComposite: Sendable {
                             add(scratch.baseAddress!, rowStride: rowBytes, start: 0)
                         } else {
                             try Self.rawBand(channel: c, rows: a..<b, x0: x0, rw: rw, width: width, height: height,
-                                             dataStart: dataStart, into: scratch.baseAddress!) { try Self.read(fd, $0, $1, into: $2) }
+                                             dataStart: dataStart, into: scratch.baseAddress!) { try FileRead.read(fd, $0, $1, into: $2) }
                             add(scratch.baseAddress!, rowStride: rw, start: x0)
                         }
                     }
@@ -168,17 +162,11 @@ public struct PSDComposite: Sendable {
                 output[i + 3] = 255
             }
         }
-        let data = Data(bytesNoCopy: output.baseAddress!, count: output.count, deallocator: .custom { pointer, _ in pointer.deallocate() })
-        guard !failed.withLock({ $0 }) else { throw OwnDecodeError.corrupt }
-
-        let space = icc.flatMap { CGColorSpace(iccData: $0 as CFData) }.flatMap { $0.model == .rgb ? $0 : nil }
-            ?? CGColorSpace(name: CGColorSpace.sRGB)!
-        guard let provider = CGDataProvider(data: data as CFData),
-              let image = CGImage(width: ow, height: oh, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: bytesPerRow,
-                                  space: space, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
-                                  provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
-        else { throw OwnDecodeError.corrupt }
-        return image
+        guard !failed.withLock({ $0 }) else {
+            output.deallocate()
+            throw OwnDecodeError.corrupt
+        }
+        return try image(output, ow: ow, oh: oh)
     }
 
     /// Rows `rows` of raw channel `c`, columns `x0 ..< x0 + rw`, into `buffer` (`rows.count × rw` bytes):
@@ -188,25 +176,6 @@ public struct PSDComposite: Sendable {
                         read: (Int, Int, UnsafeMutablePointer<UInt8>) throws -> Void) rethrows {
         if rw == width { return try read(dataStart + (c * height + rows.lowerBound) * width, rows.count * width, buffer) }
         for (i, r) in rows.enumerated() { try read(dataStart + (c * height + r) * width + x0, rw, buffer + i * rw) }
-    }
-
-    /// `count` bytes at `offset`; throws on an error or the end of the file before them.
-    private static func read(_ fd: Int32, _ offset: Int, _ count: Int) throws -> [UInt8] {
-        try [UInt8](unsafeUninitializedCapacity: count) { buffer, initialized in
-            try read(fd, offset, count, into: buffer.baseAddress!)
-            initialized = count
-        }
-    }
-
-    /// `count` bytes at `offset` into `buffer`; throws on an error or the end of the file before them.
-    private static func read(_ fd: Int32, _ offset: Int, _ count: Int, into buffer: UnsafeMutablePointer<UInt8>) throws {
-        guard offset >= 0, count >= 0 else { throw OwnDecodeError.corrupt }
-        var done = 0
-        while done < count {
-            let n = pread(fd, buffer + done, count - done, off_t(offset + done))
-            guard n > 0 else { throw OwnDecodeError.corrupt }
-            done += n
-        }
     }
 
     /// The first `out.count` bytes of a PackBits row `width` bytes long. Throws on a run past the row's end

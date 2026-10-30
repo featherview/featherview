@@ -83,4 +83,31 @@ import Testing
         let crop = try #require(PSDComposite(url: url)).decode(region: region, size: PixelSize(width: 16, height: 8))
         #expect(PSDCompositeTests.same(PSDCompositeTests.pixels(image), PSDCompositeTests.pixels(crop)))
     }
+
+    /// 10,240 × 10,240 of one repeated 16-row strip, a 2 × 2 checker of two colours, so every 4 × 4 box averages to its mean.
+    @Test func hugeTIFFTakesTheReader() throws {
+        let strip = (0..<16).flatMap { y in
+            (0..<10_240).map { x -> (UInt8, UInt8, UInt8) in (x + y) % 2 == 0 ? (200, 100, 50) : (100, 50, 0) }
+        }
+        let url = try Fixtures.makeTempDir().appendingPathComponent("huge.tif")
+        try TIFFFixture.makeRepeatedStrip(width: 10_240, height: 10_240, rows: 16, pixels: strip).write(to: url)
+        #expect(ImageDecoder.readsRegions(url))
+        let image = try ImageDecoder.decode(url, halvingSteps: true, fitting: [PixelSize(width: 3024, height: 1964)])
+        #expect(image.width == 2560 && image.height == 2560)
+        let pixels = try #require(RGBAImage(image))
+        for (x, y) in [(0, 0), (1280, 700), (2559, 2559)] {
+            let p = pixels[x, y]
+            #expect(p.r == 150 && p.g == 75 && p.b == 25, "(\(x), \(y)): \(p)")
+        }
+        let part = try ImageDecoder.decodeRegion(url, region: CGRect(x: 512, y: 512, width: 1024, height: 512), step: 1, colorSpace: nil)
+        #expect(part.width == 512 && part.height == 256)
+    }
+
+    @Test func smallTIFFStaysWithImageIO() throws {
+        let url = try Fixtures.makeTempDir().appendingPathComponent("small.tif")
+        try TIFFFixture.make(width: 64, height: 48, pixels: Self.gradient(width: 64, height: 48), compression: 5).write(to: url)
+        #expect(!ImageDecoder.readsRegions(url))
+        let image = try ImageDecoder.decode(url)
+        #expect(image.width == 64 && image.height == 48)
+    }
 }
