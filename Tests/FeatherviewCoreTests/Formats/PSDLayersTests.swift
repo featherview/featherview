@@ -333,7 +333,7 @@ import Testing
         }
     }
 
-    @Test(arguments: [(1, 0), (1, 1), (2, 1)])  // (version, channel compression)
+    @Test(arguments: [(1, 0), (1, 1), (2, 1), (1, 2), (2, 3)])  // (version, channel compression)
     func scaledChannelsMatchTheWholePlaneReduced(version: Int, compression: Int) throws {
         let (layer, pixels, mask) = try Self.bigLayer(version: version, compression: compression)
         for scale in [0.13, 0.5] {
@@ -343,7 +343,7 @@ import Testing
         }
     }
 
-    @Test(arguments: [(1, 0), (1, 1), (2, 1)])  // (version, channel compression)
+    @Test(arguments: [(1, 0), (1, 1), (2, 1), (1, 2), (2, 3)])  // (version, channel compression)
     func scaledChannelsHoldBoundedRows(version: Int, compression: Int) throws {
         let (layer, _, _) = try Self.bigLayer(version: version, compression: compression)
         let largest = OSAllocatedUnfairLock(initialState: 0)
@@ -353,6 +353,20 @@ import Testing
         }
         // About 1 MB of rows per channel at a time (packed rows also hold the columns off the canvas and up to
         // 2 bytes per 128), never the 2.9 MB plane.
+        #expect(largest.withLock { $0 } <= (1 << 20) * 11 / 10)
+    }
+
+    /// A zip layer far larger than the canvas holds about its part on the canvas, not its whole rect.
+    @Test(arguments: [2, 3])
+    func zipLayerOffTheCanvasHoldsItsCanvasPart(compression: Int) throws {
+        let side = 4096
+        let file = try Self.open(PSDFixture.makeLayered(width: 8, height: 8, layers: [
+            Layer(name: "Huge", rect: (0, 0, side, side), pixels: [UInt8](repeating: 200, count: side * side * 4), compression: compression),
+        ]))
+        let layer = try #require(Self.layers(file.nodes).first)
+        let largest = OSAllocatedUnfairLock(initialState: 0)
+        let image = try PSDChannelSource.$largestRead.withValue(largest) { try #require(try layer.channels(scale: 1)) }
+        #expect(image.width == 8 && image.height == 8 && image[7, 7] == (200, 200, 200, 200))
         #expect(largest.withLock { $0 } <= (1 << 20) * 11 / 10)
     }
 

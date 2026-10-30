@@ -132,7 +132,8 @@ enum PSDFixture {
 
     /// RFC 1950: header, deflate, Adler-32.
     static func zlib(_ bytes: [UInt8]) -> [UInt8] {
-        var out = [UInt8](repeating: 0, count: bytes.count + 64)
+        // Stored blocks add 5 bytes per 64 KB of noise.
+        var out = [UInt8](repeating: 0, count: bytes.count + bytes.count / 1000 + 64)
         let n = compression_encode_buffer(&out, out.count, bytes, bytes.count, nil, COMPRESSION_ZLIB)
         var a: UInt32 = 1, b: UInt32 = 0
         for byte in bytes { a = (a + UInt32(byte)) % 65521; b = (b + a) % 65521 }

@@ -20,7 +20,7 @@ enum Inflate {
         guard written == out.count else { throw OwnDecodeError.corrupt }
     }
 
-    private static func zlibHeader(_ bytes: ArraySlice<UInt8>) throws {
+    static func zlibHeader(_ bytes: ArraySlice<UInt8>) throws {
         guard bytes.count >= 2 else { throw OwnDecodeError.truncated }
         let cmf = Int(bytes[bytes.startIndex]), flg = Int(bytes[bytes.startIndex + 1])
         guard (cmf * 256 + flg) % 31 == 0, cmf & 0x0F == 8, cmf >> 4 <= 7, flg & 0x20 == 0

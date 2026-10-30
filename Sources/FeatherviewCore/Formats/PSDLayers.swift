@@ -1,4 +1,5 @@
 import Accelerate
+import Compression
 import Foundation
 import os
 
@@ -398,32 +399,32 @@ struct PSDChannelSource: Sendable {
     /// Runs `body` with a reader of the channels of a layer or mask at `rect`: `read(id, rows)` gives rows `rows`
     /// of `clip(rect)` (0 its top), row by row; nil when there's no such channel. A failed read throws `POSIXError`, any
     /// other failure `OwnDecodeError.corrupt`.
-    /// The channels `opening` are opened at once on all cores first (a zip channel inflates when opened).
+    /// Reading rows of one of the channels `opening` reads the same rows of all of them at once, on all cores.
     func reading<T>(_ rect: PSDRect, opening: [Int] = [],
                     _ body: ((Int, Range<Int>) throws -> [UInt8]?) throws -> T) throws -> T {
         let fd = open(url.path, O_RDONLY)
         guard fd >= 0 else { throw FileRead.error() }
         defer { close(fd) }
-        let first = opening.compactMap { id in channels[id].map { (id, $0) } }
-        let early = OSAllocatedUnfairLock(initialState: (opened: [Int: Channel](), failed: Error?.none))
-        DispatchQueue.concurrentPerform(iterations: first.count) { k in
-            let (id, (offset, length)) = first[k]
-            let channel = Result { try self.channel(fd, offset, length, rect) }
-            early.withLock {
-                switch channel {
-                case .success(let channel): $0.opened[id] = channel
-                case .failure(let error): $0.failed = error
-                }
-            }
-        }
-        var (opened, failed) = early.withLock { $0 }
-        if let failed { throw failed is POSIXError ? failed : OwnDecodeError.corrupt }
+        var opened: [Int: Channel] = [:], ahead: [Int: (rows: Range<Int>, bytes: [UInt8])] = [:]
         do {
             return try body { id, rows in
-                guard let (offset, length) = channels[id] else { return nil }
-                let channel = try opened[id] ?? self.channel(fd, offset, length, rect)
-                opened[id] = channel
-                return try band(fd, channel, rect, rows)
+                guard channels[id] != nil else { return nil }
+                if let read = ahead.removeValue(forKey: id), read.rows == rows { return read.bytes }
+                let ids = opening.contains(id) ? opening.filter { channels[$0] != nil } : [id]
+                for i in ids where opened[i] == nil {
+                    let (offset, length) = channels[i]!
+                    opened[i] = try self.channel(fd, offset, length, rect)
+                }
+                let channels = ids.map { opened[$0]! }, hook = Self.largestRead
+                let read = OSAllocatedUnfairLock(initialState: [Int: Result<[UInt8], Error>]())
+                // Each iteration reads its own channel.
+                DispatchQueue.concurrentPerform(iterations: ids.count) { k in
+                    let bytes = Self.$largestRead.withValue(hook) { Result { try self.band(fd, channels[k], rect, rows) } }
+                    read.withLock { $0[ids[k]] = bytes }
+                }
+                let done = read.withLock { $0 }
+                for i in ids where i != id { ahead[i] = (rows, try done[i]!.get()) }
+                return try done[id]!.get()
             }
         } catch let error as POSIXError {
             throw error
@@ -473,8 +474,8 @@ struct PSDChannelSource: Sendable {
         case raw(Int)
         /// The file offsets of the clip's packed rows and the end of the last.
         case rle([Int])
-        /// The clip, inflated.
-        case zip([UInt8])
+        /// The stream, inflated row by row as rows are asked for.
+        case zip(ZipRows)
     }
 
     /// A layer's or mask's channel at `rect`, checked against its compression; only its part on the canvas:
@@ -498,17 +499,7 @@ struct PSDChannelSource: Sendable {
             guard starts[ch] > starts[0], starts[ch] <= offset + length else { throw OwnDecodeError.corrupt }
             return .rle(starts)
         case 2, 3:
-            // shortcut: a zip channel inflates whole (at most 1100 × the stream) and its canvas part stays unpacked
-            // for the whole read, up to four planes per layer; inflate row by row with compression_stream if a file shows the cost.
-            var all = try Inflate.zlib(try FileRead.bytes(fd, offset + 2, length - 2)[...], size: w * h)
-            Self.held(all.count)
-            var out = [UInt8](repeating: 0, count: cw * ch)
-            for y in 0..<ch {
-                let at = (y0 + y) * w
-                if compression == 3 { for x in 1 ..< x0 + cw { all[at + x] &+= all[at + x - 1] } }
-                out.replaceSubrange(y * cw ..< (y + 1) * cw, with: all[at + x0 ..< at + x0 + cw])
-            }
-            return .zip(out)
+            return .zip(try ZipRows(fd: fd, offset: offset + 2, length: length - 2, width: w, predicted: compression == 3))
         default:
             throw OwnDecodeError.corrupt
         }
@@ -538,8 +529,11 @@ struct PSDChannelSource: Sendable {
                     }
                 }
             }
-        case .zip(let plane):
-            out.replaceSubrange(0..<out.count, with: plane[rows.lowerBound * cw ..< rows.upperBound * cw])
+        case .zip(let zip):
+            let y0 = clip.top - rect.top
+            try out.withUnsafeMutableBufferPointer {
+                try zip.rows(y0 + rows.lowerBound ..< y0 + rows.upperBound, x0 ..< x0 + cw, into: $0.baseAddress!)
+            }
         }
         Self.held(out.count)
         return out
@@ -717,5 +711,75 @@ struct Record {
                         clipped: l.clipped, visible: l.visible, mask: mask, blendIf: l.blendIf, vectorDensity: l.vectorDensity,
                         vectorFeather: l.vectorFeather,
                         blocks: l.blocks, source: source)
+    }
+}
+
+/// A zip channel's rows, inflated in order as they're asked for through about 1 MB of the stream and of rows at a
+/// time, so a layer far larger than the canvas or the decode holds neither its whole stream nor its whole plane.
+/// Asking for rows above the last ones starts the stream again.
+final class ZipRows: @unchecked Sendable {  // `PSDChannelSource.reading` hands each to one thread at a time
+    private let fd: Int32, offset: Int, length: Int, width: Int, predicted: Bool
+    private let stream = UnsafeMutablePointer<compression_stream>.allocate(capacity: 1)
+    private let input = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: 1 << 18)
+    private var live = false, taken = 0, row = 0
+
+    init(fd: Int32, offset: Int, length: Int, width: Int, predicted: Bool) throws {
+        (self.fd, self.offset, self.length, self.width, self.predicted) = (fd, offset, length, width, predicted)
+        try Inflate.zlibHeader(try FileRead.bytes(fd, offset, 2)[...])
+    }
+
+    deinit {
+        if live { compression_stream_destroy(stream) }
+        stream.deallocate()
+        input.deallocate()
+    }
+
+    /// Rows `rows` of the stream's plane, columns `columns` of each, into `out`.
+    func rows(_ rows: Range<Int>, _ columns: Range<Int>, into out: UnsafeMutablePointer<UInt8>) throws {
+        if !live || rows.lowerBound < row {
+            if live { compression_stream_destroy(stream) }
+            live = compression_stream_init(stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB) == COMPRESSION_STATUS_OK
+            guard live else { throw OwnDecodeError.corrupt }
+            (taken, row) = (2, 0)
+            stream.pointee.src_size = 0
+        }
+        let chunk = max(1, min((1 << 20) / width, rows.upperBound - row))
+        var scratch = [UInt8](repeating: 0, count: chunk * width)
+        PSDChannelSource.held(scratch.count)
+        try scratch.withUnsafeMutableBufferPointer { scratch in
+            let s = scratch.baseAddress!
+            while row < rows.upperBound {
+                let n = min(chunk, rows.upperBound - row)
+                try fill(s, n * width)
+                for i in max(0, rows.lowerBound - row) ..< n {
+                    let at = s + i * width
+                    if predicted { for x in 1 ..< columns.upperBound { at[x] &+= at[x - 1] } }
+                    (out + (row + i - rows.lowerBound) * columns.count).update(from: at + columns.lowerBound, count: columns.count)
+                }
+                row += n
+            }
+        }
+    }
+
+    /// The next `count` bytes of the plane into `dst`; a stream that ends or breaks before them throws.
+    private func fill(_ dst: UnsafeMutablePointer<UInt8>, _ count: Int) throws {
+        stream.pointee.dst_ptr = dst
+        stream.pointee.dst_size = count
+        while stream.pointee.dst_size > 0 {
+            if stream.pointee.src_size == 0, taken < length {
+                let n = min(input.count, length - taken)
+                try FileRead.read(fd, offset + taken, n, into: input.baseAddress!)
+                PSDChannelSource.held(n)
+                taken += n
+                stream.pointee.src_ptr = UnsafePointer(input.baseAddress!)
+                stream.pointee.src_size = n
+            }
+            let before = (stream.pointee.src_size, stream.pointee.dst_size)
+            let flags = taken == length ? Int32(COMPRESSION_STREAM_FINALIZE.rawValue) : 0
+            let status = compression_stream_process(stream, flags)
+            guard status != COMPRESSION_STATUS_ERROR, status != COMPRESSION_STATUS_END || stream.pointee.dst_size == 0,
+                  before != (stream.pointee.src_size, stream.pointee.dst_size) || stream.pointee.src_size == 0 && taken < length
+            else { throw OwnDecodeError.corrupt }
+        }
     }
 }
