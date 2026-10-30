@@ -155,4 +155,61 @@ import Testing
         let zip = try Self.open(PSDFixture.makeLayered(width: 2, height: 2, layers: [short]))
         #expect(throws: OwnDecodeError.corrupt) { try Self.layers(zip.nodes)[0].channels(scale: 1) }
     }
+    /// Overwrites `bytes` at `offset` with `value` big-endian.
+    static func patch(_ data: inout Data, _ offset: Int, _ value: Int, _ count: Int) {
+        data.replaceSubrange(offset ..< offset + count, with: (0..<count).reversed().map { UInt8(truncatingIfNeeded: value >> ($0 * 8)) })
+    }
+
+    // In a version 1 file without resources, channel `k`'s ID sits at byte 62 + 6k, the mask rect 20 bytes after the last.
+
+    @Test func partlyCoveredCellsArePartlyTransparent() throws {
+        let file = try Self.open(PSDFixture.makeLayered(width: 4, height: 4, layers: [
+            Layer(name: "A", rect: (1, 1, 3, 3), pixels: [UInt8](repeating: 255, count: 16),
+                  mask: .init(rect: (1, 1, 3, 3), pixels: [0, 0, 0, 0], defaultColour: 255)),
+        ]))
+        let layer = try #require(Self.layers(file.nodes).first)
+        #expect(layer.scaledRect(scale: 0.5) == (0, 0, 2, 2))
+        // Each scaled cell holds one of the layer's pixels and three uncovered ones.
+        #expect(try layer.channels(scale: 0.5) == RGBAImage(width: 2, height: 2, pixels: Array([[UInt8]](repeating: [255, 255, 255, 64], count: 4).joined())))
+        let (rect, pixels) = try #require(layer.mask).pixels(scale: 0.5)
+        #expect(rect == (0, 0, 2, 2) && pixels == [191, 191, 191, 191])
+    }
+
+    @Test func hugeRectWithoutChannelsIsEmpty() throws {
+        var data = PSDFixture.makeLayered(width: 4, height: 4, layers: [
+            Layer(name: "A", rect: (0, 0, 1 << 24, 1 << 24),
+                  mask: .init(rect: (0, 0, 1 << 24, 1 << 24), pixels: [], defaultColour: 255)),
+        ], realComposite: nil)
+        for k in 0..<5 { Self.patch(&data, 62 + 6 * k, 10 + k, 2) }
+        let layer = try #require(Self.layers(try Self.open(data).nodes).first)
+        #expect(try layer.channels(scale: 1) == nil)
+        #expect(try layer.channels(scale: 0.5) == nil)
+        #expect(try layer.mask?.pixels(scale: 0.5).pixels == [])
+    }
+
+    @Test func hugeRectWithShortChannelsThrows() throws {
+        // 2^24 × 65536 RLE: the row counts are there, the rows aren't.
+        var huge = Layer(name: "A", rect: (0, 0, 1 << 16, 1 << 24))
+        for id in -1...2 { huge.override[id] = [0, 1] + [UInt8](repeating: 0, count: 1 << 17) }
+        let file = try Self.open(PSDFixture.makeLayered(width: 4, height: 4, layers: [huge]))
+        #expect(throws: OwnDecodeError.corrupt) { try Self.layers(file.nodes)[0].channels(scale: 1) }
+        #expect(throws: OwnDecodeError.corrupt) { try Self.layers(file.nodes)[0].channels(scale: 0.5) }
+    }
+
+    @Test func maskRectOutOfRangeThrows() throws {
+        var data = PSDFixture.makeLayered(width: 4, height: 4, layers: [
+            Layer(name: "A", rect: (0, 0, 1, 1), pixels: [1, 2, 3, 255], mask: .init(rect: (0, 0, 1, 1), pixels: [7])),
+        ], realComposite: nil)
+        for (k, v) in [Int(Int32.min), Int(Int32.min), Int(Int32.max), Int(Int32.max)].enumerated() { Self.patch(&data, 62 + 30 + 20 + 4 * k, v, 4) }
+        #expect(throws: OwnDecodeError.corrupt) { try Self.open(data) }
+    }
+
+    @Test func negativePSBChannelLengthThrows() throws {
+        // Version 2 without resources: the first channel's 8-byte length sits at byte 72.
+        var data = PSDFixture.makeLayered(width: 2, height: 2, layers: [
+            Layer(name: "A", rect: (0, 0, 2, 2), pixels: Self.noise(16)),
+        ], realComposite: nil, version: 2)
+        Self.patch(&data, 72, -16, 8)
+        #expect(throws: OwnDecodeError.corrupt) { try Self.open(data) }
+    }
 }

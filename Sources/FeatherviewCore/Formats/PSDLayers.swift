@@ -63,7 +63,7 @@ public struct PSDLayers: Sendable {
                 var at = r.offset
                 for k in records.indices {
                     for (id, length) in records[k].channelLengths {
-                        guard length <= infoEnd - at else { throw OwnDecodeError.corrupt }
+                        guard length >= 0, length <= infoEnd - at else { throw OwnDecodeError.corrupt }
                         records[k].source.channels[id] = (at, length)
                         at += length
                     }
@@ -109,6 +109,11 @@ public struct PSDLayers: Sendable {
 
     /// A scaled canvas side: `n × scale` rounded, at least 1.
     static func scaledSize(_ n: Int, _ scale: Double) -> Int { max(1, Int((Double(n) * min(scale, 1)).rounded())) }
+
+    /// Whether `scale` leaves `canvas` at full size, so each cell is one canvas pixel.
+    static func isFullSize(_ canvas: (width: Int, height: Int), _ scale: Double) -> Bool {
+        scaledSize(canvas.width, scale) == canvas.width && scaledSize(canvas.height, scale) == canvas.height
+    }
 
     /// Canvas cells as `PSDComposite` cuts them: scaled cell `X` of a side `n` long, `s` scaled, covers canvas
     /// coordinates `⌊X·n/s⌋ ..< ⌊(X+1)·n/s⌋`; this is the cell holding canvas coordinate `c` (also outside the canvas).
@@ -165,12 +170,12 @@ public struct PSDLayer: Sendable {
     /// `scale` (≤ 1); its top-left sits at `scaledRect(scale:)`'s. Nil for an empty layer.
     public func channels(scale: Double) throws -> RGBAImage? {
         let w = rect.right - rect.left, h = rect.bottom - rect.top
-        guard w > 0, h > 0 else { return nil }
+        guard w > 0, h > 0, try source.holds([-1, 0, 1, 2], w, h) else { return nil }
         return try source.reading { read in
             let alpha = try read(-1, w, h)
             let target = scaledRect(scale: scale)
             let ow = target.right - target.left, oh = target.bottom - target.top
-            if ow == w, oh == h {
+            if PSDLayers.isFullSize(source.canvas, scale) {
                 var pixels = [UInt8](repeating: 0, count: w * h * 4)
                 for c in 0..<3 {
                     guard let plane = try read(c, w, h) else { continue }
@@ -219,10 +224,11 @@ public struct PSDMask: Sendable {
         let w = rect.right - rect.left, h = rect.bottom - rect.top
         let target = PSDLayers.scaled(rect, canvas: source.canvas, scale: scale)
         let ow = target.right - target.left, oh = target.bottom - target.top
-        guard w > 0, h > 0 else { return (target, []) }
+        // Without its channel the mask is the default colour everywhere.
+        guard w > 0, h > 0, try source.holds([channel], w, h) else { return ((target.top, target.left, target.top, target.left), []) }
         return try source.reading { read in
             let plane = try read(channel, w, h) ?? [UInt8](repeating: defaultColour, count: w * h)
-            if ow == w, oh == h { return (target, plane) }
+            if PSDLayers.isFullSize(source.canvas, scale) { return (target, plane) }
             let cells = source.cells(rect, scale: scale)
             var sums = [Int](repeating: 0, count: ow * oh), counts = sums
             for y in 0..<h {
@@ -271,6 +277,15 @@ struct PSDChannelSource: Sendable {
         }
     }
 
+    /// False when none of `ids` is in the file; throws `OwnDecodeError.corrupt` when none that is could unpack
+    /// to `w × h` (deflate packs at most about 1032 to 1), so a damaged rect can't ask for more than the file holds.
+    func holds(_ ids: [Int], _ w: Int, _ h: Int) throws -> Bool {
+        let lengths = ids.compactMap { channels[$0]?.length }
+        guard !lengths.isEmpty else { return false }
+        guard lengths.contains(where: { w * h <= $0 * 1100 }) else { throw OwnDecodeError.corrupt }
+        return true
+    }
+
     private func plane(_ fd: Int32, _ id: Int, _ w: Int, _ h: Int) throws -> [UInt8]? {
         guard let (offset, length) = channels[id] else { return nil }
         guard length >= 2 else { throw OwnDecodeError.corrupt }
@@ -282,7 +297,8 @@ struct PSDChannelSource: Sendable {
             return Array(body.prefix(count))
         case 1:
             let countSize = version == 1 ? 2 : 4
-            guard body.count >= h * countSize else { throw OwnDecodeError.corrupt }
+            // PackBits needs at least 2 bytes per 128 pixels of a row.
+            guard body.count >= h * countSize, body.count - h * countSize >= h * 2 * ((w + 127) / 128) else { throw OwnDecodeError.corrupt }
             var out = [UInt8](repeating: 0, count: count)
             var at = 2 + h * countSize
             try data.withUnsafeBufferPointer { data in
@@ -404,9 +420,7 @@ struct Record {
                  blocks: [String: Data])
 
     init(_ r: inout FileCursor, version: Int, end: Int) throws {
-        let rect = (top: try r.int32(), left: try r.int32(), bottom: try r.int32(), right: try r.int32())
-        guard rect.bottom >= rect.top, rect.right >= rect.left,
-              rect.bottom - rect.top <= 1 << 24, rect.right - rect.left <= 1 << 24 else { throw OwnDecodeError.corrupt }
+        let rect = try Self.rect(&r)
         for _ in 0..<(try r.int(2)) {
             let id = Int(Int16(truncatingIfNeeded: try r.int(2)))
             channelLengths.append((id, try r.int(version == 1 ? 4 : 8)))
@@ -421,7 +435,7 @@ struct Record {
         let maskEnd = try r.lengthEnd(4)
         var mask: (rect: PSDRect, defaultColour: UInt8, flags: UInt8, channel: Int)?
         if maskEnd - r.offset >= 18 {
-            let maskRect = (top: try r.int32(), left: try r.int32(), bottom: try r.int32(), right: try r.int32())
+            let maskRect = try Self.rect(&r)
             let colour = UInt8(try r.int(1)), maskFlags = UInt8(try r.int(1))
             mask = (maskRect, colour, maskFlags, -2)
             if maskFlags & 16 != 0 {
@@ -431,7 +445,7 @@ struct Record {
             // The user mask's own flags, colour and rectangle when a vector mask holds the first ones.
             if maskEnd - r.offset >= 18, channelLengths.contains(where: { $0.0 == -3 }) {
                 let realFlags = UInt8(try r.int(1)), realColour = UInt8(try r.int(1))
-                let realRect = (top: try r.int32(), left: try r.int32(), bottom: try r.int32(), right: try r.int32())
+                let realRect = try Self.rect(&r)
                 mask = (realRect, realColour, realFlags, -3)
             }
         }
@@ -453,6 +467,14 @@ struct Record {
         let blocks = try r.blocks(until: extraEnd, version: version)
         r.offset = extraEnd
         fields = (name, rect, blend, opacity, clipping != 0, flags & 2 == 0, mask, blendIf, blocks)
+    }
+
+    /// A layer or mask rectangle, at most 2^24 per side.
+    static func rect(_ r: inout FileCursor) throws -> PSDRect {
+        let rect = (top: try r.int32(), left: try r.int32(), bottom: try r.int32(), right: try r.int32())
+        guard rect.bottom >= rect.top, rect.right >= rect.left,
+              rect.bottom - rect.top <= 1 << 24, rect.right - rect.left <= 1 << 24 else { throw OwnDecodeError.corrupt }
+        return rect
     }
 
     var layer: PSDLayer {
