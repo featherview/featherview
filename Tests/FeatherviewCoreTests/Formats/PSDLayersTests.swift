@@ -92,7 +92,7 @@ import Testing
         #expect(layer.rect == (-3, -2, 2, 3))
         // Only the part on the canvas is read: the layer's rows 3 and 4, columns 2 to 4.
         #expect(layer.scaledRect(scale: 1) == (0, 0, 2, 3))
-        let inside = (3..<5).flatMap { y in pixels[(y * 5 + 2) * 4 ..< (y * 5 + 5) * 4] }
+        let inside: [UInt8] = (3..<5).flatMap { (y: Int) -> ArraySlice<UInt8> in pixels[(y * 5 + 2) * 4 ..< (y * 5 + 5) * 4] }
         #expect(try layer.channels(scale: 1) == RGBAImage(width: 3, height: 2, pixels: inside))
     }
 

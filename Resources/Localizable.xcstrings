@@ -32385,6 +32385,184 @@
         }
       }
     },
+    "Before the first open: double-click “Read Me First”. Featherview isn’t notarized by Apple yet, so macOS blocks it once. The file has the one line to paste into Terminal that lets it open, on any account." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "قبل أول فتح: انقر نقرًا مزدوجًا على «Read Me First». ‏Featherview غير موثّق من Apple بعد، لذا يحظره macOS مرة واحدة. يحتوي الملف على السطر الذي تلصقه في Terminal ليُفتح، على أي حساب."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abans d’obrir-lo per primer cop: fes doble clic a «Read Me First». El Featherview encara no està notaritzat per Apple, i el macOS el bloqueja una vegada. El fitxer té la línia per enganxar al Terminal perquè s’obri, en qualsevol compte."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Před prvním otevřením: dvakrát klikněte na „Read Me First“. Featherview zatím není notarizován Applem, takže ho macOS jednou zablokuje. Soubor obsahuje řádek, který vložíte do Terminálu, aby se otevřel, na jakémkoli účtu."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Før første åbning: Dobbeltklik på “Read Me First”. Featherview er endnu ikke notariseret af Apple, så macOS blokerer det én gang. Filen har den linje, du indsætter i Terminal, så det åbner, på enhver konto."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vor dem ersten Öffnen: Doppelklicke auf „Read Me First“. Featherview ist noch nicht von Apple notarisiert, darum blockiert macOS es einmal. Die Datei enthält die Zeile für das Terminal, mit der es sich öffnet, auf jedem Benutzerkonto."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Πριν από το πρώτο άνοιγμα: κάντε διπλό κλικ στο «Read Me First». Το Featherview δεν έχει ακόμη επικυρωθεί από την Apple, γι’ αυτό το macOS το μπλοκάρει μία φορά. Το αρχείο έχει τη γραμμή για το Τερματικό που το ανοίγει, σε κάθε λογαριασμό."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antes de abrirlo por primera vez: haz doble clic en «Read Me First». Featherview aún no está notarizado por Apple, así que macOS lo bloquea una vez. El archivo tiene la línea para pegar en Terminal que permite abrirlo, en cualquier cuenta."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ennen ensimmäistä avausta: kaksoisosoita ”Read Me First”. Apple ei ole vielä notarisoinut Featherview’ta, joten macOS estää sen kerran. Tiedostossa on rivi, jonka liität Päätteeseen, jotta appi avautuu millä tahansa tilillä."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avant la première ouverture : double-cliquez sur « Read Me First ». Featherview n’est pas encore notarisé par Apple, donc macOS le bloque une fois. Le fichier contient la ligne à coller dans Terminal pour l’ouvrir, sur n’importe quel compte."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לפני הפתיחה הראשונה: לחצו פעמיים על ״Read Me First״. ‏Featherview עדיין לא אושר נוטריונית על ידי Apple, ולכן macOS חוסם אותו פעם אחת. בקובץ יש את השורה להדבקה ב-Terminal שמאפשרת לפתוח אותו, בכל חשבון."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पहली बार खोलने से पहले: “Read Me First” पर डबल-क्लिक करें। Featherview अभी Apple से नोटराइज़ नहीं है, इसलिए macOS इसे एक बार रोकता है। फ़ाइल में Terminal में चिपकाने वाली वह पंक्ति है जिससे यह किसी भी खाते पर खुल जाता है।"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Az első megnyitás előtt: kattints duplán a „Read Me First” fájlra. Az Apple még nem hitelesítette a Featherview-t, ezért a macOS egyszer letiltja. A fájlban van a Terminálba beillesztendő sor, amellyel bármely fiókon megnyílik."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sebelum pembukaan pertama: klik dua kali “Read Me First”. Featherview belum dinotarisasi Apple, jadi macOS memblokirnya sekali. File itu berisi baris untuk ditempel di Terminal agar bisa dibuka, di akun apa pun."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prima della prima apertura: fai doppio clic su “Read Me First”. Featherview non è ancora notarizzato da Apple, quindi macOS lo blocca una volta. Il file contiene la riga da incollare nel Terminale per aprirlo, su qualsiasi account."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "初めて開く前に：“Read Me First”をダブルクリックしてください。Featherview はまだ Apple の公証を受けていないため、macOS が一度ブロックします。このファイルに、どのアカウントでも開けるようにする“ターミナル”用の 1 行があります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "처음 열기 전에: 'Read Me First'를 이중 클릭하십시오. Featherview는 아직 Apple 공증을 받지 않아 macOS가 한 번 차단합니다. 이 파일에 어느 계정에서나 열 수 있게 하는, 터미널에 붙여 넣을 한 줄이 있습니다."
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sebelum dibuka kali pertama: dwiklik “Read Me First”. Featherview belum dinotarikan oleh Apple, jadi macOS menyekatnya sekali. Fail itu mengandungi baris untuk ditampal dalam Terminal supaya ia dibuka, pada mana-mana akaun."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voor de eerste keer openen: dubbelklik op ‘Read Me First’. Featherview is nog niet door Apple genotariseerd, dus macOS blokkeert het één keer. Het bestand bevat de regel voor Terminal waarmee het opent, op elk account."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przed pierwszym otwarciem: kliknij dwukrotnie „Read Me First”. Featherview nie jest jeszcze notaryzowany przez Apple, więc macOS raz go blokuje. Plik zawiera wiersz do wklejenia w Terminalu, który pozwala go otworzyć na każdym koncie."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antes de abrir pela primeira vez: clique duas vezes em “Read Me First”. O Featherview ainda não foi notarizado pela Apple, então o macOS o bloqueia uma vez. O arquivo tem a linha para colar no Terminal que permite abri-lo, em qualquer conta."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Înainte de prima deschidere: fă dublu clic pe „Read Me First”. Featherview nu este încă notarizat de Apple, așa că macOS îl blochează o dată. Fișierul conține linia de lipit în Terminal care îl lasă să se deschidă, pe orice cont."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перед первым открытием: дважды нажмите «Read Me First». Featherview пока не нотаризован Apple, поэтому macOS один раз его блокирует. В файле есть строка для Терминала, после которой он откроется в любой учётной записи."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Innan du öppnar första gången: dubbelklicka på ”Read Me First”. Featherview är ännu inte notariserad av Apple, så macOS blockerar den en gång. Filen har raden att klistra in i Terminal som låter den öppnas, på vilket konto som helst."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ก่อนเปิดครั้งแรก: คลิกสองครั้งที่ “Read Me First” Featherview ยังไม่ได้รับการรับรองจาก Apple macOS จึงบล็อกไว้หนึ่งครั้ง ในไฟล์มีบรรทัดสำหรับวางใน Terminal ที่ทำให้เปิดได้ในทุกบัญชี"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İlk açılıştan önce: “Read Me First” dosyasını çift tıklayın. Featherview henüz Apple tarafından onaylanmadığı için macOS onu bir kez engeller. Dosyada, her hesapta açılmasını sağlayan ve Terminal'e yapıştırılacak satır var."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перед першим відкриттям: двічі клацніть «Read Me First». Featherview ще не нотаризований Apple, тому macOS один раз його блокує. У файлі є рядок для Термінала, після якого програма відкриється в будь-якому обліковому записі."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trước lần mở đầu tiên: bấm đúp vào “Read Me First”. Featherview chưa được Apple công chứng nên macOS chặn nó một lần. Tệp có dòng để dán vào Terminal giúp ứng dụng mở được, trên mọi tài khoản."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "首次打开前：请连按“Read Me First”。Featherview 尚未经过 Apple 公证，macOS 会拦截它一次。该文件里有一行可粘贴到“终端”的命令，在任何账户上都能让它打开。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第一次打開前：請按兩下「Read Me First」。Featherview 尚未經過 Apple 公證，macOS 會阻擋它一次。該檔案裡有一行可貼到「終端機」的指令，在任何帳號上都能讓它打開。"
+          }
+        }
+      }
+    },
     "Bit depth" : {
       "localizations" : {
         "ar" : {
@@ -34879,184 +35057,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "瀏覽"
-          }
-        }
-      }
-    },
-    "Buy Us a Coffee" : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ادعمنا بفنجان قهوة"
-          }
-        },
-        "ca" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Convida'ns a un cafè"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kupte nám kávu"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Køb os en kop kaffe"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spendier uns einen Kaffee"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Κεράστε μας έναν καφέ"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invítanos a un café"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tarjoa meille kahvit"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offrez-nous un café"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "קנו לנו קפה"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "हमें एक कॉफ़ी पिलाएँ"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hívj meg egy kávéra"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Traktir Kami Kopi"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offrici un caffè"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "コーヒーをおごる"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "커피 한 잔 사기"
-          }
-        },
-        "ms" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Belanja Kami Kopi"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trakteer ons op koffie"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Postaw nam kawę"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pague um café para nós"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fă-ne cinste cu o cafea"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Угостите нас кофе"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bjud oss på kaffe"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "เลี้ยงกาแฟเราสักแก้ว"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bize Bir Kahve Ismarla"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Пригостіть нас кавою"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mời chúng tôi một ly cà phê"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "请我们喝杯咖啡"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "請我們喝杯咖啡"
           }
         }
       }
@@ -61966,180 +61966,180 @@
         }
       }
     },
-    "Featherview is free. Buy us a coffee to help pay Apple's $99 a year for notarization, so macOS stops warning when you open it." : {
+    "Featherview is free. If you like it, chip in towards the $99 a year Apple charges for notarization, so macOS stops warning when you open it." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview مجاني. ادعمنا بفنجان قهوة لنغطي 99 دولارًا سنويًا تطلبها Apple للتوثيق، فيتوقف macOS عن التحذير عند فتحه."
+            "value" : "Featherview مجاني. إن أعجبك، ساهم في الـ 99 دولارًا سنويًا التي تطلبها Apple للتوثيق، فيتوقف macOS عن التحذير عند فتحه."
           }
         },
         "ca" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview és gratuït. Convida'ns a un cafè per ajudar a pagar els 99 € l'any que Apple cobra per la notarització, i el macOS deixarà d'avisar en obrir-lo."
+            "value" : "Featherview és gratuït. Si t'agrada, contribueix als 99 € l'any que Apple cobra per la notarització, i el macOS deixarà d'avisar en obrir-lo."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview je zdarma. Kupte nám kávu a pomozte zaplatit 99 USD ročně, které Apple chce za notarizaci, aby macOS přestal při otevření varovat."
+            "value" : "Featherview je zdarma. Pokud se vám líbí, přispějte na 99 USD ročně, které Apple chce za notarizaci, aby macOS přestal při otevření varovat."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview er gratis. Køb os en kop kaffe og hjælp med at betale de 99 USD om året, Apple tager for notarisering, så macOS holder op med at advare, når du åbner det."
+            "value" : "Featherview er gratis. Hvis du kan lide det, så giv et bidrag til de 99 USD om året, Apple tager for notarisering, så macOS holder op med at advare, når du åbner det."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview ist gratis. Spendier uns einen Kaffee und hilf, die 99 € im Jahr für Apples Notarisierung zu zahlen, damit macOS beim Öffnen nicht mehr warnt."
+            "value" : "Featherview ist gratis. Wenn es dir gefällt, gib etwas zu den 99 € im Jahr dazu, die Apple für die Notarisierung verlangt, damit macOS beim Öffnen nicht mehr warnt."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Το Featherview είναι δωρεάν. Κεράστε μας έναν καφέ για να καλύψουμε τα 99 € τον χρόνο που ζητά η Apple για την επικύρωση, ώστε το macOS να μην προειδοποιεί πια στο άνοιγμα."
+            "value" : "Το Featherview είναι δωρεάν. Αν σας αρέσει, συνεισφέρετε στα 99 € τον χρόνο που ζητά η Apple για την επικύρωση, ώστε το macOS να μην προειδοποιεί πια στο άνοιγμα."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview es gratis. Invítanos a un café para ayudar a pagar los 99 € al año que Apple cobra por la notarización, y macOS dejará de avisar al abrirlo."
+            "value" : "Featherview es gratis. Si te gusta, contribuye a los 99 € al año que Apple cobra por la notarización, y macOS dejará de avisar al abrirlo."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview on ilmainen. Tarjoa meille kahvit ja auta maksamaan Applen notarisoinnin 99 € vuodessa, niin macOS lakkaa varoittamasta avattaessa."
+            "value" : "Featherview on ilmainen. Jos pidät siitä, osallistu Applen notarisoinnin 99 € vuosimaksuun, niin macOS lakkaa varoittamasta avattaessa."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview est gratuit. Offrez-nous un café pour aider à payer les 99 € par an qu'Apple demande pour la notarisation, et macOS cessera d'avertir à l'ouverture."
+            "value" : "Featherview est gratuit. S'il vous plaît, participez aux 99 € par an qu'Apple demande pour la notarisation, et macOS cessera d'avertir à l'ouverture."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview חינמי. קנו לנו קפה כדי לעזור לשלם את 99 הדולרים בשנה ש-Apple גובה על אישור נוטריוני, כך ש-macOS יפסיק להזהיר בפתיחה."
+            "value" : "Featherview חינמי. אם הוא מוצא חן בעיניכם, תרמו ל-99 הדולרים בשנה ש-Apple גובה על אישור נוטריוני, כך ש-macOS יפסיק להזהיר בפתיחה."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview मुफ़्त है। हमें एक कॉफ़ी पिलाकर नोटराइज़ेशन के लिए Apple के सालाना $99 चुकाने में मदद करें, ताकि खोलते समय macOS चेतावनी देना बंद कर दे।"
+            "value" : "Featherview मुफ़्त है। अगर पसंद आए, तो नोटराइज़ेशन के लिए Apple के सालाना $99 में योगदान दें, ताकि खोलते समय macOS चेतावनी देना बंद कर दे।"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A Featherview ingyenes. Hívj meg egy kávéra, és segíts kifizetni az Apple évi 99 dolláros hitelesítési díját, hogy a macOS ne figyelmeztessen megnyitáskor."
+            "value" : "A Featherview ingyenes. Ha tetszik, járulj hozzá az Apple évi 99 dolláros hitelesítési díjához, hogy a macOS ne figyelmeztessen megnyitáskor."
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview gratis. Traktir kami kopi untuk membantu membayar $99 per tahun yang diminta Apple untuk notarisasi, agar macOS berhenti memperingatkan saat dibuka."
+            "value" : "Featherview gratis. Jika Anda suka, ikut bantu $99 per tahun yang diminta Apple untuk notarisasi, agar macOS berhenti memperingatkan saat dibuka."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview è gratuito. Offrici un caffè per aiutarci a pagare i 99 € l'anno che Apple chiede per la notarizzazione, così macOS smetterà di avvisare all'apertura."
+            "value" : "Featherview è gratuito. Se ti piace, contribuisci ai 99 € l'anno che Apple chiede per la notarizzazione, così macOS smetterà di avvisare all'apertura."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview は無料です。コーヒー1杯分のご支援で、Apple の公証に必要な年間 99 ドルをまかなえれば、開くときに macOS が警告しなくなります。"
+            "value" : "Featherview は無料です。気に入ったら、Apple の公証に必要な年間 99 ドルを少しご支援ください。開くときに macOS が警告しなくなります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview는 무료입니다. 커피 한 잔으로 Apple 공증에 드는 연 99달러를 보태 주시면, 열 때 macOS가 더 이상 경고하지 않습니다."
+            "value" : "Featherview는 무료입니다. 마음에 드신다면 Apple 공증에 드는 연 99달러를 조금 보태 주세요. 열 때 macOS가 더 이상 경고하지 않습니다."
           }
         },
         "ms" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview percuma. Belanja kami kopi untuk membantu membayar $99 setahun yang dikenakan Apple bagi pengesahan notari, supaya macOS berhenti memberi amaran semasa dibuka."
+            "value" : "Featherview percuma. Jika anda suka, sumbanglah kepada $99 setahun yang dikenakan Apple bagi pengesahan notari, supaya macOS berhenti memberi amaran semasa dibuka."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview is gratis. Trakteer ons op koffie en help de € 99 per jaar te betalen die Apple vraagt voor notarisatie, zodat macOS niet meer waarschuwt bij het openen."
+            "value" : "Featherview is gratis. Vind je het goed, draag dan bij aan de € 99 per jaar die Apple vraagt voor notarisatie, zodat macOS niet meer waarschuwt bij het openen."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview jest darmowy. Postaw nam kawę, by pomóc opłacić 99 USD rocznie, których Apple wymaga za notaryzację, a macOS przestanie ostrzegać przy otwieraniu."
+            "value" : "Featherview jest darmowy. Jeśli ci się podoba, dorzuć się do 99 USD rocznie, których Apple wymaga za notaryzację, a macOS przestanie ostrzegać przy otwieraniu."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Featherview é gratuito. Pague um café para nós e ajude a cobrir os US$ 99 por ano que a Apple cobra pela notarização, para o macOS parar de avisar ao abrir."
+            "value" : "O Featherview é gratuito. Se você gostar, contribua com os US$ 99 por ano que a Apple cobra pela notarização, para o macOS parar de avisar ao abrir."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview este gratuit. Fă-ne cinste cu o cafea ca să ne ajuți să plătim cei 99 USD pe an ceruți de Apple pentru notarizare, iar macOS nu va mai avertiza la deschidere."
+            "value" : "Featherview este gratuit. Dacă îți place, contribuie la cei 99 USD pe an ceruți de Apple pentru notarizare, iar macOS nu va mai avertiza la deschidere."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview бесплатен. Угостите нас кофе, чтобы помочь оплатить 99 $ в год, которые Apple берёт за нотаризацию, и macOS перестанет предупреждать при открытии."
+            "value" : "Featherview бесплатен. Если он вам нравится, помогите оплатить 99 $ в год, которые Apple берёт за нотаризацию, и macOS перестанет предупреждать при открытии."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview är gratis. Bjud oss på kaffe och hjälp till att betala de 99 USD om året som Apple tar för notarisering, så slutar macOS varna när du öppnar appen."
+            "value" : "Featherview är gratis. Om du gillar appen, bidra till de 99 USD om året som Apple tar för notarisering, så slutar macOS varna när du öppnar den."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview ใช้ฟรี เลี้ยงกาแฟเราสักแก้วเพื่อช่วยจ่ายค่ารับรองของ Apple ปีละ 99 ดอลลาร์ แล้ว macOS จะเลิกเตือนเมื่อเปิดแอป"
+            "value" : "Featherview ใช้ฟรี ถ้าชอบ ช่วยสมทบค่ารับรองของ Apple ปีละ 99 ดอลลาร์ แล้ว macOS จะเลิกเตือนเมื่อเปิดแอป"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview ücretsizdir. Apple'ın noter onayı için yılda istediği 99 doları karşılamamıza yardım etmek için bize bir kahve ısmarla; böylece macOS açılışta uyarmayı bırakır."
+            "value" : "Featherview ücretsizdir. Beğendiysen, Apple'ın noter onayı için yılda istediği 99 dolara katkıda bulun; böylece macOS açılışta uyarmayı bırakır."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview безкоштовний. Пригостіть нас кавою, щоб допомогти сплатити 99 $ на рік, які Apple бере за нотаризацію, і macOS перестане попереджати під час відкриття."
+            "value" : "Featherview безкоштовний. Якщо він вам подобається, допоможіть сплатити 99 $ на рік, які Apple бере за нотаризацію, і macOS перестане попереджати під час відкриття."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview miễn phí. Mời chúng tôi một ly cà phê để góp phần trả 99 USD mỗi năm Apple thu cho việc công chứng, để macOS thôi cảnh báo khi mở ứng dụng."
+            "value" : "Featherview miễn phí. Nếu bạn thích, hãy góp vào 99 USD mỗi năm Apple thu cho việc công chứng, để macOS thôi cảnh báo khi mở ứng dụng."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview 是免费的。请我们喝杯咖啡，帮忙支付 Apple 每年 99 美元的公证费用，macOS 打开时就不会再发出警告。"
+            "value" : "Featherview 是免费的。如果你喜欢，请帮忙分担 Apple 每年 99 美元的公证费用，macOS 打开时就不会再发出警告。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Featherview 是免費的。請我們喝杯咖啡，協助支付 Apple 每年 99 美元的公證費用，macOS 開啟時就不會再發出警告。"
+            "value" : "Featherview 是免費的。如果你喜歡，請協助分擔 Apple 每年 99 美元的公證費用，macOS 開啟時就不會再發出警告。"
           }
         }
       }
@@ -63209,184 +63209,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "濾鏡"
-          }
-        }
-      }
-    },
-    "First open: open Featherview once from Applications. When macOS says it can't check it, go to System Settings › Privacy & Security and click Open Anyway. After that it opens normally." : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "أول فتح: افتح Featherview مرة واحدة من مجلد التطبيقات. عندما يقول macOS إنه لا يستطيع التحقق منه، انتقل إلى إعدادات النظام › الخصوصية والأمن وانقر على «فتح على أي حال». بعد ذلك يُفتح بشكل عادي."
-          }
-        },
-        "ca" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Primera obertura: obre el Featherview una vegada des d’Aplicacions. Quan el macOS digui que no el pot comprovar, ves a Configuració del Sistema › Privacitat i seguretat i fes clic a Obre igualment. Després s’obrirà amb normalitat."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "První spuštění: otevřete Featherview jednou ze složky Aplikace. Když macOS oznámí, že ji nemůže ověřit, přejděte do Nastavení systému › Soukromí a zabezpečení a klikněte na Přesto otevřít. Potom se už otevírá normálně."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Første gang: Åbn Featherview én gang fra Programmer. Når macOS siger, at den ikke kan kontrollere appen, skal du gå til Systemindstillinger › Anonymitet & sikkerhed og klikke på Åbn alligevel. Derefter åbner den normalt."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beim ersten Mal: Öffne Featherview einmal aus dem Ordner „Programme“. Wenn macOS meldet, dass es die App nicht überprüfen kann, öffne Systemeinstellungen › Datenschutz & Sicherheit und klicke auf „Dennoch öffnen“. Danach öffnet sie sich normal."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Πρώτο άνοιγμα: ανοίξτε το Featherview μία φορά από τις Εφαρμογές. Όταν το macOS πει ότι δεν μπορεί να το ελέγξει, μεταβείτε στις Ρυθμίσεις συστήματος › Απόρρητο και ασφάλεια και κάντε κλικ στο «Άνοιγμα οπωσδήποτε». Μετά από αυτό ανοίγει κανονικά."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Primera apertura: abre Featherview una vez desde Aplicaciones. Cuando macOS diga que no puede comprobarlo, ve a Ajustes del Sistema › Privacidad y seguridad y haz clic en Abrir igualmente. Después se abrirá con normalidad."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ensimmäinen avaus: avaa Featherview kerran Ohjelmat-kansiosta. Kun macOS ilmoittaa, ettei se voi tarkistaa appia, avaa Järjestelmäasetukset › Tietosuoja ja turvallisuus ja osoita Avaa silti. Sen jälkeen appi avautuu normaalisti."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Première ouverture : ouvrez Featherview une fois depuis Applications. Quand macOS indique qu’il ne peut pas le vérifier, allez dans Réglages Système › Confidentialité et sécurité et cliquez sur Ouvrir quand même. Ensuite, il s’ouvre normalement."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "פתיחה ראשונה: פתח את Featherview פעם אחת מתיקיית ״יישומים״. כאשר macOS מודיע שאינו יכול לבדוק אותו, עבור אל ״הגדרות המערכת״ › ״פרטיות ואבטחה״ ולחץ על ״פתח בכל זאת״. לאחר מכן הוא ייפתח כרגיל."
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "पहली बार खोलना: Featherview को एक बार ऐप्लिकेशन से खोलें। जब macOS कहे कि वह इसे जाँच नहीं सकता, तो सिस्टम सेटिंग्ज़ › गोपनीयता और सुरक्षा में जाएँ और “फिर भी खोलें” पर क्लिक करें। उसके बाद यह सामान्य रूप से खुलता है।"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Első megnyitás: nyissa meg egyszer a Featherview-t az Alkalmazások mappából. Ha a macOS azt jelzi, hogy nem tudja ellenőrizni, lépjen a Rendszerbeállítások › Adatvédelem és biztonság részre, és kattintson a Megnyitás mindenképp gombra. Ezután normálisan megnyílik."
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pembukaan pertama: buka Featherview sekali dari Aplikasi. Saat macOS mengatakan tidak dapat memeriksanya, buka Pengaturan Sistem › Privasi & Keamanan, lalu klik “Tetap Buka”. Setelah itu aplikasi terbuka seperti biasa."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prima apertura: apri Featherview una volta da Applicazioni. Quando macOS dice che non può verificarlo, vai in Impostazioni di Sistema › Privacy e sicurezza e fai clic su Apri comunque. Dopo si aprirà normalmente."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "初回の起動：“アプリケーション”から Featherview を一度開きます。macOS で検証できないと表示されたら、“システム設定 › プライバシーとセキュリティ”に移動して“このまま開く”をクリックします。以降は通常どおり開きます。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "처음 열 때: 응용 프로그램에서 Featherview를 한 번 여십시오. macOS에서 확인할 수 없다고 표시되면 시스템 설정 › 개인정보 보호 및 보안으로 이동하여 '그래도 열기'를 클릭하십시오. 그 후에는 정상적으로 열립니다."
-          }
-        },
-        "ms" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pembukaan pertama: buka Featherview sekali daripada Aplikasi. Apabila macOS mengatakan ia tidak dapat menyemaknya, pergi ke Seting Sistem › Privasi & Keselamatan dan klik “Buka Juga”. Selepas itu ia dibuka seperti biasa."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eerste keer openen: open Featherview één keer vanuit Programma's. Als macOS meldt dat het de app niet kan controleren, ga dan naar Systeeminstellingen › Privacy en beveiliging en klik op Open toch. Daarna opent de app gewoon."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pierwsze otwarcie: otwórz Featherview raz z folderu Aplikacje. Gdy macOS poinformuje, że nie może jej sprawdzić, przejdź do Ustawienia systemowe › Prywatność i ochrona i kliknij Otwórz mimo to. Potem aplikacja otwiera się normalnie."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Primeira abertura: abra o Featherview uma vez a partir de Aplicativos. Quando o macOS disser que não pode verificá-lo, vá em Ajustes do Sistema › Privacidade e Segurança e clique em Abrir Mesmo Assim. Depois disso, ele abre normalmente."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prima deschidere: deschide Featherview o dată din Aplicații. Când macOS spune că nu îl poate verifica, mergi la Configurări sistem › Confidențialitate și securitate și fă clic pe Deschide oricum. După aceea se deschide normal."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Первый запуск: откройте Featherview один раз из папки «Программы». Если macOS сообщит, что не может проверить программу, перейдите в Системные настройки › Конфиденциальность и безопасность и нажмите «Всё равно открыть». После этого программа будет открываться как обычно."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Första gången: öppna Featherview en gång från Program. När macOS säger att den inte kan kontrollera appen går du till Systeminställningar › Integritet och säkerhet och klickar på Öppna ändå. Därefter öppnas den som vanligt."
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "การเปิดครั้งแรก: เปิด Featherview หนึ่งครั้งจากแอปพลิเคชัน เมื่อ macOS แจ้งว่าตรวจสอบไม่ได้ ให้ไปที่การตั้งค่าระบบ › ความเป็นส่วนตัวและความปลอดภัย แล้วคลิก “เปิดต่อไป” หลังจากนั้นจะเปิดได้ตามปกติ"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "İlk açılış: Featherview'u bir kez Uygulamalar klasöründen açın. macOS onu denetleyemediğini söylediğinde Sistem Ayarları › Gizlilik ve Güvenlik bölümüne gidin ve Yine de Aç'ı tıklayın. Bundan sonra normal şekilde açılır."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Перший запуск: відкрийте Featherview один раз із папки «Програми». Якщо macOS повідомить, що не може її перевірити, перейдіть у Системні параметри › Приватність і безпека та натисніть «Усе одно відкрити». Після цього програма відкриватиметься як зазвичай."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lần mở đầu tiên: mở Featherview một lần từ Ứng dụng. Khi macOS báo không thể kiểm tra, hãy vào Cài đặt hệ thống › Quyền riêng tư & Bảo mật và bấm “Vẫn mở”. Sau đó ứng dụng sẽ mở bình thường."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "首次打开：从“应用程序”中打开一次 Featherview。如果 macOS 提示无法检查它，请前往“系统设置 › 隐私与安全性”，然后点按“仍要打开”。之后它就能正常打开。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "第一次打開：從「應用程式」打開 Featherview 一次。若 macOS 表示無法檢查它，請前往「系統設定 › 隱私權與安全性」，然後按一下「強制打開」。之後它就能正常打開。"
           }
         }
       }
@@ -70528,6 +70350,184 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "高度："
+          }
+        }
+      }
+    },
+    "Help Pay the Fee" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ساعد في دفع الرسوم"
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajuda a pagar la quota"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pomozte zaplatit poplatek"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hjælp med gebyret"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hilf bei der Gebühr"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Βοηθήστε με το τέλος"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayuda a pagar la cuota"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auta maksamaan maksu"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aidez à payer les frais"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עזרו לשלם את העמלה"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "शुल्क चुकाने में मदद करें"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Segíts kifizetni a díjat"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bantu Bayar Biayanya"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aiuta a pagare la quota"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "費用を支援する"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "비용 보태기"
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bantu Bayar Yurannya"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Help de kosten te betalen"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pomóż opłacić opłatę"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajude a pagar a taxa"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajută la plata taxei"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Помочь оплатить взнос"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hjälp till med avgiften"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ช่วยจ่ายค่าธรรมเนียม"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ücrete Destek Ol"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Допомогти сплатити внесок"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Góp phần trả phí"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "帮忙支付费用"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "協助支付費用"
           }
         }
       }

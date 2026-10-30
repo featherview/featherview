@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.1 – 2026-10-30
+
+- Standard (non-admin) accounts can open Featherview again: the disk image has a "Read Me First" file with one Terminal line that opens it on any account, where Open Anyway failed.
+- The disk image keeps its designed background on other Macs instead of a plain Finder window.
+- About now says Featherview is free and links to GitHub Sponsors to help pay Apple's notarization fee, in every language.
+
 ## 0.12.0 – 2026-10-28
 
 - A new info panel shows a histogram with clipping marks, an exposure card and foldable groups for the current picture.

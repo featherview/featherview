@@ -256,16 +256,26 @@ import Testing
     @Test func patternTiles() throws {
         // A 2 × 2 RGB pattern in the global Patt block, the green channel PackBits, the others raw.
         let colours: [[UInt8]] = [[255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 0]]
-        var vma = Self.be(0, 4) + Self.be(0, 4) + Self.be(2, 4) + Self.be(2, 4) + Self.be(24, 4)
+        // Built in typed steps: as long chains the CI compiler gives up type-checking them.
+        var vma: [UInt8] = [0, 0, 2, 2, 24].flatMap { Self.be($0, 4) }
         for c in 0..<26 {
             guard c < 3 else { vma += Self.be(0, 4); continue }
-            let plane = colours.map { $0[c] }
-            let data: [UInt8] = c == 1
-                ? [1] + [0, 1].flatMap { Self.be(PSDFixture.packBits(Array(plane[$0 * 2 ..< $0 * 2 + 2])).count, 2) }
-                    + [0, 1].flatMap { PSDFixture.packBits(Array(plane[$0 * 2 ..< $0 * 2 + 2])) }
-                : [0] + plane
-            let channel = Self.be(8, 4) + Self.be(0, 4) + Self.be(0, 4) + Self.be(2, 4) + Self.be(2, 4) + Self.be(8, 2) + data
-            vma += Self.be(1, 4) + Self.be(channel.count, 4) + channel
+            let plane: [UInt8] = colours.map { $0[c] }
+            var data: [UInt8]
+            if c == 1 {
+                let rows: [[UInt8]] = [0, 1].map { PSDFixture.packBits(Array(plane[$0 * 2 ..< $0 * 2 + 2])) }
+                data = [1]
+                for row in rows { data += Self.be(row.count, 2) }
+                for row in rows { data += row }
+            } else {
+                data = [0] + plane
+            }
+            var channel: [UInt8] = [8, 0, 0, 2, 2].flatMap { Self.be($0, 4) }
+            channel += Self.be(8, 2)
+            channel += data
+            vma += Self.be(1, 4)
+            vma += Self.be(channel.count, 4)
+            vma += channel
         }
         let id = "pat-1"
         var pattern = Self.be(1, 4) + Self.be(3, 4) + Self.be(2, 2) + Self.be(2, 2) + Self.unicode("Four") + [UInt8(id.utf8.count)] + Array(id.utf8)

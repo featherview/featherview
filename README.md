@@ -23,20 +23,32 @@ Download `Featherview-<version>.dmg` from the
 `Applications`.
 Or with Homebrew: `brew install --cask featherview/tap/featherview`.
 
-Featherview is free and not notarized by Apple (that needs a paid developer account), so macOS
-blocks the first launch. To open it anyway:
+Featherview is free and not notarized by Apple yet, so macOS blocks the first launch. One line in
+Terminal lets it open, on any Mac account, administrator or not (the disk image's **Read Me First**
+file has it too, ready to copy):
 
-1. Double-click Featherview. macOS says it can't verify the app; click **Done**.
-2. Open **System Settings → Privacy & Security**, scroll down to the message about Featherview and
-   click **Open Anyway**. Confirm with your password or Touch ID.
-3. From now on it opens normally. After this first open, Finder shows thumbnails and Quick Look
-   previews for the formats only Featherview reads (switches in System Settings → General → Login
-   Items & Extensions → Quick Look).
+1. Drag Featherview to Applications. On a standard account, macOS asks for an administrator's name
+   and password here.
+2. Open Terminal, paste this line and press Return. It removes the "downloaded from the internet"
+   mark from Featherview only:
 
-Or in Terminal: `xattr -dr com.apple.quarantine /Applications/Featherview.app`
+   ```sh
+   xattr -dr com.apple.quarantine /Applications/Featherview.app
+   ```
 
-Want to help? [Sponsoring](https://github.com/sponsors/mynetx) the $99/year Apple Developer Program
-would let us sign and notarize releases, so none of this is needed.
+3. Open Featherview. From now on it opens normally. After this first open, Finder shows thumbnails
+   and Quick Look previews for the formats only Featherview reads (switches in System Settings →
+   General → Login Items & Extensions → Quick Look).
+
+Administrator? Instead of step 2 you can double-click Featherview, click **Done**, then click
+**Open Anyway** in **System Settings → Privacy & Security**. On a standard account Open Anyway can
+fail on macOS 26.4 and later (the icon keeps bouncing in the Dock, or the administrator's password is
+refused), so use the Terminal line there.
+
+Why the extra step? Featherview is made in our spare time and given away for free. For macOS to open
+it straight away, Apple has to notarize it, and that costs $99 every year. If Featherview turns out
+useful to you, a [small contribution](https://github.com/sponsors/mynetx) towards that fee would mean
+a lot.
 
 ## Viewing
 

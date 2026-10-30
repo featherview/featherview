@@ -3,13 +3,18 @@ import CoreText
 import Foundation
 
 /// The disk image window's background: dark, a faint feather, an arrow from the app to Applications,
-/// and the first-open help along the bottom. Drawn in points from the bottom-leading corner (Core Graphics).
+/// and along the bottom a box with the first-open help beside the Read Me file's icon. Drawn in points from
+/// the bottom-leading corner (Core Graphics).
 public enum DiskImageArt {
     public static let size = CGSize(width: 920, height: 408)
     /// Icon centres in Finder's coordinates (points from the top-leading corner); `scripts/dmg.sh` uses the same.
-    static let appSlot = CGPoint(x: 300, y: 170), applicationsSlot = CGPoint(x: 620, y: 170)
-    /// Where Finder centres an icon's name at icon size 96, from the window's top (measured).
-    static let labelCentreFromTop = 234
+    static let appSlot = CGPoint(x: 300, y: 130), applicationsSlot = CGPoint(x: 620, y: 130)
+    static let readMeSlot = CGPoint(x: 96, y: 290)
+    static let slots = [appSlot, applicationsSlot, readMeSlot]
+    /// How far below an icon's centre Finder centres its name at icon size 96 (measured).
+    static let labelBelowIcon = 64
+    /// The help box's top edge in Finder's coordinates; it reaches down to `helpBottom` above the window's bottom.
+    static let helpBoxTop: CGFloat = 230, helpBottom: CGFloat = 12
 
     public static func render(help: String, scale: Int, rightToLeft: Bool = false) -> CGImage {
         let scale = max(1, scale)
@@ -20,8 +25,8 @@ public enum DiskImageArt {
         background(ctx)
         feather(ctx)
         arrow(ctx)
-        labelPlates(ctx)
         if !help.isEmpty { helpBox(ctx, help, rightToLeft: rightToLeft) }
+        labelPlates(ctx)
         return ctx.makeImage()!
     }
 
@@ -38,13 +43,13 @@ public enum DiskImageArt {
                                options: [.drawsAfterEndLocation])
     }
 
-    /// A quill of thin lines in the bottom-trailing corner, above the help box.
+    /// A quill of thin lines in the trailing corner, above the help box.
     private static func feather(_ ctx: CGContext) {
         ctx.saveGState()
         ctx.setStrokeColor(rgb(0xffc766, 0.14))
         ctx.setLineWidth(1.25)
         ctx.setLineCap(.round)
-        let start = CGPoint(x: 892, y: 100), control = CGPoint(x: 870, y: 190), end = CGPoint(x: 800, y: 262)
+        let start = CGPoint(x: 892, y: 210), control = CGPoint(x: 870, y: 300), end = CGPoint(x: 800, y: 372)
         ctx.move(to: start)
         ctx.addQuadCurve(to: end, control: control)
         // Barbs: from points along the shaft, swept back towards the quill's base, longest in the middle.
@@ -65,9 +70,9 @@ public enum DiskImageArt {
     /// Finder writes icon names in dark grey over a background picture, in light and dark mode alike, so
     /// each name sits on a light plate.
     private static func labelPlates(_ ctx: CGContext) {
-        let y = size.height - CGFloat(labelCentreFromTop)
         ctx.setFillColor(rgb(0xe7e7ec, 0.92))
-        for slot in [appSlot, applicationsSlot] {
+        for slot in slots {
+            let y = size.height - slot.y - CGFloat(labelBelowIcon)
             let plate = CGRect(x: slot.x - 56, y: y - 10, width: 112, height: 20)
             ctx.addPath(CGPath(roundedRect: plate, cornerWidth: 10, cornerHeight: 10, transform: nil))
             ctx.fillPath()
@@ -90,10 +95,12 @@ public enum DiskImageArt {
         ctx.restoreGState()
     }
 
-    static let helpMargin: CGFloat = 24, helpPad: CGFloat = 8
+    static let helpMargin: CGFloat = 24, helpPad: CGFloat = 16
     /// Lines, not a height: Arabic, Hebrew, Thai and Devanagari lines are taller than Latin ones.
     static let maxHelpLines = 4
-    static var helpWidth: CGFloat { size.width - 2 * helpMargin - 2 * helpPad }
+    /// The text starts past the Read Me file's name plate.
+    static var helpTextLeading: CGFloat { readMeSlot.x + 56 + helpPad }
+    static var helpWidth: CGFloat { size.width - helpMargin - helpPad - helpTextLeading }
 
     /// Whether all of `help` fits in the help box; `featherview-dmg` refuses a translation that doesn't.
     public static func helpFits(_ help: String, rightToLeft: Bool = false) -> Bool {
@@ -109,7 +116,6 @@ public enum DiskImageArt {
     }
 
     private static func helpBox(_ ctx: CGContext, _ help: String, rightToLeft: Bool) {
-        let margin = helpMargin, bottom: CGFloat = 10, pad = helpPad
         let textWidth = helpWidth
         let setter = CTFramesetterCreateWithAttributedString(attributed(help, rightToLeft: rightToLeft))
         // Longer help is cut after four lines (featherview-dmg refuses it before it gets here).
@@ -118,14 +124,17 @@ public enum DiskImageArt {
         let fitted = CTFramesetterSuggestFrameSizeWithConstraints(setter, range, nil,
                                                                   CGSize(width: textWidth, height: .greatestFiniteMagnitude), nil)
         let textHeight = fitted.height.rounded(.up)
-        let box = CGRect(x: margin, y: bottom, width: size.width - 2 * margin, height: textHeight + 2 * pad)
+        let box = CGRect(x: helpMargin, y: helpBottom, width: size.width - 2 * helpMargin,
+                         height: size.height - helpBoxTop - helpBottom)
         ctx.saveGState()
-        ctx.addPath(CGPath(roundedRect: box, cornerWidth: 10, cornerHeight: 10, transform: nil))
+        // Inset by half the line, so the outline stays inside the box.
+        ctx.addPath(CGPath(roundedRect: box.insetBy(dx: 0.5, dy: 0.5), cornerWidth: 10, cornerHeight: 10, transform: nil))
         ctx.setFillColor(rgb(0xffffff, 0.06))
         ctx.setStrokeColor(rgb(0xffffff, 0.12))
         ctx.setLineWidth(1)
         ctx.drawPath(using: .fillStroke)
-        let textRect = CGRect(x: margin + pad, y: bottom + pad, width: textWidth, height: textHeight)
+        // Centred on the Read Me icon it points to.
+        let textRect = CGRect(x: helpTextLeading, y: size.height - readMeSlot.y - textHeight / 2, width: textWidth, height: textHeight)
         let frame = CTFramesetterCreateFrame(setter, range, CGPath(rect: textRect, transform: nil), nil)
         CTFrameDraw(frame, ctx)
         ctx.restoreGState()
@@ -133,8 +142,8 @@ public enum DiskImageArt {
 
     /// The help in `#c9c9d2`; a lead ending in a colon in the first sentence ("First open:") in bold `#ffd28f`.
     static func attributed(_ help: String, rightToLeft: Bool) -> CFAttributedString {
-        let regular = CTFontCreateUIFontForLanguage(.system, 11, nil)!
-        let bold = CTFontCreateUIFontForLanguage(.emphasizedSystem, 11, nil)!
+        let regular = CTFontCreateUIFontForLanguage(.system, 13, nil)!
+        let bold = CTFontCreateUIFontForLanguage(.emphasizedSystem, 13, nil)!
         var alignment: CTTextAlignment = rightToLeft ? .right : .left
         var direction: CTWritingDirection = rightToLeft ? .rightToLeft : .leftToRight
         let paragraph = withUnsafeBytes(of: &alignment) { a in

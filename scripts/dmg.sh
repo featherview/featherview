@@ -53,6 +53,7 @@ for LANG_CODE in "${LANGS[@]}"; do
     tiffutil -cathidpicheck "$WORK/$LANG_CODE/background.png" "$WORK/$LANG_CODE/background@2x.png" \
         -out "$STAGE/.background/background.tiff"
     cp -R "$APP" "$STAGE/Featherview.app"
+    cp "Resources/DiskImage/Read Me First.txt" "$STAGE/"
     ln -s /Applications "$STAGE/Applications"
 
     # Room for Finder's .DS_Store on top of the app.
@@ -67,7 +68,7 @@ for LANG_CODE in "${LANGS[@]}"; do
     [ "$(osascript -e "tell application \"Finder\" to exists disk \"$VOLUME\"")" = true ] ||
         { echo "Finder doesn't see the disk $VOLUME." >&2; exit 1; }
 
-    # Window: 920 x 408 content, icon view, the icons where DiskImageArt draws the arrow.
+    # Window: 920 x 408 content, icon view, the icons where DiskImageArt draws the arrow and the help box.
     osascript <<EOF
 tell application "Finder"
     tell disk "$VOLUME"
@@ -80,14 +81,24 @@ tell application "Finder"
         set arrangement of viewOptions to not arranged
         set icon size of viewOptions to 96
         set background picture of viewOptions to file ".background:background.tiff"
-        set position of item "Featherview.app" of container window to {300, 170}
-        set position of item "Applications" of container window to {620, 170}
+        set position of item "Featherview.app" of container window to {300, 130}
+        set position of item "Applications" of container window to {620, 130}
+        set position of item "Read Me First.txt" of container window to {96, 290}
+        set extension hidden of item "Read Me First.txt" to true
         update without registering applications
         delay 1
         close
     end tell
 end tell
 EOF
+    # Finder writes the background into .DS_Store some time after close; detached sooner, the image opens
+    # plain on every other Mac (this one remembers the look in Finder's own cache, so it looks right here).
+    for _ in $(seq 1 20); do
+        grep -qa pBBk "/Volumes/$VOLUME/.DS_Store" 2>/dev/null && break
+        sleep 1
+    done
+    grep -qa pBBk "/Volumes/$VOLUME/.DS_Store" 2>/dev/null ||
+        { echo "Finder didn't store the background in .DS_Store." >&2; exit 1; }
     sync
     hdiutil detach "$DEVICE" -quiet
     DEVICE=""
