@@ -1,3 +1,4 @@
+import Accelerate
 import Foundation
 import os
 
@@ -182,39 +183,74 @@ public struct PSDLayer: Sendable {
         let clip = source.clip(rect)
         let w = clip.right - clip.left, h = clip.bottom - clip.top
         guard w > 0, h > 0, try source.holds([-1, 0, 1, 2], rect) else { return nil }
-        return try source.reading(rect) { read in
+        if PSDLayers.isFullSize(source.canvas, scale) {
+            let read = try source.reading(rect, opening: [0, 1, 2, -1]) { read in try [0, 1, 2, -1].map { try read($0, 0..<h) } }
+            let none = read[0...2].contains { $0 == nil } ? [UInt8](repeating: 0, count: w * h) : []
+            let planar = [read[0] ?? none, read[1] ?? none, read[2] ?? none, read[3] ?? [UInt8](repeating: 255, count: w * h)]
+            var pixels = [UInt8](repeating: 0, count: w * h * 4)
+            func buffer(_ p: UnsafeRawPointer, _ bytesPerPixel: Int) -> vImage_Buffer {
+                vImage_Buffer(data: UnsafeMutableRawPointer(mutating: p), height: vImagePixelCount(h), width: vImagePixelCount(w),
+                              rowBytes: w * bytesPerPixel)
+            }
+            planar[0].withUnsafeBytes { r in planar[1].withUnsafeBytes { g in planar[2].withUnsafeBytes { b in
+                planar[3].withUnsafeBytes { a in pixels.withUnsafeMutableBytes { out in
+                    // The planes in the order they land in each pixel: R, G, B, A.
+                    var r = buffer(r.baseAddress!, 1), g = buffer(g.baseAddress!, 1), b = buffer(b.baseAddress!, 1)
+                    var a = buffer(a.baseAddress!, 1), dest = buffer(out.baseAddress!, 4)
+                    vImageConvert_Planar8toARGB8888(&r, &g, &b, &a, &dest, vImage_Flags(kvImageNoFlags))
+                } }
+            } } }
+            return RGBAImage(width: w, height: h, pixels: pixels)
+        }
+        return try source.reading(rect, opening: [0, 1, 2, -1]) { read in
             let target = scaledRect(scale: scale)
             let ow = target.right - target.left, oh = target.bottom - target.top
-            if PSDLayers.isFullSize(source.canvas, scale) {
-                var pixels = [UInt8](repeating: 0, count: w * h * 4)
-                for c in 0..<3 {
-                    guard let plane = try read(c, 0..<h) else { continue }
-                    for p in 0..<w * h { pixels[p * 4 + c] = plane[p] }
-                }
-                let alpha = try read(-1, 0..<h)
-                for p in 0..<w * h { pixels[p * 4 + 3] = alpha?[p] ?? 255 }
-                return RGBAImage(width: w, height: h, pixels: pixels)
-            }
             let cells = source.cells(clip, scale: scale)
             // Colour weighted by alpha, so transparent pixels don't tint their cell.
-            var alphaSums = [Int](repeating: 0, count: ow * oh), sums = [Int](repeating: 0, count: ow * oh * 3)
+            var sums = [Int](repeating: 0, count: ow * oh * 4)  // R·A, G·A, B·A, A
             for band in source.bands(w, h) {
                 let alpha = try read(-1, band), colour = try (0..<3).map { try read($0, band) }
-                for y in band {
-                    for x in 0..<w {
-                        let p = (y - band.lowerBound) * w + x, o = cells.index(x, y)
-                        let a = alpha.map { Int($0[p]) } ?? 255
-                        alphaSums[o] += a
-                        for c in 0..<3 { if let plane = colour[c] { sums[o * 3 + c] += Int(plane[p]) * a } }
-                    }
-                }
+                let none = [UInt8](repeating: 0, count: band.count * w)
+                let planes = colour.map { $0 ?? none } + [alpha ?? [UInt8](repeating: 255, count: band.count * w)]
+                // Runs of rows that start a scaled row, so no two runs add to the same cells: on all cores.
+                let starts = band.filter { $0 == band.lowerBound || cells.rows[$0] != cells.rows[$0 - 1] }
+                let runs = min(starts.count, ProcessInfo.processInfo.activeProcessorCount * 2)
+                planes[0].withUnsafeBufferPointer { r in planes[1].withUnsafeBufferPointer { g in
+                    planes[2].withUnsafeBufferPointer { b in planes[3].withUnsafeBufferPointer { a in
+                        cells.columns.withUnsafeBufferPointer { columns in sums.withUnsafeMutableBufferPointer { sums in
+                            nonisolated(unsafe) let r = r.baseAddress!, g = g.baseAddress!, b = b.baseAddress!, a = a.baseAddress!
+                            nonisolated(unsafe) let columns = columns.baseAddress!, sums = sums.baseAddress!
+                            let width = cells.columnAreas.count
+                            DispatchQueue.concurrentPerform(iterations: runs) { run in
+                                let from = starts[run * starts.count / runs]
+                                let to = run + 1 == runs ? band.upperBound : starts[(run + 1) * starts.count / runs]
+                                for y in from..<to {
+                                    let row = cells.rows[y] * width, start = (y - band.lowerBound) * w
+                                    for x in 0..<w {
+                                        let p = start + x, o = (row + columns[x]) * 4, alpha = Int(a[p])
+                                        sums[o] += Int(r[p]) * alpha
+                                        sums[o + 1] += Int(g[p]) * alpha
+                                        sums[o + 2] += Int(b[p]) * alpha
+                                        sums[o + 3] += alpha
+                                    }
+                                }
+                            }
+                        } }
+                    } }
+                } }
             }
             var pixels = [UInt8](repeating: 0, count: ow * oh * 4)
-            for o in 0..<ow * oh {
-                if alphaSums[o] > 0 { for c in 0..<3 { pixels[o * 4 + c] = UInt8((sums[o * 3 + c] + alphaSums[o] / 2) / alphaSums[o]) } }
-                let area = cells.area(o % ow, o / ow)
-                pixels[o * 4 + 3] = UInt8((alphaSums[o] + area / 2) / area)
-            }
+            sums.withUnsafeBufferPointer { sums in pixels.withUnsafeMutableBufferPointer { pixels in
+                nonisolated(unsafe) let sums = sums.baseAddress!, pixels = pixels.baseAddress!
+                DispatchQueue.concurrentPerform(iterations: oh) { y in
+                    for o in y * ow ..< (y + 1) * ow {
+                        let alpha = sums[o * 4 + 3]
+                        if alpha > 0 { for c in 0..<3 { pixels[o * 4 + c] = UInt8((sums[o * 4 + c] + alpha / 2) / alpha) } }
+                        let area = cells.area(o - y * ow, y)
+                        pixels[o * 4 + 3] = UInt8((alpha + area / 2) / area)
+                    }
+                }
+            } }
             return RGBAImage(width: ow, height: oh, pixels: pixels)
         }
     }
@@ -293,11 +329,21 @@ struct PSDChannelSource: Sendable {
 
     /// Runs `body` with a reader of the channels of a layer or mask at `rect`: `read(id, rows)` gives rows `rows`
     /// of `clip(rect)` (0 its top), row by row; nil when there's no such channel. Any failure is `OwnDecodeError.corrupt`.
-    func reading<T>(_ rect: PSDRect, _ body: ((Int, Range<Int>) throws -> [UInt8]?) throws -> T) throws -> T {
+    /// The channels `opening` are opened at once on all cores first (a zip channel inflates when opened).
+    func reading<T>(_ rect: PSDRect, opening: [Int] = [],
+                    _ body: ((Int, Range<Int>) throws -> [UInt8]?) throws -> T) throws -> T {
         let fd = open(url.path, O_RDONLY)
         guard fd >= 0 else { throw OwnDecodeError.corrupt }
         defer { close(fd) }
-        var opened: [Int: Channel] = [:]
+        let first = opening.compactMap { id in channels[id].map { (id, $0) } }
+        let early = OSAllocatedUnfairLock(initialState: (opened: [Int: Channel](), failed: false))
+        DispatchQueue.concurrentPerform(iterations: first.count) { k in
+            let (id, (offset, length)) = first[k]
+            let channel = try? self.channel(fd, offset, length, rect)
+            early.withLock { if let channel { $0.opened[id] = channel } else { $0.failed = true } }
+        }
+        var (opened, failed) = early.withLock { $0 }
+        guard !failed else { throw OwnDecodeError.corrupt }
         do {
             return try body { id, rows in
                 guard let (offset, length) = channels[id] else { return nil }
@@ -346,7 +392,7 @@ struct PSDChannelSource: Sendable {
     }
 
     /// Where a channel's rows of `clip(rect)` are.
-    private enum Channel {
+    private enum Channel: Sendable {
         /// The file offset of the clip's first byte.
         case raw(Int)
         /// The file offsets of the clip's packed rows and the end of the last.

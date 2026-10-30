@@ -56,25 +56,35 @@ public struct PSDCompositor: Sendable {
     /// `image` area-averaged to `width × height` through `PSDLayers.cell`, colour weighted by alpha.
     private static func reduce(_ image: RGBAImage, _ width: Int, _ height: Int) -> RGBAImage {
         let columns = (0..<image.width).map { PSDLayers.cell($0, image.width, width) }
-        var sums = [Int](repeating: 0, count: width * height * 5)  // R·A, G·A, B·A, A, area
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        // Bands of output rows on all cores; each sums the source rows that fall in its rows.
+        let bands = min(height, ProcessInfo.processInfo.activeProcessorCount * 2)
         image.pixels.withUnsafeBufferPointer { src in
-            sums.withUnsafeMutableBufferPointer { sums in
-                for y in 0..<image.height {
-                    let row = PSDLayers.cell(y, image.height, height) * width
-                    for x in 0..<image.width {
-                        let i = (y * image.width + x) * 4, o = (row + columns[x]) * 5, a = Int(src[i + 3])
-                        for c in 0..<3 { sums[o + c] += Int(src[i + c]) * a }
-                        sums[o + 3] += a
-                        sums[o + 4] += 1
+            pixels.withUnsafeMutableBufferPointer { out in
+                nonisolated(unsafe) let src = src.baseAddress!, out = out.baseAddress!
+                DispatchQueue.concurrentPerform(iterations: bands) { band in
+                    let first = band * height / bands, last = (band + 1) * height / bands
+                    var sums = [Int](repeating: 0, count: (last - first) * width * 5)  // R·A, G·A, B·A, A, area
+                    sums.withUnsafeMutableBufferPointer { sums in
+                        for y in PSDLayers.cellStart(first, image.height, height) ..< PSDLayers.cellStart(last, image.height, height) {
+                            let row = (PSDLayers.cell(y, image.height, height) - first) * width
+                            for x in 0..<image.width {
+                                let i = (y * image.width + x) * 4, o = (row + columns[x]) * 5, a = Int(src[i + 3])
+                                sums[o] += Int(src[i]) * a
+                                sums[o + 1] += Int(src[i + 1]) * a
+                                sums[o + 2] += Int(src[i + 2]) * a
+                                sums[o + 3] += a
+                                sums[o + 4] += 1
+                            }
+                        }
+                        for p in 0 ..< (last - first) * width {
+                            let o = p * 5, alpha = sums[o + 3], area = sums[o + 4], d = (first * width + p) * 4
+                            if alpha > 0 { for c in 0..<3 { out[d + c] = UInt8((sums[o + c] + alpha / 2) / alpha) } }
+                            out[d + 3] = UInt8((alpha + area / 2) / area)
+                        }
                     }
                 }
             }
-        }
-        var pixels = [UInt8](repeating: 0, count: width * height * 4)
-        for p in 0..<width * height {
-            let o = p * 5, alpha = sums[o + 3], area = sums[o + 4]
-            if alpha > 0 { for c in 0..<3 { pixels[p * 4 + c] = UInt8((sums[o + c] + alpha / 2) / alpha) } }
-            pixels[p * 4 + 3] = UInt8((alpha + area / 2) / area)
         }
         return RGBAImage(width: width, height: height, pixels: pixels)
     }
