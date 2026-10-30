@@ -105,8 +105,10 @@ public enum ImageDecoder {
 
     /// Whether ImageIO's fit decode of `url` uses the exact needed size rather than a halving step: HEIC
     /// (and HEIF) decode no slower at it and keep fewer bytes; PNG is 10–18 % slower, JPEG decodes steps directly.
+    /// PSD/PSB too: the own reader decodes them exact, and the ones it declines follow so both agree.
     public static func decodesAtExactFit(_ url: URL) -> Bool {
-        UTType(filenameExtension: url.pathExtension).map { $0.conforms(to: .heic) || $0.conforms(to: .heif) } ?? false
+        ["psd", "psb"].contains(url.pathExtension.lowercased())
+            || UTType(filenameExtension: url.pathExtension).map { $0.conforms(to: .heic) || $0.conforms(to: .heif) } ?? false
     }
 
     /// The longest side to decode an image of `image` (displayed size, orientation applied) at, so it

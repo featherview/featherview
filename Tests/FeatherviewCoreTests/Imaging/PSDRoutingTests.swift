@@ -42,6 +42,17 @@ import Testing
         #expect(image.width == 100 && image.height == 50)
     }
 
+    /// The fit decode is exact, so a zoom step above it (here 200 px for 180 needed, fit 120) is not within the fit.
+    @Test func zoomPastTheExactFitIsNotWithinIt() throws {
+        let url = try Self.write(width: 400, height: 300)
+        let screens = [PixelSize(width: 144, height: 90)]
+        #expect(try ImageDecoder.decode(url, halvingSteps: true, fitting: screens).width == 120)
+        let zoom = ImageDecoder.zoomDecode(size: PixelSize(width: 400, height: 300), factor: 0.45, screens: screens,
+                                           exactFit: ImageDecoder.decodesAtExactFit(url))
+        #expect(zoom.step == 1 && !zoom.withinFit)
+        #expect(ImageDecoder.decodesAtExactFit(URL(fileURLWithPath: "/x/a.PSB")))
+    }
+
     @Test func thumbnailUsesTheReader() throws {
         let url = try Self.write(width: 400, height: 200)
         let image = try ImageDecoder.thumbnail(url, side: 64, colorSpace: nil)
