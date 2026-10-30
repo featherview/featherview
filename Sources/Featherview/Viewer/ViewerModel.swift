@@ -211,7 +211,8 @@ final class ViewerModel {
     /// `rect` in full-size pixels.
     var region: (image: CGImage, rect: CGRect)?
     /// The halving step parts are decoded at while a huge picture shows zoomed by parts; nil otherwise.
-    @ObservationIgnored var regionStep: Int?
+    /// Observed: the canvas smooths the enlarged fit picture under the parts by it.
+    var regionStep: Int?
     /// The part asked for and not yet landed (or failed): panning within it asks for nothing new.
     @ObservationIgnored var regionRequest: CGRect?
     /// The canvas's last settled visible rect (full-size pixels) since `show`: the part to ask for once
@@ -646,7 +647,8 @@ final class ViewerModel {
                       url, prefetched != nil, nil)
         if let prefetched { shown(prefetched, url: url, page: page, fit: true, started: started) }
         shownStep = nil
-        regionStep = nil
+        // Assigned only when they change: each assignment of an observed property redraws the canvas.
+        if regionStep != nil { regionStep = nil }
         regionRequest = nil
         lastVisible = nil
         if region != nil { region = nil }

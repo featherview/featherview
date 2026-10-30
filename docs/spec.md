@@ -66,7 +66,7 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
   pixels and the file can be read in parts (8-bit RGB PSD and PSB through the own reader, see Formats),
   only the part on screen plus half a view's width and height on each side is decoded, at that step,
   and drawn over the fit picture shown enlarged; panning near the part's edge decodes the next part
-  (the newest wins). Memory stays at the fit decode plus one part, instead of the whole step (6 GB at
+  (the newest wins). Memory stays at the fit decode plus one part (two while the next one decodes), instead of the whole step (6 GB at
   100 % for a 1.5-gigapixel picture). Compare panes and a picture with a rotation or flip not yet
   written decode the whole step.
 - EXIF orientation is always applied.

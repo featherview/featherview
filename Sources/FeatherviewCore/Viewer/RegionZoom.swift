@@ -45,12 +45,12 @@ public enum RegionZoom {
     }
 
     /// True when `visible` (clamped to the picture) comes within an eighth of its own
-    /// width (height) of a side of `decoded` that isn't the picture's edge, or when `decoded` is more than 3 × as
-    /// wide or high as it (`region` makes 2 ×): a part asked for at another view size would stay in memory.
+    /// width (height) of a side of `decoded` that isn't the picture's edge, or when `decoded` is more than 2.25 × as
+    /// wide or high as it (`region` makes 2 × plus the step grid): a part asked for at another view size would stay in memory.
     public static func needsNewRegion(visible: CGRect, decoded: CGRect, image: PixelSize) -> Bool {
         let v = visible.intersection(CGRect(x: 0, y: 0, width: image.width, height: image.height))
         if v.isNull { return false }
-        if decoded.width > 3 * v.width || decoded.height > 3 * v.height { return true }
+        if decoded.width > 2.25 * v.width || decoded.height > 2.25 * v.height { return true }
         let mx = v.width / 8, my = v.height / 8
         if decoded.minX > 0, v.minX - decoded.minX < mx { return true }
         if decoded.maxX < CGFloat(image.width), decoded.maxX - v.maxX < mx { return true }

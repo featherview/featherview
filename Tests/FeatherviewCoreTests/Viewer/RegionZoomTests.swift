@@ -59,5 +59,9 @@ struct RegionZoomTests {
         #expect(RegionZoom.needsNewRegion(visible: CGRect(x: 30000, y: 10000, width: 2400, height: 1400), decoded: whole, image: image))
         #expect(RegionZoom.needsNewRegion(visible: CGRect(x: 30000, y: 10000, width: 2400, height: 1400),
                                           decoded: CGRect(x: 25000, y: 7000, width: 11400, height: 6600), image: image))
+        // The part `region` makes for this view stays; one 2.4 × as wide (asked for before a zoom in) is replaced.
+        let view = CGRect(x: 30001, y: 10003, width: 2400, height: 1400)
+        #expect(!RegionZoom.needsNewRegion(visible: view, decoded: RegionZoom.region(visible: view, image: image, step: 3), image: image))
+        #expect(RegionZoom.needsNewRegion(visible: view, decoded: CGRect(x: 28560, y: 9303, width: 5760, height: 2800), image: image))
     }
 }
