@@ -214,6 +214,9 @@ final class ViewerModel {
     @ObservationIgnored var regionStep: Int?
     /// The part asked for and not yet landed (or failed): panning within it asks for nothing new.
     @ObservationIgnored var regionRequest: CGRect?
+    /// The canvas's last settled visible rect (full-size pixels) since `show`: the part to ask for once
+    /// `regionStep` is set, as the canvas reported it before.
+    @ObservationIgnored var lastVisible: CGRect?
     /// Part decodes: one at a time, the newest wins.
     let regionDecodes = LatestWins()
     private var loadTask: Task<Void, Never>?
@@ -645,6 +648,7 @@ final class ViewerModel {
         shownStep = nil
         regionStep = nil
         regionRequest = nil
+        lastVisible = nil
         if region != nil { region = nil }
         loadTask = Task {
             // Set while zoomed (page 0): its neighbours are prefetched.
@@ -690,6 +694,7 @@ final class ViewerModel {
                             if readsRegions {
                                 // The fit picture shows enlarged until the visible part's decode lands over it.
                                 regionStep = step
+                                if let lastVisible { visibleRectChanged(lastVisible) }
                                 target = .fit(screens)
                                 cache = self.cache
                             }

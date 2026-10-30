@@ -113,9 +113,11 @@ struct ImageCanvas: NSViewRepresentable {
 
         @objc func boundsChanged(_ note: Notification) { report() }
 
-        /// The clear area within the document, scaled by the document's current size (mid-zoom too) to full-size pixels.
+        /// The clear area within the document, scaled to full-size pixels; nothing while a zoom animates (its
+        /// completion reports), as a mid-zoom rect covers much more than the settled view.
         func report() {
-            guard let scrollView, let fullPixelSize, let document = scrollView.documentView else { return }
+            guard let scrollView, let fullPixelSize, let document = scrollView.documentView as? ImageLayerView,
+                  document.targetSize.map({ $0 == document.frame.size }) ?? true else { return }
             let bounds = document.bounds
             let visible = scrollView.clearRect.intersection(bounds)
             guard bounds.width > 0, bounds.height > 0, !visible.isEmpty else { return }
@@ -265,6 +267,7 @@ struct ImageCanvas: NSViewRepresentable {
                 MainActor.assumeIsolated {
                     scrollView.reflectScrolledClipView(clip)
                     if framed, view.targetSize == size { view.setFramed(true) }
+                    coordinator.report()
                 }
             }
         }

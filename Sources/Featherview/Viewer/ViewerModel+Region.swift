@@ -7,6 +7,7 @@ extension ViewerModel {
     /// The canvas's visible rect, in full-size pixels: asks for a new part when none is there or panning nears
     /// the edge of the one decoded (or asked for).
     func visibleRectChanged(_ visible: CGRect) {
+        lastVisible = visible
         guard let step = regionStep, let url = list.current, let size = shownStep?.size else { return }
         let image = PixelSize(width: Int(size.width), height: Int(size.height))
         if let decoded = regionRequest ?? region?.rect,
