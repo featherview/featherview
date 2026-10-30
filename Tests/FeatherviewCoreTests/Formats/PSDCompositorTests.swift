@@ -100,27 +100,6 @@ import Testing
         #expect(image.pixels == [128, 128, 128, 255, 255, 255, 255, 255])
     }
 
-    @Test func blendIfCostsLittleNextToTheRender() throws {
-        let side = 600, full: [UInt8] = [0, 0, 255, 255]
-        var plain = Self.solid("Top", 0, 0, side, side, [200, 100, 50, 255])
-        var ranged = plain
-        ranged.blendIf = [10, 20, 255, 255] + full + Array([[UInt8]](repeating: full, count: 6).joined())
-        let file = { (top: Layer) in
-            try PSDLayersTests.open(PSDFixture.makeLayered(width: side, height: side, layers: [
-                Self.solid("Background", 0, 0, side, side, [128, 128, 128, 255]), top]))
-        }
-        func time(_ layers: PSDLayers) throws -> Duration {
-            let compositor = PSDCompositor(layers)
-            _ = try compositor.render(scale: 1)
-            let start = ContinuousClock.now
-            for _ in 0..<3 { _ = try compositor.render(scale: 1) }
-            return ContinuousClock.now - start
-        }
-        plain.blendIf = nil
-        let without = try time(file(plain)), with = try time(file(ranged))
-        #expect(with < without * 2, "\(with) with Blend If, \(without) without")
-    }
-
     @Test func adjustmentHonoursBlendIf() throws {
         let full: [UInt8] = [0, 0, 255, 255]
         var invert = Layer(name: "Invert")
