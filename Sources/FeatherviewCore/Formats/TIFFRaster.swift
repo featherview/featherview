@@ -73,7 +73,10 @@ public struct TIFFRaster: RegionReader {
             // BYTE, SHORT, LONG and LONG8 for numbers; BYTE or UNDEFINED for the profile.
             guard let size = (tag == 34675 ? [1: 1, 7: 1] : [1: 1, 3: 2, 4: 4, 16: 8])[type] else { return nil }
             let count = int(entries[at + 4 ..< at + 4 + fieldSize])
-            guard count >= 0, count <= fileSize else { return nil }
+            // Checked before reading: a damaged count can't make a file-sized read and array. 4 million
+            // blocks is a 300,000 px square in 150 px tiles; an ICC profile is far below 16 MB.
+            let limit = [273, 279, 324, 325].contains(tag) ? 4_000_000 : tag == 34675 ? 16 << 20 : [258, 339].contains(tag) ? 3 : 1
+            guard count >= 0, count <= limit, count * size <= fileSize else { return nil }
             let field = entries[at + 4 + fieldSize ..< at + entrySize]
             let value: ArraySlice<UInt8>
             if count * size <= fieldSize {

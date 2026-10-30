@@ -195,6 +195,22 @@ import Testing
         #expect(TIFFRaster(url: try Self.write(twice)) == nil)
     }
 
+    /// A count past what its tag can hold declines the file before any value is read: BitsPerSample as
+    /// 50 million bytes in a sparse 60 MB file would otherwise be read and expanded first.
+    @Test func declinesACountPastItsTag() throws {
+        var data = TIFFFixture.make(width: 3, height: 2, pixels: Self.noise(width: 3, height: 2))
+        let bits = try #require(Self.entry(258, in: data))
+        let entry: [UInt8] = [2, 1, 1, 0] + [0x80, 0xF0, 0xFA, 0x02] + [16, 0, 0, 0]  // tag 258, BYTE, 50,000,000 at 16
+        data.replaceSubrange(bits ..< bits + 12, with: entry)
+        let url = try Self.write(data)
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.truncate(atOffset: 60_000_000)
+        try handle.close()
+        let start = ContinuousClock.now
+        #expect(TIFFRaster(url: url) == nil)
+        #expect(ContinuousClock.now - start < .milliseconds(100))
+    }
+
     /// A block decodes to at most 16 MB, so the bands decoding at once stay within memory.
     @Test func declinesBlocksOver16MB() throws {
         func accepts(rows: Int) throws -> Bool {
