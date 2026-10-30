@@ -97,11 +97,11 @@ struct AboutView: View {
                         }
                     }
                 }
-                Text("Featherview is free. Buy us a coffee to help pay Apple's $99 a year for notarization, so macOS stops warning when you open it.")
+                Text("Featherview is free. If you like it, chip in towards the $99 a year Apple charges for notarization, so macOS stops warning when you open it.")
                     .foregroundStyle(Theme.aboutCaption)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                link("Buy Us a Coffee") { openURL(AboutInfo.sponsor) }
+                link("Help Pay the Fee") { openURL(AboutInfo.sponsor) }
             }
             .font(Theme.aboutSmall)
             .padding(.top, Theme.aboutFooterTop)
