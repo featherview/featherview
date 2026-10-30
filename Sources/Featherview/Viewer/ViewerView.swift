@@ -135,7 +135,8 @@ struct ViewerView: View {
                     onDoubleClick: model.toggleFullScreen, onPinch: model.zoom(by:), onSwipe: swiped,
                     onClick: clickedImage,
                     onFirstDraw: { toolbarReady = true; model.firstImageDrawn() },
-                    onCommit: model.imageCommitted, animatesZoom: animatesZoom, compareLink: model.compareLink)
+                    onCommit: model.imageCommitted, animatesZoom: animatesZoom, compareLink: model.compareLink,
+                    region: model.region, byParts: model.regionStep != nil, fullPixelSize: fullSize, onVisibleRect: model.visibleRectChanged)
             .contextMenu { ImageContextMenu(model: model) }
             // Under the glass toolbar and the status strip; `insets` keeps a fit image clear of them.
             .ignoresSafeArea()
@@ -622,7 +623,7 @@ struct ViewerView: View {
             case .escape:
                 // A slideshow first (it leaves full screen too), then compare, then full screen.
                 if model.slideshowState != nil { model.endSlideshowLeavingFullScreen(); return .handled }
-                if model.compareSession != nil { model.leaveCompare(); return .handled }
+                if model.compareSession != nil { model.stopComparing(); return .handled }
                 guard model.isFullScreen else { return .ignored }
                 model.toggleFullScreen()
                 return .handled
@@ -963,7 +964,7 @@ struct ViewerCommands: Commands {
                 .keyboardShortcut("o", modifiers: [.command, .option])
                 .disabled(model?.availability.canCompare != true)
             if model?.compareSession != nil {
-                Button("Stop Comparing") { model?.leaveCompare() }
+                Button("Stop Comparing") { model?.stopComparing() }
             }
         }
         // Not replacing .saveItem: SwiftUI shows nothing in that group for an app without documents.

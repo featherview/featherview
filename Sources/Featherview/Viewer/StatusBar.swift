@@ -32,7 +32,7 @@ struct StatusBar: View {
                     .help("Swap Images (X)")
                     .accessibilityLabel("Swap Images")
                     .disabled(!model.availability.canSwap)
-                Button { model.leaveCompare() } label: { Image(systemName: "xmark") }
+                Button { model.stopComparing() } label: { Image(systemName: "xmark") }
                     .help("Stop Comparing (Esc)")
                     .accessibilityLabel("Stop Comparing")
             }

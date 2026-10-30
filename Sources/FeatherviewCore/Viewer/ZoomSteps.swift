@@ -54,6 +54,12 @@ public enum ZoomSteps {
         drawnWidth * displayScale >= Double(imageWidth) * 2
     }
 
+    /// Whether the picture layer smooths: below 2×, or always when it holds the fit picture enlarged under the
+    /// parts of a huge one (`byParts`), whose pixels are many times the file's and would show as blocks.
+    public static func smoothsPicture(drawnWidth: Double, imageWidth: Int, displayScale: Double, byParts: Bool) -> Bool {
+        byParts || !showsPixels(drawnWidth: drawnWidth, imageWidth: imageWidth, displayScale: displayScale)
+    }
+
     /// One step (`by` 1.1 in, 1/1.1 out), kept within `range`.
     public static func step(_ factor: Double, by multiplier: Double) -> Double {
         clamped(factor * multiplier)

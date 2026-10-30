@@ -11,6 +11,15 @@ struct RegionZoomTests {
         #expect(!RegionZoom.usesRegion(image: PixelSize(width: 12000, height: 8000), step: 3, screens: screen))
     }
 
+    @Test func compareOrPendingTurnShowsWholeStep() {
+        let screen = [PixelSize(width: 3024, height: 1964)], huge = PixelSize(width: 69536, height: 22230)
+        #expect(RegionZoom.showsParts(image: huge, step: 0, screens: screen, comparing: false, transformed: false))
+        #expect(!RegionZoom.showsParts(image: huge, step: 0, screens: screen, comparing: true, transformed: false))
+        #expect(!RegionZoom.showsParts(image: huge, step: 0, screens: screen, comparing: false, transformed: true))
+        #expect(!RegionZoom.showsParts(image: PixelSize(width: 4032, height: 3024), step: 0, screens: screen,
+                                       comparing: false, transformed: false))
+    }
+
     @Test func regionGrowsAndClamps() {
         let image = PixelSize(width: 69536, height: 22230)
         #expect(RegionZoom.region(visible: CGRect(x: 1000, y: 1000, width: 3000, height: 2000), image: image, step: 0)
@@ -41,5 +50,18 @@ struct RegionZoomTests {
         #expect(RegionZoom.needsNewRegion(visible: CGRect(x: 11400, y: 10000, width: 3000, height: 2000), decoded: decoded, image: image))
         #expect(!RegionZoom.needsNewRegion(visible: CGRect(x: 0, y: 0, width: 3000, height: 2000),
                                            decoded: CGRect(x: 0, y: 0, width: 4500, height: 3000), image: image))  // picture's edge
+    }
+
+    /// A part asked for mid-zoom (or for the whole picture) is replaced once the settled view is much smaller.
+    @Test func oversizedRegionIsReplaced() {
+        let image = PixelSize(width: 69536, height: 22230)
+        let whole = CGRect(x: 0, y: 0, width: 69536, height: 22230)
+        #expect(RegionZoom.needsNewRegion(visible: CGRect(x: 30000, y: 10000, width: 2400, height: 1400), decoded: whole, image: image))
+        #expect(RegionZoom.needsNewRegion(visible: CGRect(x: 30000, y: 10000, width: 2400, height: 1400),
+                                          decoded: CGRect(x: 25000, y: 7000, width: 11400, height: 6600), image: image))
+        // The part `region` makes for this view stays; one 2.4 × as wide (asked for before a zoom in) is replaced.
+        let view = CGRect(x: 30001, y: 10003, width: 2400, height: 1400)
+        #expect(!RegionZoom.needsNewRegion(visible: view, decoded: RegionZoom.region(visible: view, image: image, step: 3), image: image))
+        #expect(RegionZoom.needsNewRegion(visible: view, decoded: CGRect(x: 28560, y: 9303, width: 5760, height: 2800), image: image))
     }
 }

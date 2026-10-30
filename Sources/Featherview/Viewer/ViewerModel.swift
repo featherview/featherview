@@ -192,7 +192,7 @@ final class ViewerModel {
     let screens = PixelSize.screens(NSScreen.screens.map { ($0.frame.size, $0.backingScaleFactor) })
     /// Display decodes come in the colour space of the window's screen (`screenChanged`), so Core Animation doesn't
     /// convert each image on the main thread (~30–60 ms for 12 MP). The main screen's until the window has one.
-    @ObservationIgnored private var screenSpace = ViewerModel.launchSpace
+    @ObservationIgnored private(set) var screenSpace = ViewerModel.launchSpace
     private static let launchSpace = NSScreen.main?.colorSpace?.cgColorSpace
     /// Every display decode of this viewer runs here: nearest the image shown first, stale ones dropped (`focusDecodes`).
     private let decodes = DecodeQueue()
@@ -206,7 +206,20 @@ final class ViewerModel {
     @ObservationIgnored private var forward = true
     /// The halving step the image on screen was decoded at while zoomed (page 0), with the longest side it was
     /// worked out from (`fileInfo` is still the previous file's until the decode lands); zooming within it decodes nothing.
-    @ObservationIgnored private var shownStep: (step: Int, size: CGSize)?
+    @ObservationIgnored private(set) var shownStep: (step: Int, size: CGSize)?
+    /// A sharp decode of the part on screen (plus a margin) laid over the enlarged fit picture of a huge one;
+    /// `rect` in full-size pixels.
+    var region: (image: CGImage, rect: CGRect)?
+    /// The halving step parts are decoded at while a huge picture shows zoomed by parts; nil otherwise.
+    /// Observed: the canvas smooths the enlarged fit picture under the parts by it.
+    var regionStep: Int?
+    /// The part asked for and not yet landed (or failed): panning within it asks for nothing new.
+    @ObservationIgnored var regionRequest: CGRect?
+    /// The canvas's last settled visible rect (full-size pixels) since `show`: the part to ask for once
+    /// `regionStep` is set, as the canvas reported it before.
+    @ObservationIgnored var lastVisible: CGRect?
+    /// Part decodes: one at a time, the newest wins.
+    let regionDecodes = LatestWins()
     private var loadTask: Task<Void, Never>?
     /// The page decode running, if any: ImageIO can't stop one, so the next waits for it (see show).
     private var pageDecode: Task<CGImage, Error>?
@@ -634,6 +647,11 @@ final class ViewerModel {
                       url, prefetched != nil, nil)
         if let prefetched { shown(prefetched, url: url, page: page, fit: true, started: started) }
         shownStep = nil
+        // Assigned only when they change: each assignment of an observed property redraws the canvas.
+        if regionStep != nil { regionStep = nil }
+        regionRequest = nil
+        lastVisible = nil
+        if region != nil { region = nil }
         loadTask = Task {
             // Set while zoomed (page 0): its neighbours are prefetched.
             var zoomed = false
@@ -664,10 +682,28 @@ final class ViewerModel {
                 } else {
                     let decode = await zoomDecode(url)
                     guard !Task.isCancelled else { return }
-                    if case .step(let step) = decode.target, let full = decode.size { shownStep = (step, full) }
                     zoomed = true
                     target = decode.target
-                    decoded = try await decode.cache.image(for: url, target: decode.target)
+                    var cache = decode.cache
+                    if case .step(let step) = decode.target, let full = decode.size {
+                        shownStep = (step, full)
+                        // shortcut: compare panes and a pending rotation or flip decode whole steps (no parts), give them parts if people compare or turn huge pictures.
+                        if decode.cache === fullSizeCache, showsParts(full, step: step) {
+                            let readsRegions = await Task.detached { ImageDecoder.readsRegions(url) }.value
+                            guard !Task.isCancelled else { return }
+                            // Again after the wait: a compare, turn or flip started meanwhile decodes the whole step.
+                            if readsRegions, showsParts(full, step: step) {
+                                // A whole-step decode from a compare or turn just left isn't needed any more.
+                                await fullSizeCache.remove(url)
+                                // The fit picture shows enlarged until the visible part's decode lands over it.
+                                regionStep = step
+                                if let lastVisible { visibleRectChanged(lastVisible) }
+                                target = .fit(screens)
+                                cache = self.cache
+                            }
+                        }
+                    }
+                    decoded = try await cache.image(for: url, target: target)
                 }
                 guard !Task.isCancelled else { return }
                 if prefetched == nil { shown(decoded, url: url, page: page, fit: size != nil, started: started) }
@@ -1442,6 +1478,8 @@ final class ViewerModel {
             compareSession = session
             let space = screenSpace
             Task.detached(priority: .utility) { ImageDifference.prepare(colorSpace: space) }
+            // Compare panes decode the whole step: pane 1's parts go, its zoom stays.
+            if regionStep != nil { show(keepsPlayer: true) }
         }
         focusDecodes()
         showSecond()
@@ -1458,7 +1496,7 @@ final class ViewerModel {
         compare(current, with: url)
     }
 
-    /// Esc, Stop Comparing, opening a file, T, an empty list: pane 1 stays at its zoom, pane 2's decodes go.
+    /// Opening a file, T, an empty list (and `stopComparing`): pane 1 stays at its zoom, pane 2's decodes go.
     func leaveCompare() {
         guard let compareSession else { return }
         compareSession.task?.cancel()
@@ -1467,6 +1505,13 @@ final class ViewerModel {
         endDifference(compareSession)
         self.compareSession = nil
         focusDecodes()
+    }
+
+    /// Esc, Stop Comparing: leaves the compare; pane 1, which decoded the whole step for it, goes back to parts.
+    /// The other ways out show something else next.
+    func stopComparing() {
+        leaveCompare()
+        if let shownStep, regionStep == nil, showsParts(shownStep.size, step: shownStep.step) { show(keepsPlayer: true) }
     }
 
     /// X: the two files change panes; pane 1's opens its folder when it isn't in the list. Zoom stays.
