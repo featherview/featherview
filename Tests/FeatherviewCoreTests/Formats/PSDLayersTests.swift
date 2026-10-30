@@ -1,4 +1,5 @@
 import Foundation
+import os
 import Testing
 @testable import FeatherviewCore
 
@@ -263,6 +264,82 @@ import Testing
         ], realComposite: nil)
         for (k, v) in [Int(Int32.min), Int(Int32.min), Int(Int32.max), Int(Int32.max)].enumerated() { Self.patch(&data, 62 + 30 + 20 + 4 * k, v, 4) }
         #expect(throws: OwnDecodeError.corrupt) { try Self.open(data) }
+    }
+
+    /// A noise layer partly off the top-left of a 1200 × 2600 canvas, ending inside it (2.9 MB per channel on the
+    /// canvas, several 1 MB bands), with a mask partly off the bottom.
+    static func bigLayer(version: Int, compression: Int) throws -> (layer: PSDLayer, pixels: [UInt8], mask: [UInt8]) {
+        let rect = (top: -37, left: -53, bottom: 2563, right: 1147), w = 1200, h = 2600
+        let pixels = noise(w * h * 4), mask = noise(1100 * 2700, seed: 3)
+        let file = try open(PSDFixture.makeLayered(width: 1200, height: 2600, layers: [
+            Layer(name: "Big", rect: rect, pixels: pixels, mask: .init(rect: (10, 5, 2710, 1105), pixels: mask, defaultColour: 200),
+                  compression: compression),
+        ], version: version))
+        return (try #require(layers(file.nodes).first), pixels, mask)
+    }
+
+    /// The whole on-canvas plane of each channel in memory, reduced cell by cell: what `channels(scale:)` and
+    /// `pixels(scale:)` must give.
+    static func reduced(_ rgba: [UInt8], rect: PSDRect, layer: PSDLayer, scale: Double) -> RGBAImage {
+        let source = layer.source, clip = source.clip(rect), cells = source.cells(clip, scale: scale)
+        let target = PSDLayers.scaled(clip, canvas: source.canvas, scale: scale), ow = target.right - target.left, oh = target.bottom - target.top
+        var sums = [Int](repeating: 0, count: ow * oh * 4)
+        for y in clip.top..<clip.bottom {
+            for x in clip.left..<clip.right {
+                let p = ((y - rect.top) * (rect.right - rect.left) + x - rect.left) * 4, o = cells.index(x - clip.left, y - clip.top)
+                let a = Int(rgba[p + 3])
+                for c in 0..<3 { sums[o * 4 + c] += Int(rgba[p + c]) * a }
+                sums[o * 4 + 3] += a
+            }
+        }
+        var pixels = [UInt8](repeating: 0, count: ow * oh * 4)
+        for o in 0..<ow * oh {
+            let a = sums[o * 4 + 3], area = cells.area(o % ow, o / ow)
+            if a > 0 { for c in 0..<3 { pixels[o * 4 + c] = UInt8((sums[o * 4 + c] + a / 2) / a) } }
+            pixels[o * 4 + 3] = UInt8((a + area / 2) / area)
+        }
+        return RGBAImage(width: ow, height: oh, pixels: pixels)
+    }
+
+    /// The same for a mask: the default colour fills the cells' uncovered parts.
+    static func reducedMask(_ values: [UInt8], mask: PSDMask, scale: Double) -> [UInt8] {
+        let source = mask.source, rect = mask.rect, clip = source.clip(rect), cells = source.cells(clip, scale: scale)
+        let target = PSDLayers.scaled(clip, canvas: source.canvas, scale: scale), ow = target.right - target.left, oh = target.bottom - target.top
+        var sums = [Int](repeating: 0, count: ow * oh), counts = sums
+        for y in clip.top..<clip.bottom {
+            for x in clip.left..<clip.right {
+                let o = cells.index(x - clip.left, y - clip.top)
+                sums[o] += Int(values[(y - rect.top) * (rect.right - rect.left) + x - rect.left])
+                counts[o] += 1
+            }
+        }
+        return (0..<ow * oh).map { o in
+            let area = cells.area(o % ow, o / ow)
+            return UInt8((sums[o] + (area - counts[o]) * Int(mask.defaultColour) + area / 2) / area)
+        }
+    }
+
+    @Test(arguments: [(1, 0), (1, 1), (2, 1)])  // (version, channel compression)
+    func scaledChannelsMatchTheWholePlaneReduced(version: Int, compression: Int) throws {
+        let (layer, pixels, mask) = try Self.bigLayer(version: version, compression: compression)
+        for scale in [0.13, 0.5] {
+            #expect(try layer.channels(scale: scale) == Self.reduced(pixels, rect: layer.rect, layer: layer, scale: scale))
+            let m = try #require(layer.mask)
+            #expect(try m.pixels(scale: scale).pixels == Self.reducedMask(mask, mask: m, scale: scale))
+        }
+    }
+
+    @Test(arguments: [(1, 0), (1, 1), (2, 1)])  // (version, channel compression)
+    func scaledChannelsHoldBoundedRows(version: Int, compression: Int) throws {
+        let (layer, _, _) = try Self.bigLayer(version: version, compression: compression)
+        let largest = OSAllocatedUnfairLock(initialState: 0)
+        try PSDChannelSource.$largestRead.withValue(largest) {
+            _ = try layer.channels(scale: 0.1)
+            _ = try layer.mask?.pixels(scale: 0.1)
+        }
+        // About 1 MB of rows per channel at a time (packed rows also hold the columns off the canvas and up to
+        // 2 bytes per 128), never the 2.9 MB plane.
+        #expect(largest.withLock { $0 } <= (1 << 20) * 11 / 10)
     }
 
     @Test func negativePSBChannelLengthThrows() throws {
