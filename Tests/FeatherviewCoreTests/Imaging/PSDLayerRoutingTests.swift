@@ -90,6 +90,15 @@ import Testing
         }
     }
 
+    /// A file that can't be opened for a moment draws its layers again once it can: only damage is remembered.
+    @Test func unreadableFileDrawsLayersOnceReadable() throws {
+        let url = try Self.write(PSDFixture.makeLayered(width: 8, height: 6, layers: Self.layers(8, 6), realComposite: false))
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: url.path)
+        #expect(throws: (any Error).self) { try ImageDecoder.decode(url) }
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+        #expect(try #require(RGBAImage(try ImageDecoder.decode(url)))[7, 0] == (0, 128, 255, 255))
+    }
+
     @Test func sixteenBitStaysWithImageIO() throws {
         let pixels = PSDRoutingTests.gradient(width: 20, height: 10)
         let url = try Self.write(PSDFixture.make(width: 20, height: 10, pixels: pixels, realMerged: false, depth: 16))

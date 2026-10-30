@@ -42,6 +42,9 @@ extension RegionReader {
 
 /// Positional file reads for the region readers.
 enum FileRead {
+    /// The failure of the last call that set `errno` (open, read): the file couldn't be read, which isn't damage.
+    static func error() -> POSIXError { POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+
     /// `count` bytes at `offset`; throws on an error or the end of the file before them.
     static func bytes(_ fd: Int32, _ offset: Int, _ count: Int) throws -> [UInt8] {
         try [UInt8](unsafeUninitializedCapacity: count) { buffer, initialized in
@@ -56,6 +59,7 @@ enum FileRead {
         var done = 0
         while done < count {
             let n = pread(fd, buffer + done, count - done, off_t(offset + done))
+            if n < 0 { throw FileRead.error() }
             guard n > 0 else { throw OwnDecodeError.corrupt }
             done += n
         }

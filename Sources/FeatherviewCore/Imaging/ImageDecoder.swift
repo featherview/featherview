@@ -232,7 +232,8 @@ public enum ImageDecoder {
 
     /// A layered 8-bit RGB PSD/PSB whose stored composite isn't the picture (version info says so), drawn from its
     /// layers (`PSDCompositor.photoshop`) with its longest side `longest(full size)`, in the file's ICC profile or
-    /// sRGB. Nil for any other file, and when drawing fails (then ImageIO decodes it, and keeps it until it changes).
+    /// sRGB. Nil for any other file, and when drawing fails (then ImageIO decodes it, and keeps it until it changes when the
+    /// file is damaged).
     private static func layerComposite(_ url: URL, longest: (CGSize) -> Int) -> CGImage? {
         guard ["psd", "psb"].contains(url.pathExtension.lowercased()), PSDComposite(url: url) == nil else { return nil }
         if let failed = failedReads.withLock({ $0[url] }), failed == fileStamp(url) { return nil }
@@ -247,8 +248,11 @@ public enum ImageDecoder {
             guard let drawn = image.makeCGImage() else { throw OwnDecodeError.corrupt }
             let space = psdProfile(url).flatMap { CGColorSpace(iccData: $0 as CFData) }.flatMap { $0.model == .rgb ? $0 : nil }
             return space.flatMap { drawn.copy(colorSpace: $0) } ?? drawn
-        } catch {
+        } catch is OwnDecodeError {
             readerFailed(url)
+            return nil
+        } catch {
+            // The file couldn't be opened or read this time: it gets the layers again next time.
             return nil
         }
     }

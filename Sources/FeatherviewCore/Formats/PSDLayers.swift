@@ -32,10 +32,10 @@ public struct PSDLayers: Sendable {
     /// when the layer section can't be followed.
     public init?(url: URL) throws {
         let fd = open(url.path, O_RDONLY)
-        guard fd >= 0 else { throw OwnDecodeError.corrupt }
+        guard fd >= 0 else { throw FileRead.error() }
         defer { close(fd) }
         var info = stat()
-        guard fstat(fd, &info) == 0 else { throw OwnDecodeError.corrupt }
+        guard fstat(fd, &info) == 0 else { throw FileRead.error() }
         var r = FileCursor(fd: fd, end: Int(info.st_size))
 
         guard r.end >= 26, try r.bytes(4).elementsEqual("8BPS".utf8) else { return nil }
@@ -349,22 +349,28 @@ struct PSDChannelSource: Sendable {
     }
 
     /// Runs `body` with a reader of the channels of a layer or mask at `rect`: `read(id, rows)` gives rows `rows`
-    /// of `clip(rect)` (0 its top), row by row; nil when there's no such channel. Any failure is `OwnDecodeError.corrupt`.
+    /// of `clip(rect)` (0 its top), row by row; nil when there's no such channel. A failed read throws `POSIXError`, any
+    /// other failure `OwnDecodeError.corrupt`.
     /// The channels `opening` are opened at once on all cores first (a zip channel inflates when opened).
     func reading<T>(_ rect: PSDRect, opening: [Int] = [],
                     _ body: ((Int, Range<Int>) throws -> [UInt8]?) throws -> T) throws -> T {
         let fd = open(url.path, O_RDONLY)
-        guard fd >= 0 else { throw OwnDecodeError.corrupt }
+        guard fd >= 0 else { throw FileRead.error() }
         defer { close(fd) }
         let first = opening.compactMap { id in channels[id].map { (id, $0) } }
-        let early = OSAllocatedUnfairLock(initialState: (opened: [Int: Channel](), failed: false))
+        let early = OSAllocatedUnfairLock(initialState: (opened: [Int: Channel](), failed: Error?.none))
         DispatchQueue.concurrentPerform(iterations: first.count) { k in
             let (id, (offset, length)) = first[k]
-            let channel = try? self.channel(fd, offset, length, rect)
-            early.withLock { if let channel { $0.opened[id] = channel } else { $0.failed = true } }
+            let channel = Result { try self.channel(fd, offset, length, rect) }
+            early.withLock {
+                switch channel {
+                case .success(let channel): $0.opened[id] = channel
+                case .failure(let error): $0.failed = error
+                }
+            }
         }
         var (opened, failed) = early.withLock { $0 }
-        guard !failed else { throw OwnDecodeError.corrupt }
+        if let failed { throw failed is POSIXError ? failed : OwnDecodeError.corrupt }
         do {
             return try body { id, rows in
                 guard let (offset, length) = channels[id] else { return nil }
@@ -372,6 +378,8 @@ struct PSDChannelSource: Sendable {
                 opened[id] = channel
                 return try band(fd, channel, rect, rows)
             }
+        } catch let error as POSIXError {
+            throw error
         } catch {
             throw OwnDecodeError.corrupt
         }
@@ -390,7 +398,7 @@ struct PSDChannelSource: Sendable {
         let present = ids.compactMap { channels[$0] }
         guard !present.isEmpty else { return false }
         let fd = open(url.path, O_RDONLY)
-        guard fd >= 0 else { throw OwnDecodeError.corrupt }
+        guard fd >= 0 else { throw FileRead.error() }
         defer { close(fd) }
         for (offset, length) in present {
             guard length >= 2 else { throw OwnDecodeError.corrupt }
