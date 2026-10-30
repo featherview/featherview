@@ -2,7 +2,7 @@ import Foundation
 
 /// Text on the disk image's background. The app never shows it; it is here so the string catalog carries it.
 public enum DiskImageText {
-    public static let firstOpenHelp = String(localized: "First open: open Featherview once from Applications. When macOS says it can't check it, go to System Settings › Privacy & Security and click Open Anyway. After that it opens normally.")
+    public static let firstOpenHelp = String(localized: "Before the first open: double-click “Read Me First”. Featherview isn’t notarized by Apple yet, so macOS blocks it once. The file has the one line to paste into Terminal that lets it open, on any account.")
 
     /// The translation in an app's `Localizable.strings` (English text as the key), or the English text.
     public static func firstOpenHelp(from strings: [String: String]) -> String {

@@ -1,0 +1,39 @@
+Featherview: opening it the first time
+======================================
+
+Featherview isn't notarized by Apple yet, so macOS blocks it the first
+time you open it. One line in Terminal lets it open, on any Mac account,
+administrator or not:
+
+1. Drag Featherview to Applications. On a standard account, macOS asks
+   for an administrator's name and password here.
+
+2. Open Terminal (Applications > Utilities > Terminal), paste this line
+   and press Return:
+
+   xattr -dr com.apple.quarantine /Applications/Featherview.app
+
+3. Open Featherview. From now on it opens like any other app.
+
+The line removes the "downloaded from the internet" mark from Featherview
+only. Nothing else on your Mac changes.
+
+Administrator? Instead of step 2 you can open Featherview once, then go to
+System Settings > Privacy & Security and click Open Anyway. On standard
+accounts Open Anyway often fails on recent macOS versions, so use the
+Terminal line there.
+
+
+Why the extra step
+------------------
+
+Featherview is made in our spare time and given away for free. For macOS
+to open it straight away, Apple has to notarize it, and that costs
+99 EUR / 99 USD every year. If Featherview turns out useful to you, a
+small contribution towards that fee would mean a lot:
+
+   https://github.com/sponsors/mynetx
+
+Thank you for trying it either way.
+
+Featherview is open source: https://github.com/featherview/featherview
