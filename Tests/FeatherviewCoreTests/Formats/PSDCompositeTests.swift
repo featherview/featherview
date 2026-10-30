@@ -50,6 +50,26 @@ import Testing
         #expect(Self.same(Self.pixels(image), pixels))
     }
 
+    /// 2048 × 600 into one row: each band (600 rows) spans two 1 MB reads (512 rows of 2048).
+    @Test(arguments: [0, 1]) func bandsLargerThanOneReadAverageAllRows(compression: Int) throws {
+        let (width, height) = (2048, 600)
+        let pixels = Self.noise(width: width, height: height)
+        let url = try Self.write(PSDFixture.make(width: width, height: height, pixels: pixels, compression: compression))
+        let image = try #require(PSDComposite(url: url)).decode(size: PixelSize(width: 2, height: 1))
+        let expected: [RGB] = (0..<2).map { half in
+            var sums = (0, 0, 0)
+            for y in 0..<height {
+                for x in half * width / 2 ..< (half + 1) * width / 2 {
+                    let p = pixels[y * width + x]
+                    sums = (sums.0 + Int(p.0), sums.1 + Int(p.1), sums.2 + Int(p.2))
+                }
+            }
+            let n = height * width / 2
+            return (UInt8((sums.0 + n / 2) / n), UInt8((sums.1 + n / 2) / n), UInt8((sums.2 + n / 2) / n))
+        }
+        #expect(Self.same(Self.pixels(image), expected))
+    }
+
     @Test func areaAveragesOnDownscale() throws {
         let pixels: [RGB] = [(0, 0, 0), (10, 20, 30), (100, 100, 100), (200, 0, 50),
                              (2, 2, 2), (12, 22, 32), (100, 100, 100), (0, 0, 52)]

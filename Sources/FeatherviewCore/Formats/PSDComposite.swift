@@ -109,28 +109,33 @@ public struct PSDComposite: Sendable {
             let r0 = y0 + oy * rh / oh, r1 = y0 + (oy + 1) * rh / oh
             var sums = [UInt64](repeating: 0, count: ow * 3)
             do {
+                // About 1 MB of rows per read, so a small decode of a huge picture holds little per band.
+                let chunk = max(1, (1 << 20) / (rowOffsets == nil ? rw : width))
                 for c in 0..<3 {
-                    // RLE rows unpack whole (stride `width`, column 0 first); raw rows read only the region's columns.
-                    let band: [UInt8], stride: Int, start: Int
-                    if let offsets = rowOffsets {
-                        (stride, start) = (width, 0)
-                        let first = c * height + r0
-                        let packed = try Self.read(fd, offsets[first], offsets[first + r1 - r0] - offsets[first])
-                        band = try (r0..<r1).flatMap { r -> [UInt8] in
-                            let from = offsets[c * height + r] - offsets[first], to = offsets[c * height + r + 1] - offsets[first]
-                            return try Self.unpackBits(packed[from..<to], width: width)
+                    for a in stride(from: r0, to: r1, by: chunk) {
+                        let b = min(a + chunk, r1)
+                        // RLE rows unpack whole (stride `width`, column 0 first); raw rows read only the region's columns.
+                        let band: [UInt8], rowStride: Int, start: Int
+                        if let offsets = rowOffsets {
+                            (rowStride, start) = (width, 0)
+                            let first = c * height + a
+                            let packed = try Self.read(fd, offsets[first], offsets[first + b - a] - offsets[first])
+                            band = try (a..<b).flatMap { r -> [UInt8] in
+                                let from = offsets[c * height + r] - offsets[first], to = offsets[c * height + r + 1] - offsets[first]
+                                return try Self.unpackBits(packed[from..<to], width: width)
+                            }
+                        } else {
+                            (rowStride, start) = (rw, x0)
+                            band = try Self.rawBand(channel: c, rows: a..<b, x0: x0, rw: rw, width: width, height: height,
+                                                    dataStart: dataStart) { try Self.read(fd, $0, $1) }
                         }
-                    } else {
-                        (stride, start) = (rw, x0)
-                        band = try Self.rawBand(channel: c, rows: r0..<r1, x0: x0, rw: rw, width: width, height: height,
-                                                dataStart: dataStart) { try Self.read(fd, $0, $1) }
-                    }
-                    for row in 0..<(r1 - r0) {
-                        let base = row * stride - start
-                        for ox in 0..<ow {
-                            var sum: UInt64 = 0
-                            for x in columns[ox]..<columns[ox + 1] { sum += UInt64(band[base + x]) }
-                            sums[ox * 3 + c] += sum
+                        for row in 0..<(b - a) {
+                            let base = row * rowStride - start
+                            for ox in 0..<ow {
+                                var sum: UInt64 = 0
+                                for x in columns[ox]..<columns[ox + 1] { sum += UInt64(band[base + x]) }
+                                sums[ox * 3 + c] += sum
+                            }
                         }
                     }
                 }
