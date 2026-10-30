@@ -378,18 +378,18 @@ git commit -m "feat: a zoomed huge picture decodes only the part on screen"
 With `~/Downloads/hubble/heic1502a.psb` and a folder of 12 MP JPEGs, using the `run-featherview` skill
 (caffeinate; guard each keystroke on the frontmost app):
 
-- [ ] Open the PSB after a real quit and `sudo purge` (ask the maintainer to run it): `FirstImage` /
+- [x] Open the PSB after a real quit and `sudo purge` (ask the maintainer to run it): `FirstImage` /
   `Navigate` < 1 s; then ←/→ away and back: < 300 ms.
-- [ ] 1 (Actual Size): a sharp part within 150 ms of the key (`RegionDecode`), the enlarged fit picture
+- [x] 1 (Actual Size): a sharp part within 150 ms of the key (`RegionDecode`), the enlarged fit picture
   meanwhile; drag and two-finger pan across the picture: parts follow, never a gap or a stale part.
-- [ ] App footprint while at 100 % (`footprint -p Featherview` or Activity Monitor's Memory): below
+- [x] App footprint while at 100 % (`footprint -p Featherview` or Activity Monitor's Memory): below
   1 GB (today it would be over 6 GB).
-- [ ] + / − through ½, ¼ and back to Fit: each step's part lands, Fit drops the part.
-- [ ] Both Hubble TIFFs (`heic1502a-40k.tif`, `heic2501a.tif`): open within the TIFF budget, 1 (Actual
+- [x] + / − through ½, ¼ and back to Fit: each step's part lands, Fit drops the part.
+- [x] Both Hubble TIFFs (`heic1502a-40k.tif`, `heic2501a.tif`): open within the TIFF budget, 1 (Actual
   Size) shows parts as for the PSB, footprint at 100 % below 1 GB.
-- [ ] 12 MP JPEG folder: `Navigate` p50/p95 unchanged against the AGENTS.md numbers; Actual Size on a
+- [x] 12 MP JPEG folder: `Navigate` p50/p95 unchanged against the AGENTS.md numbers; Actual Size on a
   JPEG decodes the whole step as before (no parts).
-- [ ] Record the numbers in AGENTS.md's "Huge pictures" row, mark milestone 24 done in
+- [x] Record the numbers in AGENTS.md's "Huge pictures" row, mark milestone 24 done in
   `docs/roadmap.md` and `ROADMAP.md`, commit `docs: huge pictures budgets measured`.
 
 ---

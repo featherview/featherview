@@ -398,6 +398,9 @@ final class ViewerModel {
                     isOpening = false
                     // show() ran before the neighbours were known; calling it again could restart the decode.
                     let neighbors = focusDecodes()
+                    // After the image shown: huge neighbours decode on every core and would slow it several times.
+                    _ = try? await cache.image(for: url, target: .fit(screens))
+                    guard !Task.isCancelled else { return }
                     await cache.prefetch(neighbors, target: .fit(screens))
                     guard !Task.isCancelled else { return }
                     await fillReady(neighbors, screens: screens)

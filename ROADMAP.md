@@ -16,10 +16,13 @@ usable from the keyboard and with VoiceOver.
 - Signed and notarized releases, so the first launch needs no "Open Anyway", once
   [sponsorships](https://github.com/sponsors/mynetx) cover Apple's $99/year developer membership.
 
-## Planned
+Done for the next release:
 
 - Huge pictures: a 1.5-gigapixel Photoshop file (Hubble's Andromeda mosaic) opens in under a second,
   huge TIFFs open several times faster, and zooming in reads only the part on screen
+
+## Planned
+
 - Photoshop layers: files saved without "Maximize Compatibility" show the picture Photoshop shows,
   drawn from their layers with every blend mode, groups, masks, fill and adjustment layers
 - Photos library: browse albums from Apple's Photos with the arrow keys, drag pictures in from

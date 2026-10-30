@@ -37,7 +37,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | — | Automatic updates through Sparkle (spec "Updates") | no plan; commits 0949b8d, a5f9bd3 | done |
 | 22 | Photos library: browse albums, drops from Photos, batch from and into the library | `docs/superpowers/plans/2026-10-26-milestone-22-photos-library.md` | planned |
 | 23 | Info panel: histogram, exposure card, foldable groups, place names, all metadata, keyboard focus and VoiceOver (runs before 22) | `docs/superpowers/plans/2026-10-28-milestone-23-info-panel.md` | done, shipped in 0.12.0: place names in the app's language; screen check: `Navigate` with the panel open over 200 12 MP JPEGs p50 19.9 ms, p95 21.9 ms; first place 75–79 ms after the panel opens, cold; keyboard, All Metadata keys, VoiceOver tree, German light, Arabic dark, Increase Contrast, Reduce Motion (groups fold as a cut) |
-| 24 | Huge pictures: own readers for 8-bit RGB PSD/PSB and huge TIFF at the size needed, zoom by parts | `docs/superpowers/plans/2026-10-30-milestone-24-huge-pictures.md` | in progress |
+| 24 | Huge pictures: own readers for 8-bit RGB PSD/PSB and huge TIFF at the size needed, zoom by parts | `docs/superpowers/plans/2026-10-30-milestone-24-huge-pictures.md` | done: screen check on heic1502a.psb and both Hubble TIFFs: first image 525 ms after launch (PSB), parts at 100 % 36–60 ms (PSB) and 119–148 ms (TIFF) while panning, app footprint at most 327 MB; 12 MP JPEG `Navigate` p50 21 ms, p95 24 ms |
 | 25 | Photoshop layers: files without a stored composite drawn from their layers, every blend mode, groups, masks, fills, adjustment layers (runs before 22) | `docs/superpowers/plans/2026-10-30-milestone-25-photoshop-layers.md` | planned |
 
 ## 1. Core viewer and batch
