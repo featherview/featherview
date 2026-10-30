@@ -4,6 +4,12 @@ import Foundation
 
 /// A zoomed huge picture: the fit picture shows enlarged, a sharp decode of only the visible part lies over it.
 extension ViewerModel {
+    /// Whether the zoom step `step` of a file `full` pixels large shows by parts now (`RegionZoom.showsParts`).
+    func showsParts(_ full: CGSize, step: Int) -> Bool {
+        RegionZoom.showsParts(image: PixelSize(width: Int(full.width), height: Int(full.height)), step: step,
+                              screens: screens, comparing: compareSession != nil, transformed: pendingTransform != PictureTransform())
+    }
+
     /// The canvas's visible rect, in full-size pixels: asks for a new part when none is there or panning nears
     /// the edge of the one decoded (or asked for).
     func visibleRectChanged(_ visible: CGRect) {

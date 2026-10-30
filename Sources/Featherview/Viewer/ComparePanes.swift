@@ -60,7 +60,7 @@ struct ComparePanes<First: View>: View {
                 .contextMenu {
                     Button("Swap Images") { model.swapCompared() }
                         .disabled(!model.availability.canSwap)
-                    Button("Stop Comparing") { model.leaveCompare() }
+                    Button("Stop Comparing") { model.stopComparing() }
                     Divider()
                     Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([session.url]) }
                 }

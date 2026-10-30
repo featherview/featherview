@@ -686,12 +686,13 @@ final class ViewerModel {
                     if case .step(let step) = decode.target, let full = decode.size {
                         shownStep = (step, full)
                         // shortcut: compare panes and a pending rotation or flip decode whole steps (no parts), give them parts if people compare or turn huge pictures.
-                        if decode.cache === fullSizeCache, compareSession == nil, pendingTransform == PictureTransform(),
-                           RegionZoom.usesRegion(image: PixelSize(width: Int(full.width), height: Int(full.height)),
-                                                 step: step, screens: screens) {
+                        if decode.cache === fullSizeCache, showsParts(full, step: step) {
                             let readsRegions = await Task.detached { ImageDecoder.readsRegions(url) }.value
                             guard !Task.isCancelled else { return }
-                            if readsRegions {
+                            // Again after the wait: a compare, turn or flip started meanwhile decodes the whole step.
+                            if readsRegions, showsParts(full, step: step) {
+                                // A whole-step decode from a compare or turn just left isn't needed any more.
+                                await fullSizeCache.remove(url)
                                 // The fit picture shows enlarged until the visible part's decode lands over it.
                                 regionStep = step
                                 if let lastVisible { visibleRectChanged(lastVisible) }
@@ -1493,7 +1494,7 @@ final class ViewerModel {
         compare(current, with: url)
     }
 
-    /// Esc, Stop Comparing, opening a file, T, an empty list: pane 1 stays at its zoom, pane 2's decodes go.
+    /// Opening a file, T, an empty list (and `stopComparing`): pane 1 stays at its zoom, pane 2's decodes go.
     func leaveCompare() {
         guard let compareSession else { return }
         compareSession.task?.cancel()
@@ -1502,6 +1503,13 @@ final class ViewerModel {
         endDifference(compareSession)
         self.compareSession = nil
         focusDecodes()
+    }
+
+    /// Esc, Stop Comparing: leaves the compare; pane 1, which decoded the whole step for it, goes back to parts.
+    /// The other ways out show something else next.
+    func stopComparing() {
+        leaveCompare()
+        if let shownStep, regionStep == nil, showsParts(shownStep.size, step: shownStep.step) { show(keepsPlayer: true) }
     }
 
     /// X: the two files change panes; pane 1's opens its folder when it isn't in the list. Zoom stays.

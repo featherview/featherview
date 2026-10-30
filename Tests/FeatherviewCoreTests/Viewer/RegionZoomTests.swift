@@ -11,6 +11,15 @@ struct RegionZoomTests {
         #expect(!RegionZoom.usesRegion(image: PixelSize(width: 12000, height: 8000), step: 3, screens: screen))
     }
 
+    @Test func compareOrPendingTurnShowsWholeStep() {
+        let screen = [PixelSize(width: 3024, height: 1964)], huge = PixelSize(width: 69536, height: 22230)
+        #expect(RegionZoom.showsParts(image: huge, step: 0, screens: screen, comparing: false, transformed: false))
+        #expect(!RegionZoom.showsParts(image: huge, step: 0, screens: screen, comparing: true, transformed: false))
+        #expect(!RegionZoom.showsParts(image: huge, step: 0, screens: screen, comparing: false, transformed: true))
+        #expect(!RegionZoom.showsParts(image: PixelSize(width: 4032, height: 3024), step: 0, screens: screen,
+                                       comparing: false, transformed: false))
+    }
+
     @Test func regionGrowsAndClamps() {
         let image = PixelSize(width: 69536, height: 22230)
         #expect(RegionZoom.region(visible: CGRect(x: 1000, y: 1000, width: 3000, height: 2000), image: image, step: 0)

@@ -11,6 +11,13 @@ public enum RegionZoom {
         return stepArea > 4 * screenArea
     }
 
+    /// True when the zoom step shows by parts: it `usesRegion`, and no compare or pending turn or flip is on
+    /// (those decode the whole step).
+    public static func showsParts(image: PixelSize, step: Int, screens: [PixelSize], comparing: Bool,
+                                  transformed: Bool) -> Bool {
+        !comparing && !transformed && usesRegion(image: image, step: step, screens: screens)
+    }
+
     /// `visible` grown by half its size on each side, snapped outward to the step's
     /// pixel grid and clamped to the picture. `.zero` when `visible` is null, infinite or not finite.
     public static func region(visible: CGRect, image: PixelSize, step: Int) -> CGRect {
