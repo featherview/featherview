@@ -133,6 +133,20 @@ import Testing
         #expect(image[7, 1] == (density == 255 ? (0, 0, 255, 255) : (127, 0, 128, 255)))
     }
 
+    /// A stroked shape layer shows its stored pixels whole: an outside stroke lies beyond the path.
+    @Test func strokedShapeKeepsItsPixels() throws {
+        var layer = PSDCompositorTests.solid("A", 0, 0, 8, 8, [10, 200, 10, 255])
+        layer.blocks["vmsk"] = PSDFillsTests.vectorMask(PSDFillsTests.square(0.5, 1))
+        layer.blocks["vstk"] = Data([0, 0, 0, 16])
+        var filled = layer
+        filled.blocks["SoCo"] = PSDFillsTests.block([("Clr ", PSDFillsTests.rgb(255, 0, 0))])
+        for layer in [layer, filled] {
+            let url = try Self.write(PSDFixture.makeLayered(width: 8, height: 8, layers: [layer], realComposite: false))
+            let image = try PSDCompositor.photoshop(try #require(try PSDLayers(url: url))).render(scale: 1)
+            #expect(image[1, 1] == (10, 200, 10, 255))
+        }
+    }
+
     /// A vector mask cuts a pixel layer too.
     @Test func vectorMaskCutsPixelLayers() throws {
         var layer = PSDCompositorTests.solid("A", 0, 0, 8, 8, [10, 200, 10, 255])

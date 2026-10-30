@@ -4,7 +4,24 @@ import Foundation
 /// Tagged blocks the compositor draws without (the milestone's known limits); `knko` counts only when set.
 let knownLimitKeys: Set<String> = ["lfx2", "lrFX", "lmfx", "clrL", "knko"]
 
-/// The corpus oracle: every layered 8-bit RGB PSD/PSB under `dir` with a real stored composite, its layers drawn at
+/// Whether the file has version info (image resource 1057), which Photoshop always writes: a composite from a
+/// tool that leaves it out isn't Photoshop's to compare with.
+func hasVersionInfo(_ url: URL) -> Bool {
+    guard let data = try? Data(contentsOf: url, options: .mappedIfSafe), data.count >= 34 else { return false }
+    let b = [UInt8](data.prefix(1 << 20))
+    func be(_ at: Int, _ n: Int) -> Int { at + n <= b.count ? b[at ..< at + n].reduce(0) { $0 << 8 | Int($1) } : 0 }
+    var at = 30 + be(26, 4)
+    let end = at + 4 + be(at, 4)
+    at += 4
+    while at + 12 <= min(end, b.count) {
+        if be(at + 4, 2) == 1057 { return true }
+        let sizeAt = at + 6 + ((1 + Int(b[at + 6]) + 1) & ~1)
+        at = sizeAt + 4 + ((be(sizeAt, 4) + 1) & ~1)
+    }
+    return false
+}
+
+/// The corpus oracle: every layered 8-bit RGB PSD/PSB under `dir` with a real stored composite and version info, its layers drawn at
 /// full size and compared with that composite, both over white. Totals count the files without known limits.
 func runPSDLayers(_ dir: URL, time: Bool) {
     let files = (FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)?.allObjects as? [URL] ?? [])
@@ -13,7 +30,7 @@ func runPSDLayers(_ dir: URL, time: Bool) {
     print("file\tsize\tlayers\tmean diff\t% off > 8\tknown limits" + (time ? "\tms" : ""))
     var clean = 0, within = 0
     for url in files {
-        guard let layers = try? PSDLayers(url: url), layers.hasRealComposite, !layers.nodes.isEmpty,
+        guard let layers = try? PSDLayers(url: url), layers.hasRealComposite, !layers.nodes.isEmpty, hasVersionInfo(url),
               let stored = PSDComposite(url: url),
               let composite = try? stored.decode(size: PixelSize(width: stored.width, height: stored.height)),
               let storedPixels = composite.dataProvider?.data as Data?, composite.bytesPerRow == stored.width * 4

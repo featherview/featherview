@@ -314,7 +314,9 @@ public extension PSDCompositor {
 
         return PSDCompositor(layers, content: { layer, scale in
             let width = PSDLayers.scaledSize(canvas.width, scale), height = PSDLayers.scaledSize(canvas.height, scale)
-            if let fill = try PSDFills.content(layer, canvas: canvas, patterns: patterns, scale: scale) {
+            // A stroked shape's stored pixels hold its stroke, which can lie outside the path: they draw as they are.
+            let stroked = layer.blocks["vstk"] != nil
+            if !stroked, let fill = try PSDFills.content(layer, canvas: canvas, patterns: patterns, scale: scale) {
                 guard fill.width > 0, fill.height > 0 else { return nil }
                 if fill.width == width, fill.height == height { return fill }
                 // Cut by a vector mask, the fill covers only the mask's rect: placed on the canvas here, since the
@@ -331,7 +333,7 @@ public extension PSDCompositor {
                 return placed
             }
             guard var image = try layer.channels(scale: scale) else { return nil }
-            if let mask = try PSDFills.vectorMask(layer, canvas: canvas, scale: scale) {
+            if !stroked, let mask = try PSDFills.vectorMask(layer, canvas: canvas, scale: scale) {
                 // The mask is 0 outside its rect (an inverted one covers the canvas).
                 let at = layer.scaledRect(scale: scale), r = mask.rect, maskWidth = r.right - r.left
                 for y in 0..<image.height {
