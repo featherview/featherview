@@ -258,6 +258,20 @@ import Testing
         #expect(try layer.channels(scale: 1) == RGBAImage(width: 1, height: 1, pixels: [1, 2, 3, 255]))
     }
 
+    /// Photoshop nests groups about 10 deep; a file nesting deeper than `PSDLayers.maxGroupDepth` is refused, so drawing
+    /// and freeing the tree never recurse far enough to overflow the stack.
+    @Test(arguments: [PSDLayers.maxGroupDepth, PSDLayers.maxGroupDepth + 1, 6000]) func groupDepthIsCapped(depth: Int) throws {
+        let layers = [Layer](repeating: Layer(name: "</Layer group>", group: .divider), count: depth)
+            + [Layer(name: "A", rect: (0, 0, 1, 1), pixels: [1, 2, 3, 255])]
+            + [Layer](repeating: Layer(name: "G", group: .open), count: depth)
+        let data = PSDFixture.makeLayered(width: 4, height: 4, layers: layers)
+        if depth <= PSDLayers.maxGroupDepth {
+            #expect(try Self.open(data).nodes.count == 1)
+        } else {
+            #expect(throws: OwnDecodeError.corrupt) { try Self.open(data) }
+        }
+    }
+
     @Test func maskRectOutOfRangeThrows() throws {
         var data = PSDFixture.makeLayered(width: 4, height: 4, layers: [
             Layer(name: "A", rect: (0, 0, 1, 1), pixels: [1, 2, 3, 255], mask: .init(rect: (0, 0, 1, 1), pixels: [7])),

@@ -19,6 +19,9 @@ public struct PSDLayers: Sendable {
 
     /// Tagged block keys left in the file: embedded files, filter data and layer data, which can run to
     /// hundreds of MB and nothing reads. shortcut: dropped, not indexed; record offset and length when one is needed.
+    /// Deepest group nesting accepted: Photoshop allows about 10; deeper files are refused, since drawing and freeing
+    /// the tree recurse once per level and each isolated level holds a scaled canvas.
+    static let maxGroupDepth = 16
     static let unreadKeys: Set<String> = ["lnk2", "lnkD", "lnk3", "lnkE", "FEid", "FXid", "Layr", "Lr16", "Lr32", "PxSD"]
 
     /// Tagged block keys whose length is 8 bytes in a PSB.
@@ -90,6 +93,7 @@ public struct PSDLayers: Sendable {
             if let section = layer.blocks["lsct"] ?? layer.blocks["lsdk"], section.count >= 4 {
                 let kind = be(Array(section.prefix(4))[...])
                 if kind == 3 {
+                    guard stack.count <= Self.maxGroupDepth else { throw OwnDecodeError.corrupt }
                     stack.append([])
                     continue
                 }
