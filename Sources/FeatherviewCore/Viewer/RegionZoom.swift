@@ -12,8 +12,11 @@ public enum RegionZoom {
     }
 
     /// `visible` grown by half its size on each side, snapped outward to the step's
-    /// pixel grid and clamped to the picture.
+    /// pixel grid and clamped to the picture. `.zero` when `visible` is null, infinite or not finite.
     public static func region(visible: CGRect, image: PixelSize, step: Int) -> CGRect {
+        // Int(_:) traps on infinite or NaN coordinates; CGRect.infinite's are finite but beyond Int.
+        guard !visible.isNull, !visible.isInfinite, visible.minX.isFinite, visible.minY.isFinite,
+              visible.maxX.isFinite, visible.maxY.isFinite else { return .zero }
         let unit = 1 << min(max(step, 0), 3)
         func span(_ lo: CGFloat, _ hi: CGFloat, _ limit: Int) -> (Int, Int) {
             let half = (hi - lo) / 2

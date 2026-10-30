@@ -19,6 +19,14 @@ struct RegionZoomTests {
                 == CGRect(x: 66500, y: 20000, width: 3036, height: 2230))
     }
 
+    @Test func regionOfNoVisibleRectIsZero() {
+        let image = PixelSize(width: 69536, height: 22230)
+        for visible in [CGRect.null, .infinite, CGRect(x: CGFloat.nan, y: 0, width: 10, height: 10),
+                        CGRect(x: 0, y: 0, width: CGFloat.infinity, height: 10)] {
+            #expect(RegionZoom.region(visible: visible, image: image, step: 0) == .zero)
+        }
+    }
+
     @Test func regionAlignsToStep() {
         let r = RegionZoom.region(visible: CGRect(x: 10001, y: 10003, width: 3000, height: 2000),
                                   image: PixelSize(width: 69536, height: 22230), step: 2)
