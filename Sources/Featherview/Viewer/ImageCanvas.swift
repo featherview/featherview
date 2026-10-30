@@ -96,6 +96,33 @@ struct ImageCanvas: NSViewRepresentable {
     /// In compare: pans this pane in step with the other one.
     var compareLink: CompareLink? = nil
     var pane: CompareSession.Pane = .first
+    /// A sharp decode of a part of a huge picture, laid over `image`; `rect` in full-size pixels.
+    var region: (image: CGImage, rect: CGRect)? = nil
+    /// The file's pixel size, for placing `region` and reporting the visible rect; nil while unknown.
+    var fullPixelSize: CGSize? = nil
+    /// The visible part of the picture in full-size pixels, after each scroll and update.
+    var onVisibleRect: (CGRect) -> Void = { _ in }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    /// Reports the visible rect while the clip view scrolls.
+    @MainActor final class Coordinator: NSObject {
+        weak var scrollView: NSScrollView?
+        var fullPixelSize: CGSize?
+        var onVisibleRect: (CGRect) -> Void = { _ in }
+
+        @objc func boundsChanged(_ note: Notification) { report() }
+
+        /// The clear area within the document, scaled by the document's current size (mid-zoom too) to full-size pixels.
+        func report() {
+            guard let scrollView, let fullPixelSize, let document = scrollView.documentView else { return }
+            let bounds = document.bounds
+            let visible = scrollView.clearRect.intersection(bounds)
+            guard bounds.width > 0, bounds.height > 0, !visible.isEmpty else { return }
+            let sx = fullPixelSize.width / bounds.width, sy = fullPixelSize.height / bounds.height
+            onVisibleRect(CGRect(x: visible.minX * sx, y: visible.minY * sy, width: visible.width * sx, height: visible.height * sy))
+        }
+    }
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = CanvasScrollView()
@@ -110,6 +137,10 @@ struct ImageCanvas: NSViewRepresentable {
         // A picture pans diagonally, not locked to the axis the fingers started on.
         scrollView.usesPredominantAxisScrolling = false
         scrollView.documentView = ImageLayerView()
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        context.coordinator.scrollView = scrollView
+        NotificationCenter.default.addObserver(context.coordinator, selector: #selector(Coordinator.boundsChanged(_:)),
+                                               name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
         return scrollView
     }
 
@@ -117,6 +148,11 @@ struct ImageCanvas: NSViewRepresentable {
         panController.scrollView = scrollView
         scrollView.backgroundColor = background
         guard let view = scrollView.documentView as? ImageLayerView else { return }
+        let coordinator = context.coordinator
+        coordinator.fullPixelSize = fullPixelSize
+        coordinator.onVisibleRect = onVisibleRect
+        // After every return below: a resize or a new picture moves the visible rect without a scroll.
+        defer { coordinator.report() }
         player?.onFrame = { [weak view] in view?.showFrame($0) }
         let image = player?.current ?? image
         view.onDoubleClick = onDoubleClick
@@ -164,6 +200,7 @@ struct ImageCanvas: NSViewRepresentable {
         let sameImage = view.shows(image)
         view.show(image, checkerboard: checkerboard && image.hasAlpha, 
                   smooth: !ZoomSteps.showsPixels(drawnWidth: size.width, imageWidth: Int(pixelWidth), displayScale: displayScale))
+        view.showRegion(region, fullPixelSize: fullPixelSize)
         // A fit picture turned a quarter ends at the size it will fit at, not overflowing.
         let clearSize = CGSize(width: scrollView.contentView.bounds.width - contentInsets.left - contentInsets.right,
                                height: scrollView.contentView.bounds.height - contentInsets.top - contentInsets.bottom)
@@ -322,6 +359,10 @@ private final class ImageLayerView: NSView {
     /// Holds the picture, its shadow and hairline, and carries the mirror; the quarter turns are on its sublayers.
     private let pictureLayer = CALayer()
     private let imageLayer = CALayer()
+    /// A sharp part of a huge picture over the enlarged fit picture; a sublayer of `imageLayer`, so turns and the mirror apply.
+    private let regionLayer = CALayer()
+    private var region: (image: CGImage, rect: CGRect)?
+    private var fullPixelSize: CGSize?
     /// The E3 elevation's contact and ambient shadows and the picture hairline, while the picture fits.
     private let shadowLayers = Theme.Elevation.e3.layers.map { _ in CALayer() }
     private let hairline = CALayer()
@@ -342,6 +383,12 @@ private final class ImageLayerView: NSView {
         hairline.borderWidth = 1
         pictureLayer.addSublayer(hairline)
         pictureLayer.addSublayer(imageLayer)
+        regionLayer.contentsGravity = .resize
+        // Scales with the picture during an animated zoom within the same step.
+        regionLayer.autoresizingMask = [.layerMinXMargin, .layerWidthSizable, .layerMaxXMargin,
+                                        .layerMinYMargin, .layerHeightSizable, .layerMaxYMargin]
+        regionLayer.isHidden = true
+        imageLayer.addSublayer(regionLayer)
         layer?.addSublayer(pictureLayer)
         setFramed(false)
     }
@@ -486,12 +533,38 @@ private final class ImageLayerView: NSView {
         CATransaction.commit()
     }
 
+    /// Lays `region` (full-size pixels) over the picture, or hides it when nil.
+    func showRegion(_ region: (image: CGImage, rect: CGRect)?, fullPixelSize: CGSize?) {
+        self.region = region
+        self.fullPixelSize = fullPixelSize
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        placeRegion()
+        CATransaction.commit()
+    }
+
+    private func placeRegion() {
+        guard let region, let full = fullPixelSize, full.width > 0, full.height > 0 else {
+            regionLayer.isHidden = true
+            regionLayer.contents = nil  // a dropped part isn't kept in memory
+            return
+        }
+        if (regionLayer.contents as AnyObject?) !== region.image { regionLayer.contents = region.image }
+        let sx = imageLayer.bounds.width / full.width, sy = imageLayer.bounds.height / full.height
+        regionLayer.frame = CGRect(x: region.rect.minX * sx, y: region.rect.minY * sy,
+                                   width: region.rect.width * sx, height: region.rect.height * sy)
+        regionLayer.magnificationFilter = imageLayer.magnificationFilter
+        regionLayer.minificationFilter = imageLayer.minificationFilter
+        regionLayer.isHidden = false
+    }
+
     override func layout() {
         super.layout()
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         place(pictureLayer)
         place(imageLayer)
+        placeRegion()
         if framed { layoutFrameLayers() }
         CATransaction.commit()
     }

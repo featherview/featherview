@@ -135,7 +135,8 @@ struct ViewerView: View {
                     onDoubleClick: model.toggleFullScreen, onPinch: model.zoom(by:), onSwipe: swiped,
                     onClick: clickedImage,
                     onFirstDraw: { toolbarReady = true; model.firstImageDrawn() },
-                    onCommit: model.imageCommitted, animatesZoom: animatesZoom, compareLink: model.compareLink)
+                    onCommit: model.imageCommitted, animatesZoom: animatesZoom, compareLink: model.compareLink,
+                    region: model.region, fullPixelSize: fullSize, onVisibleRect: model.visibleRectChanged)
             .contextMenu { ImageContextMenu(model: model) }
             // Under the glass toolbar and the status strip; `insets` keeps a fit image clear of them.
             .ignoresSafeArea()
