@@ -23,6 +23,19 @@ import Testing
             + [Layer(name: name, blend: blend, opacity: opacity, mask: mask, group: .open)]
     }
 
+    /// A text layer in normal mode blends its colours in a 1.45 gamma (Photoshop's default for text), so its
+    /// antialiased edges come out lighter over a light backdrop than plain source-over.
+    @Test func textBlendsInGamma145() throws {
+        var text = Self.solid("Text", 0, 0, 2, 1, [255, 0, 0, 128])
+        text.blocks["TySh"] = Data([0, 1])
+        let image = try Self.render(2, 1, [Self.solid("White", 0, 0, 2, 1, [255, 255, 255, 255]), text])
+        let expected = UInt8((pow(1 - 128.0 / 255, 1 / 1.45) * 255).rounded())
+        #expect(image[0, 0] == (255, expected, expected, 255))
+        // Over transparency nothing changes: the colour stays the layer's.
+        let alone = try Self.render(2, 1, [text])
+        #expect(alone[1, 0] == (255, 0, 0, 128))
+    }
+
     @Test func normalLayersStackLikeSourceOver() throws {
         let image = try Self.render(3, 1, [
             Layer(name: "A", rect: (0, 0, 1, 2), pixels: [200, 0, 0, 255, 0, 0, 0, 0]),

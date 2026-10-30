@@ -147,8 +147,12 @@ public struct PSDCompositor: Sendable {
             var mask = try base.isGroup ? masks(base, scale, at, image.width, image.height)
                                         : maskValues(base.mask, scale, at, image.width, image.height)
             if let blendIf = base.blendIf { mask = Self.apply(blendIf, image, at: local, over: target, to: mask) }
-            PSDBlend.composite(PSDBlend.mode(base.blend) ?? .normal, onto: &target, layer: image, at: local, alpha: mask,
-                               opacity: Float(base.opacity) / 255, fill: fill)
+            let mode = PSDBlend.mode(base.blend) ?? .normal
+            if mode == .normal, base.blocks["TySh"] != nil {
+                Self.text(&target, image, at: local, alpha: mask, Float(base.opacity) / 255 * fill)
+            } else {
+                PSDBlend.composite(mode, onto: &target, layer: image, at: local, alpha: mask, opacity: Float(base.opacity) / 255, fill: fill)
+            }
         }
     }
 
@@ -255,6 +259,32 @@ public struct PSDCompositor: Sendable {
             }
         }
         return out
+    }
+
+    /// 8-bit values in a 1.45 gamma (0…1), and back from 65,536 steps of it.
+    private static let textGamma = (encode: (0...255).map { pow(Float($0) / 255, 1.45) },
+                                    decode: (0...65_535).map { UInt8((pow(Float($0) / 65_535, 1 / 1.45) * 255).rounded()) })
+
+    /// Source-over of a text layer (straight alpha, `mask` layer-sized or nil, times `opacity`) onto `target` at `at`, its
+    /// colours mixed in a 1.45 gamma: Photoshop's default for text, which its composites show.
+    private static func text(_ target: inout RGBAImage, _ layer: RGBAImage, at: Point, alpha mask: [UInt8]?, _ opacity: Float) {
+        let encode = Self.textGamma.encode, decode = Self.textGamma.decode
+        let x0 = max(0, -at.x), x1 = min(layer.width, target.width - at.x)
+        let y0 = max(0, -at.y), y1 = min(layer.height, target.height - at.y)
+        guard x0 < x1, y0 < y1 else { return }
+        for y in y0..<y1 {
+            for x in x0..<x1 {
+                let p = y * layer.width + x, s = p * 4, d = ((y + at.y) * target.width + x + at.x) * 4
+                let a = Float(layer.pixels[s + 3]) / 255 * (mask.map { Float($0[p]) / 255 } ?? 1) * opacity
+                guard a > 0 else { continue }
+                let b = Float(target.pixels[d + 3]) / 255, out = a + b * (1 - a)
+                for c in 0..<3 {
+                    let mixed = (a * encode[Int(layer.pixels[s + c])] + b * (1 - a) * encode[Int(target.pixels[d + c])]) / out
+                    target.pixels[d + c] = decode[Int(mixed * 65_535 + 0.5)]
+                }
+                target.pixels[d + 3] = UInt8((out * 255).rounded())
+            }
+        }
     }
 
     /// Moves each pixel of `target` toward `other`'s (same size) by its weight (nil: 255) × `opacity` (0…255),
