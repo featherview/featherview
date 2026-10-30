@@ -1029,8 +1029,22 @@ the About window.
     needs, in parallel, and averages every pixel into the smaller picture (fine detail such as stars
     stays), in the file's ICC profile. A 4.6 GB, 1.5-gigapixel PSB then fits the screen in under a
     second instead of 5–15 s. Everything else (16 bits, alpha, grey, CMYK, zip) goes through ImageIO,
-    and so does a file saved without Photoshop's "Maximize Compatibility", whose stored composite isn't
-    the picture.
+    unless it was saved without Photoshop's "Maximize Compatibility": its stored composite isn't the
+    picture, so its layers are drawn instead (next paragraph).
+    8-bit RGB PSD and PSB without a real stored composite are drawn from their layers by our own
+    compositor, the way Photoshop shows them: visible layers in groups (pass-through or with their own
+    blend mode), layer masks and vector masks, clipping masks, opacity and fill opacity, Blend If,
+    every Photoshop blend mode (normal, dissolve, darken, multiply, colour burn, linear burn, darker
+    colour, lighten, screen, colour dodge, linear dodge, lighter colour, overlay, soft light, hard light,
+    vivid light, linear light, pin light, hard mix, difference, exclusion, subtract, divide, hue,
+    saturation, colour, luminosity); solid colour, gradient and pattern fill layers; and the adjustment
+    layers levels, curves, brightness/contrast, hue/saturation, colour balance, black & white, channel
+    mixer, exposure, vibrance, photo filter, invert, threshold, posterize, selective colour and
+    gradient map. Text, shape and smart object layers show the pixels Photoshop stores for them.
+    Known limits, drawn without them: layer effects (shadows, glows, strokes, bevels, overlays),
+    colour lookup adjustments, 3D and video layers. 16- and 32-bit, grey, CMYK, Lab and other
+    files without a real composite go through ImageIO as before. A file that does store Photoshop's
+    composite always shows that one.
     8-bit RGB TIFF of at least 100 megapixels (one page, three samples, chunky, upright; strips or
     tiles; uncompressed, LZW or Deflate, with or without the horizontal predictor; classic or BigTIFF)
     is read the same way by our own reader: only the strips or tiles the size or part needs, in

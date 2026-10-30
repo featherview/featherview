@@ -20,6 +20,8 @@ usable from the keyboard and with VoiceOver.
 
 - Huge pictures: a 1.5-gigapixel Photoshop file (Hubble's Andromeda mosaic) opens in under a second,
   huge TIFFs open several times faster, and zooming in reads only the part on screen
+- Photoshop layers: files saved without "Maximize Compatibility" show the picture Photoshop shows,
+  drawn from their layers with every blend mode, groups, masks, fill and adjustment layers
 - Photos library: browse albums from Apple's Photos with the arrow keys, drag pictures in from
   Photos, and batch convert from it or into it, without exporting first
 
