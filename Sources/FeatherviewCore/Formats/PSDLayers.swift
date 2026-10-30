@@ -16,6 +16,10 @@ public struct PSDLayers: Sendable {
     /// The tagged blocks after the layer info (patterns, linked files and the like).
     public let globalBlocks: [String: Data]
 
+    /// Tagged block keys left in the file: embedded files, filter data and layer data, which can run to
+    /// hundreds of MB and nothing reads. shortcut: dropped, not indexed; record offset and length when one is needed.
+    static let unreadKeys: Set<String> = ["lnk2", "lnkD", "lnk3", "lnkE", "FEid", "FXid", "Layr", "Lr16", "Lr32", "PxSD"]
+
     /// Tagged block keys whose length is 8 bytes in a PSB.
     static let longKeys: Set<String> = ["LMsk", "Lr16", "Lr32", "Layr", "Mt16", "Mt32", "Mtrn", "Alph", "FMsk", "lnk2", "FEid", "FXid", "PxSD"]
 
@@ -277,28 +281,45 @@ struct PSDChannelSource: Sendable {
         }
     }
 
-    /// False when none of `ids` is in the file; throws `OwnDecodeError.corrupt` when none that is could unpack
-    /// to `w × h` (deflate packs at most about 1032 to 1), so a damaged rect can't ask for more than the file holds.
+    /// False when none of `ids` is in the file; throws `OwnDecodeError.corrupt` when one that is can't unpack to
+    /// `w × h` by its own compression, so a damaged rect can't ask for more than the file holds.
     func holds(_ ids: [Int], _ w: Int, _ h: Int) throws -> Bool {
-        let lengths = ids.compactMap { channels[$0]?.length }
-        guard !lengths.isEmpty else { return false }
-        guard lengths.contains(where: { w * h <= $0 * 1100 }) else { throw OwnDecodeError.corrupt }
+        let present = ids.compactMap { channels[$0] }
+        guard !present.isEmpty else { return false }
+        let fd = open(url.path, O_RDONLY)
+        guard fd >= 0 else { throw OwnDecodeError.corrupt }
+        defer { close(fd) }
+        for (offset, length) in present {
+            guard length >= 2 else { throw OwnDecodeError.corrupt }
+            let head = try FileRead.bytes(fd, offset, 2)
+            guard fits(Int(head[0]) << 8 | Int(head[1]), length - 2, w, h) else { throw OwnDecodeError.corrupt }
+        }
         return true
+    }
+
+    /// Whether `body` bytes of `compression` can unpack to `w × h`.
+    private func fits(_ compression: Int, _ body: Int, _ w: Int, _ h: Int) -> Bool {
+        switch compression {
+        case 0: body >= w * h
+        // Row byte counts, then PackBits' at least 2 bytes per 128 pixels of a row.
+        case 1: body >= h * (version == 1 ? 2 : 4) + h * 2 * ((w + 127) / 128)
+        // Deflate packs at most about 1032 to 1.
+        case 2, 3: w * h <= body * 1100
+        default: false
+        }
     }
 
     private func plane(_ fd: Int32, _ id: Int, _ w: Int, _ h: Int) throws -> [UInt8]? {
         guard let (offset, length) = channels[id] else { return nil }
         guard length >= 2 else { throw OwnDecodeError.corrupt }
         let data = try FileRead.bytes(fd, offset, length)
-        let count = w * h, body = data[2...]
-        switch Int(data[0]) << 8 | Int(data[1]) {
+        let count = w * h, body = data[2...], compression = Int(data[0]) << 8 | Int(data[1])
+        guard fits(compression, body.count, w, h) else { throw OwnDecodeError.corrupt }
+        switch compression {
         case 0:
-            guard body.count >= count else { throw OwnDecodeError.corrupt }
             return Array(body.prefix(count))
         case 1:
             let countSize = version == 1 ? 2 : 4
-            // PackBits needs at least 2 bytes per 128 pixels of a row.
-            guard body.count >= h * countSize, body.count - h * countSize >= h * 2 * ((w + 127) / 128) else { throw OwnDecodeError.corrupt }
             var out = [UInt8](repeating: 0, count: count)
             var at = 2 + h * countSize
             try data.withUnsafeBufferPointer { data in
@@ -313,9 +334,7 @@ struct PSDChannelSource: Sendable {
                 }
             }
             return out
-        case let compression where compression == 2 || compression == 3:
-            // Deflate packs at most about 1032 to 1, so a damaged size can't ask for more than the file could hold.
-            guard count <= body.count * 1100 else { throw OwnDecodeError.corrupt }
+        case 2, 3:
             var out = try Inflate.zlib(body, size: count)
             if compression == 3 {
                 for y in 0..<h {
@@ -404,7 +423,7 @@ struct FileCursor {
             let key = try string(4)
             let length = try int(version == 2 && PSDLayers.longKeys.contains(key) ? 8 : 4)
             guard length <= limit - offset else { throw OwnDecodeError.corrupt }
-            blocks[key] = Data(try bytes(length))
+            if PSDLayers.unreadKeys.contains(key) { try skip(length) } else { blocks[key] = Data(try bytes(length)) }
         }
         offset = max(offset, limit)
         return blocks

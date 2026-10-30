@@ -196,6 +196,33 @@ import Testing
         #expect(throws: OwnDecodeError.corrupt) { try Self.layers(file.nodes)[0].channels(scale: 0.5) }
     }
 
+    @Test func rawLayerWithoutAlphaAndHugeRectThrowsBeforeAllocating() throws {
+        // 100 × 100 raw colour planes (10,002 bytes each), alpha renamed to 10, rect grown to 1000 × 1000:
+        // within deflate's ratio, but raw needs a byte per pixel.
+        var data = PSDFixture.makeLayered(width: 4, height: 4, layers: [
+            Layer(name: "A", rect: (0, 0, 100, 100), pixels: Self.noise(100 * 100 * 4)),
+        ], realComposite: nil)
+        Self.patch(&data, 62, 10, 2)
+        Self.patch(&data, 52, 1000, 4)
+        Self.patch(&data, 56, 1000, 4)
+        let layer = try #require(Self.layers(try Self.open(data).nodes).first)
+        #expect(layer.rect == (0, 0, 1000, 1000))
+        #expect(throws: OwnDecodeError.corrupt) { try layer.source.holds([-1, 0, 1, 2], 1000, 1000) }
+        #expect(throws: OwnDecodeError.corrupt) { try layer.channels(scale: 0.5) }
+    }
+
+    @Test func embeddedFilesAndFilterDataAreNotKept() throws {
+        let big = Data(repeating: 7, count: 64)
+        let file = try Self.open(PSDFixture.makeLayered(width: 2, height: 2, layers: [
+            Layer(name: "A", rect: (0, 0, 1, 1), pixels: [1, 2, 3, 255],
+                  blocks: ["lnk2": big, "FEid": big, "luni": Data([0, 0, 0, 0])]),
+        ]))
+        let layer = try #require(Self.layers(file.nodes).first)
+        #expect(layer.blocks["lnk2"] == nil && layer.blocks["FEid"] == nil)
+        #expect(layer.blocks["luni"] == Data([0, 0, 0, 0]))
+        #expect(try layer.channels(scale: 1) == RGBAImage(width: 1, height: 1, pixels: [1, 2, 3, 255]))
+    }
+
     @Test func maskRectOutOfRangeThrows() throws {
         var data = PSDFixture.makeLayered(width: 4, height: 4, layers: [
             Layer(name: "A", rect: (0, 0, 1, 1), pixels: [1, 2, 3, 255], mask: .init(rect: (0, 0, 1, 1), pixels: [7])),
