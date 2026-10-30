@@ -158,8 +158,9 @@ enum PlaceFixtures {
             decoded = try PlaceTable(data: data)
             elapsed = min(elapsed, ContinuousClock.now - start)
         }
-        // The budget is 50 ms in a release build (measured ~10 ms); unoptimized, the same reading takes ~170 ms.
-        #expect(elapsed < .milliseconds(_isDebugAssertConfiguration() ? 300 : 50), "took \(elapsed)")
+        // The budget is 50 ms in a release build (measured ~10 ms, `featherview-bench places --time`); unoptimized
+        // the same reading takes ~170 ms alone and several times that while the whole suite runs in parallel.
+        #expect(elapsed < .milliseconds(_isDebugAssertConfiguration() ? 1000 : 50), "took \(elapsed)")
         let hit = try #require(decoded.nearest(latitude: places[7].latitude, longitude: places[7].longitude, within: 1))
         #expect(hit.0.name == places[7].name || hit.km == 0)
     }
