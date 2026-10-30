@@ -201,18 +201,11 @@ public enum ImageDecoder {
 
     /// The part `region` (full-size pixels) of a `readsRegions` file at halving step `step`, drawn into `colorSpace`.
     public static func decodeRegion(_ url: URL, region: CGRect, step: Int, colorSpace: CGColorSpace?) throws -> CGImage {
-        let size = RegionZoom.decodeSize(region: region, step: step)
-        if let reader = regionReader(url, source: nil), let image = try? reader.decode(region: region, size: size) {
-            return inColorSpaceInBands(image, colorSpace)
-        }
-        // A block the reader can't read (old-style LZW, a damaged strip): ImageIO reads the part as it can, slower.
-        let uncached = [kCGImageSourceShouldCache: false] as CFDictionary
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, uncached),
-              let part = CGImageSourceCreateImageAtIndex(source, 0, uncached)?.cropping(to: region),
-              let space = colorSpace ?? part.colorSpace,
-              let image = redrawn(part, width: size.width, height: size.height, in: space)
+        // A block the reader can't read throws: ImageIO would decode the whole picture for each part.
+        guard let reader = regionReader(url, source: nil),
+              let image = try? reader.decode(region: region, size: RegionZoom.decodeSize(region: region, step: step))
         else { throw DecodeError.unreadable(url) }
-        return image
+        return inColorSpaceInBands(image, colorSpace)
     }
 
     /// Pictures at least this large (width × height) in a TIFF the own reader accepts go to `TIFFRaster`;

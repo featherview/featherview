@@ -209,7 +209,7 @@ import Testing
     }
 
     /// 10,240 × 10,241 whose last strip (1 row) stores 16, read by parts through `ImageDecoder`; a part whose
-    /// strip fails goes to ImageIO, which shows it as it can.
+    /// strip fails throws.
     @Test func partsOfAHugeTIFF() throws {
         let (width, height) = (10_240, 10_241)
         let pixels = Self.noise(width: width, height: 16)
@@ -223,7 +223,7 @@ import Testing
         let part = try ImageDecoder.decodeRegion(url, region: bottom, step: 0, colorSpace: nil)
         #expect(PSDCompositeTests.same(PSDCompositeTests.pixels(part), crop(bottom)))
 
-        // The last strip cut to 3 bytes: the reader throws there, ImageIO still reads the file.
+        // The last strip cut to 3 bytes: the reader throws there.
         var broken = data
         let counts = try #require(Self.entry(279, in: broken))
         let last = (Int(broken[counts + 8]) | Int(broken[counts + 9]) << 8 | Int(broken[counts + 10]) << 16)
@@ -231,10 +231,9 @@ import Testing
         broken.replaceSubrange(last ..< last + 4, with: [3, 0, 0, 0])
         let brokenURL = try PSDCompositeTests.write(broken, "broken.tif")
         #expect(throws: OwnDecodeError.corrupt) { try TIFFRaster(url: brokenURL)!.decode(region: bottom, size: PixelSize(width: 1240, height: 441)) }
-        let fallback = try ImageDecoder.decodeRegion(brokenURL, region: bottom, step: 0, colorSpace: nil)
-        #expect(fallback.width == 1240 && fallback.height == 441)
-        // Rows above the broken strip are ImageIO's, the same pixels.
-        #expect(PSDCompositeTests.same(Array(PSDCompositeTests.pixels(fallback).prefix(1240 * 400)),
-                                       Array(crop(bottom).prefix(1240 * 400))))
+        // No ImageIO fallback per part: it would decode the whole picture each time; the viewer keeps the fit picture.
+        #expect(throws: DecodeError.unreadable(brokenURL)) {
+            try ImageDecoder.decodeRegion(brokenURL, region: bottom, step: 0, colorSpace: nil)
+        }
     }
 }
