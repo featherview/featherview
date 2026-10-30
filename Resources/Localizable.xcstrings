@@ -34883,6 +34883,184 @@
         }
       }
     },
+    "Buy Us a Coffee" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ادعمنا بفنجان قهوة"
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convida'ns a un cafè"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kupte nám kávu"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Køb os en kop kaffe"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spendier uns einen Kaffee"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Κεράστε μας έναν καφέ"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invítanos a un café"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarjoa meille kahvit"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offrez-nous un café"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קנו לנו קפה"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "हमें एक कॉफ़ी पिलाएँ"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hívj meg egy kávéra"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traktir Kami Kopi"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offrici un caffè"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コーヒーをおごる"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "커피 한 잔 사기"
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Belanja Kami Kopi"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trakteer ons op koffie"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Postaw nam kawę"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pague um café para nós"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fă-ne cinste cu o cafea"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Угостите нас кофе"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bjud oss på kaffe"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เลี้ยงกาแฟเราสักแก้ว"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bize Bir Kahve Ismarla"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пригостіть нас кавою"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mời chúng tôi một ly cà phê"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请我们喝杯咖啡"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請我們喝杯咖啡"
+          }
+        }
+      }
+    },
     "By Name" : {
       "localizations" : {
         "ar" : {
@@ -61784,6 +61962,184 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Featherview 可以取代「預覽程式」打開它們。你可以在「設定 › 瀏覽」中加入其他影像類型。"
+          }
+        }
+      }
+    },
+    "Featherview is free. Buy us a coffee to help pay Apple's $99 a year for notarization, so macOS stops warning when you open it." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview مجاني. ادعمنا بفنجان قهوة لنغطي 99 دولارًا سنويًا تطلبها Apple للتوثيق، فيتوقف macOS عن التحذير عند فتحه."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview és gratuït. Convida'ns a un cafè per ajudar a pagar els 99 € l'any que Apple cobra per la notarització, i el macOS deixarà d'avisar en obrir-lo."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview je zdarma. Kupte nám kávu a pomozte zaplatit 99 USD ročně, které Apple chce za notarizaci, aby macOS přestal při otevření varovat."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview er gratis. Køb os en kop kaffe og hjælp med at betale de 99 USD om året, Apple tager for notarisering, så macOS holder op med at advare, når du åbner det."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview ist gratis. Spendier uns einen Kaffee und hilf, die 99 € im Jahr für Apples Notarisierung zu zahlen, damit macOS beim Öffnen nicht mehr warnt."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Featherview είναι δωρεάν. Κεράστε μας έναν καφέ για να καλύψουμε τα 99 € τον χρόνο που ζητά η Apple για την επικύρωση, ώστε το macOS να μην προειδοποιεί πια στο άνοιγμα."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview es gratis. Invítanos a un café para ayudar a pagar los 99 € al año que Apple cobra por la notarización, y macOS dejará de avisar al abrirlo."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview on ilmainen. Tarjoa meille kahvit ja auta maksamaan Applen notarisoinnin 99 € vuodessa, niin macOS lakkaa varoittamasta avattaessa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview est gratuit. Offrez-nous un café pour aider à payer les 99 € par an qu'Apple demande pour la notarisation, et macOS cessera d'avertir à l'ouverture."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview חינמי. קנו לנו קפה כדי לעזור לשלם את 99 הדולרים בשנה ש-Apple גובה על אישור נוטריוני, כך ש-macOS יפסיק להזהיר בפתיחה."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview मुफ़्त है। हमें एक कॉफ़ी पिलाकर नोटराइज़ेशन के लिए Apple के सालाना $99 चुकाने में मदद करें, ताकि खोलते समय macOS चेतावनी देना बंद कर दे।"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Featherview ingyenes. Hívj meg egy kávéra, és segíts kifizetni az Apple évi 99 dolláros hitelesítési díját, hogy a macOS ne figyelmeztessen megnyitáskor."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview gratis. Traktir kami kopi untuk membantu membayar $99 per tahun yang diminta Apple untuk notarisasi, agar macOS berhenti memperingatkan saat dibuka."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview è gratuito. Offrici un caffè per aiutarci a pagare i 99 € l'anno che Apple chiede per la notarizzazione, così macOS smetterà di avvisare all'apertura."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview は無料です。コーヒー1杯分のご支援で、Apple の公証に必要な年間 99 ドルをまかなえれば、開くときに macOS が警告しなくなります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview는 무료입니다. 커피 한 잔으로 Apple 공증에 드는 연 99달러를 보태 주시면, 열 때 macOS가 더 이상 경고하지 않습니다."
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview percuma. Belanja kami kopi untuk membantu membayar $99 setahun yang dikenakan Apple bagi pengesahan notari, supaya macOS berhenti memberi amaran semasa dibuka."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview is gratis. Trakteer ons op koffie en help de € 99 per jaar te betalen die Apple vraagt voor notarisatie, zodat macOS niet meer waarschuwt bij het openen."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview jest darmowy. Postaw nam kawę, by pomóc opłacić 99 USD rocznie, których Apple wymaga za notaryzację, a macOS przestanie ostrzegać przy otwieraniu."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Featherview é gratuito. Pague um café para nós e ajude a cobrir os US$ 99 por ano que a Apple cobra pela notarização, para o macOS parar de avisar ao abrir."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview este gratuit. Fă-ne cinste cu o cafea ca să ne ajuți să plătim cei 99 USD pe an ceruți de Apple pentru notarizare, iar macOS nu va mai avertiza la deschidere."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview бесплатен. Угостите нас кофе, чтобы помочь оплатить 99 $ в год, которые Apple берёт за нотаризацию, и macOS перестанет предупреждать при открытии."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview är gratis. Bjud oss på kaffe och hjälp till att betala de 99 USD om året som Apple tar för notarisering, så slutar macOS varna när du öppnar appen."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview ใช้ฟรี เลี้ยงกาแฟเราสักแก้วเพื่อช่วยจ่ายค่ารับรองของ Apple ปีละ 99 ดอลลาร์ แล้ว macOS จะเลิกเตือนเมื่อเปิดแอป"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview ücretsizdir. Apple'ın noter onayı için yılda istediği 99 doları karşılamamıza yardım etmek için bize bir kahve ısmarla; böylece macOS açılışta uyarmayı bırakır."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview безкоштовний. Пригостіть нас кавою, щоб допомогти сплатити 99 $ на рік, які Apple бере за нотаризацію, і macOS перестане попереджати під час відкриття."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview miễn phí. Mời chúng tôi một ly cà phê để góp phần trả 99 USD mỗi năm Apple thu cho việc công chứng, để macOS thôi cảnh báo khi mở ứng dụng."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview 是免费的。请我们喝杯咖啡，帮忙支付 Apple 每年 99 美元的公证费用，macOS 打开时就不会再发出警告。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Featherview 是免費的。請我們喝杯咖啡，協助支付 Apple 每年 99 美元的公證費用，macOS 開啟時就不會再發出警告。"
           }
         }
       }
