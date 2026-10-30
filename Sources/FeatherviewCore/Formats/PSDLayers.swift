@@ -105,7 +105,7 @@ public struct PSDLayers: Sendable {
                     stack[stack.count - 1].append(.group(PSDGroup(
                         name: layer.name, blend: blend, opacity: layer.opacity, visible: layer.visible, mask: layer.mask,
                         clipped: layer.clipped, blendIf: layer.blendIf, fill: layer.fill, vectorDensity: layer.vectorDensity,
-                        blocks: layer.blocks, children: children)))
+                        vectorFeather: layer.vectorFeather, blocks: layer.blocks, children: children)))
                     continue
                 }
             }
@@ -159,6 +159,8 @@ public struct PSDGroup: Sendable {
     public let fill: UInt8
     /// The vector mask's density (`PSDFills.vectorMask`), 255 without one.
     public let vectorDensity: UInt8
+    /// The vector mask's feather radius in canvas pixels, 0 without one.
+    public let vectorFeather: Double
     /// The folder record's tagged blocks.
     public let blocks: [String: Data]
     /// Bottom to top.
@@ -179,6 +181,8 @@ public struct PSDLayer: Sendable {
     public let blendIf: PSDBlendIf?
     /// The vector mask's density (`PSDFills.vectorMask`), 255 without one.
     public let vectorDensity: UInt8
+    /// The vector mask's feather radius in canvas pixels, 0 without one.
+    public let vectorFeather: Double
     public let blocks: [String: Data]
     let source: PSDChannelSource
 
@@ -276,6 +280,8 @@ public struct PSDMask: Sendable {
     public let relative: Bool
     /// How strongly the mask hides: 255 fully, lower values lift its black toward white.
     public let density: UInt8
+    /// The radius of the blur that softens its edges, in canvas pixels; 0 for none.
+    public let feather: Double
     let channel: Int
     let source: PSDChannelSource
 
@@ -285,8 +291,43 @@ public struct PSDMask: Sendable {
     /// The mask's values over its scaled `rect` on the canvas (see `PSDLayers.scaled`), area-averaged with
     /// the default colour outside `rect`, at its density; one byte per pixel.
     public func pixels(scale: Double) throws -> (rect: PSDRect, pixels: [UInt8]) {
-        let (rect, pixels) = try values(scale: scale)
+        var (rect, pixels) = try values(scale: scale)
+        if feather > 0 { (rect, pixels) = Self.blur(rect, pixels, outside: defaultColour, sigma: feather * min(scale, 1)) }
         return (rect, density == 255 ? pixels : pixels.map(dense))
+    }
+
+    /// `pixels` over `rect` blurred by a Gaussian of `sigma` (Photoshop's feather radius), over `rect` grown by three
+    /// sigmas: `outside` beyond `rect`, or its nearest edge pixel when nil.
+    static func blur(_ rect: PSDRect, _ pixels: [UInt8], outside: UInt8?, sigma: Double) -> (PSDRect, [UInt8]) {
+        let margin = Int((3 * sigma).rounded(.up))
+        guard margin > 0, rect.bottom > rect.top, rect.right > rect.left else { return (rect, pixels) }
+        let w = rect.right - rect.left, h = rect.bottom - rect.top, bw = w + 2 * margin, bh = h + 2 * margin
+        var plane = [Float](repeating: Float(outside ?? 0), count: bw * bh)
+        for y in 0..<bh {
+            for x in 0..<bw {
+                let sx = x - margin, sy = y - margin
+                if sx >= 0, sx < w, sy >= 0, sy < h {
+                    plane[y * bw + x] = Float(pixels[sy * w + sx])
+                } else if outside == nil {
+                    plane[y * bw + x] = Float(pixels[min(max(sy, 0), h - 1) * w + min(max(sx, 0), w - 1)])
+                }
+            }
+        }
+        let kernel = (-margin...margin).map { Float(exp(-Double($0 * $0) / (2 * sigma * sigma))) }
+        let total = kernel.reduce(0, +), k = kernel.map { $0 / total }
+        var rows = plane
+        for y in 0..<bh { for x in 0..<bw {
+            var sum: Float = 0
+            for (i, weight) in k.enumerated() { sum += weight * plane[y * bw + min(max(x + i - margin, 0), bw - 1)] }
+            rows[y * bw + x] = sum
+        } }
+        var out = [UInt8](repeating: 0, count: bw * bh)
+        for y in 0..<bh { for x in 0..<bw {
+            var sum: Float = 0
+            for (i, weight) in k.enumerated() { sum += weight * rows[min(max(y + i - margin, 0), bh - 1) * bw + x] }
+            out[y * bw + x] = UInt8(min(max(sum.rounded(), 0), 255))
+        } }
+        return ((rect.top - margin, rect.left - margin, rect.bottom + margin, rect.right + margin), out)
     }
 
     private func values(scale: Double) throws -> (rect: PSDRect, pixels: [UInt8]) {
@@ -586,8 +627,8 @@ struct Record {
     var channelLengths: [(Int, Int)] = []
     var source = PSDChannelSource()
     let fields: (name: String, rect: PSDRect, blend: String, opacity: UInt8, clipped: Bool, visible: Bool,
-                 mask: (rect: PSDRect, defaultColour: UInt8, flags: UInt8, channel: Int, density: UInt8)?,
-                 vectorDensity: UInt8, blendIf: PSDBlendIf?, blocks: [String: Data])
+                 mask: (rect: PSDRect, defaultColour: UInt8, flags: UInt8, channel: Int, density: UInt8, feather: Double)?,
+                 vectorDensity: UInt8, vectorFeather: Double, blendIf: PSDBlendIf?, blocks: [String: Data])
 
     init(_ r: inout FileCursor, version: Int, end: Int) throws {
         let rect = try Self.rect(&r)
@@ -603,8 +644,8 @@ struct Record {
         guard extraEnd <= end else { throw OwnDecodeError.corrupt }
 
         let maskEnd = try r.lengthEnd(4)
-        var mask: (rect: PSDRect, defaultColour: UInt8, flags: UInt8, channel: Int, density: UInt8)?
-        var vectorDensity: UInt8 = 255, rendered = false
+        var mask: (rect: PSDRect, defaultColour: UInt8, flags: UInt8, channel: Int, density: UInt8, feather: Double)?
+        var vectorDensity: UInt8 = 255, vectorFeather = 0.0, rendered = false
         if maskEnd - r.offset >= 18 {
             let maskRect = try Self.rect(&r)
             let colour = UInt8(try r.int(1)), maskFlags = UInt8(try r.int(1))
@@ -616,16 +657,17 @@ struct Record {
                 let realFlags = UInt8(try r.int(1)), realColour = UInt8(try r.int(1))
                 user = (try Self.rect(&r), realColour, realFlags, -3)
             }
-            var density: UInt8 = 255
+            var density: UInt8 = 255, feather = 0.0
             if maskFlags & 16 != 0, r.offset < maskEnd {
                 let parameters = try r.int(1)
                 if parameters & 1 != 0 { density = UInt8(try r.int(1)) }
-                // shortcut: feather (user mask bit 2, vector mask bit 8) isn't drawn, blur the mask by it if files show it often.
-                if parameters & 2 != 0 { try r.skip(8) }
+                if parameters & 2 != 0 { feather = Double(bitPattern: UInt64(bitPattern: Int64(try r.int(8)))) }
                 if parameters & 4 != 0 { vectorDensity = UInt8(try r.int(1)) }
-                if parameters & 8 != 0 { try r.skip(8) }
+                if parameters & 8 != 0 { vectorFeather = Double(bitPattern: UInt64(bitPattern: Int64(try r.int(8)))) }
             }
-            mask = (user.rect, user.colour, user.flags, user.channel, density)
+            // A feather past 1,000 px (Photoshop's limit) or not a number is damage.
+            guard [feather, vectorFeather].allSatisfy({ $0.isFinite && (0...1000).contains($0) }) else { throw OwnDecodeError.corrupt }
+            mask = (user.rect, user.colour, user.flags, user.channel, density, feather)
             rendered = !real && maskFlags & 8 != 0
         }
         guard maskEnd <= extraEnd else { throw OwnDecodeError.corrupt }
@@ -648,7 +690,7 @@ struct Record {
         r.offset = extraEnd
         // Without a real one, a mask flagged as rendered from other data is the vector mask's, which draws from vmsk.
         if rendered, blocks["vmsk"] ?? blocks["vsms"] != nil { mask = nil }
-        fields = (name, rect, blend, opacity, clipping != 0, flags & 2 == 0, mask, vectorDensity, blendIf, blocks)
+        fields = (name, rect, blend, opacity, clipping != 0, flags & 2 == 0, mask, vectorDensity, vectorFeather, blendIf, blocks)
     }
 
     /// A layer or mask rectangle, at most 2^24 per side.
@@ -663,10 +705,11 @@ struct Record {
         let l = fields
         let mask = l.mask.map {
             PSDMask(rect: $0.rect, defaultColour: $0.defaultColour, disabled: $0.flags & 2 != 0, relative: $0.flags & 1 != 0,
-                    density: $0.density, channel: $0.channel, source: source)
+                    density: $0.density, feather: $0.feather, channel: $0.channel, source: source)
         }
         return PSDLayer(name: l.name, rect: l.rect, blend: l.blend, opacity: l.opacity, fill: l.blocks["iOpa"]?.first ?? 255,
                         clipped: l.clipped, visible: l.visible, mask: mask, blendIf: l.blendIf, vectorDensity: l.vectorDensity,
+                        vectorFeather: l.vectorFeather,
                         blocks: l.blocks, source: source)
     }
 }

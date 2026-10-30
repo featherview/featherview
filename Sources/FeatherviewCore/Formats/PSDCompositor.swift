@@ -13,7 +13,7 @@ public struct PSDCompositor: Sendable {
     let layers: PSDLayers
     let content: @Sendable (PSDLayer, Double) throws -> RGBAImage?
     let adjustment: @Sendable (PSDLayer) -> Adjust?
-    let vectorMask: @Sendable ([String: Data], UInt8, Double) throws -> (rect: PSDRect, pixels: [UInt8])?
+    let vectorMask: @Sendable ([String: Data], UInt8, Double, Double) throws -> (rect: PSDRect, pixels: [UInt8])?
 
     /// Test hook: the most pixels a working canvas (the picture or a group's; a copy for a mix matches its target) had in this task.
     @TaskLocal static var largestCanvas: OSAllocatedUnfairLock<Int>?
@@ -25,11 +25,11 @@ public struct PSDCompositor: Sendable {
     /// `content` gives a layer's pixels at a scale: at the layer's `scaledRect(scale:)` top-left, or at the
     /// origin when the image has the scaled canvas's size; nil draws nothing. `adjustment` makes a layer an
     /// adjustment of what lies below it. `vectorMask` gives the vector mask of a group's or adjustment layer's
-    /// blocks at a density and scale (0 outside its rect); `content` cuts other layers by theirs.
+    /// blocks at a density, feather and scale (0 outside its rect); `content` cuts other layers by theirs.
     public init(_ layers: PSDLayers,
                 content: @escaping @Sendable (PSDLayer, Double) throws -> RGBAImage? = { try $0.channels(scale: $1) },
                 adjustment: @escaping @Sendable (PSDLayer) -> Adjust? = { _ in nil },
-                vectorMask: @escaping @Sendable ([String: Data], UInt8, Double) throws -> (rect: PSDRect, pixels: [UInt8])? = { _, _, _ in nil }) {
+                vectorMask: @escaping @Sendable ([String: Data], UInt8, Double, Double) throws -> (rect: PSDRect, pixels: [UInt8])? = { _, _, _, _ in nil }) {
         self.layers = layers
         self.content = content
         self.adjustment = adjustment
@@ -181,7 +181,7 @@ public struct PSDCompositor: Sendable {
     /// The layer mask's values times the vector mask's over a `width × height` area at `origin`; nil without either.
     private func masks(_ node: PSDNode, _ scale: Double, _ origin: Point, _ width: Int, _ height: Int) throws -> [UInt8]? {
         let mask = try maskValues(node.mask, scale, origin, width, height)
-        guard let vector = try vectorMask(node.blocks, node.vectorDensity, scale) else { return mask }
+        guard let vector = try vectorMask(node.blocks, node.vectorDensity, node.vectorFeather, scale) else { return mask }
         let values = Self.place(vector.rect, vector.pixels, outside: 0, origin, width, height)
         guard let mask else { return values }
         return zip(mask, values).map { UInt8((Int($0) * Int($1) + 127) / 255) }
@@ -290,6 +290,7 @@ private extension PSDNode {
     var fill: UInt8 { switch self { case .layer(let l): l.fill; case .group(let g): g.fill } }
     var blocks: [String: Data] { switch self { case .layer(let l): l.blocks; case .group(let g): g.blocks } }
     var vectorDensity: UInt8 { switch self { case .layer(let l): l.vectorDensity; case .group(let g): g.vectorDensity } }
+    var vectorFeather: Double { switch self { case .layer(let l): l.vectorFeather; case .group(let g): g.vectorFeather } }
     var isGroup: Bool { if case .group = self { true } else { false } }
 }
 
@@ -367,8 +368,8 @@ public extension PSDCompositor {
                     }
                 }
             }
-        }, vectorMask: { blocks, density, scale in
-            try PSDFills.vectorMask(blocks, density: density, canvas: canvas, scale: scale).map { ($0.rect, $0.pixels) }
+        }, vectorMask: { blocks, density, feather, scale in
+            try PSDFills.vectorMask(blocks, density: density, feather: feather, canvas: canvas, scale: scale).map { ($0.rect, $0.pixels) }
         })
     }
 }

@@ -137,6 +137,31 @@ import Testing
         #expect(covered[3, 1] == (255, 128, 0, 255))  // outside the mask: neither
     }
 
+    /// A mask record whose parameters (flags bit 16) give the user mask's (2) or the vector mask's (8) feather.
+    static func featherRecord(_ rect: (Int32, Int32, Int32, Int32), flags: UInt8, parameter: UInt8, _ radius: Double) -> [UInt8] {
+        func be<T: FixedWidthInteger>(_ v: T) -> [UInt8] { withUnsafeBytes(of: v.bigEndian, Array.init) }
+        let body = be(rect.0) + be(rect.1) + be(rect.2) + be(rect.3) + [0, flags | 16, parameter] + be(radius.bitPattern) + [0]
+        return be(UInt32(body.count)) + body
+    }
+
+    /// A feathered mask softens its edge by a Gaussian of the feather's radius; a feathered vector mask its path's.
+    @Test func featheredMasksBlurTheirEdge() throws {
+        var masked = PSDCompositorTests.solid("Red", 0, 0, 16, 16, [255, 0, 0, 255])
+        masked.mask = .init(rect: (0, 0, 16, 8), pixels: [UInt8](repeating: 255, count: 128))
+        masked.maskRecord = Self.featherRecord((0, 0, 16, 8), flags: 0, parameter: 2, 2)
+        var shaped = PSDCompositorTests.solid("Red", 0, 0, 16, 16, [255, 0, 0, 255])
+        shaped.blocks["vmsk"] = PSDFillsTests.vectorMask([(0, 0), (0.5, 0), (0.5, 1), (0, 1)])
+        shaped.maskRecord = Self.featherRecord((0, 0, 0, 0), flags: 8, parameter: 8, 2)
+        for layer in [masked, shaped] {
+            let url = try Self.write(PSDFixture.makeLayered(width: 16, height: 16, layers: [layer], realComposite: false))
+            let image = try PSDCompositor.photoshop(try #require(try PSDLayers(url: url))).render(scale: 1)
+            // Half a pixel from the edge at x = 8: the normal distribution's 0.6 and 0.4 of it.
+            #expect((145...162).contains(Int(image[7, 8].a)), "\(image[7, 8])")
+            #expect((93...110).contains(Int(image[8, 8].a)), "\(image[8, 8])")
+            #expect(image[3, 8].a >= 235 && image[12, 8].a <= 5)
+        }
+    }
+
     /// A vector mask limits an adjustment layer to its path, with the layer mask.
     @Test func vectorMaskLimitsAdjustments() throws {
         let fill = Layer(name: "Fill", blocks: ["SoCo": PSDFillsTests.block([("Clr ", PSDFillsTests.rgb(255, 128, 0))])])

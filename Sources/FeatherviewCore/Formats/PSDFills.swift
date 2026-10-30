@@ -57,11 +57,11 @@ public enum PSDFills {
     /// Nil without a vector mask or when it's disabled. Below full density the mask covers the whole canvas, lifted.
     public static func vectorMask(_ layer: PSDLayer, canvas: (width: Int, height: Int),
                                   scale: Double) throws -> (rect: PSDRect, pixels: [UInt8], bounds: PSDRect)? {
-        try vectorMask(layer.blocks, density: layer.vectorDensity, canvas: canvas, scale: scale)
+        try vectorMask(layer.blocks, density: layer.vectorDensity, feather: layer.vectorFeather, canvas: canvas, scale: scale)
     }
 
     /// `vectorMask` of a layer's or group's tagged blocks.
-    static func vectorMask(_ blocks: [String: Data], density: UInt8, canvas: (width: Int, height: Int),
+    static func vectorMask(_ blocks: [String: Data], density: UInt8, feather: Double = 0, canvas: (width: Int, height: Int),
                            scale: Double) throws -> (rect: PSDRect, pixels: [UInt8], bounds: PSDRect)? {
         guard let data = blocks["vmsk"] ?? blocks["vsms"] else { return nil }
         let bytes = [UInt8](data)
@@ -140,6 +140,11 @@ public enum PSDFills {
             }
         }
         if inverted { for i in pixels.indices { pixels[i] = 255 - pixels[i] } }
+        // A feather blurs the path's edge; a rect over the whole canvas carries on past it.
+        if feather > 0 {
+            let whole = rect == (0, 0, sh, sw)
+            (rect, pixels) = PSDMask.blur(rect, pixels, outside: whole ? nil : 0, sigma: feather * min(scale, 1))
+        }
         if density < 255 { for i in pixels.indices { pixels[i] = 255 - UInt8((Int(density) * (255 - Int(pixels[i])) + 127) / 255) } }
         return (rect, pixels, bounds)
     }
