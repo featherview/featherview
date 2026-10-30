@@ -118,12 +118,14 @@ public struct PSDCompositor: Sendable {
                 }
                 continue
             }
-            // shortcut: an adjustment layer draws in normal mode and ignores layers clipped to it, honour both if a file shows them.
+            // shortcut: an adjustment layer draws in normal mode, honour its blend mode if a file shows it.
             if case .layer(let layer) = base, let adjust = adjustment(layer) {
                 let weights = try masks(base, scale, origin, target.width, target.height)
                 var adjusted = target
                 adjust(&adjusted, weights)
                 let mixed = layer.blendIf.map { Self.apply($0, adjusted, at: (0, 0), over: target, to: weights) } ?? weights
+                // Layers clipped to it draw over what it adjusted, inside its mask.
+                for node in clipped { try draw([node], onto: &adjusted, at: origin, scale) }
                 Self.mix(&target, adjusted, mixed, (Int(layer.opacity) * Int(layer.fill) + 127) / 255)
                 continue
             }

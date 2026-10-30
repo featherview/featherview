@@ -117,6 +117,26 @@ import Testing
         #expect(image[3, 1] == (255, 128, 0, 255))
     }
 
+    /// Layers clipped to an adjustment layer draw over what it adjusted, inside its mask.
+    @Test func layersClipToAdjustments() throws {
+        let fill = Layer(name: "Fill", blocks: ["SoCo": PSDFillsTests.block([("Clr ", PSDFillsTests.rgb(255, 128, 0))])])
+        let invert = Layer(name: "Invert", mask: .init(rect: (0, 0, 2, 2), pixels: [255, 255, 255, 255]), blocks: ["nvrt": Data()])
+        var again = Layer(name: "Invert again", blocks: ["nvrt": Data()])
+        again.clipped = true
+        var red = PSDCompositorTests.solid("Red", 0, 1, 3, 2, [255, 0, 0, 255])
+        red.clipped = true
+        func render(_ clipped: Layer) throws -> RGBAImage {
+            let url = try Self.write(PSDFixture.makeLayered(width: 4, height: 2, layers: [fill, invert, clipped], realComposite: false))
+            return try PSDCompositor.photoshop(try #require(try PSDLayers(url: url))).render(scale: 1)
+        }
+        let twice = try render(again), covered = try render(red)
+        #expect(twice[0, 0] == (255, 128, 0, 255))   // inverted twice inside the mask
+        #expect(twice[3, 1] == (255, 128, 0, 255))
+        #expect(covered[1, 0] == (255, 0, 0, 255))   // red inside the mask
+        #expect(covered[0, 1] == (0, 127, 255, 255))  // inverted, not under the red
+        #expect(covered[3, 1] == (255, 128, 0, 255))  // outside the mask: neither
+    }
+
     /// A vector mask limits an adjustment layer to its path, with the layer mask.
     @Test func vectorMaskLimitsAdjustments() throws {
         let fill = Layer(name: "Fill", blocks: ["SoCo": PSDFillsTests.block([("Clr ", PSDFillsTests.rgb(255, 128, 0))])])
