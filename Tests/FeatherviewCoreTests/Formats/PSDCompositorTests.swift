@@ -100,6 +100,22 @@ import Testing
         #expect(image.pixels == [0, 255, 0, 128])
     }
 
+    /// Below full fill a pass-through group draws isolated: an adjustment in it changes only the group's own pixels.
+    @Test func passThroughGroupWithFillDrawsIsolated() throws {
+        var layers = [Self.solid("Grey", 0, 0, 2, 1, [100, 100, 100, 255])]
+            + Self.group("G", blend: "pass", [Self.solid("Red", 0, 0, 1, 1, [255, 0, 0, 255]), Layer(name: "Invert")])
+        layers[layers.count - 1].blocks["iOpa"] = Data([255])
+        let invertAll = try Self.render(2, 1, layers) { $0.name == "Invert" ? { image, _ in Self.invert(&image) } : nil }
+        #expect(invertAll.pixels == [0, 255, 255, 255, 155, 155, 155, 255])
+        layers[layers.count - 1].blocks["iOpa"] = Data([254])
+        let isolated = try Self.render(2, 1, layers) { $0.name == "Invert" ? { image, _ in Self.invert(&image) } : nil }
+        #expect(isolated.pixels[4...] == [100, 100, 100, 255])
+    }
+
+    static func invert(_ image: inout RGBAImage) {
+        for p in 0 ..< image.width * image.height { for c in 0..<3 { image.pixels[p * 4 + c] = 255 - image.pixels[p * 4 + c] } }
+    }
+
     @Test func blendIfDropsDarkSourcePixels() throws {
         let full: [UInt8] = [0, 0, 255, 255]
         var layer = Layer(name: "BW", rect: (0, 0, 1, 2), pixels: [0, 0, 0, 255, 255, 255, 255, 255])

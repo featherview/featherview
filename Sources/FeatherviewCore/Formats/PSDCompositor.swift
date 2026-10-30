@@ -104,15 +104,15 @@ public struct PSDCompositor: Sendable {
             i = end
             guard base.visible else { continue }
 
-            if case .group(let group) = base, group.blend == "pass", clipped.isEmpty {
+            // Below full fill opacity a pass-through group draws isolated, as Photoshop's composites show.
+            if case .group(let group) = base, group.blend == "pass", group.fill == 255, clipped.isEmpty {
                 let weights = try masks(base, scale, origin, target.width, target.height)
-                let opacity = (Int(group.opacity) * Int(group.fill) + 127) / 255
-                if weights == nil, opacity == 255 {
+                if weights == nil, group.opacity == 255 {
                     try draw(group.children, onto: &target, at: origin, scale)
                 } else {
                     var copy = target
                     try draw(group.children, onto: &copy, at: origin, scale)
-                    Self.mix(&target, copy, weights, opacity)
+                    Self.mix(&target, copy, weights, Int(group.opacity))
                 }
                 continue
             }
