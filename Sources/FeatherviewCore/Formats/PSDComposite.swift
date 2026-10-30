@@ -110,8 +110,10 @@ public struct PSDComposite: Sendable {
             var sums = [UInt64](repeating: 0, count: ow * 3)
             do {
                 for c in 0..<3 {
-                    let band: [UInt8]
+                    // RLE rows unpack whole (stride `width`, column 0 first); raw rows read only the region's columns.
+                    let band: [UInt8], stride: Int, start: Int
                     if let offsets = rowOffsets {
+                        (stride, start) = (width, 0)
                         let first = c * height + r0
                         let packed = try Self.read(fd, offsets[first], offsets[first + r1 - r0] - offsets[first])
                         band = try (r0..<r1).flatMap { r -> [UInt8] in
@@ -119,10 +121,11 @@ public struct PSDComposite: Sendable {
                             return try Self.unpackBits(packed[from..<to], width: width)
                         }
                     } else {
-                        band = try Self.read(fd, dataStart + (c * height + r0) * width, (r1 - r0) * width)
+                        (stride, start) = (rw, x0)
+                        band = try (r0..<r1).flatMap { r in try Self.read(fd, dataStart + (c * height + r) * width + x0, rw) }
                     }
                     for row in 0..<(r1 - r0) {
-                        let base = row * width
+                        let base = row * stride - start
                         for ox in 0..<ow {
                             var sum: UInt64 = 0
                             for x in columns[ox]..<columns[ox + 1] { sum += UInt64(band[base + x]) }

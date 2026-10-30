@@ -147,4 +147,16 @@ import Testing
         try data.prefix(data.count - 10).write(to: url)
         #expect(throws: OwnDecodeError.corrupt) { try composite.decode(size: PixelSize(width: 7, height: 5)) }
     }
+
+    /// A raw region reads only its own columns of each row: with the last row's trailing columns cut off the
+    /// file, a region left of them still decodes.
+    @Test func rawRegionReadsOnlyItsColumns() throws {
+        let pixels = Self.noise(width: 9, height: 7)
+        let data = PSDFixture.make(width: 9, height: 7, pixels: pixels)
+        let url = try Self.write(data)
+        let composite = try #require(PSDComposite(url: url))
+        try data.prefix(data.count - 4).write(to: url)
+        let image = try composite.decode(region: CGRect(x: 2, y: 4, width: 3, height: 3), size: PixelSize(width: 3, height: 3))
+        #expect(Self.same(Self.pixels(image), (4..<7).flatMap { y in (2..<5).map { pixels[y * 9 + $0] } }))
+    }
 }
