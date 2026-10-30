@@ -356,6 +356,32 @@ import Testing
         #expect(largest.withLock { $0 } <= (1 << 20) * 11 / 10)
     }
 
+    static func be(_ value: Int, _ count: Int) -> [UInt8] { (0..<count).reversed().map { UInt8(truncatingIfNeeded: value >> ($0 * 8)) } }
+
+    static func rect(_ r: PSDRect) -> [UInt8] { [r.top, r.left, r.bottom, r.right].flatMap { be($0, 4) } }
+
+    /// A vector mask's rendering, then the real user mask's flags, colour and rect, then the parameters
+    /// (user mask density 128).
+    @Test func realMaskFieldsComeBeforeParameters() throws {
+        var layer = Layer(name: "A", rect: (0, 0, 2, 2), pixels: Self.noise(16),
+                          mask: .init(rect: (0, 0, 2, 2), pixels: [255, 255, 255, 255]),
+                          realMask: .init(rect: (0, 1, 2, 2), pixels: [0, 255]))
+        layer.maskRecord = Self.be(40, 4) + Self.rect((0, 0, 2, 2)) + [0, 0x18] + [0, 255] + Self.rect((0, 1, 2, 2)) + [1, 128, 0, 0]
+        let file = try Self.open(PSDFixture.makeLayered(width: 2, height: 2, layers: [layer]))
+        let mask = try #require(Self.layers(file.nodes).first?.mask)
+        #expect(mask.rect == (0, 1, 2, 2) && mask.defaultColour == 255 && !mask.disabled)
+        #expect(try mask.pixels(scale: 1).pixels == [127, 255])
+    }
+
+    /// Without a real user mask, a mask flagged as a vector mask's rendering is no user mask: the vector mask draws.
+    @Test func renderedVectorMaskIsNoUserMask() throws {
+        var layer = Layer(name: "A", rect: (0, 0, 2, 2), pixels: Self.noise(16), mask: .init(rect: (0, 0, 2, 2), pixels: [0, 0, 0, 0]))
+        layer.maskRecord = Self.be(20, 4) + Self.rect((0, 0, 2, 2)) + [0, 8, 0, 0]
+        layer.blocks["vmsk"] = PSDFillsTests.vectorMask(PSDFillsTests.square(0, 1))
+        let file = try Self.open(PSDFixture.makeLayered(width: 2, height: 2, layers: [layer]))
+        #expect(Self.layers(file.nodes).first?.mask == nil)
+    }
+
     @Test func negativePSBChannelLengthThrows() throws {
         // Version 2 without resources: the first channel's 8-byte length sits at byte 72.
         var data = PSDFixture.makeLayered(width: 2, height: 2, layers: [

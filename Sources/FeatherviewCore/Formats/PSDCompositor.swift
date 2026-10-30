@@ -13,6 +13,7 @@ public struct PSDCompositor: Sendable {
     let layers: PSDLayers
     let content: @Sendable (PSDLayer, Double) throws -> RGBAImage?
     let adjustment: @Sendable (PSDLayer) -> Adjust?
+    let vectorMask: @Sendable ([String: Data], UInt8, Double) throws -> (rect: PSDRect, pixels: [UInt8])?
 
     /// Test hook: the most pixels a working canvas (the picture or a group's; a copy for a mix matches its target) had in this task.
     @TaskLocal static var largestCanvas: OSAllocatedUnfairLock<Int>?
@@ -23,13 +24,16 @@ public struct PSDCompositor: Sendable {
 
     /// `content` gives a layer's pixels at a scale: at the layer's `scaledRect(scale:)` top-left, or at the
     /// origin when the image has the scaled canvas's size; nil draws nothing. `adjustment` makes a layer an
-    /// adjustment of what lies below it.
+    /// adjustment of what lies below it. `vectorMask` gives the vector mask of a group's or adjustment layer's
+    /// blocks at a density and scale (0 outside its rect); `content` cuts other layers by theirs.
     public init(_ layers: PSDLayers,
                 content: @escaping @Sendable (PSDLayer, Double) throws -> RGBAImage? = { try $0.channels(scale: $1) },
-                adjustment: @escaping @Sendable (PSDLayer) -> Adjust? = { _ in nil }) {
+                adjustment: @escaping @Sendable (PSDLayer) -> Adjust? = { _ in nil },
+                vectorMask: @escaping @Sendable ([String: Data], UInt8, Double) throws -> (rect: PSDRect, pixels: [UInt8])? = { _, _, _ in nil }) {
         self.layers = layers
         self.content = content
         self.adjustment = adjustment
+        self.vectorMask = vectorMask
     }
 
     /// The most pixels of a picture `ImageDecoder` draws from layers (256 MB a canvas); larger ones go to ImageIO.
@@ -101,19 +105,20 @@ public struct PSDCompositor: Sendable {
             guard base.visible else { continue }
 
             if case .group(let group) = base, group.blend == "pass", clipped.isEmpty {
-                let weights = try maskValues(group.mask, scale, origin, target.width, target.height)
-                if weights == nil, group.opacity == 255 {
+                let weights = try masks(base, scale, origin, target.width, target.height)
+                let opacity = (Int(group.opacity) * Int(group.fill) + 127) / 255
+                if weights == nil, opacity == 255 {
                     try draw(group.children, onto: &target, at: origin, scale)
                 } else {
                     var copy = target
                     try draw(group.children, onto: &copy, at: origin, scale)
-                    Self.mix(&target, copy, weights, Int(group.opacity))
+                    Self.mix(&target, copy, weights, opacity)
                 }
                 continue
             }
             // shortcut: an adjustment layer draws in normal mode and ignores layers clipped to it, honour both if a file shows them.
             if case .layer(let layer) = base, let adjust = adjustment(layer) {
-                let weights = try maskValues(layer.mask, scale, origin, target.width, target.height)
+                let weights = try masks(base, scale, origin, target.width, target.height)
                 var adjusted = target
                 adjust(&adjusted, weights)
                 let mixed = layer.blendIf.map { Self.apply($0, adjusted, at: (0, 0), over: target, to: weights) } ?? weights
@@ -134,7 +139,9 @@ public struct PSDCompositor: Sendable {
                 fill = 1
             }
             let local = (x: at.x - origin.x, y: at.y - origin.y)
-            var mask = try maskValues(base.mask, scale, at, image.width, image.height)
+            // A layer's vector mask is in its content already.
+            var mask = try base.isGroup ? masks(base, scale, at, image.width, image.height)
+                                        : maskValues(base.mask, scale, at, image.width, image.height)
             if let blendIf = base.blendIf { mask = Self.apply(blendIf, image, at: local, over: target, to: mask) }
             PSDBlend.composite(PSDBlend.mode(base.blend) ?? .normal, onto: &target, layer: image, at: local, alpha: mask,
                                opacity: Float(base.opacity) / 255, fill: fill)
@@ -164,7 +171,22 @@ public struct PSDCompositor: Sendable {
     private func maskValues(_ mask: PSDMask?, _ scale: Double, _ origin: Point, _ width: Int, _ height: Int) throws -> [UInt8]? {
         guard let mask, !mask.disabled else { return nil }
         let (rect, pixels) = try mask.pixels(scale: scale)
-        var out = [UInt8](repeating: mask.defaultColour, count: width * height)
+        return Self.place(rect, pixels, outside: mask.dense(mask.defaultColour), origin, width, height)
+    }
+
+    /// The layer mask's values times the vector mask's over a `width × height` area at `origin`; nil without either.
+    private func masks(_ node: PSDNode, _ scale: Double, _ origin: Point, _ width: Int, _ height: Int) throws -> [UInt8]? {
+        let mask = try maskValues(node.mask, scale, origin, width, height)
+        guard let vector = try vectorMask(node.blocks, node.vectorDensity, scale) else { return mask }
+        let values = Self.place(vector.rect, vector.pixels, outside: 0, origin, width, height)
+        guard let mask else { return values }
+        return zip(mask, values).map { UInt8((Int($0) * Int($1) + 127) / 255) }
+    }
+
+    /// `pixels` (over `rect` in the scaled canvas, `outside` beyond it) over a `width × height` area at `origin`.
+    private static func place(_ rect: PSDRect, _ pixels: [UInt8], outside: UInt8, _ origin: Point,
+                              _ width: Int, _ height: Int) -> [UInt8] {
+        var out = [UInt8](repeating: outside, count: width * height)
         let x0 = max(rect.left, origin.x), x1 = min(rect.right, origin.x + width)
         let y0 = max(rect.top, origin.y), y1 = min(rect.bottom, origin.y + height)
         guard x0 < x1, y0 < y1 else { return out }
@@ -261,7 +283,10 @@ private extension PSDNode {
     var blendIf: PSDBlendIf? { switch self { case .layer(let l): l.blendIf; case .group(let g): g.blendIf } }
     var blend: String { switch self { case .layer(let l): l.blend; case .group(let g): g.blend } }
     var opacity: UInt8 { switch self { case .layer(let l): l.opacity; case .group(let g): g.opacity } }
-    var fill: UInt8 { switch self { case .layer(let l): l.fill; case .group: 255 } }
+    var fill: UInt8 { switch self { case .layer(let l): l.fill; case .group(let g): g.fill } }
+    var blocks: [String: Data] { switch self { case .layer(let l): l.blocks; case .group(let g): g.blocks } }
+    var vectorDensity: UInt8 { switch self { case .layer(let l): l.vectorDensity; case .group(let g): g.vectorDensity } }
+    var isGroup: Bool { if case .group = self { true } else { false } }
 }
 
 public extension PSDCompositor {
@@ -336,6 +361,8 @@ public extension PSDCompositor {
                     }
                 }
             }
+        }, vectorMask: { blocks, density, scale in
+            try PSDFills.vectorMask(blocks, density: density, canvas: canvas, scale: scale).map { ($0.rect, $0.pixels) }
         })
     }
 }

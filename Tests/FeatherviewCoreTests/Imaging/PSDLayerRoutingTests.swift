@@ -104,6 +104,35 @@ import Testing
         #expect(image[3, 1] == (255, 128, 0, 255))
     }
 
+    /// A vector mask limits an adjustment layer to its path, with the layer mask.
+    @Test func vectorMaskLimitsAdjustments() throws {
+        let fill = Layer(name: "Fill", blocks: ["SoCo": PSDFillsTests.block([("Clr ", PSDFillsTests.rgb(255, 128, 0))])])
+        var invert = Layer(name: "Invert", mask: .init(rect: (0, 0, 2, 6), pixels: [UInt8](repeating: 255, count: 12)),
+                           blocks: ["nvrt": Data()])
+        invert.blocks["vmsk"] = PSDFillsTests.vectorMask([(0, 0), (0.5, 0), (0.5, 1), (0, 1)])
+        let url = try Self.write(PSDFixture.makeLayered(width: 8, height: 2, layers: [fill, invert], realComposite: false))
+        let image = try PSDCompositor.photoshop(try #require(try PSDLayers(url: url))).render(scale: 1)
+        #expect(image[0, 0] == (0, 127, 255, 255))  // inside both masks
+        #expect(image[5, 0] == (255, 128, 0, 255))  // inside the layer mask, outside the path
+        #expect(image[7, 1] == (255, 128, 0, 255))  // outside both
+    }
+
+    /// A group's vector mask cuts what the group draws, pass-through or not; below full density it only fades it.
+    @Test(arguments: [("pass", 255), ("norm", 255), ("pass", 128)])
+    func vectorMaskCutsGroups(blend: String, density: Int) throws {
+        var layers = [PSDCompositorTests.solid("Blue", 0, 0, 8, 2, [0, 0, 255, 255])]
+            + PSDCompositorTests.group("G", blend: blend, [PSDCompositorTests.solid("Red", 0, 0, 8, 2, [255, 0, 0, 255])])
+        layers[layers.count - 1].blocks["vmsk"] = PSDFillsTests.vectorMask([(0, 0), (0.5, 0), (0.5, 1), (0, 1)])
+        if density < 255 {
+            // A 20-byte record of the vector mask's rendering, parameters (vector mask density) in place of the padding.
+            layers[layers.count - 1].maskRecord = [0, 0, 0, 20] + [UInt8](repeating: 0, count: 16) + [0, 0x18, 4, UInt8(density)]
+        }
+        let url = try Self.write(PSDFixture.makeLayered(width: 8, height: 2, layers: layers, realComposite: false))
+        let image = try PSDCompositor.photoshop(try #require(try PSDLayers(url: url))).render(scale: 1)
+        #expect(image[0, 0] == (255, 0, 0, 255))
+        #expect(image[7, 1] == (density == 255 ? (0, 0, 255, 255) : (127, 0, 128, 255)))
+    }
+
     /// A vector mask cuts a pixel layer too.
     @Test func vectorMaskCutsPixelLayers() throws {
         var layer = PSDCompositorTests.solid("A", 0, 0, 8, 8, [10, 200, 10, 255])

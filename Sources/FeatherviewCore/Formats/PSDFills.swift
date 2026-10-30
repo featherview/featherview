@@ -54,10 +54,16 @@ public enum PSDFills {
     /// (a subpath and the ones after it with operation −1) is filled even-odd, then combined with the
     /// shapes before it by its operation: 0 exclude, 1 combine, 2 subtract, 3 intersect. Without shapes, an
     /// initial fill record of 1 reveals the whole canvas, else nothing (the reverse when inverted).
-    /// Nil without a vector mask or when it's disabled.
+    /// Nil without a vector mask or when it's disabled. Below full density the mask covers the whole canvas, lifted.
     public static func vectorMask(_ layer: PSDLayer, canvas: (width: Int, height: Int),
                                   scale: Double) throws -> (rect: PSDRect, pixels: [UInt8], bounds: PSDRect)? {
-        guard let data = layer.blocks["vmsk"] ?? layer.blocks["vsms"] else { return nil }
+        try vectorMask(layer.blocks, density: layer.vectorDensity, canvas: canvas, scale: scale)
+    }
+
+    /// `vectorMask` of a layer's or group's tagged blocks.
+    static func vectorMask(_ blocks: [String: Data], density: UInt8, canvas: (width: Int, height: Int),
+                           scale: Double) throws -> (rect: PSDRect, pixels: [UInt8], bounds: PSDRect)? {
+        guard let data = blocks["vmsk"] ?? blocks["vsms"] else { return nil }
         let bytes = [UInt8](data)
         guard bytes.count >= 8 else { throw OwnDecodeError.corrupt }
         func be(_ at: Int, _ n: Int) -> Int { bytes[at..<at + n].reduce(0) { $0 << 8 | Int($1) } }
@@ -101,7 +107,7 @@ public enum PSDFills {
             : (Int(all.minY.rounded(.down)), Int(all.minX.rounded(.down)), Int(all.maxY.rounded(.up)), Int(all.maxX.rounded(.up)))
         // A first subtraction cuts from everything, so it covers the canvas outside the path too.
         var rect: PSDRect = (0, 0, sh, sw)
-        if !inverted, shapes.first?.operation != 2 {
+        if !inverted, density == 255, shapes.first?.operation != 2 {
             guard !all.isNull, !all.isEmpty else { return ((0, 0, 0, 0), [], bounds) }
             rect = (max(0, bounds.top), max(0, bounds.left), min(sh, bounds.bottom), min(sw, bounds.right))
             guard rect.bottom > rect.top, rect.right > rect.left else { return ((0, 0, 0, 0), [], bounds) }
@@ -134,6 +140,7 @@ public enum PSDFills {
             }
         }
         if inverted { for i in pixels.indices { pixels[i] = 255 - pixels[i] } }
+        if density < 255 { for i in pixels.indices { pixels[i] = 255 - UInt8((Int(density) * (255 - Int(pixels[i])) + 127) / 255) } }
         return (rect, pixels, bounds)
     }
 

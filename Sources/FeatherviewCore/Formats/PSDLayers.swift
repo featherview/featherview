@@ -104,7 +104,8 @@ public struct PSDLayers: Sendable {
                     let blend = section.count >= 12 ? String(decoding: section.dropFirst(8).prefix(4), as: UTF8.self) : layer.blend
                     stack[stack.count - 1].append(.group(PSDGroup(
                         name: layer.name, blend: blend, opacity: layer.opacity, visible: layer.visible, mask: layer.mask,
-                        clipped: layer.clipped, blendIf: layer.blendIf, children: children)))
+                        clipped: layer.clipped, blendIf: layer.blendIf, fill: layer.fill, vectorDensity: layer.vectorDensity,
+                        blocks: layer.blocks, children: children)))
                     continue
                 }
             }
@@ -154,6 +155,12 @@ public struct PSDGroup: Sendable {
     public let mask: PSDMask?
     public let clipped: Bool
     public let blendIf: PSDBlendIf?
+    /// Fill opacity (`iOpa`), 255 without one.
+    public let fill: UInt8
+    /// The vector mask's density (`PSDFills.vectorMask`), 255 without one.
+    public let vectorDensity: UInt8
+    /// The folder record's tagged blocks.
+    public let blocks: [String: Data]
     /// Bottom to top.
     public let children: [PSDNode]
 }
@@ -170,6 +177,8 @@ public struct PSDLayer: Sendable {
     public let visible: Bool
     public let mask: PSDMask?
     public let blendIf: PSDBlendIf?
+    /// The vector mask's density (`PSDFills.vectorMask`), 255 without one.
+    public let vectorDensity: UInt8
     public let blocks: [String: Data]
     let source: PSDChannelSource
 
@@ -263,12 +272,22 @@ public struct PSDMask: Sendable {
     public let disabled: Bool
     /// The position is relative to the layer.
     public let relative: Bool
+    /// How strongly the mask hides: 255 fully, lower values lift its black toward white.
+    public let density: UInt8
     let channel: Int
     let source: PSDChannelSource
 
+    /// `value` at the mask's density.
+    func dense(_ value: UInt8) -> UInt8 { 255 - UInt8((Int(density) * (255 - Int(value)) + 127) / 255) }
+
     /// The mask's values over its scaled `rect` on the canvas (see `PSDLayers.scaled`), area-averaged with
-    /// the default colour outside `rect`; one byte per pixel.
+    /// the default colour outside `rect`, at its density; one byte per pixel.
     public func pixels(scale: Double) throws -> (rect: PSDRect, pixels: [UInt8]) {
+        let (rect, pixels) = try values(scale: scale)
+        return (rect, density == 255 ? pixels : pixels.map(dense))
+    }
+
+    private func values(scale: Double) throws -> (rect: PSDRect, pixels: [UInt8]) {
         let clip = source.clip(rect)
         let w = clip.right - clip.left, h = clip.bottom - clip.top
         let target = PSDLayers.scaled(clip, canvas: source.canvas, scale: scale)
@@ -557,8 +576,8 @@ struct Record {
     var channelLengths: [(Int, Int)] = []
     var source = PSDChannelSource()
     let fields: (name: String, rect: PSDRect, blend: String, opacity: UInt8, clipped: Bool, visible: Bool,
-                 mask: (rect: PSDRect, defaultColour: UInt8, flags: UInt8, channel: Int)?, blendIf: PSDBlendIf?,
-                 blocks: [String: Data])
+                 mask: (rect: PSDRect, defaultColour: UInt8, flags: UInt8, channel: Int, density: UInt8)?,
+                 vectorDensity: UInt8, blendIf: PSDBlendIf?, blocks: [String: Data])
 
     init(_ r: inout FileCursor, version: Int, end: Int) throws {
         let rect = try Self.rect(&r)
@@ -574,21 +593,30 @@ struct Record {
         guard extraEnd <= end else { throw OwnDecodeError.corrupt }
 
         let maskEnd = try r.lengthEnd(4)
-        var mask: (rect: PSDRect, defaultColour: UInt8, flags: UInt8, channel: Int)?
+        var mask: (rect: PSDRect, defaultColour: UInt8, flags: UInt8, channel: Int, density: UInt8)?
+        var vectorDensity: UInt8 = 255, rendered = false
         if maskEnd - r.offset >= 18 {
             let maskRect = try Self.rect(&r)
             let colour = UInt8(try r.int(1)), maskFlags = UInt8(try r.int(1))
-            mask = (maskRect, colour, maskFlags, -2)
-            if maskFlags & 16 != 0 {
-                let parameters = try r.int(1)
-                try r.skip((parameters & 1) + (parameters >> 1 & 1) * 8 + (parameters >> 2 & 1) + (parameters >> 3 & 1) * 8)
-            }
-            // The user mask's own flags, colour and rectangle when a vector mask holds the first ones.
-            if maskEnd - r.offset >= 18, channelLengths.contains(where: { $0.0 == -3 }) {
+            var user = (rect: maskRect, colour: colour, flags: maskFlags, channel: -2)
+            // The user mask's own flags, colour and rectangle when the first ones hold a vector mask's rendering;
+            // the parameters follow them.
+            let real = maskEnd - r.offset >= 18 && channelLengths.contains(where: { $0.0 == -3 })
+            if real {
                 let realFlags = UInt8(try r.int(1)), realColour = UInt8(try r.int(1))
-                let realRect = try Self.rect(&r)
-                mask = (realRect, realColour, realFlags, -3)
+                user = (try Self.rect(&r), realColour, realFlags, -3)
             }
+            var density: UInt8 = 255
+            if maskFlags & 16 != 0, r.offset < maskEnd {
+                let parameters = try r.int(1)
+                if parameters & 1 != 0 { density = UInt8(try r.int(1)) }
+                // shortcut: feather (user mask bit 2, vector mask bit 8) isn't drawn, blur the mask by it if files show it often.
+                if parameters & 2 != 0 { try r.skip(8) }
+                if parameters & 4 != 0 { vectorDensity = UInt8(try r.int(1)) }
+                if parameters & 8 != 0 { try r.skip(8) }
+            }
+            mask = (user.rect, user.colour, user.flags, user.channel, density)
+            rendered = !real && maskFlags & 8 != 0
         }
         guard maskEnd <= extraEnd else { throw OwnDecodeError.corrupt }
         r.offset = maskEnd
@@ -608,7 +636,9 @@ struct Record {
         guard r.offset <= extraEnd else { throw OwnDecodeError.corrupt }
         let blocks = try r.blocks(until: extraEnd, version: version)
         r.offset = extraEnd
-        fields = (name, rect, blend, opacity, clipping != 0, flags & 2 == 0, mask, blendIf, blocks)
+        // Without a real one, a mask flagged as rendered from other data is the vector mask's, which draws from vmsk.
+        if rendered, blocks["vmsk"] ?? blocks["vsms"] != nil { mask = nil }
+        fields = (name, rect, blend, opacity, clipping != 0, flags & 2 == 0, mask, vectorDensity, blendIf, blocks)
     }
 
     /// A layer or mask rectangle, at most 2^24 per side.
@@ -623,9 +653,10 @@ struct Record {
         let l = fields
         let mask = l.mask.map {
             PSDMask(rect: $0.rect, defaultColour: $0.defaultColour, disabled: $0.flags & 2 != 0, relative: $0.flags & 1 != 0,
-                    channel: $0.channel, source: source)
+                    density: $0.density, channel: $0.channel, source: source)
         }
         return PSDLayer(name: l.name, rect: l.rect, blend: l.blend, opacity: l.opacity, fill: l.blocks["iOpa"]?.first ?? 255,
-                        clipped: l.clipped, visible: l.visible, mask: mask, blendIf: l.blendIf, blocks: l.blocks, source: source)
+                        clipped: l.clipped, visible: l.visible, mask: mask, blendIf: l.blendIf, vectorDensity: l.vectorDensity,
+                        blocks: l.blocks, source: source)
     }
 }

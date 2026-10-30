@@ -93,6 +93,13 @@ import Testing
         #expect(image.pixels == [0, 255, 0, 128, 0, 0, 0, 0])
     }
 
+    @Test(arguments: ["norm", "pass"]) func groupFillActsLikeOpacity(blend: String) throws {
+        var layers = Self.group("G", blend: blend, [Self.solid("Green", 0, 0, 1, 1, [0, 255, 0, 255])])
+        layers[layers.count - 1].blocks["iOpa"] = Data([128])
+        let image = try Self.render(1, 1, layers)
+        #expect(image.pixels == [0, 255, 0, 128])
+    }
+
     @Test func blendIfDropsDarkSourcePixels() throws {
         let full: [UInt8] = [0, 0, 255, 255]
         var layer = Layer(name: "BW", rect: (0, 0, 1, 2), pixels: [0, 0, 0, 255, 255, 255, 255, 255])

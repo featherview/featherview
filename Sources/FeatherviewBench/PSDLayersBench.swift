@@ -27,13 +27,18 @@ func runPSDLayers(_ dir: URL, time: Bool) {
         }
         let ms = start.duration(to: .now).milliseconds
         var limits = Set<String>(), count = 0
+        func limited(_ blocks: [String: Data]) {
+            limits.formUnion(blocks.filter { knownLimitKeys.contains($0.key) && ($0.key != "knko" || $0.value.first != 0) }.keys)
+        }
         func walk(_ nodes: [PSDNode]) {
             for node in nodes {
                 switch node {
                 case .layer(let layer):
                     count += 1
-                    limits.formUnion(layer.blocks.filter { knownLimitKeys.contains($0.key) && ($0.key != "knko" || $0.value.first != 0) }.keys)
-                case .group(let group): walk(group.children)
+                    limited(layer.blocks)
+                case .group(let group):
+                    limited(group.blocks)
+                    walk(group.children)
                 }
             }
         }

@@ -36,6 +36,10 @@ enum PSDFixture {
         var blendIf: [UInt8]?
         /// Channel bytes by channel ID, compression field included, in place of what `pixels` gives.
         var override: [Int: [UInt8]] = [:]
+        /// The real user mask (channel −3) beside a vector mask's rendering in `mask`.
+        var realMask: FixtureMask?
+        /// The layer mask data record (its length first) in place of the one `mask` gives.
+        var maskRecord: [UInt8]?
     }
 
     /// A white stored composite under a layer and mask section; `realComposite` nil leaves out resource 1057.
@@ -62,6 +66,9 @@ enum PSDFixture {
             if let mask = layer.mask {
                 planes.append((-2, mask.pixels, mask.rect.right - mask.rect.left, mask.rect.bottom - mask.rect.top))
             }
+            if let mask = layer.realMask {
+                planes.append((-3, mask.pixels, mask.rect.right - mask.rect.left, mask.rect.bottom - mask.rect.top))
+            }
             records += be(layer.rect.top, 4) + be(layer.rect.left, 4) + be(layer.rect.bottom, 4) + be(layer.rect.right, 4)
             records += be(planes.count, 2)
             for p in planes {
@@ -71,7 +78,9 @@ enum PSDFixture {
             }
             records += Array("8BIM".utf8) + Array(layer.blend.utf8) + [layer.opacity, layer.clipped ? 1 : 0, layer.hidden ? 2 : 0, 0]
             var extra: [UInt8] = []
-            if let mask = layer.mask {
+            if let record = layer.maskRecord {
+                extra += record
+            } else if let mask = layer.mask {
                 extra += be(20, 4) + be(mask.rect.top, 4) + be(mask.rect.left, 4) + be(mask.rect.bottom, 4) + be(mask.rect.right, 4)
                 extra += [mask.defaultColour, mask.disabled ? 2 : 0, 0, 0]
             } else {
