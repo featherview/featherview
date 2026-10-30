@@ -58,7 +58,8 @@ public struct PSDComposite: Sendable {
             r = sizeAt + 4 + (size + 1) & ~1
         }
         let lengthSize = version == 1 ? 4 : 8
-        guard let layerLength = bytes(offset, lengthSize).map({ be($0[...]) }), layerLength >= 0 else { return nil }
+        guard let layerLength = bytes(offset, lengthSize).map({ be($0[...]) }), layerLength >= 0,
+              layerLength <= fileSize - offset - lengthSize else { return nil }
         offset += lengthSize + layerLength
         guard let compression = bytes(offset, 2).map({ be($0[...]) }), compression == 0 || compression == 1 else { return nil }
         offset += 2
@@ -69,8 +70,12 @@ public struct PSDComposite: Sendable {
             var offsets = [Int](repeating: 0, count: rows + 1)
             offsets[0] = offset + rows * countSize
             for i in 0..<rows { offsets[i + 1] = offsets[i] + be(table[i * countSize ..< (i + 1) * countSize]) }
+            guard offsets[rows] <= fileSize else { return nil }
             rowOffsets = offsets
         } else {
+            // Checked here so a decode never sizes its bands from a size the file can't hold.
+            let (bytes, overflow) = (channels * width).multipliedReportingOverflow(by: height)
+            guard !overflow, bytes <= fileSize - offset else { return nil }
             rowOffsets = nil
         }
         self.url = url

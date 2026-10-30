@@ -112,15 +112,32 @@ import Testing
     @Test func corruptRLEThrows() throws {
         let pixels = Self.noise(width: 7, height: 5)
         let table = 26 + 4 + 4 + 4 + 2  // header, colour mode data, resources, layer and mask info, compression
-        var pastEnd = PSDFixture.make(width: 7, height: 5, pixels: pixels, compression: 1)
-        pastEnd[table] = 0xFF
-        let composite = try #require(PSDComposite(url: try Self.write(pastEnd)))
-        #expect(throws: OwnDecodeError.corrupt) { try composite.decode(size: PixelSize(width: 7, height: 5)) }
-
         var longRun = PSDFixture.make(width: 7, height: 5, pixels: pixels, compression: 1)
         longRun[table + 3 * 5 * 2] = UInt8(bitPattern: -127)  // the first row's first run repeats 128 times
         let long = try #require(PSDComposite(url: try Self.write(longRun)))
         #expect(throws: OwnDecodeError.corrupt) { try long.decode(size: PixelSize(width: 7, height: 5)) }
+    }
+
+    @Test(arguments: [1, 2])  // version
+    func declinesLengthsPastTheEnd(version: Int) throws {
+        let pixels = Self.noise(width: 2, height: 2)
+        func declines(_ data: Data) throws -> Bool { PSDComposite(url: try Self.write(data)) == nil }
+
+        // Layer and mask length near Int.max (PSB) or past the end (PSD).
+        var layers = PSDFixture.make(width: 2, height: 2, pixels: pixels, version: version)
+        let lengthSize = version == 1 ? 4 : 8
+        layers.replaceSubrange(34 ..< 34 + lengthSize, with: [0x7F] + [UInt8](repeating: 0xFF, count: lengthSize - 2) + [0xF0])
+        #expect(try declines(layers))
+
+        // A raw composite claiming 0xFFFFFFFF × 0xFFFFFFFF.
+        var huge = PSDFixture.make(width: 2, height: 2, pixels: pixels, version: version)
+        huge.replaceSubrange(14 ..< 22, with: [UInt8](repeating: 0xFF, count: 8))
+        #expect(try declines(huge))
+
+        // RLE rows ending past the end of the file.
+        var pastEnd = PSDFixture.make(width: 2, height: 2, pixels: pixels, version: version, compression: 1)
+        pastEnd[34 + lengthSize + 2] = 0xFF
+        #expect(try declines(pastEnd))
     }
 
     @Test func truncatedRawThrows() throws {
