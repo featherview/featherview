@@ -65,6 +65,7 @@ public struct PSDCompositor: Sendable {
         let bands = min(height, ProcessInfo.processInfo.activeProcessorCount * 2)
         image.pixels.withUnsafeBufferPointer { src in
             pixels.withUnsafeMutableBufferPointer { out in
+                // Each band writes only its own output rows; the source is only read.
                 nonisolated(unsafe) let src = src.baseAddress!, out = out.baseAddress!
                 DispatchQueue.concurrentPerform(iterations: bands) { band in
                     let first = band * height / bands, last = (band + 1) * height / bands

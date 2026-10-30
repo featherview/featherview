@@ -227,8 +227,9 @@ public struct PSDLayer: Sendable {
                 planes[0].withUnsafeBufferPointer { r in planes[1].withUnsafeBufferPointer { g in
                     planes[2].withUnsafeBufferPointer { b in planes[3].withUnsafeBufferPointer { a in
                         cells.columns.withUnsafeBufferPointer { columns in sums.withUnsafeMutableBufferPointer { sums in
+                            // The planes are only read; each run adds only to its own scaled rows' sums.
                             nonisolated(unsafe) let r = r.baseAddress!, g = g.baseAddress!, b = b.baseAddress!, a = a.baseAddress!
-                            nonisolated(unsafe) let columns = columns.baseAddress!, sums = sums.baseAddress!
+                            nonisolated(unsafe) let columns = columns.baseAddress!, sums = sums.baseAddress!  // as above
                             let width = cells.columnAreas.count
                             DispatchQueue.concurrentPerform(iterations: runs) { run in
                                 let from = starts[run * starts.count / runs]
@@ -250,6 +251,7 @@ public struct PSDLayer: Sendable {
             }
             var pixels = [UInt8](repeating: 0, count: ow * oh * 4)
             sums.withUnsafeBufferPointer { sums in pixels.withUnsafeMutableBufferPointer { pixels in
+                // Each row writes only its own pixels; the sums are only read.
                 nonisolated(unsafe) let sums = sums.baseAddress!, pixels = pixels.baseAddress!
                 DispatchQueue.concurrentPerform(iterations: oh) { y in
                     for o in y * ow ..< (y + 1) * ow {

@@ -75,8 +75,9 @@ public enum PSDBlend {
         layer.pixels.withUnsafeBufferPointer { src in
             canvas.pixels.withUnsafeMutableBufferPointer { dst in
                 (mask ?? []).withUnsafeBufferPointer { maskBuffer in
+                    // Each band writes only its own canvas rows; the layer and mask are only read.
                     nonisolated(unsafe) let sp = src.baseAddress!, dp = dst.baseAddress!
-                    nonisolated(unsafe) let mp = mask == nil ? nil : maskBuffer.baseAddress
+                    nonisolated(unsafe) let mp = mask == nil ? nil : maskBuffer.baseAddress  // as above
                     let canvasWidth = canvas.width, layerWidth = layer.width
                     DispatchQueue.concurrentPerform(iterations: bands) { band in
                         let rows = y0 + band * (y1 - y0) / bands ..< y0 + (band + 1) * (y1 - y0) / bands
