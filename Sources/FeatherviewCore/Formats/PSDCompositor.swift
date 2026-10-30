@@ -59,23 +59,28 @@ public struct PSDCompositor: Sendable {
                 let weights = try maskValues(layer.mask, scale, origin, target.width, target.height)
                 var adjusted = target
                 adjust(&adjusted, weights)
-                Self.mix(&target, adjusted, weights, (Int(layer.opacity) * Int(layer.fill) + 127) / 255)
+                let mixed = layer.blendIf.map { Self.apply($0, adjusted, at: (0, 0), over: target, to: weights) } ?? weights
+                Self.mix(&target, adjusted, mixed, (Int(layer.opacity) * Int(layer.fill) + 127) / 255)
                 continue
             }
 
             guard case (var image, let at)? = try element(base, scale) else { continue }
+            var fill = Float(base.fill) / 255
             if !clipped.isEmpty {
-                // Clipped layers blend onto the base as if it were opaque, then take its alpha.
+                // Clipped layers blend onto the base as if its alpha were its fill, then take its alpha: fill
+                // fades only the base's own pixels.
+                // shortcut: the base's fill then acts as plain alpha in the modes that apply fill inside the blend, honour it if a file shows it.
                 let alphas = stride(from: 3, to: image.pixels.count, by: 4).map { image.pixels[$0] }
-                for p in alphas.indices { image.pixels[p * 4 + 3] = 255 }
+                for p in alphas.indices { image.pixels[p * 4 + 3] = base.fill }
                 for node in clipped { try draw([node], onto: &image, at: at, scale) }
-                for p in alphas.indices { image.pixels[p * 4 + 3] = alphas[p] }
+                for p in alphas.indices { image.pixels[p * 4 + 3] = UInt8((Int(image.pixels[p * 4 + 3]) * Int(alphas[p]) + 127) / 255) }
+                fill = 1
             }
             let local = (x: at.x - origin.x, y: at.y - origin.y)
             var mask = try maskValues(base.mask, scale, at, image.width, image.height)
             if let blendIf = base.blendIf { mask = Self.apply(blendIf, image, at: local, over: target, to: mask) }
             PSDBlend.composite(PSDBlend.mode(base.blend) ?? .normal, onto: &target, layer: image, at: local, alpha: mask,
-                               opacity: Float(base.opacity) / 255, fill: Float(base.fill) / 255)
+                               opacity: Float(base.opacity) / 255, fill: fill)
         }
     }
 
@@ -119,29 +124,51 @@ public struct PSDCompositor: Sendable {
     private static func apply(_ blendIf: PSDBlendIf, _ image: RGBAImage, at: Point, over target: RGBAImage,
                               to mask: [UInt8]?) -> [UInt8] {
         var out = mask ?? [UInt8](repeating: 255, count: image.width * image.height)
-        func factor(_ v: Int, _ r: [UInt8]) -> Float {
-            let (bl, bh, wl, wh) = (Int(r[0]), Int(r[1]), Int(r[2]), Int(r[3]))
+        // Ranges as Ints, gray, red, green, blue: black low, black high, white low, white high.
+        let r = [blendIf.gray, blendIf.red, blendIf.green, blendIf.blue]
+        let source = r.flatMap { $0.source.map(Int.init) }, backdrop = r.flatMap { $0.backdrop.map(Int.init) }
+        // Blend If off for a channel when both ranges are full; the common case is one channel in use.
+        let used = (0..<4).filter { k in [source, backdrop].contains { $0[k * 4 ..< k * 4 + 4] != [0, 0, 255, 255] } }
+        guard !used.isEmpty else { return out }
+        @inline(__always) func factor(_ v: Int, _ r: UnsafeBufferPointer<Int>, _ k: Int) -> Float {
+            let bl = r[k], bh = r[k + 1], wl = r[k + 2], wh = r[k + 3]
             if v < bl || v > wh { return 0 }
             if v < bh { return Float(v - bl) / Float(bh - bl) }
             if v > wl { return Float(wh - v) / Float(wh - wl) }
             return 1
         }
-        func values(_ p: ArraySlice<UInt8>) -> [Int] {
-            let (r, g, b) = (Int(p[p.startIndex]), Int(p[p.startIndex + 1]), Int(p[p.startIndex + 2]))
-            return [(30 * r + 59 * g + 11 * b + 50) / 100, r, g, b]
-        }
-        let ranges = [blendIf.gray, blendIf.red, blendIf.green, blendIf.blue]
-        for y in 0..<image.height {
-            let ty = y + at.y
-            guard ty >= 0, ty < target.height else { continue }
-            for x in 0..<image.width {
-                let tx = x + at.x, p = y * image.width + x
-                guard tx >= 0, tx < target.width, out[p] > 0 else { continue }
-                let source = values(image.pixels[p * 4 ..< p * 4 + 4])
-                let t = (ty * target.width + tx) * 4, backdrop = values(target.pixels[t ..< t + 4])
-                var f: Float = 1
-                for k in 0..<4 { f *= factor(source[k], ranges[k].source) * factor(backdrop[k], ranges[k].backdrop) }
-                out[p] = UInt8((Float(out[p]) * f).rounded())
+        let x0 = max(0, -at.x), x1 = min(image.width, target.width - at.x)
+        let y0 = max(0, -at.y), y1 = min(image.height, target.height - at.y)
+        guard x0 < x1, y0 < y1 else { return out }
+        source.withUnsafeBufferPointer { src in
+            backdrop.withUnsafeBufferPointer { dst in
+                image.pixels.withUnsafeBufferPointer { s in
+                    target.pixels.withUnsafeBufferPointer { t in
+                        out.withUnsafeMutableBufferPointer { out in
+                            for y in y0..<y1 {
+                                for x in x0..<x1 {
+                                    let p = y * image.width + x
+                                    guard out[p] > 0 else { continue }
+                                    let i = p * 4, j = ((y + at.y) * target.width + x + at.x) * 4
+                                    let sr = Int(s[i]), sg = Int(s[i + 1]), sb = Int(s[i + 2])
+                                    let br = Int(t[j]), bg = Int(t[j + 1]), bb = Int(t[j + 2])
+                                    var f: Float = 1
+                                    for k in used {
+                                        let sv: Int, bv: Int
+                                        switch k {
+                                        case 0: sv = (30 * sr + 59 * sg + 11 * sb + 50) / 100; bv = (30 * br + 59 * bg + 11 * bb + 50) / 100
+                                        case 1: sv = sr; bv = br
+                                        case 2: sv = sg; bv = bg
+                                        default: sv = sb; bv = bb
+                                        }
+                                        f *= factor(sv, src, k * 4) * factor(bv, dst, k * 4)
+                                    }
+                                    if f < 1 { out[p] = UInt8((Float(out[p]) * f).rounded()) }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         return out
