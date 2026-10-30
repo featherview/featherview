@@ -98,6 +98,8 @@ struct ImageCanvas: NSViewRepresentable {
     var pane: CompareSession.Pane = .first
     /// A sharp decode of a part of a huge picture, laid over `image`; `rect` in full-size pixels.
     var region: (image: CGImage, rect: CGRect)? = nil
+    /// `image` is the fit picture enlarged under `region`'s parts: smoothed at any zoom.
+    var byParts = false
     /// The file's pixel size, for placing `region` and reporting the visible rect; nil while unknown.
     var fullPixelSize: CGSize? = nil
     /// The visible part of the picture in full-size pixels, after each scroll and update.
@@ -200,9 +202,11 @@ struct ImageCanvas: NSViewRepresentable {
         view.zoom = zoom
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let sameImage = view.shows(image)
-        view.show(image, checkerboard: checkerboard && image.hasAlpha, 
-                  smooth: !ZoomSteps.showsPixels(drawnWidth: size.width, imageWidth: Int(pixelWidth), displayScale: displayScale))
-        view.showRegion(region, fullPixelSize: fullPixelSize)
+        let showsPixels = ZoomSteps.showsPixels(drawnWidth: size.width, imageWidth: Int(pixelWidth), displayScale: displayScale)
+        view.show(image, checkerboard: checkerboard && image.hasAlpha,
+                  smooth: ZoomSteps.smoothsPicture(drawnWidth: size.width, imageWidth: Int(pixelWidth),
+                                                   displayScale: displayScale, byParts: byParts))
+        view.showRegion(region, fullPixelSize: fullPixelSize, smooth: !showsPixels)
         // A fit picture turned a quarter ends at the size it will fit at, not overflowing.
         let clearSize = CGSize(width: scrollView.contentView.bounds.width - contentInsets.left - contentInsets.right,
                                height: scrollView.contentView.bounds.height - contentInsets.top - contentInsets.bottom)
@@ -537,11 +541,13 @@ private final class ImageLayerView: NSView {
     }
 
     /// Lays `region` (full-size pixels) over the picture, or hides it when nil.
-    func showRegion(_ region: (image: CGImage, rect: CGRect)?, fullPixelSize: CGSize?) {
+    func showRegion(_ region: (image: CGImage, rect: CGRect)?, fullPixelSize: CGSize?, smooth: Bool) {
         self.region = region
         self.fullPixelSize = fullPixelSize
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        // Below 2× smooth; from 2× on, show the pixels.
+        regionLayer.magnificationFilter = smooth ? .linear : .nearest
         placeRegion()
         CATransaction.commit()
     }
@@ -556,7 +562,6 @@ private final class ImageLayerView: NSView {
         let sx = imageLayer.bounds.width / full.width, sy = imageLayer.bounds.height / full.height
         regionLayer.frame = CGRect(x: region.rect.minX * sx, y: region.rect.minY * sy,
                                    width: region.rect.width * sx, height: region.rect.height * sy)
-        regionLayer.magnificationFilter = imageLayer.magnificationFilter
         regionLayer.minificationFilter = imageLayer.minificationFilter
         regionLayer.isHidden = false
     }

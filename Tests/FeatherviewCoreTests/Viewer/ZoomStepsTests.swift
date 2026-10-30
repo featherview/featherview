@@ -38,6 +38,13 @@ import Testing
         #expect(!ZoomSteps.showsPixels(drawnWidth: 1500, imageWidth: 1000, displayScale: 1))
     }
 
+    @Test func pictureUnderPartsIsAlwaysSmoothed() {
+        // At 200 % a 69536 px file's fit decode lies under its parts: each fit pixel would be a block, so smoothed.
+        #expect(ZoomSteps.smoothsPicture(drawnWidth: 69536, imageWidth: 69536, displayScale: 2, byParts: true))
+        #expect(!ZoomSteps.smoothsPicture(drawnWidth: 69536, imageWidth: 69536, displayScale: 2, byParts: false))
+        #expect(ZoomSteps.smoothsPicture(drawnWidth: 999, imageWidth: 1000, displayScale: 2, byParts: false))
+    }
+
     private func near(_ a: CGSize, _ b: CGSize) -> Bool { abs(a.width - b.width) < 1e-6 && abs(a.height - b.height) < 1e-6 }
 
     @Test func zoomDrawSizeUsesFullPixels() {
