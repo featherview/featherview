@@ -23,6 +23,10 @@ public struct PSDCompositor: Sendable {
         return RGBAImage(width: width, height: height, pixels: [UInt8](repeating: 0, count: width * height * 4))
     }
 
+    /// Test hook: the bytes of canvases, copies, layer images and masks a render holds, now and at most, in this task.
+    @TaskLocal static var liveBytes: OSAllocatedUnfairLock<(now: Int, peak: Int)>?
+    static func hold(_ bytes: Int) { liveBytes?.withLock { $0.now += bytes; $0.peak = max($0.peak, $0.now) } }
+
     /// `content` gives a layer's pixels at a scale: at the layer's `scaledRect(scale:)` top-left, or at the
     /// origin when the image has the scaled canvas's size; nil draws nothing. `adjustment` makes a layer an
     /// adjustment of what lies below it. `vectorMask` gives the vector mask of a group's or adjustment layer's
@@ -41,8 +45,17 @@ public struct PSDCompositor: Sendable {
     /// Task-local so a test can lower it.
     @TaskLocal static var maxPixels = 1 << 26
 
+    /// The most bytes a render may hold at once, with the decoded copy of its picture. Task-local so a test can lower it.
+    // shortcut: counted from the layer tree (`held`) with every layer image and copy as large as the working canvas;
+    // patterns and channel reads aside. Measure a file's real peak if one goes over.
+    @TaskLocal static var memoryBudget = 512 << 20
+
+    /// The most pixels the working canvas may have for the render, the canvases it holds at once (`held`) and the
+    /// decoded copy of its picture to stay within `memoryBudget`.
+    public var budgetPixels: Int { Self.memoryBudget / (4 + max(held(layers.nodes, 1), 4)) }
+
     /// The picture at `scale` (≤ 1), `PSDLayers.scaledSize` per side.
-    public func render(scale: Double) throws -> RGBAImage { try render(scale: scale, maxPixels: 1 << 24) }
+    public func render(scale: Double) throws -> RGBAImage { try render(scale: scale, maxPixels: min(1 << 24, budgetPixels)) }
 
     /// Composites at twice `scale` per side (at most full size, and at most `maxPixels` unless `scale` itself
     /// needs more), then reduces once: layers reduced before compositing go wrong where an alpha edge cuts a cell
@@ -55,6 +68,8 @@ public struct PSDCompositor: Sendable {
         let fine = max(min(scale, 1), min(1, 2 * scale, cap))
         let fineWidth = PSDLayers.scaledSize(layers.width, fine), fineHeight = PSDLayers.scaledSize(layers.height, fine)
         var canvas = [Self.canvas(fineWidth, fineHeight)]
+        Self.hold(canvas[0].pixels.count)
+        defer { Self.hold(-canvas[0].pixels.count) }
         try draw(layers.nodes, onto: &canvas, at: (0, 0), fine)
         return fineWidth == width && fineHeight == height ? canvas[0] : Self.reduce(canvas[0], width, height)
     }
@@ -101,7 +116,7 @@ public struct PSDCompositor: Sendable {
     /// for all targets, so a pass-through group's layers, drawn both passed through and isolated, are read once.
     private func draw(_ nodes: [PSDNode], onto targets: inout [RGBAImage], at origin: Point, _ scale: Double) throws {
         guard let first = targets.first else { return }
-        let width = first.width, height = first.height
+        let width = first.width, height = first.height, area = width * height, m = targets.count
         var i = 0
         while i < nodes.count {
             let base = nodes[i]
@@ -119,10 +134,16 @@ public struct PSDCompositor: Sendable {
                 let f = Int(group.fill)
                 // Its content first, then each target with its layers passed through.
                 var drawn = [Self.canvas(width, height)] + targets
+                Self.hold(4 * area * (m + 1))
+                defer { Self.hold(-4 * area * (m + 1)) }
                 try draw(group.children, onto: &drawn, at: origin, scale)
                 let content = drawn[0]
                 let weights = try masks(base, scale, origin, width, height)
+                Self.hold(weights?.count ?? 0)
+                defer { Self.hold(-(weights?.count ?? 0)) }
                 for k in targets.indices {
+                    Self.hold(4 * area)
+                    defer { Self.hold(-4 * area) }
                     var mixed = targets[k]
                     Self.mix(&mixed, drawn[k + 1], nil, f)
                     drawn[k + 1] = targets[k]  // the passed copy goes; the isolated draw takes its place
@@ -136,10 +157,14 @@ public struct PSDCompositor: Sendable {
             // Below full fill opacity (with adjustments) a pass-through group draws isolated, as Photoshop's composites show.
             if case .group(let group) = base, group.blend == "pass", group.fill == 255 {
                 var weights = try masks(base, scale, origin, width, height)
+                Self.hold(weights?.count ?? 0)
+                defer { Self.hold(-(weights?.count ?? 0)) }
                 if !clipped.isEmpty {
                     // As a clipping base it still passes through, but only where it has content of its own (an
                     // adjustment alone has none), with the clipped layers over it; its layers bring their own alpha.
                     var drawn = [Self.canvas(width, height)] + targets
+                    Self.hold(4 * area * (m + 1) + 2 * area)  // and the alphas and weights below
+                    defer { Self.hold(-(4 * area * (m + 1) + 2 * area)) }
                     try draw(group.children, onto: &drawn, at: origin, scale)
                     let content = drawn.removeFirst()
                     for node in clipped { try draw([node], onto: &drawn, at: origin, scale) }
@@ -150,6 +175,8 @@ public struct PSDCompositor: Sendable {
                     try draw(group.children, onto: &targets, at: origin, scale)
                 } else {
                     var copies = targets
+                    Self.hold(4 * area * m)
+                    defer { Self.hold(-4 * area * m) }
                     try draw(group.children, onto: &copies, at: origin, scale)
                     for k in targets.indices { Self.mix(&targets[k], copies[k], weights, Int(group.opacity)) }
                 }
@@ -160,6 +187,8 @@ public struct PSDCompositor: Sendable {
                 let weights = try masks(base, scale, origin, width, height)
                 var adjusted = targets
                 var mixed: [[UInt8]?] = []
+                Self.hold(area + 5 * area * m)  // the weights, then a copy and weights per target
+                defer { Self.hold(-(area + 5 * area * m)) }
                 for k in targets.indices {
                     adjust(&adjusted[k], weights)
                     mixed.append(layer.blendIf.map { Self.apply($0, adjusted[k], at: (0, 0), over: targets[k], to: weights) } ?? weights)
@@ -173,6 +202,9 @@ public struct PSDCompositor: Sendable {
             }
 
             guard case (var image, let at)? = try element(base, scale) else { continue }
+            let bytes = image.pixels.count + 2 * image.width * image.height  // and the alphas or the mask, and Blend If's
+            Self.hold(bytes)
+            defer { Self.hold(-bytes) }
             var fill = Float(base.fill) / 255
             if !clipped.isEmpty {
                 // Clipped layers blend onto the base as if its alpha were its fill, then take its alpha: fill
@@ -202,6 +234,41 @@ public struct PSDCompositor: Sendable {
         }
     }
 
+    /// Bytes per pixel of the working canvas that `draw(nodes)` onto `m` targets holds at most beside them, as
+    /// `hold` counts: 4 for a canvas, a copy or a layer image, 1 for a mask; a layer image while it's made (a fill
+    /// layer, its vector mask and its placed copy) 9.
+    func held(_ nodes: [PSDNode], _ m: Int) -> Int {
+        var peak = 0, i = 0
+        while i < nodes.count {
+            let base = nodes[i]
+            var end = i + 1
+            while end < nodes.count, nodes[end].clipped { end += 1 }
+            let clipped = nodes[i + 1 ..< end]
+            i = end
+            guard base.visible else { continue }
+            func clips(_ n: Int) -> Int { clipped.map { held([$0], n) }.max() ?? 0 }
+            let cost: Int
+            switch base {
+            case .group(let group) where group.blend == "pass" && group.fill < 255 && clipped.isEmpty && !adjusts(group.children):
+                cost = 4 * (m + 1) + max(held(group.children, m + 1), 1 + 4)
+            case .group(let group) where group.blend == "pass" && group.fill == 255 && !clipped.isEmpty:
+                cost = 1 + 4 * (m + 1) + 2 + max(held(group.children, m + 1), clips(m))
+            case .group(let group) where group.blend == "pass" && group.fill == 255:
+                // Drawn straight onto the targets without a mask or opacity, else onto copies.
+                let masked = group.mask.map { !$0.disabled } ?? false || group.blocks["vmsk"] != nil || group.blocks["vsms"] != nil
+                cost = (masked || group.opacity < 255 ? 1 + 4 * m : 0) + held(group.children, m)
+            case .layer(let layer) where adjustment(layer) != nil:
+                cost = 1 + 5 * m + clips(m)
+            case .layer:
+                cost = max(9, 6 + clips(1))
+            case .group(let group):
+                cost = max(4 + held(group.children, 1), 6 + clips(1))
+            }
+            peak = max(peak, cost)
+        }
+        return peak
+    }
+
     /// Whether any of `nodes`, or of their groups' children, is an adjustment layer.
     private func adjusts(_ nodes: [PSDNode]) -> Bool {
         nodes.contains {
@@ -224,6 +291,8 @@ public struct PSDCompositor: Sendable {
             return (image, (rect.left, rect.top))
         case .group(let group):
             var image = [Self.canvas(width, height)]
+            Self.hold(image[0].pixels.count)
+            defer { Self.hold(-image[0].pixels.count) }
             try draw(group.children, onto: &image, at: (0, 0), scale)
             return (image[0], (0, 0))
         }
@@ -414,6 +483,8 @@ public extension PSDCompositor {
                 // Cut by a vector mask, the fill covers only the mask's rect: placed on the canvas here, since the
                 // compositor puts anything smaller at the layer's own rect.
                 guard let rect = try PSDFills.vectorMask(layer, canvas: canvas, scale: scale)?.rect else { return nil }
+                PSDCompositor.hold(fill.pixels.count + width * height * 4)
+                defer { PSDCompositor.hold(-(fill.pixels.count + width * height * 4)) }
                 var placed = PSDCompositor.canvas(width, height)
                 let x0 = max(0, -rect.left), x1 = min(fill.width, width - rect.left)
                 if x0 < x1 {

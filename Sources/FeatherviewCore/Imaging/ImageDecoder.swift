@@ -235,7 +235,8 @@ public enum ImageDecoder {
     /// A layered 8-bit RGB PSD/PSB whose stored composite isn't the picture (version info says so), drawn from its
     /// layers (`PSDCompositor.photoshop`) with its longest side `longest(full size)`, in the file's ICC profile or
     /// sRGB. Nil for any other file, and when drawing fails (then ImageIO decodes it, and keeps it until it changes when the
-    /// file is damaged). A `display` decode of a canvas too large to hold draws at the largest size it may; any other
+    /// file is damaged). A `display` decode of a canvas too large to hold draws at the largest size it may (`maxPixels`, and
+    /// `budgetPixels` for what the render holds at once); any other
     /// decode (batch, Save As) draws at the size asked, or throws when that is over 4 × `PSDCompositor.maxPixels`.
     private static func layerComposite(_ url: URL, display: Bool, longest: (CGSize) -> Int) throws -> CGImage? {
         guard ["psd", "psb"].contains(url.pathExtension.lowercased()), PSDComposite(url: url) == nil else { return nil }
@@ -245,11 +246,12 @@ public enum ImageDecoder {
             let side = longest(CGSize(width: layers.width, height: layers.height))
             // ImageIO would show another picture, without fills or adjustments, so a canvas too large draws smaller on
             // screen; batch and Save As keep every pixel or fail.
+            let compositor = try PSDCompositor.photoshop(layers)
             let pixels = Double(layers.width * layers.height), limit = Double(PSDCompositor.maxPixels)
             var scale = Double(side) / Double(max(layers.width, layers.height))
-            if display { scale = min(scale, (limit / pixels).squareRoot()) }
+            if display { scale = min(scale, (min(limit, Double(compositor.budgetPixels)) / pixels).squareRoot()) }
             guard scale * scale * pixels <= 4 * limit else { throw DecodeError.unreadable(url) }
-            let image = try PSDCompositor.photoshop(layers).render(scale: scale)
+            let image = try compositor.render(scale: scale)
             guard let drawn = image.makeCGImage() else { throw OwnDecodeError.corrupt }
             let space = psdProfile(url).flatMap { CGColorSpace(iccData: $0 as CFData) }.flatMap { $0.model == .rgb ? $0 : nil }
             return space.flatMap { drawn.copy(colorSpace: $0) } ?? drawn

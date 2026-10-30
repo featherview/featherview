@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import ImageIO
+import os
 import Testing
 @testable import FeatherviewCore
 
@@ -94,6 +95,28 @@ import Testing
         try PSDCompositor.$maxPixels.withValue(100_000) {
             #expect(throws: DecodeError.self) { try ImageDecoder.decode(url) }
         }
+    }
+
+    /// A display decode draws small enough that every canvas the compositor holds at once (copies for nested
+    /// pass-through groups below full fill, a fill layer, the picture) fits `memoryBudget`.
+    @Test func displayDecodeKeepsLiveCanvasesWithinTheBudget() throws {
+        let width = 600, height = 400
+        var dodge = PSDCompositorTests.solid("Dodge", 0, 0, width, height, [50, 60, 70, 200])
+        dodge.blend = "lddg"
+        var nested = [dodge]
+        for level in 0..<4 {
+            nested = PSDCompositorTests.group("P\(level)", blend: "pass", nested)
+            nested[nested.count - 1].blocks["iOpa"] = Data([200])
+        }
+        let url = try Self.write(PSDFixture.makeLayered(width: width, height: height, layers: Self.layers(width, height) + nested,
+                                                        realComposite: false))
+        let budget = 4 << 20, live = OSAllocatedUnfairLock(initialState: (now: 0, peak: 0))
+        let image = try PSDCompositor.$memoryBudget.withValue(budget) {
+            try PSDCompositor.$liveBytes.withValue(live) { try ImageDecoder.decode(url, fitting: [PixelSize(width: 4000, height: 4000)]) }
+        }
+        let peak = live.withLock { $0.peak }
+        #expect(peak > 0 && peak <= budget, "\(peak)")
+        #expect(image.width < width && abs(Double(image.width) / Double(image.height) - 1.5) < 0.02)
     }
 
     /// A file that can't be opened for a moment draws its layers again once it can: only damage is remembered.
