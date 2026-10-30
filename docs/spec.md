@@ -62,6 +62,13 @@ keepers. Especially people coming from Windows, where a fast viewer was one doub
 - A fill mode's zoom decodes at the next halving step like any zoom: into the 8-image cache when that is
   no larger than the image's fit decode, else into the one-image full-size cache, so browsing images
   that need more than their fit decode isn't prefetched (the not-prefetched budget applies).
+- Very large pictures: when a zoom's halving step would decode more than 4 × the largest screen's
+  pixels and the file can be read in parts (8-bit RGB PSD and PSB through the own reader, see Formats),
+  only the part on screen plus half a view's width and height on each side is decoded, at that step,
+  and drawn over the fit picture shown enlarged; panning near the part's edge decodes the next part
+  (the newest wins). Memory stays at the fit decode plus one part, instead of the whole step (6 GB at
+  100 % for a 1.5-gigapixel picture). Compare panes and a picture with a rotation or flip not yet
+  written decode the whole step.
 - EXIF orientation is always applied.
 - Status bar (milestone 3): one line along the bottom of the window, on by
   default, showing the image's pixel size, zoom %, file size, position N / M and the file's
@@ -1016,6 +1023,11 @@ the About window.
     can't be opened, and a composite GIMP stored with premultiplied alpha shows dark antialiased
     edges (ImageIO reads it as straight alpha). CMYK and grey PSB colours go through ImageIO's
     colour management, so they differ slightly from a plain conversion.
+    8-bit RGB PSD and PSB whose stored composite is raw or RLE-compressed, with three channels and no
+    orientation other than upright, are read by our own reader instead: it reads only what the size
+    needs, in parallel, and averages every pixel into the smaller picture (fine detail such as stars
+    stays), in the file's ICC profile. A 4.6 GB, 1.5-gigapixel PSB then fits the screen in under a
+    second instead of 5–15 s. Everything else (16 bits, alpha, grey, CMYK, zip) goes through ImageIO.
     Procreate (`.procreate`) shows the flattened picture Procreate keeps in the file, at full size,
     in the document's colour profile, and turned and flipped the way the canvas was (as its own
     preview shows it). Its tiles are LZO1X or LZ4 compressed; LZO1X is our own decoder, LZ4 is

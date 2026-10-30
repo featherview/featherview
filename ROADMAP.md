@@ -18,6 +18,8 @@ usable from the keyboard and with VoiceOver.
 
 ## Planned
 
+- Huge pictures: a 1.5-gigapixel Photoshop file (Hubble's Andromeda mosaic) opens in under a second,
+  and zooming in reads only the part on screen
 - Photos library: browse albums from Apple's Photos with the arrow keys, drag pictures in from
   Photos, and batch convert from it or into it, without exporting first
 
