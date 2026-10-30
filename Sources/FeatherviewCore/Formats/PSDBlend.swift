@@ -93,7 +93,8 @@ public enum PSDBlend {
                             _ mask: [UInt8]?, _ k: Int, _ columns: Range<Int>, _ rows: Range<Int>,
                             separable: ((UInt32, UInt32) -> UInt32)?) {
         let canvasWidth = canvas.width, layerWidth = layer.width, count = columns.count
-        let copies = mode == .normal || mode == .dissolve
+        // Not dissolve: a taken pixel there is drawn at alpha 255, not the layer's own alpha the copy would keep.
+        let copies = mode == .normal
         // Source alphas worked out a row ahead, unless they are just the layer's own (no mask, full opacity).
         let table = mask != nil || mode == .dissolve || k != 65_025
         var alphas = [UInt32](repeating: 0, count: table ? count : 0)
@@ -178,7 +179,7 @@ public enum PSDBlend {
         }
     }
 
-    private static func byte(_ v: Float) -> UInt8 { UInt8(min(max(v, 0), 1) * 255 + 0.5) }
+    private static func byte(_ v: Float) -> UInt8 { v.isNaN ? 0 : UInt8(min(max(v, 0), 1) * 255 + 0.5) }
 
     /// A value in 0..<1 from (x, y), the same on every run.
     private static func unitHash(_ x: Int, _ y: Int) -> Float {
@@ -217,8 +218,9 @@ public enum PSDBlend {
         let c = c + (l - lum(c))
         let l = lum(c), n = c.min(), x = c.max()
         var out = c
-        if n < 0 { out = l + (out - l) * l / (l - n) }
-        if x > 1 { out = l + (out - l) * (1 - l) / (x - l) }
+        // A grey a rounding step outside 0…1 has l == n (or x); clamping later handles it, dividing gives 0/0.
+        if n < 0, l > n { out = l + (out - l) * l / (l - n) }
+        if x > 1, x > l { out = l + (out - l) * (1 - l) / (x - l) }
         return out
     }
 

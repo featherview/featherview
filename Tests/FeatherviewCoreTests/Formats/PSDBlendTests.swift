@@ -98,6 +98,29 @@ struct PSDBlendTests {
         #expect(abs(taken - 5_020) < 250)
     }
 
+    @Test func dissolveTakesAPixelAtFullAlpha() {
+        let layer = RGBAImage(width: 64, height: 1, pixels: [UInt8]((0..<64).flatMap { _ in [255, 0, 0, 128] as [UInt8] }))
+        var opaque = RGBAImage(width: 64, height: 1)
+        PSDBlend.composite(.dissolve, onto: &opaque, layer: layer, at: (x: 0, y: 0))
+        #expect(stride(from: 3, to: opaque.pixels.count, by: 4).allSatisfy { opaque.pixels[$0] == 255 })
+        var clear = RGBAImage(width: 64, height: 1, pixels: [UInt8](repeating: 0, count: 256))
+        PSDBlend.composite(.dissolve, onto: &clear, layer: layer, at: (x: 0, y: 0))
+        let alphas = Set(stride(from: 3, to: clear.pixels.count, by: 4).map { clear.pixels[$0] })
+        #expect(alphas == [0, 255])
+    }
+
+    @Test func colorModeOnGreysNeverTraps() {
+        for b in 0...255 {
+            for s in 0...255 {
+                let x = blend(.color, (Float(b) / 255, Float(b) / 255, Float(b) / 255), (Float(s) / 255, Float(s) / 255, Float(s) / 255))
+                #expect(!x.x.isNaN && !x.y.isNaN && !x.z.isNaN, "backdrop \(b), source \(s)")
+            }
+        }
+        var canvas = RGBAImage(width: 1, height: 1)
+        PSDBlend.composite(.color, onto: &canvas, layer: RGBAImage(width: 1, height: 1, pixels: [29, 29, 29, 255]), at: (x: 0, y: 0))
+        #expect(canvas.pixels == [0, 0, 0, 255])
+    }
+
     /// Every mode through `composite` on random straight-alpha pixels, against the float formula: within 1 step.
     @Test func compositeMatchesTheFormula() {
         var rng = SystemRandomNumberGenerator()
