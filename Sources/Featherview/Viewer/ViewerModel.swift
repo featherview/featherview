@@ -1475,6 +1475,8 @@ final class ViewerModel {
             compareSession = session
             let space = screenSpace
             Task.detached(priority: .utility) { ImageDifference.prepare(colorSpace: space) }
+            // Compare panes decode the whole step: pane 1's parts go, its zoom stays.
+            if regionStep != nil { show(keepsPlayer: true) }
         }
         focusDecodes()
         showSecond()
