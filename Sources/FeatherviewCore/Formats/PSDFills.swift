@@ -9,8 +9,9 @@ public enum PSDFills {
     /// scaled canvas, or over the vector mask's rect (its top-left is `vectorMask(…)`'s). Nil when the layer
     /// has no fill block. A layer that also stores pixels (shape layers do) is drawn from its fill.
     /// Throws `OwnDecodeError.corrupt` on damage or a pattern missing from `patterns`.
+    /// `rgb` is the file's colour space, which Lab colours convert to (sRGB when nil).
     public static func content(_ layer: PSDLayer, canvas: (width: Int, height: Int), patterns: [String: RGBAImage],
-                               scale: Double) throws -> RGBAImage? {
+                               scale: Double, rgb: CGColorSpace? = nil) throws -> RGBAImage? {
         guard let key = ["SoCo", "GdFl", "PtFl"].first(where: { layer.blocks[$0] != nil }) else { return nil }
         let settings = try PSDDescriptor.versioned(layer.blocks[key]!)
         let sw = PSDLayers.scaledSize(canvas.width, scale), sh = PSDLayers.scaledSize(canvas.height, scale)
@@ -28,7 +29,7 @@ public enum PSDFills {
             // "Align with layer" puts the gradient in the shape's bounds, else in the canvas.
             let aligned = settings["Algn"] == .bool(true)
             let box: PSDRect = aligned ? mask?.bounds ?? (0, 0, sh, sw) : (0, 0, sh, sw)
-            shade = try gradient(settings, box: box)
+            shade = try gradient(settings, box: box, rgb: rgb)
         default:
             shade = try pattern(settings, patterns: patterns, sx: Double(sw) / Double(canvas.width), sy: Double(sh) / Double(canvas.height))
         }
@@ -297,9 +298,9 @@ public enum PSDFills {
     /// interpolated in RGB, each midpoint (on the later stop) where the two meet half-way.
     // shortcut: gradient dither is off, add noise if banding shows.
     // shortcut: smoothness (Intr) is ignored, colour changes linearly between stops; ease it if the corpus oracle shows the curve.
-    private static func gradient(_ settings: PSDDescriptor, box: PSDRect) throws -> (Int, Int) -> (UInt8, UInt8, UInt8, UInt8) {
+    private static func gradient(_ settings: PSDDescriptor, box: PSDRect, rgb: CGColorSpace?) throws -> (Int, Int) -> (UInt8, UInt8, UInt8, UInt8) {
         guard case .object(let grad)? = settings["Grad"] else { throw OwnDecodeError.corrupt }
-        let table = try gradientTable(grad)
+        let table = try gradientTable(grad, rgb: rgb)
         let angle = (number(settings["Angl"]) ?? 90) * .pi / 180
         let (cosA, sinA) = (cos(angle), sin(angle))
         let bw = Double(box.right - box.left), bh = Double(box.bottom - box.top)
@@ -331,14 +332,34 @@ public enum PSDFills {
     }
 
     /// The gradient's RGBA at 1,024 even steps from its start to its end.
-    // shortcut: a noise gradient (ClNs) is one solid colour, the middle of its RGB ranges; draw the noise if a file shows it.
-    private static func gradientTable(_ grad: PSDDescriptor) throws -> [UInt8] {
+    // shortcut: a noise gradient (ClNs) is one solid colour, the middle of its ranges; draw the noise if a file shows it.
+    private static func gradientTable(_ grad: PSDDescriptor, rgb: CGColorSpace?) throws -> [UInt8] {
         let steps = 1024
         if case .enumerated(_, "ClNs")? = grad["GrdF"] {
             var c: [UInt8] = [128, 128, 128]
             if case .list(let low)? = grad["Mnm "], case .list(let high)? = grad["Mxm "], low.count >= 3, high.count >= 3,
-               grad["ClrS"] == .enumerated(type: "ClrS", value: "RGBC") {
-                c = (0..<3).map { UInt8(min(max(((number(low[$0]) ?? 0) + (number(high[$0]) ?? 0)) / 2 * 2.55, 0), 255).rounded()) }
+               case .enumerated(_, let space)? = grad["ClrS"] {
+                // Each range in percent of its channel: RGB, HSB (hue as a share of the circle) or Lab (a, b over −128…127, into the file's colour space).
+                let v = (0..<3).map { min(max(((number(low[$0]) ?? 0) + (number(high[$0]) ?? 0)) / 200, 0), 1) }
+                switch space {
+                case "RGBC": c = v.map { UInt8(($0 * 255).rounded()) }
+                case "HSBl":
+                    let hi = v[2], lo = v[2] * (1 - v[1]), h = v[0] * 6
+                    let rgb = [5.0, 3, 1].map { n -> Double in
+                        let k = (n + h).truncatingRemainder(dividingBy: 6)
+                        return hi - (hi - lo) * max(0, min(k, 4 - k, 1))
+                    }
+                    c = rgb.map { UInt8(($0 * 255).rounded()) }
+                case "LbCl":
+                    let lab: [CGFloat] = [v[0] * 100, v[1] * 255 - 128, v[2] * 255 - 128, 1]
+                    if let space = CGColorSpace(labWhitePoint: [0.9642, 1, 0.8249], blackPoint: [0, 0, 0], range: [-128, 127, -128, 127]),
+                       let target = rgb ?? CGColorSpace(name: CGColorSpace.sRGB),
+                       let values = CGColor(colorSpace: space, components: lab)?.converted(to: target, intent: .relativeColorimetric, options: nil)?.components,
+                       values.count >= 3 {
+                        c = values.prefix(3).map { UInt8((min(max($0, 0), 1) * 255).rounded()) }
+                    }
+                default: break
+                }
             }
             return (0..<steps).flatMap { _ in c + [255] }
         }

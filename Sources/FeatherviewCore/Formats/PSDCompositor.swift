@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import os
 
@@ -346,12 +347,13 @@ public extension PSDCompositor {
         }
         try check(layers.nodes)
         let canvas = (width: layers.width, height: layers.height)
+        let rgb = layers.profile.flatMap { CGColorSpace(iccData: $0 as CFData) }.flatMap { $0.model == .rgb ? $0 : nil }
 
         return PSDCompositor(layers, content: { layer, scale in
             let width = PSDLayers.scaledSize(canvas.width, scale), height = PSDLayers.scaledSize(canvas.height, scale)
             // A stroked shape's stored pixels hold its stroke, which can lie outside the path: they draw as they are.
             let stroked = layer.blocks["vstk"] != nil
-            if !stroked, let fill = try PSDFills.content(layer, canvas: canvas, patterns: patterns, scale: scale) {
+            if !stroked, let fill = try PSDFills.content(layer, canvas: canvas, patterns: patterns, scale: scale, rgb: rgb) {
                 guard fill.width > 0, fill.height > 0 else { return nil }
                 if fill.width == width, fill.height == height { return fill }
                 // Cut by a vector mask, the fill covers only the mask's rect: placed on the canvas here, since the

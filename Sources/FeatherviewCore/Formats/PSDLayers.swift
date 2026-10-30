@@ -17,6 +17,8 @@ public struct PSDLayers: Sendable {
     public let hasRealComposite: Bool
     /// The tagged blocks after the layer info (patterns, linked files and the like).
     public let globalBlocks: [String: Data]
+    /// The ICC profile (image resource 1039) the pixels are in, nil without one.
+    public let profile: Data?
 
     /// Tagged block keys left in the file: embedded files, filter data and layer data, which can run to
     /// hundreds of MB and nothing reads. shortcut: dropped, not indexed; record offset and length when one is needed.
@@ -48,7 +50,7 @@ public struct PSDLayers: Sendable {
 
         try r.skip(try r.int(4))
         let resources = try r.bytes(try r.int(4))
-        var hasRealComposite = true
+        var hasRealComposite = true, profile: Data?
         var i = resources.startIndex
         func be(_ b: ArraySlice<UInt8>) -> Int { b.reduce(0) { $0 << 8 | Int($1) } }
         while i + 12 <= resources.endIndex {
@@ -58,6 +60,7 @@ public struct PSDLayers: Sendable {
             let size = be(resources[sizeAt ..< sizeAt + 4])
             guard size <= resources.endIndex - sizeAt - 4 else { throw OwnDecodeError.corrupt }
             if id == 1057, size >= 5 { hasRealComposite = resources[sizeAt + 8] != 0 }
+            if id == 1039 { profile = Data(resources[sizeAt + 4 ..< sizeAt + 4 + size]) }
             i = sizeAt + 4 + (size + 1) & ~1
         }
 
@@ -116,6 +119,7 @@ public struct PSDLayers: Sendable {
         self.height = height
         self.nodes = stack[0]
         self.hasRealComposite = hasRealComposite
+        self.profile = profile
     }
 
     /// A scaled canvas side: `n × scale` rounded, at least 1.

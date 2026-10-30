@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 @testable import FeatherviewCore
@@ -172,6 +173,22 @@ import Testing
         #expect(abs(Int(Self.pixel(image, 2, 32)[0]) - 128) <= 4)
         #expect(Self.pixel(image, 0, 10) == Self.pixel(image, 3, 10))
         #expect(Self.pixel(image, 1, 20)[3] == 255)
+    }
+
+    /// A noise gradient whose ranges are one colour draws that colour, in RGB, HSB or Lab (each in percent; Lab into the
+    /// file's colour space, here Adobe RGB).
+    @Test func noiseGradientsInEveryColourSpace() throws {
+        for (space, values, expected) in [("RGBC", [80.0, 40, 20], [204, 102, 51]), ("HSBl", [8.3343, 60, 80], [204, 143, 82]),
+                                          ("LbCl", [60.0, 60, 60], [178, 126, 102])] {
+            let range = V.list((values + [100]).map { .doub($0) })
+            let block = Self.block([("Angl", .unit("#Ang", 90)), ("Type", .enm("GrdT", "Lnr ")), ("Grad", .obj("Grdn", [
+                ("GrdF", .enm("GrdF", "ClNs")), ("ClrS", .enm("ClrS", space)), ("Mnm ", range), ("Mxm ", range)]))])
+            let image = try #require(try PSDFills.content(try Self.fillLayer(["GdFl": block], width: 2, height: 2),
+                                                          canvas: (2, 2), patterns: [:], scale: 1,
+                                                          rgb: CGColorSpace(name: CGColorSpace.adobeRGB1998)))
+            let p = Self.pixel(image, 1, 1)
+            #expect(zip(p.prefix(3), expected).allSatisfy { abs(Int($0) - $1) <= 2 }, "\(space): \(p)")
+        }
     }
 
     @Test func radialAndReflectedGradients() throws {
