@@ -125,9 +125,29 @@ import Testing
         #expect(Self.pixel(image, 0, 1)[3] == mask.pixels[1 * 4 + 0])
     }
 
+    /// Photoshop writes the initial fill record as 1 on masks with shapes too, and draws only the shapes; it decides
+    /// only for a mask without shapes, which then reveals everything (1) or nothing (0), or the reverse when inverted.
+    @Test func initialFillRecordOnlyDecidesAnEmptyMask() throws {
+        let colour = Self.block([("Clr ", Self.rgb(9, 9, 9))])
+        let shaped = try Self.fillLayer(["SoCo": colour, "vmsk": Self.vectorMask(Self.square(0.25, 0.75), initialFill: 1)], width: 8, height: 8)
+        let mask = try #require(try PSDFills.vectorMask(shaped, canvas: (8, 8), scale: 1))
+        #expect(mask.rect == (2, 2, 6, 6))
+        #expect(mask.pixels.allSatisfy { $0 == 255 })
+
+        for (initialFill, flags, expected) in [(1, 0, UInt8(255)), (1, 1, 0), (0, 0, 0), (0, 1, 255)] {
+            let empty = try Self.fillLayer(["SoCo": colour, "vmsk": Self.vectorMask(subpaths: [], flags: flags, initialFill: initialFill)],
+                                           width: 8, height: 8)
+            let mask = try #require(try PSDFills.vectorMask(empty, canvas: (8, 8), scale: 1))
+            let image = try #require(try PSDFills.content(empty, canvas: (8, 8), patterns: [:], scale: 1))
+            let alphas = stride(from: 3, to: image.pixels.count, by: 4).map { image.pixels[$0] }
+            #expect(mask.pixels.allSatisfy { $0 == expected } && alphas.allSatisfy { $0 == expected },
+                    "initial fill \(initialFill), flags \(flags)")
+        }
+    }
+
     @Test func invertedAndDisabledVectorMasks() throws {
         let path = Self.square(0.25, 0.75)
-        for inverted in [Self.vectorMask(path, flags: 1), Self.vectorMask(path, initialFill: 1)] {
+        for inverted in [Self.vectorMask(path, flags: 1), Self.vectorMask(path, flags: 1, initialFill: 1)] {
             let layer = try Self.fillLayer(["SoCo": Self.block([("Clr ", Self.rgb(9, 9, 9))]), "vmsk": inverted], width: 8, height: 8)
             let mask = try #require(try PSDFills.vectorMask(layer, canvas: (8, 8), scale: 1))
             #expect(mask.rect == (0, 0, 8, 8))

@@ -52,7 +52,8 @@ public enum PSDFills {
     /// canvas when inverted or starting with a subtraction; empty when the path covers nothing), one byte
     /// per pixel of it, antialiased, and the path's own bounds, which may run past the canvas. Each shape
     /// (a subpath and the ones after it with operation −1) is filled even-odd, then combined with the
-    /// shapes before it by its operation: 0 exclude, 1 combine, 2 subtract, 3 intersect.
+    /// shapes before it by its operation: 0 exclude, 1 combine, 2 subtract, 3 intersect. Without shapes, an
+    /// initial fill record of 1 reveals the whole canvas, else nothing (the reverse when inverted).
     /// Nil without a vector mask or when it's disabled.
     public static func vectorMask(_ layer: PSDLayer, canvas: (width: Int, height: Int),
                                   scale: Double) throws -> (rect: PSDRect, pixels: [UInt8], bounds: PSDRect)? {
@@ -72,13 +73,14 @@ public enum PSDFills {
             return CGPoint(x: fixed(at + 4) * Double(sw), y: fixed(at) * Double(sh))
         }
         var subpaths: [(closed: Bool, operation: Int, knots: [[CGPoint]])] = []
+        var startsFull = false
         for at in stride(from: 8, through: bytes.count - 26, by: 26) {
             switch be(at, 2) {
             case 0, 3: subpaths.append((be(at, 2) == 0, Int(Int16(truncatingIfNeeded: be(at + 4, 2))), []))
             case 1, 2, 4, 5:
                 guard !subpaths.isEmpty else { throw OwnDecodeError.corrupt }
                 subpaths[subpaths.count - 1].knots.append([point(at + 2), point(at + 10), point(at + 18)])
-            case 8: if be(at + 2, 2) == 1 { inverted.toggle() }  // the fill starts with every pixel
+            case 8: startsFull = be(at + 2, 2) == 1  // initial fill: the fill starts with every pixel
             default: break
             }
         }
@@ -92,6 +94,8 @@ public enum PSDFills {
             path.closeSubpath()
         }
 
+        // Photoshop draws only the shapes when there are any; the initial fill decides an empty mask.
+        if shapes.isEmpty, startsFull { inverted.toggle() }
         let all = shapes.reduce(CGRect.null) { $0.union($1.path.boundingBoxOfPath) }
         let bounds: PSDRect = all.isNull || all.isEmpty ? (0, 0, sh, sw)
             : (Int(all.minY.rounded(.down)), Int(all.minX.rounded(.down)), Int(all.maxY.rounded(.up)), Int(all.maxX.rounded(.up)))
