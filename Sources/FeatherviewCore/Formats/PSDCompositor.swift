@@ -54,9 +54,9 @@ public struct PSDCompositor: Sendable {
         let cap = (Double(maxPixels) / Double(layers.width * layers.height)).squareRoot()
         let fine = max(min(scale, 1), min(1, 2 * scale, cap))
         let fineWidth = PSDLayers.scaledSize(layers.width, fine), fineHeight = PSDLayers.scaledSize(layers.height, fine)
-        var canvas = Self.canvas(fineWidth, fineHeight)
+        var canvas = [Self.canvas(fineWidth, fineHeight)]
         try draw(layers.nodes, onto: &canvas, at: (0, 0), fine)
-        return fineWidth == width && fineHeight == height ? canvas : Self.reduce(canvas, width, height)
+        return fineWidth == width && fineHeight == height ? canvas[0] : Self.reduce(canvas[0], width, height)
     }
 
     /// `image` area-averaged to `width × height` through `PSDLayers.cell`, colour weighted by alpha.
@@ -96,8 +96,12 @@ public struct PSDCompositor: Sendable {
         return RGBAImage(width: width, height: height, pixels: pixels)
     }
 
-    /// Draws `nodes`, bottom to top, onto `target`, whose top-left sits at `origin` in the scaled canvas.
-    private func draw(_ nodes: [PSDNode], onto target: inout RGBAImage, at origin: Point, _ scale: Double) throws {
+    /// Draws `nodes`, bottom to top, onto each of `targets` (one size), whose top-left sits at `origin` in the scaled
+    /// canvas. What doesn't depend on the backdrop (a layer's pixels and masks, a group drawn isolated) is made once
+    /// for all targets, so a pass-through group's layers, drawn both passed through and isolated, are read once.
+    private func draw(_ nodes: [PSDNode], onto targets: inout [RGBAImage], at origin: Point, _ scale: Double) throws {
+        guard let first = targets.first else { return }
+        let width = first.width, height = first.height
         var i = 0
         while i < nodes.count {
             let base = nodes[i]
@@ -113,50 +117,58 @@ public struct PSDCompositor: Sendable {
             // a pixel layer); pass them through within its content if a file shows otherwise.
             if case .group(let group) = base, group.blend == "pass", group.fill < 255, clipped.isEmpty, !adjusts(group.children) {
                 let f = Int(group.fill)
-                var content = Self.canvas(target.width, target.height)
-                try draw(group.children, onto: &content, at: origin, scale)
-                var passed = target
-                try draw(group.children, onto: &passed, at: origin, scale)
-                var mixed = target
-                Self.mix(&mixed, passed, nil, f)
-                var isolated = target
-                PSDBlend.composite(.normal, onto: &isolated, layer: content, at: (0, 0), fill: Float(f) / 255)
-                Self.mix(&mixed, isolated, nil, f)
-                Self.mix(&target, mixed, try masks(base, scale, origin, target.width, target.height), Int(group.opacity))
+                // Its content first, then each target with its layers passed through.
+                var drawn = [Self.canvas(width, height)] + targets
+                try draw(group.children, onto: &drawn, at: origin, scale)
+                let content = drawn[0]
+                let weights = try masks(base, scale, origin, width, height)
+                for k in targets.indices {
+                    var mixed = targets[k]
+                    Self.mix(&mixed, drawn[k + 1], nil, f)
+                    drawn[k + 1] = targets[k]  // the passed copy goes; the isolated draw takes its place
+                    PSDBlend.composite(.normal, onto: &drawn[k + 1], layer: content, at: (0, 0), fill: Float(f) / 255)
+                    Self.mix(&mixed, drawn[k + 1], nil, f)
+                    drawn[k + 1] = content
+                    Self.mix(&targets[k], mixed, weights, Int(group.opacity))
+                }
                 continue
             }
             // Below full fill opacity (with adjustments) a pass-through group draws isolated, as Photoshop's composites show.
             if case .group(let group) = base, group.blend == "pass", group.fill == 255 {
-                var weights = try masks(base, scale, origin, target.width, target.height)
+                var weights = try masks(base, scale, origin, width, height)
                 if !clipped.isEmpty {
                     // As a clipping base it still passes through, but only where it has content of its own (an
                     // adjustment alone has none), with the clipped layers over it; its layers bring their own alpha.
-                    var content = Self.canvas(target.width, target.height)
-                    try draw(group.children, onto: &content, at: origin, scale)
-                    var copy = target
-                    try draw(group.children, onto: &copy, at: origin, scale)
-                    for node in clipped { try draw([node], onto: &copy, at: origin, scale) }
+                    var drawn = [Self.canvas(width, height)] + targets
+                    try draw(group.children, onto: &drawn, at: origin, scale)
+                    let content = drawn.removeFirst()
+                    for node in clipped { try draw([node], onto: &drawn, at: origin, scale) }
                     let alphas = stride(from: 3, to: content.pixels.count, by: 4).map { content.pixels[$0] > 0 ? UInt8(255) : 0 }
                     weights = weights.map { zip($0, alphas).map { UInt8((Int($0) * Int($1) + 127) / 255) } } ?? alphas
-                    Self.mix(&target, copy, weights, Int(group.opacity))
+                    for k in targets.indices { Self.mix(&targets[k], drawn[k], weights, Int(group.opacity)) }
                 } else if weights == nil, group.opacity == 255 {
-                    try draw(group.children, onto: &target, at: origin, scale)
+                    try draw(group.children, onto: &targets, at: origin, scale)
                 } else {
-                    var copy = target
-                    try draw(group.children, onto: &copy, at: origin, scale)
-                    Self.mix(&target, copy, weights, Int(group.opacity))
+                    var copies = targets
+                    try draw(group.children, onto: &copies, at: origin, scale)
+                    for k in targets.indices { Self.mix(&targets[k], copies[k], weights, Int(group.opacity)) }
                 }
                 continue
             }
             // shortcut: an adjustment layer draws in normal mode, honour its blend mode if a file shows it.
             if case .layer(let layer) = base, let adjust = adjustment(layer) {
-                let weights = try masks(base, scale, origin, target.width, target.height)
-                var adjusted = target
-                adjust(&adjusted, weights)
-                let mixed = layer.blendIf.map { Self.apply($0, adjusted, at: (0, 0), over: target, to: weights) } ?? weights
+                let weights = try masks(base, scale, origin, width, height)
+                var adjusted = targets
+                var mixed: [[UInt8]?] = []
+                for k in targets.indices {
+                    adjust(&adjusted[k], weights)
+                    mixed.append(layer.blendIf.map { Self.apply($0, adjusted[k], at: (0, 0), over: targets[k], to: weights) } ?? weights)
+                }
                 // Layers clipped to it draw over what it adjusted, inside its mask.
                 for node in clipped { try draw([node], onto: &adjusted, at: origin, scale) }
-                Self.mix(&target, adjusted, mixed, (Int(layer.opacity) * Int(layer.fill) + 127) / 255)
+                for k in targets.indices {
+                    Self.mix(&targets[k], adjusted[k], mixed[k], (Int(layer.opacity) * Int(layer.fill) + 127) / 255)
+                }
                 continue
             }
 
@@ -168,20 +180,24 @@ public struct PSDCompositor: Sendable {
                 // shortcut: the base's fill then acts as plain alpha in the modes that apply fill inside the blend, honour it if a file shows it.
                 let alphas = stride(from: 3, to: image.pixels.count, by: 4).map { image.pixels[$0] }
                 for p in alphas.indices { image.pixels[p * 4 + 3] = base.fill }
-                for node in clipped { try draw([node], onto: &image, at: at, scale) }
+                var images = [consume image]
+                for node in clipped { try draw([node], onto: &images, at: at, scale) }
+                image = images.removeLast()
                 for p in alphas.indices { image.pixels[p * 4 + 3] = UInt8((Int(image.pixels[p * 4 + 3]) * Int(alphas[p]) + 127) / 255) }
                 fill = 1
             }
             let local = (x: at.x - origin.x, y: at.y - origin.y)
             // A layer's vector mask is in its content already.
-            var mask = try base.isGroup ? masks(base, scale, at, image.width, image.height)
+            let mask = try base.isGroup ? masks(base, scale, at, image.width, image.height)
                                         : maskValues(base.mask, scale, at, image.width, image.height)
-            if let blendIf = base.blendIf { mask = Self.apply(blendIf, image, at: local, over: target, to: mask) }
             let mode = PSDBlend.mode(base.blend) ?? .normal
-            if mode == .normal, base.blocks["TySh"] != nil {
-                Self.text(&target, image, at: local, alpha: mask, Float(base.opacity) / 255 * fill)
-            } else {
-                PSDBlend.composite(mode, onto: &target, layer: image, at: local, alpha: mask, opacity: Float(base.opacity) / 255, fill: fill)
+            for k in targets.indices {
+                let alpha = base.blendIf.map { Self.apply($0, image, at: local, over: targets[k], to: mask) } ?? mask
+                if mode == .normal, base.blocks["TySh"] != nil {
+                    Self.text(&targets[k], image, at: local, alpha: alpha, Float(base.opacity) / 255 * fill)
+                } else {
+                    PSDBlend.composite(mode, onto: &targets[k], layer: image, at: local, alpha: alpha, opacity: Float(base.opacity) / 255, fill: fill)
+                }
             }
         }
     }
@@ -207,9 +223,9 @@ public struct PSDCompositor: Sendable {
             let rect = layer.scaledRect(scale: scale)
             return (image, (rect.left, rect.top))
         case .group(let group):
-            var image = Self.canvas(width, height)
+            var image = [Self.canvas(width, height)]
             try draw(group.children, onto: &image, at: (0, 0), scale)
-            return (image, (0, 0))
+            return (image[0], (0, 0))
         }
     }
 

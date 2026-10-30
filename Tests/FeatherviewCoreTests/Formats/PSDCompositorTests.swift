@@ -136,6 +136,26 @@ import Testing
         #expect(abs(Int(image.pixels[0]) - 106) <= 1 && image.pixels[3] == 255, "\(image.pixels)")
     }
 
+    /// Nested pass-through groups below full fill draw each layer once, not once per path through the groups.
+    @Test func nestedPassThroughGroupsDrawEachLayerOnce() throws {
+        var dodge = Self.solid("Dodge", 0, 0, 2, 1, [50, 60, 70, 200])
+        dodge.blend = "lddg"
+        var layers = [dodge]
+        for level in 0..<PSDLayers.maxGroupDepth {
+            layers = Self.group("G\(level)", blend: "pass", layers)
+            layers[layers.count - 1].blocks["iOpa"] = Data([200])
+        }
+        let file = try PSDLayersTests.open(PSDFixture.makeLayered(width: 2, height: 1,
+                                                                    layers: [Self.solid("Grey", 0, 0, 2, 1, [100, 100, 100, 255])] + layers))
+        let draws = OSAllocatedUnfairLock(initialState: 0)
+        let image = try PSDCompositor(file, content: { layer, scale in
+            draws.withLock { $0 += 1 }
+            return try layer.channels(scale: scale)
+        }).render(scale: 1)
+        #expect(draws.withLock { $0 } == 2)
+        #expect(image.width == 2 && image.pixels[3] == 255)
+    }
+
     static func invert(_ image: inout RGBAImage) {
         for p in 0 ..< image.width * image.height { for c in 0..<3 { image.pixels[p * 4 + c] = 255 - image.pixels[p * 4 + c] } }
     }
