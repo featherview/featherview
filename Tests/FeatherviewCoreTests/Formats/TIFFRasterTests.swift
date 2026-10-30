@@ -235,5 +235,14 @@ import Testing
         #expect(throws: DecodeError.unreadable(brokenURL)) {
             try ImageDecoder.decodeRegion(brokenURL, region: bottom, step: 0, colorSpace: nil)
         }
+
+        // Once the reader failed on its fit decode (ImageIO showed it), zooms decode whole steps through ImageIO.
+        #expect(ImageDecoder.readsRegions(brokenURL))
+        _ = try ImageDecoder.decode(brokenURL, halvingSteps: true, fitting: [PixelSize(width: 1000, height: 1000)])
+        #expect(!ImageDecoder.readsRegions(brokenURL))
+        // The file fixed (written again): the reader gets it again.
+        try data.write(to: brokenURL)
+        try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(10)], ofItemAtPath: brokenURL.path)
+        #expect(ImageDecoder.readsRegions(brokenURL))
     }
 }

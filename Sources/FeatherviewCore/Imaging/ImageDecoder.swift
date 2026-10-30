@@ -174,9 +174,9 @@ public enum ImageDecoder {
         else { throw DecodeError.unreadable(url) }
         let full = PixelSize(width: Int(size.width), height: Int(size.height))
         // A reader failure falls back to ImageIO below: it costs speed, not the picture.
-        if let reader = regionReader(url, source: source),
-           let image = try? decode(reader, longest: min(side, max(full.width, full.height))) {
-            return try display(image)
+        if let reader = regionReader(url, source: source) {
+            if let image = try? decode(reader, longest: min(side, max(full.width, full.height))) { return try display(image) }
+            readerFailed(url)
         }
         // Neither FromImage* flag: ImageIO returns the embedded thumbnail if there is one, else decodes at `side`.
         var options: [CFString: Any] = [
@@ -215,6 +215,7 @@ public enum ImageDecoder {
     /// The own reader for `url`, upright (ImageIO's orientation 1 or none): `PSDComposite` for a PSD/PSB it accepts,
     /// `TIFFRaster` for a TIFF it accepts of at least `ownTIFFPixels`. `source`: the file's, when already open.
     private static func regionReader(_ url: URL, source: CGImageSource?) -> (any RegionReader)? {
+        if let failed = failedReads.withLock({ $0[url] }), failed == fileStamp(url) { return nil }
         let reader: (any RegionReader)?
         switch url.pathExtension.lowercased() {
         case "psd", "psb": reader = PSDComposite(url: url)
@@ -226,6 +227,20 @@ public enum ImageDecoder {
         else { return nil }
         let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
         return (props?[kCGImagePropertyOrientation] as? Int ?? 1) == 1 ? reader : nil
+    }
+
+    /// Files whose whole picture the own reader failed on (ImageIO, which tolerates more, showed them), by
+    /// `fileStamp`: their zooms decode whole steps through ImageIO instead of parts the reader can't read.
+    private static let failedReads = OSAllocatedUnfairLock<[URL: Date?]>(initialState: [:])
+
+    private static func readerFailed(_ url: URL) {
+        let stamp = fileStamp(url)
+        failedReads.withLock { $0[url] = stamp }
+    }
+
+    /// The file's modification date: a file written again gets the reader again.
+    private static func fileStamp(_ url: URL) -> Date? {
+        (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
     }
 
     /// `reader`'s whole picture, its longest side `longest` (at most its own), the short side in proportion, at least 1.
@@ -335,8 +350,9 @@ public enum ImageDecoder {
         // At the size ImageIO would decode (PSD/PSB exact, TIFF at a halving step), so the viewer's fit size
         // doesn't change; a reader failure falls back to ImageIO.
         let target = longest(exact: decodesAtExactFit(url))
-        if page == 0, let reader = regionReader(url, source: source), let image = try? decode(reader, longest: target) {
-            return image
+        if page == 0, let reader = regionReader(url, source: source) {
+            if let image = try? decode(reader, longest: target) { return image }
+            readerFailed(url)
         }
         var options = thumbnailOptions(maxPixelSize: target)
         let wantsHDR = hdr && supportsHDR
