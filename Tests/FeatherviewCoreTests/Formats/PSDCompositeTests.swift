@@ -183,12 +183,22 @@ import Testing
     /// Full-width raw rows come in one read per channel band; narrower regions read row by row.
     @Test func rawFullWidthBandIsOneRead() throws {
         var reads: [[Int]] = []
-        let read = { (offset: Int, count: Int) -> [UInt8] in reads.append([offset, count]); return [UInt8](repeating: 0, count: count) }
-        let full = try PSDComposite.rawBand(channel: 1, rows: 3..<6, x0: 0, rw: 9, width: 9, height: 7, dataStart: 100, read: read)
-        #expect(full.count == 27)
-        #expect(reads == [[100 + (7 + 3) * 9, 27]])
+        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: 27)
+        defer { buffer.deallocate() }
+        let read = { (offset: Int, count: Int, into: UnsafeMutablePointer<UInt8>) in reads.append([offset, count, into - buffer]) }
+        PSDComposite.rawBand(channel: 1, rows: 3..<6, x0: 0, rw: 9, width: 9, height: 7, dataStart: 100, into: buffer, read: read)
+        #expect(reads == [[100 + (7 + 3) * 9, 27, 0]])
         reads = []
-        _ = try PSDComposite.rawBand(channel: 1, rows: 3..<5, x0: 2, rw: 3, width: 9, height: 7, dataStart: 100, read: read)
-        #expect(reads == [[100 + 10 * 9 + 2, 3], [100 + 11 * 9 + 2, 3]])
+        PSDComposite.rawBand(channel: 1, rows: 3..<5, x0: 2, rw: 3, width: 9, height: 7, dataStart: 100, into: buffer, read: read)
+        #expect(reads == [[100 + 10 * 9 + 2, 3, 0], [100 + 11 * 9 + 2, 3, 3]])
+    }
+
+    /// PSB's limit, 300,000 per side, keeps a row of one output pixel's sum within 32 bits.
+    @Test func sidesOverThePSBLimitAreRejected() throws {
+        let pixels = [RGB](repeating: (255, 255, 255), count: 300_001)
+        let over = try Self.write(PSDFixture.make(width: 300_001, height: 1, pixels: pixels, version: 2))
+        #expect(PSDComposite(url: over) == nil)
+        let at = try Self.write(PSDFixture.make(width: 300_000, height: 1, pixels: Array(pixels.dropLast()), version: 2))
+        #expect(PSDComposite(url: at) != nil)
     }
 }

@@ -38,7 +38,9 @@ public struct PSDComposite: Sendable {
         let version = be(header[4..<6]), channels = be(header[12..<14])
         let height = be(header[14..<18]), width = be(header[18..<22])
         let depth = be(header[22..<24]), mode = be(header[24..<26])
-        guard version == 1 || version == 2, channels == 3, depth == 8, mode == 3, width > 0, height > 0 else { return nil }
+        // PSB allows at most 300,000 per side, which also keeps decode's 32-bit row sums from overflowing.
+        guard version == 1 || version == 2, channels == 3, depth == 8, mode == 3, (1...300_000).contains(width),
+              (1...300_000).contains(height) else { return nil }
 
         var offset = 26
         guard let modeLength = bytes(offset, 4).map({ be($0[...]) }) else { return nil }
@@ -107,35 +109,44 @@ public struct PSDComposite: Sendable {
         let (width, height, dataStart, rowOffsets) = (width, height, dataStart, rowOffsets)
         DispatchQueue.concurrentPerform(iterations: oh) { oy in
             let r0 = y0 + oy * rh / oh, r1 = y0 + (oy + 1) * rh / oh
-            var sums = [UInt64](repeating: 0, count: ow * 3)
+            let sums = UnsafeMutableBufferPointer<UInt64>.allocate(capacity: ow * 3)
+            sums.initialize(repeating: 0)
+            defer { sums.deallocate() }
+            // About 1 MB of rows per read, so a small decode of a huge picture holds little per band.
+            let chunk = max(1, (1 << 20) / (rowOffsets == nil ? rw : width))
+            // Raw rows land in one buffer per output row: a fresh one per read costs page faults on every chunk.
+            let scratch = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: rowOffsets == nil ? chunk * rw : 0)
+            defer { scratch.deallocate() }
             do {
-                // About 1 MB of rows per read, so a small decode of a huge picture holds little per band.
-                let chunk = max(1, (1 << 20) / (rowOffsets == nil ? rw : width))
                 for c in 0..<3 {
                     for a in stride(from: r0, to: r1, by: chunk) {
                         let b = min(a + chunk, r1)
                         // RLE rows unpack whole (stride `width`, column 0 first); raw rows read only the region's columns.
-                        let band: [UInt8], rowStride: Int, start: Int
+                        func add(_ band: UnsafePointer<UInt8>, rowStride: Int, start: Int) {
+                            for row in 0..<(b - a) {
+                                let line = band + row * rowStride - start
+                                columns.withUnsafeBufferPointer { columns in
+                                    for ox in 0..<ow {
+                                        // One row of an output pixel fits in 32 bits: PSB rows are at most 300,000 × 255.
+                                        var sum: UInt32 = 0
+                                        for x in columns[ox]..<columns[ox + 1] { sum &+= UInt32(line[x]) }
+                                        sums[ox * 3 + c] += UInt64(sum)
+                                    }
+                                }
+                            }
+                        }
                         if let offsets = rowOffsets {
-                            (rowStride, start) = (width, 0)
                             let first = c * height + a
                             let packed = try Self.read(fd, offsets[first], offsets[first + b - a] - offsets[first])
-                            band = try (a..<b).flatMap { r -> [UInt8] in
+                            let band = try (a..<b).flatMap { r -> [UInt8] in
                                 let from = offsets[c * height + r] - offsets[first], to = offsets[c * height + r + 1] - offsets[first]
                                 return try Self.unpackBits(packed[from..<to], width: width)
                             }
+                            band.withUnsafeBufferPointer { add($0.baseAddress!, rowStride: width, start: 0) }
                         } else {
-                            (rowStride, start) = (rw, x0)
-                            band = try Self.rawBand(channel: c, rows: a..<b, x0: x0, rw: rw, width: width, height: height,
-                                                    dataStart: dataStart) { try Self.read(fd, $0, $1) }
-                        }
-                        for row in 0..<(b - a) {
-                            let base = row * rowStride - start
-                            for ox in 0..<ow {
-                                var sum: UInt64 = 0
-                                for x in columns[ox]..<columns[ox + 1] { sum += UInt64(band[base + x]) }
-                                sums[ox * 3 + c] += sum
-                            }
+                            try Self.rawBand(channel: c, rows: a..<b, x0: x0, rw: rw, width: width, height: height,
+                                             dataStart: dataStart, into: scratch.baseAddress!) { try Self.read(fd, $0, $1, into: $2) }
+                            add(scratch.baseAddress!, rowStride: rw, start: x0)
                         }
                     }
                 }
@@ -164,24 +175,31 @@ public struct PSDComposite: Sendable {
         return image
     }
 
-    /// Rows `rows` of raw channel `c`, columns `x0 ..< x0 + rw`: one read for full-width rows, else one per row.
+    /// Rows `rows` of raw channel `c`, columns `x0 ..< x0 + rw`, into `buffer` (`rows.count × rw` bytes):
+    /// one read for full-width rows, else one per row. `read(offset, count, destination)`.
     static func rawBand(channel c: Int, rows: Range<Int>, x0: Int, rw: Int, width: Int, height: Int, dataStart: Int,
-                        read: (Int, Int) throws -> [UInt8]) rethrows -> [UInt8] {
-        if rw == width { return try read(dataStart + (c * height + rows.lowerBound) * width, rows.count * width) }
-        return try rows.flatMap { try read(dataStart + (c * height + $0) * width + x0, rw) }
+                        into buffer: UnsafeMutablePointer<UInt8>,
+                        read: (Int, Int, UnsafeMutablePointer<UInt8>) throws -> Void) rethrows {
+        if rw == width { return try read(dataStart + (c * height + rows.lowerBound) * width, rows.count * width, buffer) }
+        for (i, r) in rows.enumerated() { try read(dataStart + (c * height + r) * width + x0, rw, buffer + i * rw) }
     }
 
     /// `count` bytes at `offset`; throws on an error or the end of the file before them.
     private static func read(_ fd: Int32, _ offset: Int, _ count: Int) throws -> [UInt8] {
-        guard offset >= 0, count >= 0 else { throw OwnDecodeError.corrupt }
-        return try [UInt8](unsafeUninitializedCapacity: count) { buffer, initialized in
-            var done = 0
-            while done < count {
-                let n = pread(fd, buffer.baseAddress! + done, count - done, off_t(offset + done))
-                guard n > 0 else { throw OwnDecodeError.corrupt }
-                done += n
-            }
+        try [UInt8](unsafeUninitializedCapacity: count) { buffer, initialized in
+            try read(fd, offset, count, into: buffer.baseAddress!)
             initialized = count
+        }
+    }
+
+    /// `count` bytes at `offset` into `buffer`; throws on an error or the end of the file before them.
+    private static func read(_ fd: Int32, _ offset: Int, _ count: Int, into buffer: UnsafeMutablePointer<UInt8>) throws {
+        guard offset >= 0, count >= 0 else { throw OwnDecodeError.corrupt }
+        var done = 0
+        while done < count {
+            let n = pread(fd, buffer + done, count - done, off_t(offset + done))
+            guard n > 0 else { throw OwnDecodeError.corrupt }
+            done += n
         }
     }
 

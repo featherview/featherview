@@ -20,7 +20,8 @@ let usage = """
 
     corpus  writes generated test images into <dir> (never commit them).
     decode  times the viewer's fit decode per file and screen, plus one full-size decode per file,
-            and for 50 MP files the zoom decode at 0.25, 0.5 and 1.0 (rows "zoom <factor>").
+            and for 50 MP files the zoom decode at 0.25, 0.5 and 1.0 (rows "zoom <factor>"); for PSD/PSB the own
+            reader takes, the centred part a 100 % zoom decodes on each screen (rows "region <screen>").
             The first run reads the file from disk; for a truly cold first run, run `sudo purge`
             before (the bench never does). --baseline exits 1 if a median is > 10 % slower or a row is gone.
     browse  steps through the folder like a held arrow key: one step every --interval-ms, whether
@@ -174,6 +175,18 @@ func imageFiles(in dir: URL) -> [URL] {
     for file in files {
         var fileRows = screens.compactMap { screen in measure(file, screen: "\(screen)") { try fitDecode(file, screens: [screen]) } }
         if let full = measure(file, screen: "full", { try fullDecode(file) }) { fileRows.append(full) }
+        if ImageDecoder.readsRegions(file), let size = ImageDecoder.displaySize(of: file) {
+            // The part a 100 % zoom decodes: a screen-sized view centred on the picture, grown as the viewer grows it.
+            let image = PixelSize(width: Int(size.width), height: Int(size.height))
+            fileRows += screens.compactMap { screen in
+                let visible = CGRect(x: (image.width - screen.width) / 2, y: (image.height - screen.height) / 2,
+                                     width: screen.width, height: screen.height)
+                let region = RegionZoom.region(visible: visible, image: image, step: 0)
+                return measure(file, screen: "region \(screen)") {
+                    try ImageDecoder.decodeRegion(file, region: region, step: 0, colorSpace: displayP3)
+                }
+            }
+        }
         if file.lastPathComponent.hasPrefix("50mp") {
             fileRows += zoomFactors.compactMap { factor in measure(file, screen: "zoom \(factor)") { try zoomDecode(file, factor: factor) } }
         }

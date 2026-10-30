@@ -105,8 +105,10 @@ public enum ImageDecoder {
 
     /// Whether ImageIO's fit decode of `url` uses the exact needed size rather than a halving step: HEIC
     /// (and HEIF) decode no slower at it and keep fewer bytes; PNG is 10–18 % slower, JPEG decodes steps directly.
+    /// PSD/PSB too: the own reader decodes them exact, and the ones it declines follow so both agree.
     public static func decodesAtExactFit(_ url: URL) -> Bool {
-        UTType(filenameExtension: url.pathExtension).map { $0.conforms(to: .heic) || $0.conforms(to: .heif) } ?? false
+        ["psd", "psb"].contains(url.pathExtension.lowercased())
+            || UTType(filenameExtension: url.pathExtension).map { $0.conforms(to: .heic) || $0.conforms(to: .heif) } ?? false
     }
 
     /// The longest side to decode an image of `image` (displayed size, orientation applied) at, so it
@@ -170,6 +172,11 @@ public enum ImageDecoder {
               let size = displaySize(of: source, page: 0)
         else { throw DecodeError.unreadable(url) }
         let full = PixelSize(width: Int(size.width), height: Int(size.height))
+        // A reader failure falls back to ImageIO below: it costs speed, not the picture.
+        if let composite = composite(url, source: source),
+           let image = try? decode(composite, longest: min(side, max(full.width, full.height))) {
+            return try display(image)
+        }
         // Neither FromImage* flag: ImageIO returns the embedded thumbnail if there is one, else decodes at `side`.
         var options: [CFString: Any] = [
             kCGImageSourceThumbnailMaxPixelSize: side,
@@ -184,6 +191,38 @@ public enum ImageDecoder {
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
         else { throw DecodeError.unreadable(url) }
         return try display(image)
+    }
+
+    /// Whether `url` is a PSD/PSB the own reader decodes (`PSDComposite`), so a zoom may decode only a part of it.
+    public static func readsRegions(_ url: URL) -> Bool {
+        composite(url, source: nil) != nil
+    }
+
+    /// The part `region` (full-size pixels) of a `readsRegions` file at halving step `step`, drawn into `colorSpace`.
+    public static func decodeRegion(_ url: URL, region: CGRect, step: Int, colorSpace: CGColorSpace?) throws -> CGImage {
+        guard let composite = composite(url, source: nil),
+              let image = try? composite.decode(region: region, size: RegionZoom.decodeSize(region: region, step: step))
+        else { throw DecodeError.unreadable(url) }
+        return inColorSpace(image, colorSpace)
+    }
+
+    /// The own reader for `url` when it is a PSD/PSB the reader accepts, upright (ImageIO's orientation 1 or none).
+    /// `source`: the file's, when already open.
+    private static func composite(_ url: URL, source: CGImageSource?) -> PSDComposite? {
+        guard ["psd", "psb"].contains(url.pathExtension.lowercased()), let composite = PSDComposite(url: url),
+              let source = source ?? CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary)
+        else { return nil }
+        let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        return (props?[kCGImagePropertyOrientation] as? Int ?? 1) == 1 ? composite : nil
+    }
+
+    /// `composite` whole, its longest side `longest` (at most its own), the short side in proportion, at least 1.
+    private static func decode(_ composite: PSDComposite, longest: Int) throws -> CGImage {
+        let long = max(composite.width, composite.height), side = min(max(longest, 1), long)
+        func scaled(_ short: Int) -> Int { max(1, Int((Double(short) * Double(side) / Double(long)).rounded())) }
+        let size = composite.width >= composite.height
+            ? PixelSize(width: side, height: scaled(composite.height)) : PixelSize(width: scaled(composite.width), height: side)
+        return try composite.decode(size: size)
     }
 
     /// Whether an embedded thumbnail of `thumb` may stand in for an image of `image` (both upright) at
@@ -252,9 +291,16 @@ public enum ImageDecoder {
               let size = displaySize(of: source, page: page)
         else { throw DecodeError.unreadable(url) }
         let full = Int(max(size.width, size.height))
-        var options = thumbnailOptions(maxPixelSize: fit(size, exact: decodesAtExactFit(url)) ?? (halvingSteps
-            ? decodeSize(full: full, target: maxPixelSize ?? full)
-            : min(maxPixelSize ?? full, full)))
+        func longest(exact: Bool) -> Int {
+            fit(size, exact: exact) ?? (halvingSteps ? decodeSize(full: full, target: maxPixelSize ?? full)
+                                                     : min(maxPixelSize ?? full, full))
+        }
+        // Own-reader decodes are exact, like `OwnDecoders`; a reader failure falls back to ImageIO.
+        if page == 0, let composite = composite(url, source: source),
+           let image = try? decode(composite, longest: longest(exact: true)) {
+            return image
+        }
+        var options = thumbnailOptions(maxPixelSize: longest(exact: decodesAtExactFit(url)))
         let wantsHDR = hdr && supportsHDR
         if wantsHDR { options[kCGImageSourceDecodeRequest] = kCGImageSourceDecodeToHDR }
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, page, options as CFDictionary)
