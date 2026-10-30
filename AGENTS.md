@@ -111,6 +111,7 @@ Rule of thumb: if logic can be tested without a window, it belongs in Feathervie
 | Cold launch with a file to first image on screen | < 410 ms (12 MP JPEG, Apple Silicon, after a normal quit, no window restored; AppKit + SwiftUI alone take ~300 ms to show the window, Liquid Glass ~85 ms more). Measured with the own look: ~400 ms (12 MP JPEG), ~395 ms (10,000-file folder) |
 | Next/previous image when prefetched | no visible delay (≈ 20 ms to swap is fine; `Navigate` p50 21 ms, p95 26 ms; Zoom to Width ~30 ms for landscapes, ~130 ms for enlarged portraits) |
 | Next/previous image, not prefetched | < 150 ms (12 MP JPEG; `Navigate` ~121 ms landscape, ~66 ms portrait) |
+| Huge pictures | 8-bit RGB PSD/PSB through the own reader: heic1502a.psb (69,536 × 22,230, 4.6 GB) fit decode < 1 s cold, < 300 ms warm; a zoomed part on screen < 150 ms after panning stops (`RegionDecode`). Measured (`featherview-bench decode`, 3024 × 1964 screen): fit 3024 × 967 ~800 ms first run (not purged), ~460 ms warm (over budget: the reader alone takes ~435 ms); full size ~2.1 s; centred 100 % part 6048 × 3928 ~114 ms |
 | Opening a folder of 10,000 files | < 500 ms to first image, UI never blocks (measured in every Sort By order: name ~430 ms, size ~470 ms, date modified ~485 ms; Date Taken shows the first by name, ~410 ms, and re-sorts later) |
 | Memory while browsing | bounded by the 8-image cache, decoded to fit the screen per axis (rounded up to JPEG's next halving step, at most 2× per side) |
 | T to the thumbnail grid on screen | < 100 ms for any folder up to 10,000 files (cells laid out, names shown; `GridShow`). Measured: ~90 ms for 10,000 (84–99 ms; most of it is NSCollectionView making the visible cells) |
@@ -128,7 +129,7 @@ way, never touch file contents while scanning a folder. Next/previous budgets ar
 committed the image, what the user sees), not the log line. Measure: the app logs how long each image
 took to appear — `log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'`.
 Without a window: `swift run -c release featherview-bench decode <dir>` (fit and full-size decode times; `--json` / `--baseline` to compare) and `browse <dir>/browse --interval-ms 300` (or 30, a held key).
-Instruments' Points of Interest shows the `Decode`, `Scan`, `Navigate`, `GridShow`, `GridFill`, `CompareShow` and `Difference` signposts and the `FirstImage` event (`Signposts.swift`); `featherview-bench grid` times thumbnail decodes without a window, `histogram <dir>` the info panel's histogram and `places --time build/places/places.fvpl` the place data.
+Instruments' Points of Interest shows the `Decode`, `Scan`, `Navigate`, `GridShow`, `GridFill`, `CompareShow`, `Difference` and `RegionDecode` signposts and the `FirstImage` event (`Signposts.swift`); `featherview-bench grid` times thumbnail decodes without a window, `histogram <dir>` the info panel's histogram and `places --time build/places/places.fvpl` the place data.
 Use Instruments (Time Profiler) to find where time goes. Measure launches after a real quit (⌘Q), not after `pkill`: a killed app gets its window
 restored, which hides ~140 ms that every user who quit normally pays.
 
