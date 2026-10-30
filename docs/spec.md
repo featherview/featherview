@@ -933,6 +933,9 @@ window, nothing to configure.
 - The feather icon, "Featherview", version and build (`0.1.0 (1)`), the one-line description.
 - Links: website, source code on GitHub, report a problem (the bug report form, as Help › Report a
   Bug…), all opening the browser.
+- Last, a short note that Featherview is free and that a coffee helps pay the $99 a year Apple asks
+  for notarization (so macOS stops warning on the first open), with a "Buy Us a Coffee" link to
+  GitHub Sponsors (the same account as `.github/FUNDING.yml`).
 - "Supported formats": two lists, read and write, built at runtime from ImageIO plus our own
   encoders (see "Formats"), with the macOS version they come from.
 - "MIT License" and "Acknowledgements": the licence text of every bundled library (libwebp, jxrlib, libjxl with

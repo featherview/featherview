@@ -5,6 +5,7 @@ import Foundation
 public enum AboutInfo {
     public static let repository = URL(string: "https://github.com/featherview/featherview")!
     public static let website = URL(string: "https://featherview.mynetx.net")!
+    public static let sponsor = URL(string: "https://github.com/sponsors/mynetx")!
 
     /// Fields of `.github/ISSUE_TEMPLATE/bug_report.yml` that the app fills in (issue forms take them from the query).
     public enum BugReportField: String, CaseIterable, Sendable {
