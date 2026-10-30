@@ -75,18 +75,24 @@ import Testing
 
     /// A full-size decode of a canvas too large to draw at that size draws the layers at the largest size it may
     /// (ImageIO would show another picture: it draws no fill layers); the fit decode draws them too.
-    @Test func hugeCanvasAtFullSizeDrawsSmaller() throws {
+    /// Display decodes of a huge canvas draw at most `maxPixels`; a full-size decode (batch, Save As) draws every pixel,
+    /// or fails when even that is out of reach, never smaller.
+    @Test func hugeCanvasDrawsSmallerOnlyOnScreen() throws {
         let width = 900, height = 800
         let layers = [Self.layers(width, height)[0], PSDCompositorTests.solid("Red", 0, 0, 4, 4, [220, 20, 20, 255])]
         let url = try Self.write(PSDFixture.makeLayered(width: width, height: height, layers: layers, realComposite: false))
         try PSDCompositor.$maxPixels.withValue(500_000) {
-            let fit = try #require(RGBAImage(try ImageDecoder.decode(url, maxPixelSize: 200)))
-            #expect(fit[fit.width / 2, fit.height / 2] == (0, 128, 255, 255))
+            let screen = try ImageDecoder.decode(url, fitting: [PixelSize(width: 4000, height: 4000)])
+            #expect(screen.width * screen.height <= 500_000 + screen.width + screen.height)
+            #expect(screen.width > 600 && abs(Double(screen.width) / Double(screen.height) - 9.0 / 8) < 0.01)
+            #expect(try #require(RGBAImage(screen))[screen.width / 2, screen.height / 2] == (0, 128, 255, 255))
             let full = try ImageDecoder.decode(url)
-            #expect(full.width * full.height <= 500_000 + full.width + full.height)
-            #expect(full.width > 600 && abs(Double(full.width) / Double(full.height) - 9.0 / 8) < 0.01)
-            let pixels = try #require(RGBAImage(full))
-            #expect(pixels[full.width / 2, full.height / 2] == (0, 128, 255, 255))
+            #expect(full.width == width && full.height == height)
+            #expect(try #require(RGBAImage(full))[width / 2, height / 2] == (0, 128, 255, 255))
+            #expect(try ImageDecoder.decode(url, maxPixelSize: 850).width == 850)
+        }
+        try PSDCompositor.$maxPixels.withValue(100_000) {
+            #expect(throws: DecodeError.self) { try ImageDecoder.decode(url) }
         }
     }
 

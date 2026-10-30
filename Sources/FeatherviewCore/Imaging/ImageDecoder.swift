@@ -169,7 +169,9 @@ public enum ImageDecoder {
             }
             return try display(scaled(image, longestSide: side) ?? image)
         }
-        if let image = layerComposite(url, longest: { min(side, Int(max($0.width, $0.height))) }) { return try display(image) }
+        if let image = try layerComposite(url, display: true, longest: { min(side, Int(max($0.width, $0.height))) }) {
+            return try display(image)
+        }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary),
               let size = displaySize(of: source, page: 0)
         else { throw DecodeError.unreadable(url) }
@@ -233,21 +235,26 @@ public enum ImageDecoder {
     /// A layered 8-bit RGB PSD/PSB whose stored composite isn't the picture (version info says so), drawn from its
     /// layers (`PSDCompositor.photoshop`) with its longest side `longest(full size)`, in the file's ICC profile or
     /// sRGB. Nil for any other file, and when drawing fails (then ImageIO decodes it, and keeps it until it changes when the
-    /// file is damaged).
-    private static func layerComposite(_ url: URL, longest: (CGSize) -> Int) -> CGImage? {
+    /// file is damaged). A `display` decode of a canvas too large to hold draws at the largest size it may; any other
+    /// decode (batch, Save As) draws at the size asked, or throws when that is over 4 × `PSDCompositor.maxPixels`.
+    private static func layerComposite(_ url: URL, display: Bool, longest: (CGSize) -> Int) throws -> CGImage? {
         guard ["psd", "psb"].contains(url.pathExtension.lowercased()), PSDComposite(url: url) == nil else { return nil }
         if let failed = failedReads.withLock({ $0[url] }), failed == fileStamp(url) { return nil }
         do {
             guard let layers = try PSDLayers(url: url), !layers.hasRealComposite, !layers.nodes.isEmpty else { return nil }
             let side = longest(CGSize(width: layers.width, height: layers.height))
-            // A canvas too large to hold (a full-size decode of a huge PSB) draws at the largest size it may: ImageIO
-            // would show another picture, without fills or adjustments.
-            let scale = min(Double(side) / Double(max(layers.width, layers.height)),
-                            (Double(PSDCompositor.maxPixels) / Double(layers.width * layers.height)).squareRoot())
+            // ImageIO would show another picture, without fills or adjustments, so a canvas too large draws smaller on
+            // screen; batch and Save As keep every pixel or fail.
+            let pixels = Double(layers.width * layers.height), limit = Double(PSDCompositor.maxPixels)
+            var scale = Double(side) / Double(max(layers.width, layers.height))
+            if display { scale = min(scale, (limit / pixels).squareRoot()) }
+            guard scale * scale * pixels <= 4 * limit else { throw DecodeError.unreadable(url) }
             let image = try PSDCompositor.photoshop(layers).render(scale: scale)
             guard let drawn = image.makeCGImage() else { throw OwnDecodeError.corrupt }
             let space = psdProfile(url).flatMap { CGColorSpace(iccData: $0 as CFData) }.flatMap { $0.model == .rgb ? $0 : nil }
             return space.flatMap { drawn.copy(colorSpace: $0) } ?? drawn
+        } catch let error as DecodeError {
+            throw error
         } catch is OwnDecodeError {
             readerFailed(url)
             return nil
@@ -396,7 +403,8 @@ public enum ImageDecoder {
             return fit(size, exact: exact) ?? (halvingSteps ? decodeSize(full: full, target: maxPixelSize ?? full)
                                                             : min(maxPixelSize ?? full, full))
         }
-        if page == 0, let image = layerComposite(url, longest: { longest($0, exact: true) }) { return image }
+        let display = halvingSteps || screens != nil || step != nil
+        if page == 0, let image = try layerComposite(url, display: display, longest: { longest($0, exact: true) }) { return image }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary),
               let size = displaySize(of: source, page: page)
         else { throw DecodeError.unreadable(url) }
