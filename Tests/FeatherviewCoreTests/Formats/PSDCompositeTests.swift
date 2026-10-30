@@ -78,9 +78,9 @@ import Testing
         #expect(Self.same(Self.pixels(image), [(6, 11, 16), (100, 50, 76)]))
     }
 
-    @Test func regionMatchesCropOfFullDecode() throws {
+    @Test(arguments: [0, 1]) func regionMatchesCropOfFullDecode(compression: Int) throws {
         let pixels = Self.noise(width: 9, height: 7)
-        let composite = try #require(PSDComposite(url: try Self.write(PSDFixture.make(width: 9, height: 7, pixels: pixels))))
+        let composite = try #require(PSDComposite(url: try Self.write(PSDFixture.make(width: 9, height: 7, pixels: pixels, compression: compression))))
         let full = Self.pixels(try composite.decode(size: PixelSize(width: 9, height: 7)))
         let part = Self.pixels(try composite.decode(region: CGRect(x: 2, y: 3, width: 4, height: 3), size: PixelSize(width: 4, height: 3)))
         let crop = (3..<6).flatMap { y in (2..<6).map { full[y * 9 + $0] } }
@@ -127,6 +127,13 @@ import Testing
         signature[3] = UInt8(ascii: "X")
         #expect(try declines(signature))
         #expect(try declines(PSDFixture.make(width: 3, height: 2, pixels: pixels, version: 3)))
+    }
+
+    /// Saved without Maximize Compatibility, the stored composite isn't the picture, so ImageIO gets the file.
+    @Test func declinesWithoutRealMergedData() throws {
+        let pixels = Self.noise(width: 3, height: 2)
+        #expect(PSDComposite(url: try Self.write(PSDFixture.make(width: 3, height: 2, pixels: pixels, realMerged: false))) == nil)
+        #expect(PSDComposite(url: try Self.write(PSDFixture.make(width: 3, height: 2, pixels: pixels, realMerged: true))) != nil)
     }
 
     @Test func corruptRLEThrows() throws {

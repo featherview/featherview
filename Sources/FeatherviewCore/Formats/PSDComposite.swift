@@ -18,8 +18,8 @@ public struct PSDComposite: Sendable {
     private let rowOffsets: [Int]?
 
     /// Reads only the header, the section lengths, the resource list and (RLE) the row byte-count table.
-    /// Nil when the file isn't an 8-bit, 3-channel RGB PSD/PSB with a raw or RLE composite, or its header
-    /// can't be followed.
+    /// Nil when the file isn't an 8-bit, 3-channel RGB PSD/PSB with a raw or RLE composite, its version info
+    /// says the composite isn't the real picture, or its header can't be followed.
     public init?(url: URL) {
         let fd = open(url.path, O_RDONLY)
         guard fd >= 0 else { return nil }
@@ -57,6 +57,8 @@ public struct PSDComposite: Sendable {
             let size = be(resources[sizeAt ..< sizeAt + 4])
             guard sizeAt + 4 + size <= resources.count else { return nil }
             if id == 1039 { icc = Data(resources[sizeAt + 4 ..< sizeAt + 4 + size]) }
+            // Version info: saved without Maximize Compatibility, the stored composite isn't the picture.
+            if id == 1057, size >= 5, resources[sizeAt + 8] == 0 { return nil }
             r = sizeAt + 4 + (size + 1) & ~1
         }
         let lengthSize = version == 1 ? 4 : 8
@@ -114,14 +116,15 @@ public struct PSDComposite: Sendable {
             defer { sums.deallocate() }
             // About 1 MB of rows per read, so a small decode of a huge picture holds little per band.
             let chunk = max(1, (1 << 20) / (rowOffsets == nil ? rw : width))
-            // Raw rows land in one buffer per output row: a fresh one per read costs page faults on every chunk.
-            let scratch = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: rowOffsets == nil ? chunk * rw : 0)
+            // Rows land in one buffer per output row: a fresh one per read costs page faults on every chunk.
+            // RLE rows unpack from column 0 up to the region's end, raw rows hold only the region's columns.
+            let rowBytes = rowOffsets == nil ? rw : x0 + rw
+            let scratch = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: chunk * rowBytes)
             defer { scratch.deallocate() }
             do {
                 for c in 0..<3 {
                     for a in stride(from: r0, to: r1, by: chunk) {
                         let b = min(a + chunk, r1)
-                        // RLE rows unpack whole (stride `width`, column 0 first); raw rows read only the region's columns.
                         func add(_ band: UnsafePointer<UInt8>, rowStride: Int, start: Int) {
                             for row in 0..<(b - a) {
                                 let line = band + row * rowStride - start
@@ -138,11 +141,14 @@ public struct PSDComposite: Sendable {
                         if let offsets = rowOffsets {
                             let first = c * height + a
                             let packed = try Self.read(fd, offsets[first], offsets[first + b - a] - offsets[first])
-                            let band = try (a..<b).flatMap { r -> [UInt8] in
-                                let from = offsets[c * height + r] - offsets[first], to = offsets[c * height + r + 1] - offsets[first]
-                                return try Self.unpackBits(packed[from..<to], width: width)
+                            try packed.withUnsafeBufferPointer { packed in
+                                for r in a..<b {
+                                    let from = offsets[c * height + r] - offsets[first], to = offsets[c * height + r + 1] - offsets[first]
+                                    try Self.unpackBits(UnsafeBufferPointer(rebasing: packed[from..<to]), width: width,
+                                                        into: UnsafeMutableBufferPointer(rebasing: scratch[(r - a) * rowBytes ..< (r - a + 1) * rowBytes]))
+                                }
                             }
-                            band.withUnsafeBufferPointer { add($0.baseAddress!, rowStride: width, start: 0) }
+                            add(scratch.baseAddress!, rowStride: rowBytes, start: 0)
                         } else {
                             try Self.rawBand(channel: c, rows: a..<b, x0: x0, rw: rw, width: width, height: height,
                                              dataStart: dataStart, into: scratch.baseAddress!) { try Self.read(fd, $0, $1, into: $2) }
@@ -203,25 +209,26 @@ public struct PSDComposite: Sendable {
         }
     }
 
-    /// One PackBits row; throws unless it comes out at exactly `width` bytes.
-    private static func unpackBits(_ packed: ArraySlice<UInt8>, width: Int) throws -> [UInt8] {
-        var row: [UInt8] = []
-        row.reserveCapacity(width)
-        var i = packed.startIndex
-        while i < packed.endIndex {
-            let n = Int(Int8(bitPattern: packed[i]))
+    /// The first `out.count` bytes of a PackBits row `width` bytes long. Throws on a run past the row's end
+    /// or, when `out` takes the whole row, unless the row comes out at exactly `width` bytes.
+    static func unpackBits(_ packed: UnsafeBufferPointer<UInt8>, width: Int, into out: UnsafeMutableBufferPointer<UInt8>) throws {
+        var i = 0, n = 0
+        while i < packed.count, n < out.count {
+            let run = Int(Int8(bitPattern: packed[i]))
             i += 1
-            if n >= 0 {
-                guard i + n + 1 <= packed.endIndex, row.count + n + 1 <= width else { throw OwnDecodeError.corrupt }
-                row += packed[i ..< i + n + 1]
-                i += n + 1
-            } else if n > -128 {
-                guard i < packed.endIndex, row.count + 1 - n <= width else { throw OwnDecodeError.corrupt }
-                row += repeatElement(packed[i], count: 1 - n)
+            if run >= 0 {
+                guard i + run + 1 <= packed.count, n + run + 1 <= width else { throw OwnDecodeError.corrupt }
+                let take = min(run + 1, out.count - n)
+                (out.baseAddress! + n).update(from: packed.baseAddress! + i, count: take)
+                n += run + 1
+                i += run + 1
+            } else if run > -128 {
+                guard i < packed.count, n + 1 - run <= width else { throw OwnDecodeError.corrupt }
+                (out.baseAddress! + n).update(repeating: packed[i], count: min(1 - run, out.count - n))
+                n += 1 - run
                 i += 1
             }
         }
-        guard row.count == width else { throw OwnDecodeError.corrupt }
-        return row
+        guard n >= out.count, out.count < width || n == width else { throw OwnDecodeError.corrupt }
     }
 }

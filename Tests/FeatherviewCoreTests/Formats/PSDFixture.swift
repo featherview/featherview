@@ -1,10 +1,11 @@
 import Foundation
 
-/// Builds PSD (version 1) and PSB (version 2) files in code: header, an optional ICC profile resource,
-/// an empty layer and mask section, then the stored composite, raw or PackBits RLE.
+/// Builds PSD (version 1) and PSB (version 2) files in code: header, an optional ICC profile resource, an
+/// optional version info resource (1057) with its "has real merged data" flag, an empty layer and mask section,
+/// then the stored composite, raw or PackBits RLE.
 enum PSDFixture {
     static func make(width: Int, height: Int, pixels: [(UInt8, UInt8, UInt8)], version: Int = 1, compression: Int = 0,
-                     icc: Data? = nil, channels: Int = 3, depth: Int = 8, mode: Int = 3) -> Data {
+                     icc: Data? = nil, realMerged: Bool? = nil, channels: Int = 3, depth: Int = 8, mode: Int = 3) -> Data {
         func be(_ value: Int, _ count: Int) -> [UInt8] { (0..<count).reversed().map { UInt8(truncatingIfNeeded: value >> ($0 * 8)) } }
         var bytes = Array("8BPS".utf8) + be(version, 2) + [UInt8](repeating: 0, count: 6)
         bytes += be(channels, 2) + be(height, 4) + be(width, 4) + be(depth, 2) + be(mode, 2)
@@ -13,6 +14,9 @@ enum PSDFixture {
         if let icc {
             resources += Array("8BIM".utf8) + be(1039, 2) + [0, 0] + be(icc.count, 4) + Array(icc)
             if icc.count % 2 == 1 { resources.append(0) }
+        }
+        if let realMerged {
+            resources += Array("8BIM".utf8) + be(1057, 2) + [0, 0] + be(5, 4) + be(1, 4) + [realMerged ? 1 : 0, 0]
         }
         bytes += be(resources.count, 4) + resources
         bytes += be(0, version == 1 ? 4 : 8)  // layer and mask info
