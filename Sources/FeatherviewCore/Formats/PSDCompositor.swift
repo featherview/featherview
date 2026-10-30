@@ -1,6 +1,6 @@
 import Foundation
 
-/// Draws a Photoshop file's layer tree, bottom up, at a decode's scale: groups (pass-through or isolated),
+/// Draws a Photoshop file's layer tree, bottom up, for a decode's scale: groups (pass-through or isolated),
 /// clipping, layer masks, Blend If, opacity and fill, through `PSDBlend`. Transparent where nothing is drawn.
 // shortcut: knockout (knko) is ignored, honour it if a file shows it.
 public struct PSDCompositor: Sendable {
@@ -25,11 +25,45 @@ public struct PSDCompositor: Sendable {
     }
 
     /// The picture at `scale` (≤ 1), `PSDLayers.scaledSize` per side.
-    public func render(scale: Double) throws -> RGBAImage {
+    public func render(scale: Double) throws -> RGBAImage { try render(scale: scale, maxPixels: 1 << 24) }
+
+    /// Composites at full size, or the largest size of at most `maxPixels` when that is larger than `scale`'s,
+    /// then reduces once: layers reduced before compositing go wrong where an alpha edge cuts a cell over a
+    /// backdrop that varies inside it.
+    // shortcut: above maxPixels such cells can still be off a little, composite in full-size bands if a file shows it.
+    func render(scale: Double, maxPixels: Int) throws -> RGBAImage {
         let width = PSDLayers.scaledSize(layers.width, scale), height = PSDLayers.scaledSize(layers.height, scale)
-        var canvas = RGBAImage(width: width, height: height, pixels: [UInt8](repeating: 0, count: width * height * 4))
-        try draw(layers.nodes, onto: &canvas, at: (0, 0), scale)
-        return canvas
+        let fine = max(min(scale, 1), min(1, (Double(maxPixels) / Double(layers.width * layers.height)).squareRoot()))
+        let fineWidth = PSDLayers.scaledSize(layers.width, fine), fineHeight = PSDLayers.scaledSize(layers.height, fine)
+        var canvas = RGBAImage(width: fineWidth, height: fineHeight, pixels: [UInt8](repeating: 0, count: fineWidth * fineHeight * 4))
+        try draw(layers.nodes, onto: &canvas, at: (0, 0), fine)
+        return fineWidth == width && fineHeight == height ? canvas : Self.reduce(canvas, width, height)
+    }
+
+    /// `image` area-averaged to `width × height` through `PSDLayers.cell`, colour weighted by alpha.
+    private static func reduce(_ image: RGBAImage, _ width: Int, _ height: Int) -> RGBAImage {
+        let columns = (0..<image.width).map { PSDLayers.cell($0, image.width, width) }
+        var sums = [Int](repeating: 0, count: width * height * 5)  // R·A, G·A, B·A, A, area
+        image.pixels.withUnsafeBufferPointer { src in
+            sums.withUnsafeMutableBufferPointer { sums in
+                for y in 0..<image.height {
+                    let row = PSDLayers.cell(y, image.height, height) * width
+                    for x in 0..<image.width {
+                        let i = (y * image.width + x) * 4, o = (row + columns[x]) * 5, a = Int(src[i + 3])
+                        for c in 0..<3 { sums[o + c] += Int(src[i + c]) * a }
+                        sums[o + 3] += a
+                        sums[o + 4] += 1
+                    }
+                }
+            }
+        }
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        for p in 0..<width * height {
+            let o = p * 5, alpha = sums[o + 3], area = sums[o + 4]
+            if alpha > 0 { for c in 0..<3 { pixels[p * 4 + c] = UInt8((sums[o + c] + alpha / 2) / alpha) } }
+            pixels[p * 4 + 3] = UInt8((alpha + area / 2) / area)
+        }
+        return RGBAImage(width: width, height: height, pixels: pixels)
     }
 
     /// Draws `nodes`, bottom to top, onto `target`, whose top-left sits at `origin` in the scaled canvas.

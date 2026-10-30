@@ -125,8 +125,6 @@ import Testing
     }
 
     @Test func scaledRenderMatchesFullRenderReduced() throws {
-        // Layer edges on even coordinates: each half-scale cell lies inside or outside a layer, so reducing
-        // before or after compositing differs only by rounding.
         func layer(_ name: String, _ rect: PSDFixture.Rect, alpha: UInt8, seed: UInt32) -> Layer {
             let n = (rect.bottom - rect.top) * (rect.right - rect.left)
             var pixels = PSDLayersTests.noise(n * 4, seed: seed)
@@ -148,6 +146,22 @@ import Testing
                 #expect(abs((alpha + 2) / 4 - Int(half.pixels[(y * 4 + x) * 4 + 3])) <= 2)
             }
         }
+    }
+
+    @Test func layerEdgeInsideAScaledCellComposesBeforeReducing() throws {
+        // The layer covers half of the one half-scale cell, over a black and a white pixel: full size gives
+        // black, black, so the cell is black, not grey.
+        let layers = [Layer(name: "Background", rect: (0, 0, 1, 2), pixels: [0, 0, 0, 255, 255, 255, 255, 255]),
+                      Self.solid("Edge", 0, 1, 1, 1, [0, 0, 0, 255])]
+        #expect(try Self.render(2, 1, layers, scale: 0.5).pixels == [0, 0, 0, 255])
+    }
+
+    @Test func renderAboveThePixelCapStaysCloseToFullSizeReduced() throws {
+        let layers = [Self.solid("Background", 0, 0, 8, 8, [200, 100, 50, 255]), Self.solid("Edge", 3, 3, 3, 3, [0, 0, 0, 255])]
+        let file = try PSDLayersTests.open(PSDFixture.makeLayered(width: 8, height: 8, layers: layers))
+        let capped = try PSDCompositor(file).render(scale: 0.25, maxPixels: 16), exact = try PSDCompositor(file).render(scale: 0.25)
+        #expect(capped.width == 2 && capped.height == 2)
+        for (a, b) in zip(capped.pixels, exact.pixels) { #expect(abs(Int(a) - Int(b)) <= 40) }
     }
 
     @Test func adjustmentHookRunsOnTheCanvasBelow() throws {
