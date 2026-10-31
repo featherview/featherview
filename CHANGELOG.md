@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.1 – 2026-10-31
+
+- An iCloud-only picture from your Photos library now shows a sharp preview (about 1024 px) while it downloads, not a tiny blurry one.
+- Batch names a library picture it can't fetch by its file name instead of "Optional(…)".
+- Because Featherview isn't notarized yet, macOS asks for Photos access again after each update, as the permission is tied to the exact build.
+- Plus smaller speed-ups when changing the format in Batch and counting an album's pictures.
+
 ## 0.13.0 – 2026-10-31
 
 - Huge pictures open fast: Hubble's 4.6 GB Andromeda PSB fits in about half a second, and zooming loads only the visible part.
