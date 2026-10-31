@@ -1707,7 +1707,7 @@ final class ViewerModel {
         compareSession.change(to: first)
         if list.select(second) {
             show()
-        } else if let album = PhotosLocation.album(of: second), PhotosLocation.isLibrary(second) {
+        } else if let album = PhotosLocation.album(of: second) {
             // Its album is pane 1's list again; a scan of the disk can't list it.
             openPhotos(album: album, showing: second, keepingCompare: true)
         } else {
