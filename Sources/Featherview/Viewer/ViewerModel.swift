@@ -688,6 +688,7 @@ final class ViewerModel {
     func show(page: Int = 0, keepsPlayer: Bool = false) {
         // Work queued before T (a Trash, a move, a rotation) lands behind the grid; leaving it shows the image.
         guard !isGrid else { return }
+        stopCloudDownload(keeping: list.current)
         // First: no frame of the file shown so far may land on the next one's canvas.
         if !keepsPlayer || player.url != list.current {
             player.stop(showing: player.url == list.current ? image : nil)
@@ -933,32 +934,41 @@ final class ViewerModel {
     /// A library picture shown from Photos' local preview (`start`, a fit decode): its original downloads from iCloud,
     /// then it shows again (if still current) from the original, and the info panel reads it anew. Without a
     /// connection the preview stays and the status bar says so. Only the picture on screen downloads: showing
-    /// another stops it.
+    /// another one, the grid or closing the window stops it (`stopCloudDownload`).
     private func downloadIfInCloud(_ url: URL, start: Bool) {
         if cloudDownload?.url == url { return }
-        cloudDownload?.task.cancel()
-        cloudDownload = nil
+        stopCloudDownload()
         guard start, PhotosLocation.isLibrary(url) else { return }
-        let task = Task {
+        // Weak: a closed window's model mustn't wait for PhotoKit.
+        let task = Task { [weak self] in
             // A held key or a slideshow passes pictures by: only one stayed on downloads its original.
             try? await Task.sleep(for: .milliseconds(150))
             guard !Task.isCancelled, PhotosLibrary.shared.isInCloud(url) else { return }
-            cloudNotes.started(url)
+            self?.cloudNotes.started(url)
             do {
                 try await PhotosLibrary.shared.download(url)
-                cloudNotes.arrived(url)
-                await forgetDecodes(of: url)
-                if list.current == url { show() }
+                // Stopped while the result hopped back here: the picture isn't on screen any more.
+                try Task.checkCancellation()
+                self?.cloudNotes.arrived(url)
+                await self?.forgetDecodes(of: url)
+                if !Task.isCancelled, let self, list.current == url { show() }
             } catch is CancellationError {
                 // Unless the picture was shown again meanwhile: its new download has the note now.
-                if cloudDownload?.url != url { cloudNotes.cancelled(url) }
+                if let self, cloudDownload?.url != url { cloudNotes.cancelled(url) }
             } catch {
-                cloudNotes.failed(url, name: displayName(url))
+                if let self { cloudNotes.failed(url, name: displayName(url)) }
             }
             // A cancelled task's slot already went to whatever cancelled it.
-            if !Task.isCancelled { cloudDownload = nil }
+            if !Task.isCancelled { self?.cloudDownload = nil }
         }
         cloudDownload = (url, task)
+    }
+
+    /// Stops the iCloud download unless it is `url`'s: it belongs to the picture on screen.
+    private func stopCloudDownload(keeping url: URL? = nil) {
+        guard let cloudDownload, cloudDownload.url != url else { return }
+        cloudDownload.task.cancel()
+        self.cloudDownload = nil
     }
 
     /// A library picture's current version as a file, fetched from Photos off the main thread; a file as it is.
@@ -1507,6 +1517,7 @@ final class ViewerModel {
                                                                     queue: queue, byteBudget: budget))
         }
         loadTask?.cancel()
+        stopCloudDownload()
         endNavigation("superseded")
         player.stop()
         gridReturn = list.current
@@ -1539,6 +1550,7 @@ final class ViewerModel {
     func closeWindow() {
         viewFromGrid(list.current)
         closeGrid()
+        stopCloudDownload()
     }
 
     /// Another file or folder opens: the grid goes, with its thumbnails.
