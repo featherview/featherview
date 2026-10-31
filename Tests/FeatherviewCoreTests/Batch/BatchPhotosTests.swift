@@ -33,6 +33,17 @@ import Testing
         #expect(settings().problem(inputs: [file]) == nil)
     }
 
+    /// Pictures dragged from Photos land in Dropped/<n>, a folder the app empties: like library
+    /// pictures, they need a folder or the Photos library.
+    @Test func droppedInputsNeedADestination() {
+        let dropped = BatchSettings.droppedCache.appendingPathComponent("1/IMG_0001.HEIC")
+        let file = URL(fileURLWithPath: "/tmp/a.jpg")
+        #expect(settings().problem(inputs: [file, dropped]) == PhotosText.needsDestination)
+        #expect(settings { $0.outputFolder = "/tmp/out" }.problem(inputs: [dropped]) == nil)
+        #expect(settings { $0.toPhotos = true }.problem(inputs: [dropped]) == nil)
+        #expect(settings().problem(inputs: [BatchSettings.droppedCache.deletingLastPathComponent().appendingPathComponent("Dropped-x/a.jpg")]) == nil)
+    }
+
     @Test func photosNeedsAnImportableFormat() {
         let file = URL(fileURLWithPath: "/tmp/a.jpg")
         #expect(settings { $0.formatID = "qoi"; $0.toPhotos = true }.problem(inputs: [file]) == PhotosText.cantImport(format: "QOI"))

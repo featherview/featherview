@@ -246,10 +246,6 @@ public struct BatchSettings: Codable, Equatable, Sendable {
     public var hasAbsoluteOutputFolder: Bool { (outputFolder as NSString).expandingTildeInPath.hasPrefix("/") }
     /// Promised drops land in `Dropped/<n>` here, a cache folder the app empties.
     public static let droppedCache = URL.cachesDirectory.appending(path: "net.mynetx.featherview/Dropped", directoryHint: .isDirectory)
-    /// Outputs next to an input in a folder the app empties would be deleted with it.
-    public func needsDestination(inputs: [URL]) -> Bool {
-        outputFolder.isEmpty && inputs.contains(where: Self.isDropped)
-    }
     /// A promised file received into `Dropped/<n>`, as opposed to one dropped where it lives.
     public static func isDropped(_ url: URL) -> Bool {
         url.standardizedFileURL.path.hasPrefix(droppedCache.standardizedFileURL.path + "/")
@@ -310,7 +306,10 @@ public struct BatchSettings: Codable, Equatable, Sendable {
             let formats = changeFormat ? [format] : inputs.compactMap(Self.ownFormat)
             return formats.first { !$0.photosImports }.map { PhotosText.cantImport(format: $0.name) }
         }
-        if outputFolder.isEmpty, inputs.contains(where: Self.isLibraryInput) { return PhotosText.needsDestination }
+        // Next to the originals would write into a cache folder the app empties.
+        if outputFolder.isEmpty, inputs.contains(where: { Self.isLibraryInput($0) || Self.isDropped($0) }) {
+            return PhotosText.needsDestination
+        }
         return nil
     }
 }
