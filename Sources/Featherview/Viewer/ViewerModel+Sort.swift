@@ -4,10 +4,12 @@ import FeatherviewCore
 /// View › Sort By: the list in the stored order, re-sorted in place with the picture kept.
 extension ViewerModel {
     /// Re-sorts the list in `SortOrder.stored()`, after the open running (its list would replace this one).
+    /// An album keeps Photos' order.
     /// Values are read and the list sorted off the main thread: 10,000 files take ~100–160 ms to sort.
     /// shortcut: a cancelled re-sort still finishes its read (ImageSort.values doesn't check cancellation), make
     /// it check if switching orders on a slow disk queues up reads.
     func applySortOrder() {
+        guard !isLibrary else { return }
         sortTask?.cancel()
         sortedOrder = .stored()
         let scan = openTask

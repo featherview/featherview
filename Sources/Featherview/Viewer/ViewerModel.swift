@@ -1076,7 +1076,7 @@ final class ViewerModel {
     func becameActive() {
         updateAvailability()  // "Past the end of a folder" may have changed in Settings
         // View › Sort By may have changed while this window was closed (its onChange didn't run).
-        if !isLibrary, sortedOrder != .stored() { applySortOrder() }
+        if sortedOrder != .stored() { applySortOrder() }
         // Pane 2's file may have been trashed or moved in Finder meanwhile; a library picture has no path to check.
         if let compareSession, compareSession.errorMessage == nil, !PhotosLocation.isLibrary(compareSession.url),
            !FileManager.default.fileExists(atPath: compareSession.url.path) {

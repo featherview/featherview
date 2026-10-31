@@ -171,8 +171,8 @@ struct ViewerView: View {
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         .onChange(of: model.unsaved != nil) { model.window?.isDocumentEdited = $1 }
         // An album keeps its own order.
-        .onChange(of: sortKey) { if model.availability.canSort { model.applySortOrder() } }
-        .onChange(of: sortAscending) { if model.availability.canSort { model.applySortOrder() } }
+        .onChange(of: sortKey) { model.applySortOrder() }
+        .onChange(of: sortAscending) { model.applySortOrder() }
         // Not set on the window directly: SwiftUI puts the scene's title back on its next update.
         .navigationTitle(model.title)
         .overlay(alignment: .topTrailing) { infoPanel }
