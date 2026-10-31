@@ -120,7 +120,7 @@ struct InfoPanel: View {
         }
         .task(id: readKey) {
             guard let key = readKey else { readInfo = nil; infoKey = nil; return }
-            let read = await Task.detached(priority: .userInitiated) { ImageInfo.read(key.url) }.value
+            let read = await Task.detached(priority: .userInitiated) { ViewerModel.readInfo(key.url) }.value
             // A newer file or revision cancelled this read: its result never lands.
             guard !Task.isCancelled else { return }
             readInfo = read

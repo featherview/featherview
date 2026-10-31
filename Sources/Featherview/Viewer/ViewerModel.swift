@@ -208,6 +208,10 @@ final class ViewerModel {
     var showsPhotos = false
     /// The library's albums as the sheet last listed them, for album names (`displayName`).
     @ObservationIgnored var photosAlbums: [PhotosAlbumRow] = []
+    /// The status bar's iCloud sentence and the library picture it is about (shown only while that one is current).
+    private(set) var cloudNote: (url: URL, text: String)?
+    /// Library pictures whose originals are downloading from iCloud, so showing one again starts no second download.
+    @ObservationIgnored private var downloads: Set<URL> = []
     /// A drop waiting for its promised files; a newer drop or any open supersedes it.
     @ObservationIgnored var pendingDrop: Task<Void, Never>?
     let cache: ImageCache
@@ -926,6 +930,48 @@ final class ViewerModel {
         }
     }
 
+    /// A library picture shown from Photos' local preview: its original downloads from iCloud, then it shows again
+    /// (if still current) from the original. Without a connection the preview stays and the status bar says so.
+    private func downloadIfInCloud(_ url: URL) {
+        guard !downloads.contains(url), PhotosLibrary.shared.isInCloud(url) else { return }
+        downloads.insert(url)
+        cloudNote = (url, PhotosText.downloading)
+        Task {
+            defer { downloads.remove(url) }
+            do {
+                try await PhotosLibrary.shared.download(url)
+                if cloudNote?.url == url { cloudNote = nil }
+                ready[url] = nil
+                await cache.remove(url)
+                if list.current == url { show() }
+            } catch {
+                cloudNote = (url, PhotosText.cantDownload(name: displayName(url)))
+            }
+        }
+    }
+
+    /// A library picture's current version as a file, fetched from Photos off the main thread; a file as it is.
+    /// Nil when the fetch fails, which then says "Can't open IMG_1234.HEIC".
+    func operationFile(_ url: URL) async -> URL? {
+        guard PhotosLocation.isLibrary(url) else { return url }
+        if let file = try? await Task.detached(priority: .userInitiated, operation: { try PhotosLibrary.shared.file(url) }).value {
+            return file
+        }
+        errorMessage = String(localized: "Can't open \(displayName(url))")
+        return nil
+    }
+
+    /// The info panel's details: a library picture's are read from its fetched file, without a folder (an album has
+    /// none) and with the date Photos keeps, not the fetch's.
+    nonisolated static func readInfo(_ url: URL) -> ImageInfo {
+        guard PhotosLocation.isLibrary(url), let file = try? PhotosLibrary.shared.file(url) else { return ImageInfo.read(url) }
+        var info = ImageInfo.read(file)
+        info.folder = nil
+        info.modified = PhotosLibrary.shared.info(url).modified?.formatted(date: .abbreviated, time: .shortened)
+        info.created = nil
+        return info
+    }
+
     /// Puts a decoded image on screen with its file info, in the same update: the status bar would
     /// otherwise draw without size and date first.
     private func shown(_ decoded: CGImage, url: URL, page: Int, fit: Bool, started: ContinuousClock.Instant) {
@@ -948,6 +994,7 @@ final class ViewerModel {
         if shownZoom != zoom { shownZoom = zoom }
         image = decoded
         errorMessage = nil
+        if fit, PhotosLocation.isLibrary(url) { downloadIfInCloud(url) }
         // Starting from a window, the first interval waits for full screen (fullScreenTransitionEnded).
         if slideshow != nil, !waitingForFullScreen {
             slideshow?.shown(url, at: .now)
@@ -1032,6 +1079,12 @@ final class ViewerModel {
             let listed = Set(list.urls)
             let urls = urls.filter(listed.contains)  // ⌘⌫ pressed twice before this ran
             guard !urls.isEmpty else { return }
+            if urls.contains(where: PhotosLocation.isLibrary) {
+                // Photos' own prompt confirms, once for all; Cancel throws and nothing changes.
+                // shortcut: a delete Photos refuses for another reason shows nothing either, say so if users miss it.
+                guard (try? await PhotosLibrary.shared.delete(urls)) != nil else { return }
+                return await removeFromList(urls)
+            }
             let withSidecars = AppSettings.moveSidecars.value()
             // Off the main thread: on a network or slow disk, trashing can take seconds.
             let (trashed, failed) = await Task.detached(priority: .userInitiated) {
@@ -1143,22 +1196,29 @@ final class ViewerModel {
             let listed = Set(list.urls)
             let urls = urls.filter(listed.contains)
             guard !urls.isEmpty else { return }
-            let (moved, failed) = await Task.detached(priority: .userInitiated) {
-                var moved: [URL] = [], failed: [URL] = []
+            let (moved, failed, unfetched) = await Task.detached(priority: .userInitiated) {
+                var moved: [URL] = [], failed: [URL] = [], unfetched: [URL] = []
                 for url in urls {
+                    // A library picture (only ever copied) goes as its current version, fetched from Photos.
+                    let library = PhotosLocation.isLibrary(url)
+                    guard let file = library ? try? PhotosLibrary.shared.file(url) : url else {
+                        unfetched.append(url)
+                        continue
+                    }
                     do {
-                        let target = try FileMover.transfer(url, to: folder, operation: operation,
-                                                            sidecars: withSidecars ? Sidecars.files(for: url) : [])
+                        let target = try FileMover.transfer(file, to: folder, operation: operation,
+                                                            sidecars: withSidecars && !library ? Sidecars.files(for: url) : [])
                         // A move into the file's own folder leaves it where it is, so it stays in the list.
                         if target != url { moved.append(url) }
                     } catch {
                         failed.append(url)
                     }
                 }
-                return (moved, failed)
+                return (moved, failed, unfetched)
             }.value
             if operation == .move { await removeFromList(moved) }
             if !failed.isEmpty { errorMessage = GridText.transferFailed(failed, name: failed.first.map(displayName), operation: operation, folder: folder) }
+            if let url = unfetched.first { errorMessage = String(localized: "Can't open \(displayName(url))") }
         }
     }
 
@@ -1172,7 +1232,11 @@ final class ViewerModel {
         guard let url = list.current, !list.isHolding else { return }
         let page = page
         Task {
-            guard let choice = await SavePanel.run(for: url, window: window) else { return }
+            // A library picture is saved from its fetched file, starting in Pictures under its original name.
+            guard let source = await operationFile(url),
+                  let choice = PhotosLocation.isLibrary(url)
+                    ? await SavePanel.run(name: source.lastPathComponent, folder: SavePanel.picturesFolder, window: window)
+                    : await SavePanel.run(for: url, window: window) else { return }
             let target = choice.url
             let previous = rotateTask
             // Queued behind rotations, like Trash and moves: one still running would give the old image.
@@ -1180,7 +1244,7 @@ final class ViewerModel {
                 await previous?.value
                 do {
                     try await offPool {
-                        Result { try ImageSaver.save(url, page: page, to: target, as: choice.format, options: choice.options) }
+                        Result { try ImageSaver.save(source, page: page, to: target, as: choice.format, options: choice.options) }
                     }.get()
                     guard ImageFormats.isDecodable(target) else { return }
                     await forgetDecodes(of: target)
@@ -1570,7 +1634,7 @@ final class ViewerModel {
         guard availability.canCompare, let current = list.current else { return }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image]
-        panel.directoryURL = current.deletingLastPathComponent()
+        panel.directoryURL = isLibrary ? nil : current.deletingLastPathComponent()
         panel.message = CompareText.choose(displayName(current))
         guard panel.runModal() == .OK, let url = panel.url, list.current == current else { return }
         compare(current, with: url)
@@ -1978,8 +2042,9 @@ final class ViewerModel {
         let pending = rotateTask  // a rotation still rewriting the file would give the old image
         copies.submit {
             await pending?.value
+            guard let source = await self.operationFile(url) else { return }
             do {
-                let image = try await Task.detached(priority: .userInitiated) { try ImageDecoder.decode(url, page: page, hdr: false) }.value
+                let image = try await Task.detached(priority: .userInitiated) { try ImageDecoder.decode(source, page: page, hdr: false) }.value
                 guard !Task.isCancelled else { return }  // a newer ⌘C came in: skip the encode
                 guard let data = await Task.detached(priority: .userInitiated, operation: { ClipboardImage.pngData(image) }).value
                 else { throw DecodeError.unreadable(url) }
@@ -2027,7 +2092,21 @@ final class ViewerModel {
     /// The grid's selection as files on the clipboard, as Finder's Copy puts them: they paste as files.
     func copyGridSelection() {
         guard !gridSelection.isEmpty else { return }
+        guard isLibrary else { return putFiles(gridSelection) }
+        // Library pictures go as their fetched files; one that can't be fetched says so and copies nothing.
+        let selection = gridSelection
+        Task {
+            var files: [URL] = []
+            for url in selection {
+                guard let file = await operationFile(url) else { return }
+                files.append(file)
+            }
+            putFiles(files)
+        }
+    }
+
+    private func putFiles(_ files: [URL]) {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.writeObjects(gridSelection.map { $0 as NSURL })
+        NSPasteboard.general.writeObjects(files.map { $0 as NSURL })
     }
 }

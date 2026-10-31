@@ -36,7 +36,7 @@ Milestones marked **observe first** have reference-viewer behaviour not yet reco
 | 21 | Grid columns that fill the window, right-click menu, drag out | `docs/superpowers/plans/2026-10-25-milestone-21-grid-columns-menu-drag.md` | done |
 | — | Automatic updates through Sparkle (spec "Updates") | no plan; commits 0949b8d, a5f9bd3 | done |
 | — | First open on every account (spec "Distribution"): disk image background stored in its `.DS_Store`, "Read Me First" file with the Terminal line, Homebrew cask `postflight`, website card | no plan; branch `release-0.12.1` (3a5da45, a046241, 796c52b), merged into main | done, shipped in 0.12.1: tested on this Mac as a standard user with a quarantined image (Finder copy with admin prompt, line without admin, launch without prompt) and a quarantined Homebrew install into `~/Applications` |
-| 22 | Photos library: browse albums, drops from Photos, batch from and into the library | `docs/superpowers/plans/2026-10-26-milestone-22-photos-library.md` | planned |
+| 22 | Photos library: browse albums, drops from Photos, batch from and into the library | `docs/superpowers/plans/2026-10-26-milestone-22-photos-library.md` | done: tasks 1–9; screen check (Task 10) waits for the maintainer's go |
 | 23 | Info panel: histogram, exposure card, foldable groups, place names, all metadata, keyboard focus and VoiceOver (runs before 22) | `docs/superpowers/plans/2026-10-28-milestone-23-info-panel.md` | done, shipped in 0.12.0: place names in the app's language; screen check: `Navigate` with the panel open over 200 12 MP JPEGs p50 19.9 ms, p95 21.9 ms; first place 75–79 ms after the panel opens, cold; keyboard, All Metadata keys, VoiceOver tree, German light, Arabic dark, Increase Contrast, Reduce Motion (groups fold as a cut) |
 | 24 | Huge pictures: own readers for 8-bit RGB PSD/PSB and huge TIFF at the size needed, zoom by parts | `docs/superpowers/plans/2026-10-30-milestone-24-huge-pictures.md` | done: screen check on heic1502a.psb and both Hubble TIFFs: first image 525 ms after launch (PSB), parts at 100 % 36–60 ms (PSB) and 119–148 ms (TIFF) while panning, app footprint at most 327 MB; 12 MP JPEG `Navigate` p50 21 ms, p95 24 ms |
 | 25 | Photoshop layers: files without a stored composite drawn from their layers, every blend mode, groups, masks, fills, adjustment layers (runs before 22) | `docs/superpowers/plans/2026-10-30-milestone-25-photoshop-layers.md` | done: tasks 1–9. Oracle: 104 of 108 unique comparable files within target (96.3 %, target ≥ 95 %); over, with `shortcut:` comments: Brightness/Contrast's curve, Hue/Saturation on near greys, gradients mixed in Photoshop's working space, noise gradients' generator (none described in Adobe's spec). Fit decode of the 12 MP, 30-layer file ~292 ms (budget < 500 ms). Screen check (release): all 55 corpus files without a composite show a picture, none blank or failing; grid shows all; files with layer effects show without them; first image 399–400 ms after launch; slowest fit decode in the folder 16 ms. Finder and Quick Look stay macOS's (it never asks an app's extension for PSD/PSB) |
@@ -269,32 +269,6 @@ declarations; a default app's own document icon still wins. Plan:
 ## Next version (after v2)
 
 Ideas from the maintainer's QA that no spec covers yet; each gets a plan and a spec section first.
-
-- Photos library: browse and convert pictures from Apple's Photos library without exporting them first.
-  - **Drops from Photos:** dragging pictures from the Photos app onto the window or Dock icon opens them
-    (Photos hands over file promises; they land in a temporary folder and the viewer browses them like
-    a dropped selection).
-  - **File › Open from Photos… (⇧⌘O):** a sheet lists Library, Favorites, Recents, the user's albums
-    and the media types (Screenshots, Panoramas, …). Choosing one browses it like a folder: arrow
-    keys, Home/End, grid (T), slideshow, Compare, info panel (EXIF from the original). Order is the
-    album's own order (Library and smart albums: date taken); Sort By is disabled there. Videos are
-    skipped; Live Photos show their still; edited photos show the current version, as Photos does.
-  - **Read-only, data safe:** Copy to Folder (F8) and Save As export the current version; Batch
-    Convert… takes the selection. Rotate, rename and Move to Folder are disabled, since changing a
-    library picture is an edit in Photos. Delete moves to Photos' Recently Deleted, after the system's
-    own confirmation.
-  - **Batch output to Photos:** a destination choice "Add to Photos library" next to the output
-    folder; uses the add-only permission, which never lets the app read the library.
-  - **Permission only when used:** the Photos access prompt appears the first time Open from Photos…
-    is chosen, never at launch; once denied, the sheet says how to allow it in System Settings ›
-    Privacy & Security › Photos. Nothing calls Photos before then (linking it costs launch nothing measurable), so launch and
-    browsing budgets stay as they are.
-  - **Budgets:** an album browses within the folder budgets (first image < 500 ms for 10,000 pictures,
-    prefetched swap ≈ 20 ms), decoding fit-to-screen through Photos' image manager with the same
-    2-each-way prefetch and 8-image cache. A picture stored only in iCloud shows Photos' local preview
-    at once and sharpens when the original arrives; the status bar says "Downloading from iCloud…".
-  - **Not planned:** organising the library (albums, keywords, favourites), syncing edits back, and
-    Photos' "Edit With" round trip.
 
 - Info panel: more of what photographers check, without a network call.
   - **Histogram** on top: luminance or RGB, clipping marks at both ends with the clipped share on
