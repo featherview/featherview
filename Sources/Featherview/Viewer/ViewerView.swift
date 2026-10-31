@@ -366,7 +366,8 @@ struct ViewerView: View {
     /// Spans the fit area's height, floating on the trailing side (docs/DESIGN.md "Elements").
     @ViewBuilder private var infoPanel: some View {
         if model.showInfo {
-            InfoPanel(url: model.list.current, revision: model.fileRevision, image: model.image, onScreen: model.onScreen,
+            InfoPanel(url: model.list.current, name: model.list.current.map(model.displayName) ?? "",
+                      revision: model.fileRevision, image: model.image, onScreen: model.onScreen,
                       fitImage: model.fitImage, keptFit: model.keptFit, screens: model.screens, focus: $panelFocus, stops: $panelStops) {
                 focused = true
             }
