@@ -1,4 +1,5 @@
 import AppKit
+import FeatherviewCore
 import UniformTypeIdentifiers
 
 /// Drops that bring files, either as file URLs (Finder) or as file promises (Photos, Mail).
@@ -12,32 +13,35 @@ enum PromiseDrop {
     private static var drops = 0
     private static let queue = OperationQueue()
 
-    /// The dropped files: file URLs as they are, promised files received into a new
-    /// `Caches/net.mynetx.featherview/Dropped/<n>` folder. Files that fail to arrive are left out.
-    static func receive(_ providers: [NSItemProvider]) async -> [URL] {
-        // Read before the first suspension, while the drag pasteboard still holds this drop.
-        // A promise item carries no file URL yet, so the promises are exactly the items without one.
-        let receivers = NSPasteboard(name: .drag).readObjects(forClasses: [NSFilePromiseReceiver.self]) as? [NSFilePromiseReceiver] ?? []
-        let fileProviders = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) }
-        var urls: [URL] = []
-        for provider in fileProviders {
-            if let url = await fileURL(provider) { urls.append(url) }
-        }
-        guard !receivers.isEmpty, let folder = newFolder() else { return urls }
-        return urls + (await receive(receivers, into: folder))
-    }
-
-    private static func fileURL(_ provider: NSItemProvider) async -> URL? {
-        await withCheckedContinuation { continuation in
-            _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                continuation.resume(returning: url?.isFileURL == true ? url : nil)
+    /// The dropped files in the drop's order: file URLs as they are, promises of items without a file URL
+    /// received into a new `Caches/net.mynetx.featherview/Dropped/<n>` folder. Files that fail to arrive are
+    /// left out. Reads the drag pasteboard at once, so call it from the drop handler, before any suspension.
+    static func receive() -> Task<[URL], Never> {
+        let pasteboard = NSPasteboard(name: .drag)
+        let items = pasteboard.pasteboardItems ?? []
+        let receivers = pasteboard.readObjects(forClasses: [NSFilePromiseReceiver.self]) as? [NSFilePromiseReceiver] ?? []
+        let plan = DropItem.plan(items.map { $0.types.map(\.rawValue) }, fileURLType: NSPasteboard.PasteboardType.fileURL.rawValue,
+                                 promiseTypes: Set(NSFilePromiseReceiver.readableDraggedTypes))
+        var files: [(index: Int, url: URL)] = []
+        var promised: [(index: Int, receiver: NSFilePromiseReceiver)] = []
+        for (index, (item, how)) in zip(items, plan).enumerated() {
+            switch how {
+            case .file:
+                // Finder's are file reference URLs (file:///.file/id=…); filePathURL makes them paths.
+                if let url = item.string(forType: .fileURL).flatMap(NSURL.init(string:))?.filePathURL { files.append((index, url)) }
+            case .promise(let n) where n < receivers.count: promised.append((index, receivers[n]))
+            default: break
             }
+        }
+        return Task {
+            guard !promised.isEmpty, let folder = newFolder() else { return files.map(\.url) }
+            return await receive(promised, into: folder, with: files)
         }
     }
 
     private static func newFolder() -> URL? {
         drops += 1
-        let folder = URL.cachesDirectory.appending(path: "net.mynetx.featherview/Dropped/\(drops)", directoryHint: .isDirectory)
+        let folder = BatchSettings.droppedCache.appending(path: "\(drops)", directoryHint: .isDirectory)
         // A folder left from an earlier launch holds someone else's drop; browsing would show it too.
         try? FileManager.default.removeItem(at: folder)
         do {
@@ -48,13 +52,15 @@ enum PromiseDrop {
         }
     }
 
-    /// Receives every promise at once and returns the files in the drop's order.
-    private static func receive(_ receivers: [NSFilePromiseReceiver], into folder: URL) async -> [URL] {
-        let counts = receivers.map { max($0.fileTypes.count, 1) }
+    /// Receives every promise at once and returns them and `files` in the drop's order.
+    private static func receive(_ promised: [(index: Int, receiver: NSFilePromiseReceiver)], into folder: URL,
+                                with files: [(index: Int, url: URL)]) async -> [URL] {
+        let expected = promised.map { max($0.receiver.fileTypes.count, 1) }.reduce(0, +)
         return await withCheckedContinuation { continuation in
-            let arrivals = Arrivals(expected: counts.reduce(0, +), continuation: continuation)
-            for (index, receiver) in receivers.enumerated() {
-                receiver.receivePromisedFiles(atDestination: folder, options: [:], operationQueue: queue) { url, error in
+            let arrivals = Arrivals(files: files, expected: expected, continuation: continuation)
+            for (index, receiver) in promised {
+                // @Sendable: AppKit calls the reader on `queue`; a main-actor closure would trap there.
+                receiver.receivePromisedFiles(atDestination: folder, options: [:], operationQueue: queue) { @Sendable url, error in
                     arrivals.add(index, error == nil ? url : nil)
                 }
             }
@@ -64,11 +70,12 @@ enum PromiseDrop {
     /// Collects promised files as they arrive, on the receive queue.
     private final class Arrivals: @unchecked Sendable {
         private let lock = NSLock()
-        private var files: [(index: Int, url: URL)] = []
+        private var files: [(index: Int, url: URL)]
         private var left: Int
         private let continuation: CheckedContinuation<[URL], Never>
 
-        init(expected: Int, continuation: CheckedContinuation<[URL], Never>) {
+        init(files: [(index: Int, url: URL)], expected: Int, continuation: CheckedContinuation<[URL], Never>) {
+            self.files = files
             left = expected
             self.continuation = continuation
         }
