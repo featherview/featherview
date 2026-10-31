@@ -33,7 +33,9 @@ public enum PSDAdjustments {
             let d = try PSDDescriptor.versioned(data)
             let brightness = try number(d["Brgh"]) ?? 0, contrast = try number(d["Cntr"]) ?? 0, mean = (try number(d["means"]) ?? 127) / 255
             if d["useLegacy"] == .bool(true) { return legacyBrightness(brightness, contrast, mean) }
-            // Photoshop doesn't publish its curve; this one keeps black and white where they are.
+            // shortcut: Photoshop doesn't publish this curve, and its composites (three settings in the corpus) fit neither a
+            // gamma, a Curves spline nor an S-curve; this approximation is off them by ~20 levels on average. Replace it if
+            // Adobe documents the curve or more samples pin it down.
             let exponent = pow(2, -brightness / 100), factor = 1 + contrast / 100
             return { c in
                 c = c.clamped(lowerBound: .zero, upperBound: .one)
