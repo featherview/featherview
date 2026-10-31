@@ -120,7 +120,10 @@ struct InfoPanel: View {
         }
         .task(id: readKey) {
             guard let key = readKey else { readInfo = nil; infoKey = nil; return }
-            let read = await Task.detached(priority: .userInitiated) { ImageInfo.read(key.url) }.value
+            // A held key passes library pictures by: only one stayed on fetches its file (it can't be stopped once started).
+            if PhotosLocation.isLibrary(key.url) { try? await Task.sleep(for: .milliseconds(150)) }
+            guard !Task.isCancelled else { return }
+            let read = await offPool { ViewerModel.readInfo(key.url) }
             // A newer file or revision cancelled this read: its result never lands.
             guard !Task.isCancelled else { return }
             readInfo = read

@@ -138,18 +138,29 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
         return result
     }
 
-    /// Fetches the original from iCloud, so the next `image` call is local.
+    /// Fetches the original from iCloud, so the next `image` call is local. Cancelling the task stops the download
+    /// and throws `CancellationError`.
     public func download(_ url: URL) async throws {
         let asset = try asset(url)
         let options = PHImageRequestOptions()
         options.deliveryMode = .highQualityFormat
         options.version = .current
         options.isNetworkAccessAllowed = true
-        let ok = await withCheckedContinuation { continuation in
-            manager.requestImageDataAndOrientation(for: asset, options: options) { data, _, _, _ in
-                continuation.resume(returning: data != nil)
+        let manager = manager
+        let request = OSAllocatedUnfairLock<PHImageRequestID?>(initialState: nil)
+        let ok = await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                // PhotoKit calls the handler also for a cancelled request, without data.
+                let id = manager.requestImageDataAndOrientation(for: asset, options: options) { data, _, _, _ in
+                    continuation.resume(returning: data != nil)
+                }
+                request.withLock { $0 = id }
+                if Task.isCancelled { manager.cancelImageRequest(id) }
             }
+        } onCancel: {
+            if let id = request.withLock({ $0 }) { manager.cancelImageRequest(id) }
         }
+        try Task.checkCancellation()
         guard ok else { throw DecodeError.unreadable(url) }
         state.withLock { _ = $0.inCloud.remove(url) }
     }
@@ -161,8 +172,10 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
     }
 
     /// The current version (edited, or the original) fetched into `PhotosFetch.folder`, under the original's
-    /// name; reused until the picture changes in Photos.
-    public func file(_ url: URL) throws -> URL {
+    /// name; reused until the picture changes in Photos. Without `network`, an original only in iCloud fails.
+    public func file(_ url: URL) throws -> URL { try file(url, network: true) }
+
+    public func file(_ url: URL, network: Bool) throws -> URL {
         let asset = try asset(url)
         guard let resource = Self.resource(of: asset) else { throw DecodeError.unreadable(url) }
         let folder = PhotosFetch.folder(asset: asset.localIdentifier, modified: asset.modificationDate)
@@ -175,7 +188,7 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
         // Written under a temporary name and moved in, so a second caller never sees half a file.
         let temporary = folder.appendingPathComponent(".\(UUID().uuidString)")
         let options = PHAssetResourceRequestOptions()
-        options.isNetworkAccessAllowed = true
+        options.isNetworkAccessAllowed = network
         let done = DispatchSemaphore(value: 0)
         let failed = OSAllocatedUnfairLock(initialState: false)
         PHAssetResourceManager.default().writeData(for: resource, toFile: temporary, options: options) { error in
@@ -209,6 +222,11 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
         try await PHPhotoLibrary.shared().performChanges {
             PHAssetChangeRequest.deleteAssets(PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil))
         }
+    }
+
+    /// The person's Cancel in Photos' delete prompt, which needs no message.
+    public static func isCancel(_ error: Error) -> Bool {
+        (error as? PHPhotosError)?.code == .userCancelled
     }
 
     /// Adds `file` to the library as a new picture; the file stays where it is.

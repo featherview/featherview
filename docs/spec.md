@@ -692,14 +692,17 @@ the library is ever changed, except a delete the person confirms in the system's
   (Space) in the grid (other apps can't open a picture still in the library). Copy to Folder (F8), Save As, Copy (⌘C), Batch Convert… and
   the info panel's EXIF act on the current version's file, which Featherview fetches from Photos into
   its own cache folder (`~/Library/Caches/net.mynetx.featherview/Photos`, emptied at quit and at
-  launch). Refresh (F5) reads the album again. Moving past the end of an album follows "Past the end
+  launch). Copy (⌘C) in the grid puts copies of those files on the clipboard from a folder of their own
+  (`…/Clipboard`), which quitting leaves so they still paste; the next such Copy replaces them, and a
+  launch empties the folder once the clipboard holds something else. Refresh (F5) reads the album again. Moving past the end of an album follows "Past the end
   of a folder", except that the folder chooser becomes Stop (an album has no neighbouring folders).
   Library albums are not listed in Open Recent.
 - **Delete** (⌘⌫, ⌦) moves the picture to Photos' Recently Deleted, after the system's own
   confirmation (it replaces the "Confirm before moving to Trash" question for library pictures). In
   the grid it acts on the selection, in one prompt.
 - **iCloud:** a picture whose original is only in iCloud shows Photos' local preview at once, and
-  the status bar says "Downloading from iCloud…" until the original has arrived and replaced it.
+  the status bar says "Downloading from iCloud…" until the original has arrived and replaced it. Only
+  the picture on screen downloads, once it has stayed there briefly; moving on stops its download.
   Without a connection the preview stays and the status bar says "Can't download IMG_1234.HEIC from
   iCloud."
 - **Drops from Photos:** pictures dragged from the Photos app onto a viewer window open as a dropped

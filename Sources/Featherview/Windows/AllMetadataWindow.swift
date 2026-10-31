@@ -48,8 +48,9 @@ private struct AllMetadataView: View {
 
     /// nil without an image or before its first read.
     @State private var catalog: MetadataCatalog?
-    /// The image `catalog` belongs to.
+    /// The image `catalog` belongs to, and its name (a library picture's original file name).
     @State private var catalogURL: URL?
+    @State private var catalogName: String?
     @State private var query = ""
     @State private var selection: Set<MetadataEntry.ID> = []
     @State private var collapsed: Set<MetadataSection.ID> = []
@@ -67,7 +68,7 @@ private struct AllMetadataView: View {
         shown.flatMap(\.entries).filter { selection.contains($0.id) }
     }
     private var title: String {
-        guard let name = catalogURL?.lastPathComponent else { return String(localized: "All Metadata") }
+        guard let name = catalogName else { return String(localized: "All Metadata") }
         return String(localized: "\(name) — All Metadata")
     }
 
@@ -144,13 +145,18 @@ private struct AllMetadataView: View {
         .onChange(of: title, initial: true) { AllMetadataWindow.panel?.title = title }
         .task(id: key) {
             // Another image: never show the last one's entries under its name while this one is read.
-            if key.url != catalogURL { catalog = nil; catalogURL = nil; selection = [] }
+            if key.url != catalogURL { catalog = nil; catalogURL = nil; catalogName = nil; selection = [] }
             guard let url = key.url else { return }
-            let read = await Task.detached(priority: .userInitiated) { MetadataCatalog.read(url) }.value
+            // A library picture's tags come from its fetched file, as the info panel's do, and after the same wait:
+            // a held key passes library pictures by, and a fetch can't be stopped once started.
+            if PhotosLocation.isLibrary(url) { try? await Task.sleep(for: .milliseconds(150)) }
+            guard !Task.isCancelled else { return }
+            let read = await offPool { MetadataCatalog.read(ViewerModel.localFile(url) ?? url) }
             // A later image's read replaced this one: its task was cancelled.
             guard !Task.isCancelled else { return }
             catalog = read
             catalogURL = url
+            catalogName = viewer.displayName(url)
             selection = []
         }
     }

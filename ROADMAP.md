@@ -27,11 +27,12 @@ Done for the next release:
   huge TIFFs open several times faster, and zooming in reads only the part on screen
 - Photoshop layers: files saved without "Maximize Compatibility" show the picture Photoshop shows,
   drawn from their layers with every blend mode, groups, masks, fill and adjustment layers
+- Photos library: browse albums from Apple's Photos with the arrow keys, drag pictures in from
+  Photos, and batch convert from it or into it, without exporting first
 
 ## Planned
 
-- Photos library: browse albums from Apple's Photos with the arrow keys, drag pictures in from
-  Photos, and batch convert from it or into it, without exporting first
+Nothing beyond 1.0 yet; ideas are welcome in Discussions.
 
 ## Not planned
 

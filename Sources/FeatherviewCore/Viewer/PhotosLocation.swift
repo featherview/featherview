@@ -189,8 +189,49 @@ public enum PhotosText {
         String(localized: "Photos can't import \(format).", comment: "Batch: why the Photos library destination is off for a format")
     }
 
+    /// Delete failed in Photos for anything but the person's Cancel; `name` is the one picture's, nil for several.
+    public static func cantDelete(name: String?) -> String {
+        guard let name else {
+            return String(localized: "Can't delete these pictures from Photos.", comment: "Status bar when Photos refuses to delete the grid's selection")
+        }
+        return String(localized: "Can't delete \(name) from Photos.", comment: "Status bar when Photos refuses to delete a library picture")
+    }
+
     public static func cantAdd(name: String) -> String {
         String(localized: "Can't add \(name) to Photos.", comment: "Batch log row when Photos refuses an output")
+    }
+}
+
+/// The status bar's iCloud notes, one per library picture: each stays until that picture's original arrives.
+public struct PhotosCloudNotes: Sendable {
+    private var notes: [URL: String] = [:]
+    private var downloading: Set<URL> = []
+
+    public init() {}
+
+    public func note(for url: URL?) -> String? { url.flatMap { notes[$0] } }
+    /// So showing a picture again starts no second download.
+    public func isDownloading(_ url: URL) -> Bool { downloading.contains(url) }
+
+    public mutating func started(_ url: URL) {
+        downloading.insert(url)
+        notes[url] = PhotosText.downloading
+    }
+
+    public mutating func arrived(_ url: URL) {
+        downloading.remove(url)
+        notes[url] = nil
+    }
+
+    /// Left behind before its original arrived: the note goes, and showing the picture again starts anew.
+    public mutating func cancelled(_ url: URL) {
+        downloading.remove(url)
+        notes[url] = nil
+    }
+
+    public mutating func failed(_ url: URL, name: String) {
+        downloading.remove(url)
+        notes[url] = PhotosText.cantDownload(name: name)
     }
 }
 
@@ -225,6 +266,46 @@ public enum PhotosFetch {
         let fm = FileManager.default
         if !fm.fileExists(atPath: file.path) { try? fm.moveItem(at: temporary, to: file) }
         return fm.fileExists(atPath: file.path)
+    }
+
+    /// Where grid ⌘C copies library pictures: not emptied at quit, so the clipboard still pastes afterwards.
+    public static let clipboardCache = URL.cachesDirectory.appending(path: "net.mynetx.featherview/Clipboard", directoryHint: .isDirectory)
+
+    /// Copies of the fetched `files` for the clipboard, each in a numbered folder of its own, so two IMG_0001.HEIC
+    /// never meet, inside a numbered folder for this ⌘C under `root`. Nil when one can't be copied: the partial
+    /// copies go and the earlier ones stay. Once all are made, copies older than the previous ⌘C's go; the previous
+    /// ones stay until the next, as a paste may still be reading them. Touches the disk, so call it off the main thread.
+    public static func clipboardCopies(of files: [URL], in root: URL = clipboardCache) -> [URL]? {
+        let fm = FileManager.default
+        use(root)
+        let earlier = ((try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? [])
+            .compactMap { folder in Int(folder.lastPathComponent).map { ($0, folder) } }
+        let number = (earlier.map(\.0).max() ?? -1) + 1
+        let batch = root.appending(path: "\(number)", directoryHint: .isDirectory)
+        guard (try? fm.createDirectory(at: batch, withIntermediateDirectories: true)) != nil else { return nil }
+        var copies: [URL] = []
+        for (index, file) in files.enumerated() {
+            let folder = batch.appending(path: "\(index)", directoryHint: .isDirectory)
+            let copy = folder.appending(path: file.lastPathComponent)
+            do {
+                try fm.createDirectory(at: folder, withIntermediateDirectories: true)
+                try fm.copyItem(at: file, to: copy)  // a clone on APFS: no second copy of the bytes
+            } catch {
+                try? fm.removeItem(at: batch)
+                return nil
+            }
+            copies.append(copy)
+        }
+        for (old, folder) in earlier where old < number - 1 { try? fm.removeItem(at: folder) }
+        return copies
+    }
+
+    /// At launch: an earlier run's clipboard copies go once the clipboard (`held`, its file URLs) no longer pastes
+    /// any of them. Copies this run made stay. Touches the disk, so call it off the main thread.
+    public static func emptyClipboardCopies(unless held: [URL], in root: URL = clipboardCache) {
+        let path = root.standardizedFileURL.path + "/"
+        guard !held.contains(where: { $0.standardizedFileURL.path.hasPrefix(path) }) else { return }
+        used.withLockUnchecked { if !$0.contains(root.standardizedFileURL.path) { try? FileManager.default.removeItem(at: root) } }
     }
 
     /// Cache folders (a drop's, a fetched picture's) this run uses; the launch-time emptying leaves them alone.

@@ -65,6 +65,8 @@ a lot.
 - HDR photos (iPhone HEIC and JPEG, HDR AVIF, OpenEXR) show their extra brightness on HDR screens
   (macOS 15 and later)
 - EXIF info panel (<kbd>I</kbd>), full screen (<kbd>F</kbd> or <kbd>Return</kbd>)
+- Browses albums of Apple's Photos library (<kbd>⇧⌘O</kbd>) like folders, takes pictures dragged in from Photos,
+  and batch converts from the library or into it, without exporting first and without changing it
 
 ## Organising
 

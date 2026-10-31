@@ -63,7 +63,8 @@ struct StatusBar: View {
                                index: model.list.index, count: model.list.urls.count,
                                page: model.page, pageCount: model.pageCount,
                                frame: model.player.pausedFrame, frameCount: model.player.frameCount,
-                               modified: info?.modified).fields
+                               modified: info?.modified,
+                               note: model.cloudNotes.note(for: model.list.current)).fields
     }
 
     /// Name, pixel size, zoom, file size and date of the pane's picture; the position stays in the title.
@@ -72,7 +73,7 @@ struct StatusBar: View {
         case .first:
             guard let url = model.list.current, !model.isOpening else { return [] }
             let info = model.fileInfo
-            return StatusLine.pane(name: url.lastPathComponent, pixelSize: info?.pixelSize, zoomPercent: model.zoomPercent,
+            return StatusLine.pane(name: model.displayName(url), pixelSize: info?.pixelSize, zoomPercent: model.zoomPercent,
                                    fileBytes: info?.bytes, modified: info?.modified).fields
         case .second:
             // The picture on screen and its details, until the next file's decode lands with its own.
@@ -81,7 +82,7 @@ struct StatusBar: View {
                 return StatusLine.pane(name: CompareText.difference, pixelSize: nil, zoomPercent: model.zoomPercent,
                                        fileBytes: nil, modified: nil).fields
             }
-            return StatusLine.pane(name: info.url.lastPathComponent, pixelSize: info.pixelSize,
+            return StatusLine.pane(name: model.displayName(info.url), pixelSize: info.pixelSize,
                                    zoomPercent: model.secondZoomPercent, fileBytes: info.bytes, modified: info.modified).fields
         }
     }
