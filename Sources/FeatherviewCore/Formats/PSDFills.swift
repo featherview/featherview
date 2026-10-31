@@ -307,6 +307,9 @@ public enum PSDFills {
         guard case .object(let grad)? = settings["Grad"] else { throw OwnDecodeError.corrupt }
         // The linear method mixes colours in linear light; classic (and perceptual, for now) in the stored values.
         // shortcut: the perceptual method (Perc) mixes like classic, give it its own space if a file shows it.
+        // shortcut: colours mix in the file's RGB; Photoshop's composites of a file in another profile than its working
+        // space (which the file doesn't record) show the mix in that space, up to ~13 levels off; mix there if Adobe
+        // documents where the working space is stored.
         let linear = settings["gradientsInterpolationMethod"] == .enumerated(type: "gradientInterpolationMethodType", value: "Lnr ")
         let table = try gradientTable(grad, rgb: rgb, linear: linear)
         let angle = (number(settings["Angl"]) ?? 90) * .pi / 180
@@ -315,22 +318,31 @@ public enum PSDFills {
         var offset = (x: 0.0, y: 0.0)
         if case .object(let point)? = settings["Ofst"] { offset = (number(point["Hrzn"]) ?? 0, number(point["Vrtc"]) ?? 0) }
         let cx = Double(box.left) + bw / 2 + offset.x / 100 * bw, cy = Double(box.top) + bh / 2 + offset.y / 100 * bh
-        let half = max((abs(bw * cosA) + abs(bh * sinA)) / 2 * (number(settings["Scl "]) ?? 100) / 100, 1e-6)
+        let length = (abs(bw * cosA) + abs(bh * sinA)) / 2 * (number(settings["Scl "]) ?? 100) / 100
         let reverse = settings["Rvrs"] == .bool(true)
         var type = "Lnr "
         if case .enumerated(_, let value)? = settings["Type"] { type = value }
+        // The line runs from the centre (a linear gradient's from half its length before it) to half its length past it,
+        // both ends on whole pixels, as Photoshop's composites show (a 4 × 4 gradient at 30° draws at 45°); y grows
+        // downwards on screen, so the line points (cos, −sin).
+        let linearType = type == "Lnr "
+        let startX = (linearType ? cx - length * cosA : cx).rounded(.down), startY = (linearType ? cy + length * sinA : cy).rounded(.down)
+        let endX = (cx + length * cosA).rounded(.down), endY = (cy - length * sinA).rounded(.down)
+        let midX = linearType ? (startX + endX) / 2 : startX, midY = linearType ? (startY + endY) / 2 : startY
+        let half = max(hypot(endX - midX, endY - midY), 1e-6)
+        let lineAngle = half > 1e-6 ? atan2(midY - endY, endX - midX) : angle
+        let (cosL, sinL) = (cos(lineAngle), sin(lineAngle))
         return { x, y in
-            // Along the line and across it, from the pixel's top-left corner (as Photoshop's composites show); y grows
-            // downwards on screen, so the line points (cos, −sin).
-            let dx = Double(x) - cx, dy = Double(y) - cy
-            let along = dx * cosA - dy * sinA, across = dx * sinA + dy * cosA
+            // Along the line and across it, from the pixel's top-left corner, as Photoshop's composites show.
+            let dx = Double(x) - midX, dy = Double(y) - midY
+            let along = dx * cosL - dy * sinL, across = dx * sinL + dy * cosL
             var t: Double
             switch type {
             case "Rdl ": t = (dx * dx + dy * dy).squareRoot() / half
             case "Rflc": t = abs(along) / half
             case "Dmnd": t = (abs(along) + abs(across)) / half
             case "Angl":
-                let turn = (atan2(-dy, dx) - angle) / (2 * .pi)
+                let turn = (atan2(-dy, dx) - lineAngle) / (2 * .pi)
                 t = turn - turn.rounded(.down)
             default: t = (along / half + 1) / 2
             }

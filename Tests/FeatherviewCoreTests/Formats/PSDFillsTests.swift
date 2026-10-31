@@ -238,8 +238,8 @@ import Testing
         let radial = try #require(try PSDFills.content(
             try Self.fillLayer(["GdFl": Self.gradient("Rdl ", angle: 90, colours: stops)], width: 65, height: 65),
             canvas: (65, 65), patterns: [:], scale: 1))
-        // The centre (32.5, 32.5) lies between pixel corners, 0.7 px from the nearest.
-        #expect(Self.pixel(radial, 32, 32)[0] <= 3 && Self.pixel(radial, 33, 33) == Self.pixel(radial, 32, 32))
+        // The centre (32.5, 32.5) goes to the whole pixel (32, 32).
+        #expect(Self.pixel(radial, 32, 32)[0] == 0 && Self.pixel(radial, 33, 33) == Self.pixel(radial, 31, 31))
         #expect(Self.pixel(radial, 0, 32)[0] >= 245)
         #expect(Self.pixel(radial, 0, 0)[0] == 255)
         #expect(Self.pixel(radial, 16, 32) == Self.pixel(radial, 32, 16))
@@ -249,7 +249,18 @@ import Testing
             canvas: (65, 65), patterns: [:], scale: 1))
         #expect(Self.pixel(reflected, 10, 32)[0] <= 2)
         #expect(Self.pixel(reflected, 10, 0)[0] >= 245 && Self.pixel(reflected, 10, 64)[0] >= 245)
-        for y in 1..<65 { #expect(Self.pixel(reflected, 5, y) == Self.pixel(reflected, 5, 65 - y)) }
+        // Mirrored about the centre row, up to a tie between two table steps.
+        for y in 0..<65 { #expect(abs(Int(Self.pixel(reflected, 5, y)[0]) - Int(Self.pixel(reflected, 5, 64 - y)[0])) <= 1) }
+    }
+
+    /// A gradient line's ends sit on whole pixels, as Photoshop's composites show: a reflected 4 × 4 gradient at 30°
+    /// ends half its length from the centre at (4.37, 0.63), which goes to (4, 0), so it draws at 45°.
+    @Test func gradientLineEndsOnWholePixels() throws {
+        let stops: [(V, Int)] = [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)]
+        let layer = try Self.fillLayer(["GdFl": Self.gradient("Rflc", angle: 30, colours: stops, smoothness: 0)], width: 4, height: 4)
+        let image = try #require(try PSDFills.content(layer, canvas: (4, 4), patterns: [:], scale: 1))
+        // Half way is a tie between two table steps, 127 or 128.
+        for y in 0..<4 { for x in 0..<4 { #expect(abs(Int(Self.pixel(image, x, y)[0]) - [0, 64, 128, 191][abs(x - y)]) <= 1) } }
     }
 
     @Test func transparencyStops() throws {
