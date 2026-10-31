@@ -49,7 +49,7 @@ extension PhotosLibrary {
 
     /// How many pictures the album holds (videos left out).
     public func count(_ album: String) async -> Int {
-        (try? fetch(album).assets.count) ?? 0
+        (try? fetch(album, sorted: false).assets.count) ?? 0  // the order doesn't change the count
     }
 
     /// The album's pictures in its own order (Library, Favorites, Recents and media types by date taken, oldest
@@ -63,8 +63,8 @@ extension PhotosLibrary {
         return (urls, kind)
     }
 
-    private func fetch(_ album: String) throws -> (assets: PHFetchResult<PHAsset>, kind: PhotosAlbumKind) {
-        if album == "library" { return (PHAsset.fetchAssets(with: Self.imagesOnly(sorted: true)), .library) }
+    private func fetch(_ album: String, sorted: Bool = true) throws -> (assets: PHFetchResult<PHAsset>, kind: PhotosAlbumKind) {
+        if album == "library" { return (PHAsset.fetchAssets(with: Self.imagesOnly(sorted: sorted)), .library) }
         guard let collection = PHAssetCollection.fetchAssetCollections(withLocalIdentifiers: [album], options: nil).firstObject
         else { throw DecodeError.unreadable(PhotosLocation.albumURL(album)) }
         let kind: PhotosAlbumKind = switch collection.assetCollectionSubtype {
@@ -73,7 +73,7 @@ extension PhotosLibrary {
         case let subtype where collection.assetCollectionType == .smartAlbum && Self.isMediaType(subtype): .mediaType
         default: .userAlbum
         }
-        return (PHAsset.fetchAssets(in: collection, options: Self.imagesOnly(sorted: kind != .userAlbum)), kind)
+        return (PHAsset.fetchAssets(in: collection, options: Self.imagesOnly(sorted: sorted && kind != .userAlbum)), kind)
     }
 
     /// Pictures only; `sorted`: by date taken, oldest first, else the album's own order.
