@@ -5,9 +5,9 @@ import Foundation
 /// File › Open from Photos…: an album browsed like a folder (spec "Photos library"). Its pictures are
 /// `featherview-photos:` URLs, which never reach the disk: the album is their "folder".
 extension ViewerModel {
-    /// The list is an album's: its current or first picture is a library picture (the album's URL while it's empty).
+    /// The list is an album's: its folder is an album, also while the album is still listed and a disk file still shows.
     var isLibrary: Bool {
-        (list.current ?? list.urls.first ?? folder).map(PhotosLocation.isLibrary) == true
+        (folder ?? list.urls.first).map(PhotosLocation.isLibrary) == true
     }
 
     /// The name shown for `url`: a library picture's original file name, an album's name, else the file or folder name.
