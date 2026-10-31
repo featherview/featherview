@@ -688,7 +688,8 @@ the library is ever changed, except a delete the person confirms in the system's
   size and the date taken instead of the file size.
 - **Read-only:** Sort By, Rename, Move to Folder (F7), rotate and flip, Adjust Date Taken, Set as
   Desktop Picture, Follow New Files, Show in Finder and Open With are off for library pictures
-  (changing them is an edit in Photos). Copy to Folder (F8), Save As, Copy (⌘C), Batch Convert… and
+  (changing them is an edit in Photos), and so are Share, dragging grid cells out and Quick Look
+  (Space) in the grid (other apps can't open a picture still in the library). Copy to Folder (F8), Save As, Copy (⌘C), Batch Convert… and
   the info panel's EXIF act on the current version's file, which Featherview fetches from Photos into
   its own cache folder (`~/Library/Caches/net.mynetx.featherview/Photos`, emptied at quit and at
   launch). Refresh (F5) reads the album again. Moving past the end of an album follows "Past the end

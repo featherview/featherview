@@ -89,6 +89,8 @@ public struct ViewerAvailability: Equatable, Sendable {
     public var canAdjustDate = false
     /// Move, Copy, Trash from the File menu: the grid's selection, else the viewed image (not a held one).
     public var hasOperationTargets = false
+    /// Share: the viewed image's file; never a library picture, whose URL other apps can't open.
+    public var canShare = false
     /// Show in Finder: the viewed image, in the grid its selection.
     public var canShowInFinder = false
     /// Open With: the viewed image; in the grid it would act on the one viewed before T.
@@ -142,6 +144,7 @@ public struct ViewerAvailability: Equatable, Sendable {
         hasOperationTargets = s.isGrid ? s.gridSelectionCount > 0 : canChangeFile
         canAdjustDate = hasOperationTargets && !s.isLibrary
         canMove = hasOperationTargets && !s.isLibrary
+        canShare = canChangeFile && !s.isLibrary
         canShowInFinder = (s.isGrid ? s.gridSelectionCount > 0 : s.hasCurrent) && !s.isLibrary
         canOpenWith = s.hasCurrent && !s.isGrid && !s.isLibrary
         canSaveAs = canChangeFile || s.hasUnsaved

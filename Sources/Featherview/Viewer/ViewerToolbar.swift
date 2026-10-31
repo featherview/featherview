@@ -194,7 +194,7 @@ private struct ShareButton: View {
             NSSharingServicePicker(items: [url]).show(relativeTo: view.bounds, of: view, preferredEdge: .minY)
         } label: { Label { Text("Share") } icon: { ToolbarSymbol.image("square.and.arrow.up") } }
         .help("Share")
-        .disabled(!model.availability.canChangeFile)
+        .disabled(!model.availability.canShare)
         .background(AnchorView(anchor: anchor))
     }
 

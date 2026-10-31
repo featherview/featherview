@@ -132,6 +132,7 @@ import Testing
         #expect(a.canChangeFile && a.canSaveAs && a.canCompare && a.canRefresh && a.canCopy && a.canBatch)
         #expect(a.hasOperationTargets)  // Delete and F8 stay
         #expect(!a.canMove)
+        #expect(!a.canShare && viewing().canShare)  // other apps can't open a featherview-photos: URL
         let grid = viewing { $0.isLibrary = true; $0.isGrid = true; $0.gridSelectionCount = 2 }
         #expect(!grid.canMove && !grid.canShowInFinder && grid.hasOperationTargets)
     }

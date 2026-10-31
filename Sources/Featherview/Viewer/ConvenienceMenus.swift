@@ -167,7 +167,7 @@ struct ShareMenu: View {
     let model: ViewerModel?
 
     var body: some View {
-        if let model, model.availability.canChangeFile, let url = model.list.current {
+        if let model, model.availability.canShare, let url = model.list.current {
             ShareLink("Share", item: url)
         } else {
             // An empty Menu stays enabled in the menu bar; a Button greys out.

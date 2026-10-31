@@ -429,7 +429,8 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
         guard hypot(point.x - start.point.x, point.y - start.point.y) >= 3 else { return }
         down = nil
         let selected = selectionIndexPaths.map(\.item).sorted()
-        guard selected.contains(start.index) else { return }
+        // Other apps can't open a library picture's URL.
+        guard selected.contains(start.index), !isLibrary else { return }
         // Cells off screen start from the dragged one, without a picture: ⌘A in a big folder makes no thousands of images.
         let origin = cellImage(start.index)?.1 ?? NSRect(origin: point, size: .zero)
         let items = selected.map { index in
@@ -464,13 +465,16 @@ final class GridCollectionView: NSCollectionView, @preconcurrency QLPreviewPanel
 
     // MARK: Quick Look (Space)
 
+    /// Library pictures: Quick Look and other apps can't open their URLs.
+    private var isLibrary: Bool { (delegate as? ThumbnailGrid.Coordinator)?.model.isLibrary == true }
+
     private var controlsPreviewPanel: Bool {
         QLPreviewPanel.sharedPreviewPanelExists() && QLPreviewPanel.shared().dataSource === self
     }
 
     func toggleQuickLook() {
         if controlsPreviewPanel, QLPreviewPanel.shared().isVisible { return QLPreviewPanel.shared().orderOut(nil) }
-        guard !selectionIndexPaths.isEmpty else { return }
+        guard !selectionIndexPaths.isEmpty, !isLibrary else { return }
         window?.makeFirstResponder(self)  // the panel asks the responder chain for its controller
         QLPreviewPanel.shared().makeKeyAndOrderFront(nil)
     }
