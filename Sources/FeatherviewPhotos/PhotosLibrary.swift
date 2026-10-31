@@ -178,9 +178,10 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
 
     public func file(_ url: URL, network: Bool) throws -> URL {
         let asset = try asset(url)
-        guard let resource = Self.resource(of: asset) else { throw DecodeError.unreadable(url) }
+        let resources = Self.resources(of: asset)
+        guard let resource = resources.current else { throw DecodeError.unreadable(url) }
         let folder = PhotosFetch.folder(asset: asset.localIdentifier, modified: asset.modificationDate)
-        let file = folder.appendingPathComponent(PhotosFetch.fileName(original: Self.originalName(of: asset),
+        let file = folder.appendingPathComponent(PhotosFetch.fileName(original: resources.originalName,
                                                                       written: resource.originalFilename))
         let fm = FileManager.default
         PhotosFetch.use(folder)
@@ -203,17 +204,16 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
         return file
     }
 
-    /// The current version's resource: the edited full-size photo when there is one, else the original.
-    private static func resource(of asset: PHAsset) -> PHAssetResource? {
+    /// From one lookup of the asset's resources: the current version's (the edited full-size photo when there is
+    /// one, else the original) and the camera's name ("IMG_1234.HEIC"), the original's, since an edited version is
+    /// always "FullSizeRender".
+    private static func resources(of asset: PHAsset) -> (current: PHAssetResource?, originalName: String?) {
         let resources = PHAssetResource.assetResources(for: asset)
-        return resources.first { $0.type == .fullSizePhoto } ?? resources.first { $0.type == .photo } ?? resources.first
+        let original = resources.first { $0.type == .photo } ?? resources.first
+        return (resources.first { $0.type == .fullSizePhoto } ?? original, original?.originalFilename)
     }
 
-    /// The camera's name ("IMG_1234.HEIC"): the original's, since an edited version is always "FullSizeRender".
-    private static func originalName(of asset: PHAsset) -> String? {
-        let resources = PHAssetResource.assetResources(for: asset)
-        return (resources.first { $0.type == .photo } ?? resources.first)?.originalFilename
-    }
+    private static func originalName(of asset: PHAsset) -> String? { resources(of: asset).originalName }
 
     // MARK: - Changes
 
