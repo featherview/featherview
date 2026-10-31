@@ -219,10 +219,13 @@ struct ViewerView: View {
         .onDrop(of: PromiseDrop.types, isTargeted: nil) { _ in
             guard !GridCollectionView.isDraggingOut else { return false }
             let arriving = PromiseDrop.receive()
-            Task {
+            model.pendingDrop?.cancel()
+            model.pendingDrop = Task {
                 // Promised files land together in one Dropped folder, so opening the first browses the drop.
                 // Promised files aren't remembered: Dropped/<n> is emptied and its numbers are reused by later launches.
-                if let url = await arriving.value.first { model.open(url, remember: !BatchSettings.isDropped(url)) }
+                // Cancelled: a newer drop or open came while this one's files were still arriving.
+                guard let url = await arriving.value.first, !Task.isCancelled else { return }
+                model.open(url, remember: !BatchSettings.isDropped(url))
             }
             return true
         }
