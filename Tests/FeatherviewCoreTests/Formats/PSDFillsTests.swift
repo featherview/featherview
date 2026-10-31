@@ -223,6 +223,24 @@ import Testing
         #expect((0..<4).map { Self.pixel(image, $0, 0)[0] } == [0, 64, 128, 191])
     }
 
+    /// A noise gradient draws random colours within its ranges from its seed (RndS), as many and as sharp as its
+    /// roughness (Smth) asks: the same seed draws the same fill, another seed another.
+    @Test func noiseGradientFillUsesItsSeed() throws {
+        func noise(seed: Int) throws -> RGBAImage {
+            let block = Self.block([("Angl", .unit("#Ang", 0)), ("Type", .enm("GrdT", "Lnr ")), ("Grad", .obj("Grdn", [
+                ("GrdF", .enm("GrdF", "ClNs")), ("ClrS", .enm("ClrS", "RGBC")), ("RndS", .long(seed)), ("Smth", .long(2048)),
+                ("Mnm ", .list([20, 0, 50, 100].map { .doub($0) })), ("Mxm ", .list([40, 100, 50, 100].map { .doub($0) }))]))])
+            return try #require(try PSDFills.content(try Self.fillLayer(["GdFl": block], width: 256, height: 1),
+                                                     canvas: (256, 1), patterns: [:], scale: 1))
+        }
+        let a = try noise(seed: 7)
+        #expect(try a == noise(seed: 7) && a != noise(seed: 8))
+        let pixels = (0..<256).map { Self.pixel(a, $0, 0) }
+        #expect(pixels.allSatisfy { (51...102).contains($0[0]) && $0[2] == 128 && $0[3] == 255 })
+        let greens = pixels.map { Int($0[1]) }
+        #expect(Set(greens).count > 20 && greens.max()! - greens.min()! > 100)  // not a flat fill
+    }
+
     /// "Snap to pixel" (sn2P) puts a vector mask's points on whole canvas pixels: an edge at 2.4 px covers pixel 2 fully.
     @Test func snappedVectorMasksHaveWholePixelEdges() throws {
         let path = Self.vectorMask(Self.square(2.4 / 8, 5.6 / 8))

@@ -353,36 +353,60 @@ public enum PSDFills {
     }
 
     /// The gradient's RGBA at 1,024 even steps from its start to its end.
-    // shortcut: a noise gradient (ClNs) is one solid colour, the middle of its ranges; draw the noise if a file shows it.
     private static func gradientTable(_ grad: PSDDescriptor, rgb: CGColorSpace?, linear: Bool) throws -> [UInt8] {
         let steps = 1024
         if case .enumerated(_, "ClNs")? = grad["GrdF"] {
-            var c: [UInt8] = [128, 128, 128]
-            if case .list(let low)? = grad["Mnm "], case .list(let high)? = grad["Mxm "], low.count >= 3, high.count >= 3,
-               case .enumerated(_, let space)? = grad["ClrS"] {
-                // Each range in percent of its channel: RGB, HSB (hue as a share of the circle) or Lab (a, b over −128…127, into the file's colour space).
-                let v = (0..<3).map { min(max(((number(low[$0]) ?? 0) + (number(high[$0]) ?? 0)) / 200, 0), 1) }
+            // shortcut: Photoshop doesn't publish its noise generator; this draws random stops within the ranges from the
+            // gradient's seed (RndS), more and sharper the rougher it is (Smth), so the fill has the noise's character but
+            // not Photoshop's colours; transparency (ShTr) and restricted colours (VctC) are left out. Upgrade if Adobe
+            // documents the generator. Lab ranges convert into the file's colour space, where Photoshop's composites show
+            // its working space, which the file doesn't record.
+            var low = [0.0, 0, 0], high = [1.0, 1, 1]
+            if case .list(let l)? = grad["Mnm "], case .list(let h)? = grad["Mxm "], l.count >= 3, h.count >= 3 {
+                low = (0..<3).map { min(max((number(l[$0]) ?? 0) / 100, 0), 1) }
+                high = (0..<3).map { max(min(max((number(h[$0]) ?? 100) / 100, 0), 1), low[$0]) }
+            }
+            var space = ""
+            if case .enumerated(_, let s)? = grad["ClrS"] { space = s }
+            let roughness = min(max((number(grad["Smth"]) ?? 2048) / 4096, 0), 1)
+            var seed = UInt64(truncatingIfNeeded: Int(number(grad["RndS"]) ?? 0))
+            func random() -> Double {  // SplitMix64
+                seed &+= 0x9E37_79B9_7F4A_7C15
+                var z = seed
+                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+                return Double((z ^ (z >> 31)) >> 11) / Double(1 << 53)
+            }
+            let labSpace = CGColorSpace(labWhitePoint: [0.9642, 1, 0.8249], blackPoint: [0, 0, 0], range: [-128, 127, -128, 127])
+            let target = rgb ?? CGColorSpace(name: CGColorSpace.sRGB)
+            // Each range in percent of its channel: RGB, HSB (hue as a share of the circle) or Lab (a, b over −128…127, into
+            // the file's colour space); 0…255 out.
+            func colour(_ v: [Double]) -> [Double] {
                 switch space {
-                case "RGBC": c = v.map { UInt8(($0 * 255).rounded()) }
+                case "RGBC": return v.map { $0 * 255 }
                 case "HSBl":
                     let hi = v[2], lo = v[2] * (1 - v[1]), h = v[0] * 6
-                    let rgb = [5.0, 3, 1].map { n -> Double in
+                    return [5.0, 3, 1].map { n -> Double in
                         let k = (n + h).truncatingRemainder(dividingBy: 6)
-                        return hi - (hi - lo) * max(0, min(k, 4 - k, 1))
+                        return (hi - (hi - lo) * max(0, min(k, 4 - k, 1))) * 255
                     }
-                    c = rgb.map { UInt8(($0 * 255).rounded()) }
                 case "LbCl":
                     let lab: [CGFloat] = [v[0] * 100, v[1] * 255 - 128, v[2] * 255 - 128, 1]
-                    if let space = CGColorSpace(labWhitePoint: [0.9642, 1, 0.8249], blackPoint: [0, 0, 0], range: [-128, 127, -128, 127]),
-                       let target = rgb ?? CGColorSpace(name: CGColorSpace.sRGB),
-                       let values = CGColor(colorSpace: space, components: lab)?.converted(to: target, intent: .relativeColorimetric, options: nil)?.components,
-                       values.count >= 3 {
-                        c = values.prefix(3).map { UInt8((min(max($0, 0), 1) * 255).rounded()) }
-                    }
-                default: break
+                    guard let labSpace, let target,
+                          let values = CGColor(colorSpace: labSpace, components: lab)?.converted(to: target, intent: .relativeColorimetric, options: nil)?.components,
+                          values.count >= 3 else { return [128, 128, 128] }
+                    return values.prefix(3).map { Double(min(max($0, 0), 1)) * 255 }
+                default: return [128, 128, 128]
                 }
             }
-            return (0..<steps).flatMap { _ in c + [255] }
+            let count = 2 + Int((roughness * 62).rounded())
+            let stops = (0..<count).map { _ in colour((0..<3).map { low[$0] + (high[$0] - low[$0]) * random() }) }
+            return (0..<steps).flatMap { i -> [UInt8] in
+                let x = Double(i) / Double(steps - 1) * Double(count - 1), k = min(Int(x), count - 2)
+                var u = x - Double(k)
+                u += (u * u * (3 - 2 * u) - u) * (1 - roughness)
+                return zip(stops[k], stops[k + 1]).map { UInt8(min(max($0 + ($1 - $0) * u, 0), 255).rounded()) } + [255]
+            }
         }
         typealias Stop = (location: Double, midpoint: Double, value: [Double])
         func stops(_ key: String, _ value: (PSDDescriptor) throws -> [Double]) throws -> [Stop] {
