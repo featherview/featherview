@@ -1,6 +1,6 @@
 #!/bin/sh
-# Builds build/places/places.fvpl, the info panel's place data, fresh from GeoNames and Natural Earth
-# (featherview-bench places). Offline, the bench uses its cached downloads; with none, the last built
+# Builds build/places/places.fvpl, the info panel's place data, from GeoNames and Natural Earth
+# (featherview-bench places), downloading the sources at most once a week (younger cached copies are used). Offline, the bench uses its cached downloads; with none, the last built
 # file stays, with a warning. Usage: scripts/places.sh
 set -eu
 cd "$(dirname "$0")/.."

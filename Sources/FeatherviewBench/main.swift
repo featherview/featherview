@@ -422,8 +422,16 @@ struct Step: Sendable {
 }
 
 /// Downloads a source into the cache, or keeps the cached copy when that fails; nil when neither exists.
+/// A cached place source younger than a week is used without downloading: the sources are about 225 MB.
+func placeCacheIsCurrent(modified: Date?, now: Date = .now) -> Bool {
+    guard let modified else { return false }
+    return now.timeIntervalSince(modified) < 7 * 86_400
+}
+
 func placeSource(_ remote: URL, cache: URL) async -> (url: URL, fresh: Bool)? {
     let local = cache.appendingPathComponent(remote.lastPathComponent)
+    let modified = try? local.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+    if placeCacheIsCurrent(modified: modified) { return (local, false) }
     if let (temp, response) = try? await URLSession.shared.download(from: remote),
        (response as? HTTPURLResponse)?.statusCode == 200 {
         try? FileManager.default.removeItem(at: local)
