@@ -216,11 +216,13 @@ struct ViewerView: View {
         .onReceive(NotificationCenter.default.publisher(for: .AXAnimatedImagesEnabledDidChange)) { _ in
             model.animatedImagesSettingChanged()
         }
-        .onDrop(of: PromiseDrop.types, isTargeted: nil) { providers in
+        .onDrop(of: PromiseDrop.types, isTargeted: nil) { _ in
             guard !GridCollectionView.isDraggingOut else { return false }
+            let arriving = PromiseDrop.receive()
             Task {
                 // Promised files land together in one Dropped folder, so opening the first browses the drop.
-                if let url = await PromiseDrop.receive(providers).first { model.open(url) }
+                // Not remembered: Dropped/<n> is emptied and its numbers are reused by later launches.
+                if let url = await arriving.value.first { model.open(url, remember: false) }
             }
             return true
         }
