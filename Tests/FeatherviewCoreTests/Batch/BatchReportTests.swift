@@ -25,6 +25,19 @@ import Testing
         #expect(!summary.localizedCaseInsensitiveContains("zero"))
     }
 
+    @Test func photosRunSavesNothingOnDisk() throws {
+        // The outputs were temp files, gone once Photos took them.
+        let results = [result("a.jpg", .converted)]
+        for folder in ["", "/Users/x/Out"] {
+            let summary = BatchReport.summary(results: results, seconds: 1, bytesIn: 100, bytesOut: 0, folder: folder, toPhotos: true)
+            #expect(summary.hasSuffix("Added to Photos."))
+            #expect(!summary.contains("Saved") && !summary.contains("out."))
+        }
+        let dir = try Fixtures.makeTempDir()
+        #expect(BatchReport.folderToShow(setting: dir.path, results: results, toPhotos: true) == nil)
+        #expect(BatchReport.folderToShow(setting: "", results: results, toPhotos: true) == nil)
+    }
+
     @Test func folderToShow() throws {
         let dir = try Fixtures.makeTempDir()
         let converted = [result("a.jpg", .failed), result("b.jpg", .converted)]

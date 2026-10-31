@@ -3,8 +3,9 @@ import Foundation
 /// The batch window's done view: the run in one sentence, then each failure by file name.
 public enum BatchReport {
     /// "47 of 48 images converted in 1 minute, 12 seconds. 210 MB in, 96 MB out. Saved to ~/Desktop/Out."
-    /// `folder` empty: next to the originals.
-    public static func summary(results: [BatchResult], seconds: Double, bytesIn: Int, bytesOut: Int, folder: String) -> String {
+    /// `folder` empty: next to the originals. `toPhotos`: the outputs went to the library and none stayed on disk.
+    public static func summary(results: [BatchResult], seconds: Double, bytesIn: Int, bytesOut: Int, folder: String,
+                               toPhotos: Bool = false) -> String {
         let converted = results.filter { $0.status == .converted }.count
         let total = results.count
         let duration = duration(seconds)
@@ -13,6 +14,14 @@ public enum BatchReport {
         let sizeIn = Int64(bytesIn).formatted(bytes)
         let sizeOut = Int64(bytesOut).formatted(bytes)
         let files = results.filter { $0.status == .converted }.reduce(0) { $0 + $1.outputs.count }
+        if toPhotos {
+            guard files > converted else {
+                return String(localized: "\(converted) of \(total) images converted in \(duration). \(sizeIn) in. Added to Photos.",
+                              comment: "Batch done summary: converted count, list count, run time, bytes read")
+            }
+            return String(localized: "\(converted) of \(total) images converted into \(files) files in \(duration). \(sizeIn) in. Added to Photos.",
+                          comment: "Batch done summary: converted count, list count, files added, run time, bytes read")
+        }
         if files > converted {
             guard !folder.isEmpty else {
                 return String(localized: "\(converted) of \(total) images converted into \(files) files in \(duration). \(sizeIn) in, \(sizeOut) out. Saved next to the originals.",
@@ -32,8 +41,10 @@ public enum BatchReport {
     }
 
     /// The folder Show in Finder opens: the typed output folder when it exists and has no `{folder}`
-    /// (which becomes each input's folder name), else the first converted output's folder; nil when neither exists.
-    public static func folderToShow(setting: String, results: [BatchResult]) -> URL? {
+    /// (which becomes each input's folder name), else the first converted output's folder; nil when neither exists
+    /// or the outputs went to Photos (their temp folder is gone).
+    public static func folderToShow(setting: String, results: [BatchResult], toPhotos: Bool = false) -> URL? {
+        if toPhotos { return nil }
         let typed = (setting as NSString).expandingTildeInPath
         var isFolder: ObjCBool = false
         if typed.hasPrefix("/"), !typed.contains("{folder}"),

@@ -105,7 +105,9 @@ final class BatchModel {
     var failures: [String] { BatchReport.failures(results) }
 
     /// The run's output folder for Show in Finder (`BatchReport.folderToShow`).
-    var outputFolder: URL? { BatchReport.folderToShow(setting: settings.outputFolder, results: results) }
+    var outputFolder: URL? {
+        BatchReport.folderToShow(setting: settings.outputFolder, results: results, toPhotos: settings.toPhotos)
+    }
 
     func state(of input: BatchInput) -> BatchRowState? {
         BatchProgress.rowState(result: resultFor[input.url], index: position[input],
@@ -151,14 +153,14 @@ final class BatchModel {
             isRunning = false
             isPaused = false
             isFinished = true
-            let results = results, folder = settings.outputFolder
+            let results = results, folder = settings.outputFolder, toPhotos = settings.toPhotos
             // Not awaited by runTask: quitting waits for the commits, not for 10,000 size reads.
-            Task { await summarize(results, list: list, seconds: seconds, folder: folder) }
+            Task { await summarize(results, list: list, seconds: seconds, folder: folder, toPhotos: toPhotos) }
         }
     }
 
     /// Sets `report`; reads every output's size off the main thread (10,000 files).
-    private func summarize(_ results: [BatchResult], list: BatchInputList, seconds: Double, folder: String) async {
+    private func summarize(_ results: [BatchResult], list: BatchInputList, seconds: Double, folder: String, toPhotos: Bool) async {
         let line = await Task.detached(priority: .userInitiated) {
             let converted = results.filter { $0.status == .converted }
             // Input sizes from add: the originals may be in the Trash by now.
@@ -167,7 +169,7 @@ final class BatchModel {
                 $0 + ($1.fileSize ?? 0)
             }
             return BatchReport.summary(results: results, seconds: seconds, bytesIn: bytesIn,
-                                       bytesOut: bytesOut, folder: folder)
+                                       bytesOut: bytesOut, folder: folder, toPhotos: toPhotos)
         }.value
         // A settings change or add while sizes were read already left the done view.
         if isFinished && self.results == results { report = line }
@@ -176,7 +178,8 @@ final class BatchModel {
     private func flushPending() {
         guard !pending.isEmpty else { return }
         results.append(contentsOf: pending)
-        if let written = pending.last(where: { $0.status == .converted })?.outputs.last { lastWritten = written }
+        // Outputs added to Photos are removed at once: nothing to preview.
+        if !settings.toPhotos, let written = pending.last(where: { $0.status == .converted })?.outputs.last { lastWritten = written }
         // One change per flush: each change of an observed property notifies every row.
         var map = resultFor
         for result in pending { map[result.input] = result }
