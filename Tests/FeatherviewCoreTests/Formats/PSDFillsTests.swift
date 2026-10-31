@@ -223,6 +223,23 @@ import Testing
         #expect((0..<4).map { Self.pixel(image, $0, 0)[0] } == [0, 64, 128, 191])
     }
 
+    /// A fit decode's gradient is the full-size one averaged: each scaled pixel matches the mean of the canvas pixels
+    /// it covers, on the canvas and in a shape.
+    @Test func scaledGradientsMatchTheFullSizeMean() throws {
+        let stops: [(V, Int)] = [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)]
+        for blocks in [["GdFl": Self.gradient("Lnr ", angle: 0, colours: stops)],
+                       ["GdFl": Self.gradient("Lnr ", angle: 0, colours: stops), "vmsk": Self.vectorMask(Self.square(0.25, 0.75))]] {
+            let layer = try Self.fillLayer(blocks, width: 64, height: 64)
+            let full = try #require(try PSDFills.content(layer, canvas: (64, 64), patterns: [:], scale: 1))
+            let small = try #require(try PSDFills.content(layer, canvas: (64, 64), patterns: [:], scale: 0.125))
+            #expect(small.width * 8 == full.width)
+            for x in 0..<small.width {
+                let mean = (0..<8).reduce(0) { $0 + Int(Self.pixel(full, x * 8 + $1, 0)[0]) } / 8
+                #expect(abs(Int(Self.pixel(small, x, 0)[0]) - mean) <= 2, "pixel \(x)")
+            }
+        }
+    }
+
     /// A noise gradient draws random colours within its ranges from its seed (RndS), as many and as sharp as its
     /// roughness (Smth) asks: the same seed draws the same fill, another seed another.
     @Test func noiseGradientFillUsesItsSeed() throws {

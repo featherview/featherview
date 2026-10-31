@@ -28,8 +28,9 @@ public enum PSDFills {
         case "GdFl":
             // "Align with layer" (the default when the flag is missing) puts the gradient in the shape's bounds, else in the canvas.
             let aligned = settings["Algn"] != .bool(false)
-            let box: PSDRect = aligned ? mask?.bounds ?? (0, 0, sh, sw) : (0, 0, sh, sw)
-            shade = try gradient(settings, box: box, rgb: rgb)
+            let canvasBox: PSDRect = (0, 0, canvas.height, canvas.width)
+            let box: PSDRect = aligned ? mask?.bounds ?? canvasBox : canvasBox
+            shade = try gradient(settings, box: box, sx: Double(sw) / Double(canvas.width), sy: Double(sh) / Double(canvas.height), rgb: rgb)
         default:
             shade = try pattern(settings, patterns: patterns, sx: Double(sw) / Double(canvas.width), sy: Double(sh) / Double(canvas.height))
         }
@@ -51,7 +52,7 @@ public enum PSDFills {
 
     /// The layer's vector mask on the scaled canvas: its rect (the path's bounds on the canvas, the whole
     /// canvas when inverted or starting with a subtraction; empty when the path covers nothing), one byte
-    /// per pixel of it, antialiased, and the path's own bounds, which may run past the canvas. Each shape
+    /// per pixel of it, antialiased, and the path's own bounds on the full-size canvas, which may run past it. Each shape
     /// (a subpath and the ones after it with operation −1) is filled even-odd, then combined with the
     /// shapes before it by its operation: 0 exclude, 1 combine, 2 subtract, 3 intersect. Without shapes, an
     /// initial fill record of 1 reveals the whole canvas, else nothing (the reverse when inverted).
@@ -109,13 +110,20 @@ public enum PSDFills {
         // Photoshop draws only the shapes when there are any; the initial fill decides an empty mask.
         if shapes.isEmpty, startsFull { inverted.toggle() }
         let all = shapes.reduce(CGRect.null) { $0.union($1.path.boundingBoxOfPath) }
-        let bounds: PSDRect = all.isNull || all.isEmpty ? (0, 0, sh, sw)
-            : (Int(all.minY.rounded(.down)), Int(all.minX.rounded(.down)), Int(all.maxY.rounded(.up)), Int(all.maxX.rounded(.up)))
+        // Whole pixels around the path, forgiving the float error of scaling back to the canvas.
+        func pixelBounds(_ rect: CGRect) -> PSDRect {
+            let e: CGFloat = 1e-6
+            return (Int((rect.minY + e).rounded(.down)), Int((rect.minX + e).rounded(.down)),
+                    Int((rect.maxY - e).rounded(.up)), Int((rect.maxX - e).rounded(.up)))
+        }
+        let scaledBounds: PSDRect = all.isNull || all.isEmpty ? (0, 0, sh, sw) : pixelBounds(all)
+        let bounds: PSDRect = all.isNull || all.isEmpty ? (0, 0, canvas.height, canvas.width)
+            : pixelBounds(all.applying(CGAffineTransform(scaleX: CGFloat(canvas.width) / CGFloat(sw), y: CGFloat(canvas.height) / CGFloat(sh))))
         // A first subtraction cuts from everything, so it covers the canvas outside the path too.
         var rect: PSDRect = (0, 0, sh, sw)
         if !inverted, density == 255, shapes.first?.operation != 2 {
             guard !all.isNull, !all.isEmpty else { return ((0, 0, 0, 0), [], bounds) }
-            rect = (max(0, bounds.top), max(0, bounds.left), min(sh, bounds.bottom), min(sw, bounds.right))
+            rect = (max(0, scaledBounds.top), max(0, scaledBounds.left), min(sh, scaledBounds.bottom), min(sw, scaledBounds.right))
             guard rect.bottom > rect.top, rect.right > rect.left else { return ((0, 0, 0, 0), [], bounds) }
         }
         let w = rect.right - rect.left, h = rect.bottom - rect.top
@@ -300,10 +308,11 @@ public enum PSDFills {
     /// A gradient across `box`: its centre (moved by the offset, in percent of the box) and the angle
     /// (counter-clockwise from pointing right) give the gradient's line, whose length at 100 % scale is the
     /// box's extent along it; the first stop sits at the line's start. Colour and transparency stops are
-    /// interpolated in RGB, each midpoint (on the later stop) where the two meet half-way.
+    /// interpolated in RGB, each midpoint (on the later stop) where the two meet half-way. `box` is on the full-size
+    /// canvas; the returned shade takes a pixel of the canvas scaled by `sx`, `sy`.
     // shortcut: gradient dither is off, add noise if banding shows.
     // Smoothness (Intr, of 4096) eases each stretch between stops half way toward a smoothstep at most, as Photoshop's composites show.
-    private static func gradient(_ settings: PSDDescriptor, box: PSDRect, rgb: CGColorSpace?) throws -> (Int, Int) -> (UInt8, UInt8, UInt8, UInt8) {
+    private static func gradient(_ settings: PSDDescriptor, box: PSDRect, sx: Double, sy: Double, rgb: CGColorSpace?) throws -> (Int, Int) -> (UInt8, UInt8, UInt8, UInt8) {
         guard case .object(let grad)? = settings["Grad"] else { throw OwnDecodeError.corrupt }
         // The linear method mixes colours in linear light; classic (and perceptual, for now) in the stored values.
         // shortcut: the perceptual method (Perc) mixes like classic, give it its own space if a file shows it.
@@ -333,8 +342,9 @@ public enum PSDFills {
         let lineAngle = half > 1e-6 ? atan2(midY - endY, endX - midX) : angle
         let (cosL, sinL) = (cos(lineAngle), sin(lineAngle))
         return { x, y in
-            // Along the line and across it, from the pixel's top-left corner, as Photoshop's composites show.
-            let dx = Double(x) - midX, dy = Double(y) - midY
+            // Along the line and across it, from each canvas pixel's top-left corner, as Photoshop's composites show: a
+            // scaled pixel takes its centre on the canvas, half a canvas pixel back, so it averages the pixels it covers.
+            let dx = (Double(x) + 0.5) / sx - 0.5 - midX, dy = (Double(y) + 0.5) / sy - 0.5 - midY
             let along = dx * cosL - dy * sinL, across = dx * sinL + dy * cosL
             var t: Double
             switch type {
