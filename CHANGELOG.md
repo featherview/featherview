@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.13.0 – 2026-10-31
+
+- Huge pictures open fast: Hubble's 4.6 GB Andromeda PSB fits in about half a second, and zooming loads only the visible part.
+- Photoshop files saved without "Maximize Compatibility" are drawn from their layers, with blend modes, groups, masks, fills and adjustment layers.
+- File › Open from Photos… (`⇧⌘O`) browses your Photos albums like folders.
+- Drag pictures from Photos into the viewer or batch, and convert from and into the library in batch.
+- iCloud originals download on demand, only for the picture on screen; copy, save and delete work on library pictures.
+- Because Featherview isn't notarized yet, macOS asks for Photos access again after each update, as the permission is tied to the exact build.
+- Deleting a picture that is in a shared library deletes it for all participants; Photos' own prompt says so.
+- Plus smaller fixes, among them place data downloading at most once a week.
+
 ## 0.12.1 – 2026-10-30
 
 - Standard (non-admin) accounts can open Featherview again: the disk image has a "Read Me First" file with one Terminal line that opens it on any account, where Open Anyway failed.
