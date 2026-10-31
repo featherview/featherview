@@ -216,9 +216,12 @@ struct ViewerView: View {
         .onReceive(NotificationCenter.default.publisher(for: .AXAnimatedImagesEnabledDidChange)) { _ in
             model.animatedImagesSettingChanged()
         }
-        .dropDestination(for: URL.self) { urls, _ in
-            guard !GridCollectionView.isDraggingOut, let url = urls.first else { return false }
-            model.open(url)
+        .onDrop(of: PromiseDrop.types, isTargeted: nil) { providers in
+            guard !GridCollectionView.isDraggingOut else { return false }
+            Task {
+                // Promised files land together in one Dropped folder, so opening the first browses the drop.
+                if let url = await PromiseDrop.receive(providers).first { model.open(url) }
+            }
             return true
         }
         // A panel control has the viewer's keys too (⌘C copies the picture).
