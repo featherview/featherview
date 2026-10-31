@@ -1,5 +1,6 @@
 import AppKit
 import FeatherviewCore
+import FeatherviewPhotos
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -30,6 +31,7 @@ final class BatchModel {
     var settings: BatchSettings {
         didSet {
             guard settings != oldValue else { return }
+            if settings.format != oldValue.format || settings.changeFormat != oldValue.changeFormat { updatePhotosChecks() }
             isEdited = true
             if !isRunning { clearFinished() }
             scheduleSave()
@@ -40,8 +42,17 @@ final class BatchModel {
             position = Dictionary(inputs.items.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
             // Like a settings change: the last run's ticks and names belong to the old list.
             if !isRunning { clearFinished() }
+            updatePhotosChecks()
         }
     }
+    /// Why the Photos library destination is off for this format and these inputs ("Photos can't import QOI."), or nil.
+    private(set) var photosRefusal: String?
+    /// Library pictures or drops from Photos are in the list: they have no originals to save next to.
+    private(set) var needsDestination = false
+    /// Add-only access to Photos was refused when Start last asked; the Name card says so.
+    var photosDenied = false
+    /// Start is waiting for the add-only prompt: a second click doesn't start a second run.
+    private var isAuthorizing = false
     /// Each input's place in the list: every row asks for its state on each result, so no linear search.
     private var position: [BatchInput: Int] = [:]
     var selection: Set<BatchInput> = []
@@ -83,6 +94,21 @@ final class BatchModel {
 
     init() {
         settings = BatchPresets.current()
+        updatePhotosChecks()
+    }
+
+    /// Both answers come from `BatchSettings.problem`, which Start uses too; run when the format or the list changes.
+    private func updatePhotosChecks() {
+        let urls = inputs.items.map(\.url)
+        var photos = settings
+        photos.toPhotos = true
+        let refusal = photos.problem(inputs: urls)
+        if refusal != photosRefusal { photosRefusal = refusal }
+        var nextTo = settings
+        nextTo.toPhotos = false
+        nextTo.outputFolder = ""
+        let needs = nextTo.problem(inputs: urls) != nil
+        if needs != needsDestination { needsDestination = needs }
     }
 
     // MARK: - Running
@@ -115,16 +141,33 @@ final class BatchModel {
     }
 
     func start() {
-        guard canStart else { return }
+        guard canStart, !isAuthorizing else { return }
+        // A clicked button doesn't take focus: a field still being edited hasn't written its value yet.
+        NSApp.keyWindow?.makeFirstResponder(nil)
         if let problem = settings.problem(inputs: inputs.items.map(\.url)) {
             notice = problem
             return
         }
-        // A clicked button doesn't take focus: a field still being edited hasn't written its value yet.
-        NSApp.keyWindow?.makeFirstResponder(nil)
+        guard settings.toPhotos else { return run() }
+        isAuthorizing = true
+        Task {
+            let allowed = await PhotosLibrary.shared.authorizeAdding()
+            isAuthorizing = false
+            photosDenied = !allowed
+            guard allowed else {
+                openCard = .name
+                return
+            }
+            // The list or settings may have changed while the prompt showed.
+            if canStart, settings.toPhotos, settings.problem(inputs: inputs.items.map(\.url)) == nil { run() }
+        }
+    }
+
+    private func run() {
         clearFinished()
         let list = inputs
-        let job = BatchJob(inputs: list.items, settings: settings)
+        var job = BatchJob(inputs: list.items, settings: settings)
+        if settings.toPhotos { job.addToPhotos = { try await PhotosLibrary.shared.add($0) } }
         let control = BatchControl()
         self.control = control
         runTotal = job.inputs.count
@@ -313,6 +356,24 @@ final class BatchModel {
 
     func add(folder: URL, subfolders: Bool) {
         addInBackground { BatchInputList.scanReporting(folder: folder, subfolders: subfolders) }
+    }
+
+    /// Library pictures: each one's current version is fetched from Photos into the cache folder off the main
+    /// thread (the header's spinner shows meanwhile) and the fetched files join the list in the order given.
+    func add(library urls: [URL]) {
+        addInOrder({ () -> (list: BatchInputList, failed: URL?) in
+            var files: [URL] = []
+            var failed: URL?
+            for url in urls {
+                if let file = try? PhotosLibrary.shared.file(url) { files.append(file) } else if failed == nil { failed = url }
+            }
+            var list = BatchInputList()
+            list.add(files: files)
+            return (list, failed)
+        }) { [self] found in
+            inputs.append(found.list)
+            if let failed = found.failed { notice = String(localized: "Can't open \(PhotosLibrary.shared.name(failed))") }
+        }
     }
 
     /// Dropped files and folders, once they have arrived (promises from Photos take a while); folders
