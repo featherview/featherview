@@ -118,11 +118,16 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
         let (local, inCloud) = request(asset, size: size, options: options)
         var image = local
         if image == nil, inCloud {
-            // Only in iCloud: Photos' local preview now, `download` brings the original.
-            options.deliveryMode = .fastFormat
-            options.resizeMode = .fast
-            image = request(asset, size: size, options: options).image
-                .map { ImageDecoder.enlarged($0, toLongestSide: side) }
+            // Only in iCloud: the largest picture Photos keeps locally now (the grid gets up to 512 px this way;
+            // `.fastFormat` alone can be a 60 px one), `download` brings the original.
+            image = [2048, 1024, 512].lazy.filter { $0 < side }
+                .compactMap { self.request(asset, size: CGSize(width: $0, height: $0), options: options).image }.first
+            if image == nil {
+                options.deliveryMode = .fastFormat
+                options.resizeMode = .fast
+                image = request(asset, size: size, options: options).image
+            }
+            image = image.map { ImageDecoder.enlarged($0, toLongestSide: side) }
         }
         state.withLock { PhotosFetch.record(inCloud: inCloud, url, target: target, in: &$0.inCloud) }
         guard let image else { throw DecodeError.unreadable(url) }
