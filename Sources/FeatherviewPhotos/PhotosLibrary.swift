@@ -224,6 +224,11 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
         }
     }
 
+    /// The person's Cancel in Photos' delete prompt, which needs no message.
+    public static func isCancel(_ error: Error) -> Bool {
+        (error as? PHPhotosError)?.code == .userCancelled
+    }
+
     /// Adds `file` to the library as a new picture; the file stays where it is.
     public func add(_ file: URL) async throws {
         try await PHPhotoLibrary.shared().performChanges {

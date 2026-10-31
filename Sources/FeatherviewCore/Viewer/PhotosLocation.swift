@@ -189,6 +189,14 @@ public enum PhotosText {
         String(localized: "Photos can't import \(format).", comment: "Batch: why the Photos library destination is off for a format")
     }
 
+    /// Delete failed in Photos for anything but the person's Cancel; `name` is the one picture's, nil for several.
+    public static func cantDelete(name: String?) -> String {
+        guard let name else {
+            return String(localized: "Can't delete these pictures from Photos.", comment: "Status bar when Photos refuses to delete the grid's selection")
+        }
+        return String(localized: "Can't delete \(name) from Photos.", comment: "Status bar when Photos refuses to delete a library picture")
+    }
+
     public static func cantAdd(name: String) -> String {
         String(localized: "Can't add \(name) to Photos.", comment: "Batch log row when Photos refuses an output")
     }

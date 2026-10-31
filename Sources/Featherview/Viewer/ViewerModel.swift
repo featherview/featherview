@@ -1101,8 +1101,14 @@ final class ViewerModel {
             guard !urls.isEmpty else { return }
             if urls.contains(where: PhotosLocation.isLibrary) {
                 // Photos' own prompt confirms, once for all; Cancel throws and nothing changes.
-                // shortcut: a delete Photos refuses for another reason shows nothing either, say so if users miss it.
-                guard (try? await PhotosLibrary.shared.delete(urls)) != nil else { return }
+                do {
+                    try await PhotosLibrary.shared.delete(urls)
+                } catch {
+                    if !PhotosLibrary.isCancel(error) {
+                        errorMessage = PhotosText.cantDelete(name: urls.count == 1 ? displayName(urls[0]) : nil)
+                    }
+                    return
+                }
                 return await removeFromList(urls)
             }
             let withSidecars = AppSettings.moveSidecars.value()
