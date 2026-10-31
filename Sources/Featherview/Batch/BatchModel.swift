@@ -377,7 +377,7 @@ final class BatchModel {
             }
         }) { [self] found in
             inputs.append(found.list)
-            if let failed = found.failed { notice = String(localized: "Can't open \(PhotosLibrary.shared.name(failed))") }
+            if let failed = found.failed { notice = String(localized: "Can't open \(PhotosLibrary.shared.name(failed) ?? failed.lastPathComponent)") }
         }
     }
 
