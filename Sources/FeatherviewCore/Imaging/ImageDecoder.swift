@@ -357,7 +357,7 @@ public enum ImageDecoder {
     }
 
     /// An 8-bit display decode drawn into `colorSpace` (see `decode`); anything else unchanged.
-    static func inColorSpace(_ image: CGImage, _ colorSpace: CGColorSpace?) -> CGImage {
+    public static func inColorSpace(_ image: CGImage, _ colorSpace: CGColorSpace?) -> CGImage {
         guard let colorSpace, image.bitsPerComponent == 8, image.colorSpace != colorSpace else { return image }
         return redrawn(image, width: image.width, height: image.height, in: colorSpace) ?? image
     }

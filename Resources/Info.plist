@@ -400,6 +400,10 @@
 	<string>AccentColor</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Featherview adds converted pictures to your Photos library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Featherview shows and converts pictures from your Photos library.</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUEnableSystemProfiling</key>

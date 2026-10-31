@@ -1,4 +1,6 @@
+import CryptoKit
 import Foundation
+import os
 
 /// A picture in the Photos library as a URL: `featherview-photos://library/<album>/<asset>`, each
 /// identifier percent-encoded into one path component (its `/` as `%2F`). The album URL is the
@@ -150,5 +152,62 @@ public enum PhotosText {
 
     public static func cantAdd(name: String) -> String {
         String(localized: "Can't add \(name) to Photos.", comment: "Batch log row when Photos refuses an output")
+    }
+}
+
+/// How `PhotosLibrary` names, places and keeps track of library pictures, without PhotoKit.
+public enum PhotosFetch {
+    /// The fetched file's name: the original's base name ("IMG_1234") with the written resource's extension,
+    /// since Photos names every edited version "FullSizeRender".
+    public static func fileName(original: String?, written: String) -> String {
+        guard let original else { return written }
+        let ext = (written as NSString).pathExtension
+        let base = (original as NSString).deletingPathExtension
+        return ext.isEmpty ? original : "\(base).\(ext)"
+    }
+
+    /// One folder per asset and version, so two IMG_0001.HEIC never meet and an edit in Photos fetches anew.
+    public static func folder(asset: String, modified: Date?) -> URL {
+        let key = "\(asset)\n\(modified?.timeIntervalSinceReferenceDate ?? 0)"
+        let hash = SHA256.hash(data: Data(key.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
+        return BatchSettings.photosCache.appendingPathComponent(hash, isDirectory: true)
+    }
+
+    /// Only the fit request says whether the viewer shows a preview of an iCloud-only picture: a thumbnail
+    /// Photos keeps locally says nothing about the original.
+    public static func record(inCloud: Bool, _ url: URL, target: DecodeTarget, in set: inout Set<URL>) {
+        guard case .fit = target else { return }
+        if inCloud { set.insert(url) } else { set.remove(url) }
+    }
+
+    /// Moves a fetched file into place; true when `file` is there afterwards, also when another fetch of
+    /// the same picture got there first.
+    public static func moveIn(_ temporary: URL, to file: URL) -> Bool {
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: file.path) { try? fm.moveItem(at: temporary, to: file) }
+        return fm.fileExists(atPath: file.path)
+    }
+
+    /// Cache folders (a drop's, a fetched picture's) this run uses; the launch-time emptying leaves them alone.
+    /// Held while emptying, so a folder is either emptied before its first use or not at all.
+    private static let used = OSAllocatedUnfairLock(initialState: Set<String>())
+
+    /// Marks `folder` as used by this run; waits while the launch-time emptying is on it. Call it before
+    /// touching the folder, off the main thread.
+    public static func use(_ folder: URL) {
+        used.withLock { _ = $0.insert(folder.standardizedFileURL.path) }
+    }
+
+    /// Empties the fetched pictures in `photos` and the drops' folders in `dropped`; drops lose only the
+    /// files Photos handed over (`DropItem.freshFolder`). Unless `all` (at quit), folders this run uses stay.
+    public static func emptyCaches(photos: URL = BatchSettings.photosCache, dropped: URL = BatchSettings.droppedCache, all: Bool) {
+        let fm = FileManager.default
+        func each(_ root: URL, _ empty: (URL) -> Void) {
+            for folder in (try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? [] {
+                used.withLockUnchecked { if all || !$0.contains(folder.standardizedFileURL.path) { empty(folder) } }
+            }
+        }
+        if all { try? fm.removeItem(at: photos) } else { each(photos) { try? fm.removeItem(at: $0) } }
+        each(dropped) { _ = DropItem.freshFolder($0) }
     }
 }

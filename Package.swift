@@ -49,9 +49,13 @@ let package = Package(
                     + [.unsafeFlags(["-w", "-O2"])],  // third-party code we don't edit: no warnings; optimised in debug too, for the tests
                 cxxSettings: cjpegxlDefines.map { .define($0.0, to: $0.1) } + cjpegxlHeaderPaths.map { .headerSearchPath($0) }
                     + [.unsafeFlags(["-w", "-O2"])]),
+        // PhotoKit access (Photos library pictures, albums, adding batch outputs). Only the app and the bench link it,
+        // so the Finder and Quick Look extensions stay without Photos.framework.
+        .target(name: "FeatherviewPhotos", dependencies: ["FeatherviewCore"], linkerSettings: [.linkedFramework("Photos")]),
         // The SwiftUI app. Thin: wires FeatherviewCore to windows, menus and keys.
         .executableTarget(name: "Featherview",
-                          dependencies: ["FeatherviewCore", "FeatherviewJXL", .product(name: "Sparkle", package: "Sparkle")],
+                          dependencies: ["FeatherviewCore", "FeatherviewJXL", "FeatherviewPhotos",
+                                         .product(name: "Sparkle", package: "Sparkle")],
                           linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]),
         // Finder thumbnails. SwiftPM can't make app extensions: scripts/bundle.sh wraps this binary in an .appex.
         .executableTarget(name: "FeatherviewThumbnail", dependencies: ["FeatherviewCore"],
@@ -59,10 +63,11 @@ let package = Package(
         // Quick Look previews (Space); wrapped in an .appex by scripts/bundle.sh like the thumbnails.
         .executableTarget(name: "FeatherviewPreview", dependencies: ["FeatherviewCore"],
                           linkerSettings: [.unsafeFlags(["-Xlinker", "-e", "-Xlinker", "_NSExtensionMain"])]),
-        .executableTarget(name: "FeatherviewBench", dependencies: ["FeatherviewCore"]),
+        .executableTarget(name: "FeatherviewBench", dependencies: ["FeatherviewCore", "FeatherviewPhotos"]),
         .executableTarget(name: "FeatherviewDMG", dependencies: ["FeatherviewCore"]),
         .testTarget(name: "FeatherviewCoreTests", dependencies: ["FeatherviewCore", "FeatherviewJXL"]),
         .testTarget(name: "FeatherviewBenchTests", dependencies: ["FeatherviewBench"]),
+        .testTarget(name: "FeatherviewPhotosTests", dependencies: ["FeatherviewPhotos"]),
     ],
     cxxLanguageStandard: .cxx17
 )
