@@ -450,8 +450,9 @@ private extension PSDNode {
 }
 
 public extension PSDCompositor {
-    /// Tagged blocks that make a layer an adjustment (`PSDAdjustments`).
-    static let adjustmentKeys = ["levl", "curv", "brit", "CgEd", "hue2", "blnc", "blwh", "mixr", "expA", "vibA", "phfl",
+    /// Tagged blocks that make a layer an adjustment (`PSDAdjustments`), the first one present deciding. CgEd comes before
+    /// brit: Photoshop keeps Brightness/Contrast's settings in CgEd and writes brit as zeros beside it.
+    static let adjustmentKeys = ["levl", "curv", "CgEd", "brit", "hue2", "blnc", "blwh", "mixr", "expA", "vibA", "phfl",
                                  "nvrt", "thrs", "post", "selc", "grdm"]
 
     /// The compositor as Photoshop draws `layers`: fill layers (`PSDFills`) and vector masks on any layer, and

@@ -33,7 +33,9 @@ public enum PSDAdjustments {
             let d = try PSDDescriptor.versioned(data)
             let brightness = try number(d["Brgh"]) ?? 0, contrast = try number(d["Cntr"]) ?? 0, mean = (try number(d["means"]) ?? 127) / 255
             if d["useLegacy"] == .bool(true) { return legacyBrightness(brightness, contrast, mean) }
-            // Photoshop doesn't publish its curve; this one keeps black and white where they are.
+            // shortcut: Photoshop doesn't publish this curve, and its composites (three settings in the corpus) fit neither a
+            // gamma, a Curves spline nor an S-curve; this approximation is off them by ~20 levels on average. Replace it if
+            // Adobe documents the curve or more samples pin it down.
             let exponent = pow(2, -brightness / 100), factor = 1 + contrast / 100
             return { c in
                 c = c.clamped(lowerBound: .zero, upperBound: .one)
@@ -168,6 +170,8 @@ public enum PSDAdjustments {
 
     // MARK: - Hue/Saturation
 
+    // shortcut: near-grey colours under a strong hue shift land on other hues in Photoshop's composites (~2 % of one corpus
+    // file's pixels) through an internal precision no 8-bit rounding order reproduces; match it if Adobe documents it.
     private static func hueSaturation(_ r: inout Reader) throws -> Adjust {
         _ = try r.u16()
         let colorize = try r.u8() != 0
@@ -365,8 +369,10 @@ public enum PSDAdjustments {
         let reverse = try r.u8() != 0
         _ = try r.u8()
         // Version 3 adds the interpolation method ('Gcls' classic, 'Perc' perceptual, 'Lnr ' linear, …).
-        // shortcut: every method mixes like classic (version 1), until the corpus oracle shows how far the others differ.
-        if version == 3 { try r.skip(4) }
+        // Perceptual places a colour on the map by its luminance in linear light, as Photoshop's composites show.
+        // shortcut: every method mixes like classic (version 1), and only perceptual places by linear light; the corpus has
+        // one perceptual composite (a grey) and none of the others, revisit when one shows more.
+        let perceptual = version == 3 ? try r.u32() == 0x5065_7263 : false
         try r.skip(Int(try r.u32()) * 2)
         let count = try r.u16()
         guard count > 0 else { throw OwnDecodeError.corrupt }
@@ -392,7 +398,9 @@ public enum PSDAdjustments {
             return a.colour + (b.colour - a.colour) * g
         }
         return { c in
-            let x = min(max(lum(c), 0), 1) * 255, i = min(Int(x), 254), f = x - Float(i)
+            var y = min(max(lum(c), 0), 1)
+            if perceptual { y = y <= 0.04045 ? y / 12.92 : pow((y + 0.055) / 1.055, 2.4) }
+            let x = y * 255, i = min(Int(x), 254), f = x - Float(i)
             c = table[i] + (table[i + 1] - table[i]) * f
         }
     }

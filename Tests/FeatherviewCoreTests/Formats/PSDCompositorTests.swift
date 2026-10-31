@@ -259,4 +259,16 @@ import Testing
         }
         #expect(image.pixels == [245, 235, 225, 255, 10, 20, 30, 255, 40, 50, 60, 255])
     }
+
+    /// Photoshop keeps a Brightness/Contrast layer's settings in CgEd and writes its brit block as zeros: CgEd decides.
+    @Test func brightnessContrastTakesItsSettingsFromCgEd() throws {
+        let settings = PSDFillsTests.block([("Vrsn", .long(1)), ("Brgh", .long(50)), ("Cntr", .long(0)), ("means", .long(127)),
+                                            ("useLegacy", .bool(true))])
+        let file = try PSDLayersTests.open(PSDFixture.makeLayered(width: 2, height: 1, layers: [
+            Self.solid("Grey", 0, 0, 2, 1, [100, 100, 100, 255]),
+            Layer(name: "Brightness/Contrast", blocks: ["brit": Data(count: 8), "CgEd": settings]),
+        ]))
+        let image = try PSDCompositor.photoshop(file).render(scale: 1)
+        #expect(image[0, 0] == (150, 150, 150, 255))
+    }
 }

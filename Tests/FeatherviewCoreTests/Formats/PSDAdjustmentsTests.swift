@@ -396,11 +396,22 @@ import Testing
 
     /// Version 3 (current Photoshop) puts the interpolation method's key between the dither byte and the name.
     @Test func gradientMapVersion3() throws {
-        for method in ["Gcls", "Perc", "Lnr ", "Smth"] {
+        for method in ["Gcls", "Lnr ", "Smth"] {
             let data = gradientMapBlock(reverse: false, interpolation: method, stops: [(0, (65535, 0, 0)), (4096, (0, 0, 65535))])
             #expect(close(try adjust("grdm", data, (0, 0, 0)), (1, 0, 0)))
             #expect(close(try adjust("grdm", data, (1, 1, 1)), (0, 0, 1)))
             #expect(close(try adjust("grdm", data, (0.5, 0.5, 0.5)), (0.5, 0, 0.5)))
         }
+    }
+
+    /// The perceptual method places a colour on the map by its luminance in linear light, as Photoshop's composites
+    /// show: a grey of 13 over a map from black to (249, 75, 2) at 35 % draws (3, 0, 0).
+    @Test func perceptualGradientMapPlacesByLinearLight() throws {
+        let data = gradientMapBlock(reverse: false, interpolation: "Perc", stops: [(0, (0, 0, 0)), (1424, (63_993, 19_275, 514)), (4096, (65535, 65535, 65535))])
+        let grey = Float(13) / 255
+        #expect(close(try adjust("grdm", data, (grey, grey, grey)), (3 / 255, 0.86 / 255, 0), 0.6 / 255))
+        let ramp = gradientMapBlock(reverse: false, interpolation: "Perc", stops: [(0, (0, 0, 0)), (4096, (65535, 65535, 65535))])
+        #expect(close(try adjust("grdm", ramp, (0.5, 0.5, 0.5)), (0.214, 0.214, 0.214)))
+        #expect(close(try adjust("grdm", ramp, (1, 1, 1)), (1, 1, 1)))
     }
 }

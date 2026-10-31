@@ -40,11 +40,11 @@ import Testing
 
     /// A GdFl block: colour stops (colour, location 0…4096), transparency stops (percent, location).
     static func gradient(_ type: String, angle: Double, colours: [(V, Int)], opacities: [(Double, Int)] = [(100, 0), (100, 4096)],
-                         extra: [(String, V)] = []) -> Data {
+                         smoothness: Double = 4096, extra: [(String, V)] = []) -> Data {
         block(extra + [
             ("Angl", .unit("#Ang", angle)), ("Type", .enm("GrdT", type)),
             ("Grad", .obj("Grdn", [
-                ("Nm  ", .text("Test")), ("GrdF", .enm("GrdF", "CstS")), ("Intr", .doub(4096)),
+                ("Nm  ", .text("Test")), ("GrdF", .enm("GrdF", "CstS")), ("Intr", .doub(smoothness)),
                 ("Clrs", .list(colours.map { .obj("Clrt", [("Clr ", $0.0), ("Type", .enm("Clry", "UsrS")), ("Lctn", .long($0.1)), ("Mdpn", .long(50))]) })),
                 ("Trns", .list(opacities.map { .obj("TrnS", [("Opct", .unit("#Prc", $0.0)), ("Lctn", .long($0.1)), ("Mdpn", .long(50))]) })),
             ])),
@@ -201,17 +201,61 @@ import Testing
         #expect(Self.pixel(image, 0, 0)[0] <= 30 && Self.pixel(image, 63, 0)[0] >= 251)
     }
 
-    /// Smoothness (Intr, of 4096) eases each stretch between stops into a smoothstep, so a quarter of the way along is
-    /// darker than a quarter of the colour; without a box flag the gradient spans the shape, not the canvas.
+    /// Smoothness (Intr, of 4096) eases each stretch between stops half way toward a smoothstep, so a quarter of the way
+    /// along is darker than a quarter of the colour; without a box flag the gradient spans the shape, not the canvas.
     @Test func smoothnessEasesAndShapesAlign() throws {
         let stops: [(V, Int)] = [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)]
         let smooth = try Self.fillLayer(["GdFl": Self.gradient("Lnr ", angle: 0, colours: stops)], width: 64, height: 1)
         let image = try #require(try PSDFills.content(smooth, canvas: (64, 1), patterns: [:], scale: 1))
-        #expect(abs(Int(Self.pixel(image, 16, 0)[0]) - 41) <= 3)  // smoothstep(0.26) · 255
+        #expect(abs(Int(Self.pixel(image, 16, 0)[0]) - 52) <= 1)  // (0.25 + smoothstep(0.25)) / 2 · 255
         let shaped = try Self.fillLayer(["GdFl": Self.gradient("Lnr ", angle: 0, colours: stops),
                                          "vmsk": Self.vectorMask(Self.square(0.5, 1))], width: 64, height: 64)
         let half = try #require(try PSDFills.content(shaped, canvas: (64, 64), patterns: [:], scale: 1))
-        #expect(Self.pixel(half, 0, 16)[0] <= 2 && Self.pixel(half, 31, 16)[0] >= 253)
+        #expect(Self.pixel(half, 0, 16)[0] <= 2 && Self.pixel(half, 31, 16)[0] >= 250)  // the last corner is 31/32 along
+    }
+
+    /// A gradient takes each pixel's colour at its top-left corner, as Photoshop's composites show: the first pixel of a
+    /// left-to-right ramp is the first stop exactly.
+    @Test func gradientsSampleAtPixelCorners() throws {
+        let stops: [(V, Int)] = [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)]
+        let layer = try Self.fillLayer(["GdFl": Self.gradient("Lnr ", angle: 0, colours: stops, smoothness: 0)], width: 4, height: 1)
+        let image = try #require(try PSDFills.content(layer, canvas: (4, 1), patterns: [:], scale: 1))
+        #expect((0..<4).map { Self.pixel(image, $0, 0)[0] } == [0, 64, 128, 191])
+    }
+
+    /// A fit decode's gradient is the full-size one averaged: each scaled pixel matches the mean of the canvas pixels
+    /// it covers, on the canvas and in a shape.
+    @Test func scaledGradientsMatchTheFullSizeMean() throws {
+        let stops: [(V, Int)] = [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)]
+        for blocks in [["GdFl": Self.gradient("Lnr ", angle: 0, colours: stops)],
+                       ["GdFl": Self.gradient("Lnr ", angle: 0, colours: stops), "vmsk": Self.vectorMask(Self.square(0.25, 0.75))]] {
+            let layer = try Self.fillLayer(blocks, width: 64, height: 64)
+            let full = try #require(try PSDFills.content(layer, canvas: (64, 64), patterns: [:], scale: 1))
+            let small = try #require(try PSDFills.content(layer, canvas: (64, 64), patterns: [:], scale: 0.125))
+            #expect(small.width * 8 == full.width)
+            for x in 0..<small.width {
+                let mean = (0..<8).reduce(0) { $0 + Int(Self.pixel(full, x * 8 + $1, 0)[0]) } / 8
+                #expect(abs(Int(Self.pixel(small, x, 0)[0]) - mean) <= 2, "pixel \(x)")
+            }
+        }
+    }
+
+    /// A noise gradient draws random colours within its ranges from its seed (RndS), as many and as sharp as its
+    /// roughness (Smth) asks: the same seed draws the same fill, another seed another.
+    @Test func noiseGradientFillUsesItsSeed() throws {
+        func noise(seed: Int) throws -> RGBAImage {
+            let block = Self.block([("Angl", .unit("#Ang", 0)), ("Type", .enm("GrdT", "Lnr ")), ("Grad", .obj("Grdn", [
+                ("GrdF", .enm("GrdF", "ClNs")), ("ClrS", .enm("ClrS", "RGBC")), ("RndS", .long(seed)), ("Smth", .long(2048)),
+                ("Mnm ", .list([20, 0, 50, 100].map { .doub($0) })), ("Mxm ", .list([40, 100, 50, 100].map { .doub($0) }))]))])
+            return try #require(try PSDFills.content(try Self.fillLayer(["GdFl": block], width: 256, height: 1),
+                                                     canvas: (256, 1), patterns: [:], scale: 1))
+        }
+        let a = try noise(seed: 7)
+        #expect(try a == noise(seed: 7) && a != noise(seed: 8))
+        let pixels = (0..<256).map { Self.pixel(a, $0, 0) }
+        #expect(pixels.allSatisfy { (51...102).contains($0[0]) && $0[2] == 128 && $0[3] == 255 })
+        let greens = pixels.map { Int($0[1]) }
+        #expect(Set(greens).count > 20 && greens.max()! - greens.min()! > 100)  // not a flat fill
     }
 
     /// "Snap to pixel" (sn2P) puts a vector mask's points on whole canvas pixels: an edge at 2.4 px covers pixel 2 fully.
@@ -229,7 +273,8 @@ import Testing
         let radial = try #require(try PSDFills.content(
             try Self.fillLayer(["GdFl": Self.gradient("Rdl ", angle: 90, colours: stops)], width: 65, height: 65),
             canvas: (65, 65), patterns: [:], scale: 1))
-        #expect(Self.pixel(radial, 32, 32)[0] <= 2)
+        // The centre (32.5, 32.5) goes to the whole pixel (32, 32).
+        #expect(Self.pixel(radial, 32, 32)[0] == 0 && Self.pixel(radial, 33, 33) == Self.pixel(radial, 31, 31))
         #expect(Self.pixel(radial, 0, 32)[0] >= 245)
         #expect(Self.pixel(radial, 0, 0)[0] == 255)
         #expect(Self.pixel(radial, 16, 32) == Self.pixel(radial, 32, 16))
@@ -239,7 +284,18 @@ import Testing
             canvas: (65, 65), patterns: [:], scale: 1))
         #expect(Self.pixel(reflected, 10, 32)[0] <= 2)
         #expect(Self.pixel(reflected, 10, 0)[0] >= 245 && Self.pixel(reflected, 10, 64)[0] >= 245)
-        for y in 0..<65 { #expect(Self.pixel(reflected, 5, y) == Self.pixel(reflected, 5, 64 - y)) }
+        // Mirrored about the centre row, up to a tie between two table steps.
+        for y in 0..<65 { #expect(abs(Int(Self.pixel(reflected, 5, y)[0]) - Int(Self.pixel(reflected, 5, 64 - y)[0])) <= 1) }
+    }
+
+    /// A gradient line's ends sit on whole pixels, as Photoshop's composites show: a reflected 4 × 4 gradient at 30°
+    /// ends half its length from the centre at (4.37, 0.63), which goes to (4, 0), so it draws at 45°.
+    @Test func gradientLineEndsOnWholePixels() throws {
+        let stops: [(V, Int)] = [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)]
+        let layer = try Self.fillLayer(["GdFl": Self.gradient("Rflc", angle: 30, colours: stops, smoothness: 0)], width: 4, height: 4)
+        let image = try #require(try PSDFills.content(layer, canvas: (4, 4), patterns: [:], scale: 1))
+        // Half way is a tie between two table steps, 127 or 128.
+        for y in 0..<4 { for x in 0..<4 { #expect(abs(Int(Self.pixel(image, x, y)[0]) - [0, 64, 128, 191][abs(x - y)]) <= 1) } }
     }
 
     @Test func transparencyStops() throws {
@@ -377,7 +433,7 @@ import Testing
         let image = try #require(try PSDFills.content(layer, canvas: (100, 2), patterns: [:], scale: 1))
         #expect(image.width == 50)
         #expect(abs(Int(Self.pixel(image, 0, 0)[0]) - 129) <= 3)
-        #expect(abs(Int(Self.pixel(image, 25, 0)[0]) - 217) <= 3)  // three quarters along, eased by full smoothness
+        #expect(abs(Int(Self.pixel(image, 25, 0)[0]) - 203) <= 3)  // three quarters along, eased by full smoothness
     }
 
     @Test func pathOperationsCombineShapes() throws {
