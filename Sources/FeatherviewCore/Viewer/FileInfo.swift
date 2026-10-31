@@ -22,7 +22,7 @@ public struct FileInfo: Equatable, Sendable {
     /// Reads the file; call off the main thread (it touches the disk). A library picture's info comes from the
     /// library (`ImageDecoder.library`); without one it has none.
     public static func read(url: URL, page: Int) -> FileInfo {
-        if ImageDecoder.isLibrary(url) {
+        if PhotosLocation.isLibrary(url) {
             guard let info = ImageDecoder.library?.info(url) else {
                 return FileInfo(url: url, page: page, pixelSize: nil, bytes: nil, modified: nil, values: [:])
             }
@@ -47,7 +47,7 @@ public struct FileInfo: Equatable, Sendable {
 
     /// True while the file has the size and date this read saw, so nothing rewrote it since: one stat, where a read
     /// opens the file's header too. A library picture always is: it has no file to stat.
-    public var isCurrent: Bool { ImageDecoder.isLibrary(url) || (url.modificationDate == modified && url.fileSize == bytes) }
+    public var isCurrent: Bool { PhotosLocation.isLibrary(url) || (url.modificationDate == modified && url.fileSize == bytes) }
 
     /// A read for another page of the same file has another pixel size.
     public func isFor(_ url: URL?, page: Int) -> Bool { self.url == url && self.page == page }

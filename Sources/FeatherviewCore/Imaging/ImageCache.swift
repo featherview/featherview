@@ -69,7 +69,7 @@ public actor ImageCache {
                     "Decode", id: Signposts.poster.makeSignpostID(),
                     "\(url.lastPathComponent, privacy: .public) \(label, privacy: .public)"
                     ) {
-                        if ImageDecoder.isLibrary(url) {
+                        if PhotosLocation.isLibrary(url) {
                             try ImageDecoder.libraryImage(url, target: target, hdr: hdr, colorSpace: colorSpace)
                         } else if let side { try ImageDecoder.thumbnail(url, side: side, colorSpace: colorSpace) }
                         else { try ImageDecoder.decode(url, halvingSteps: true, fitting: screens, step: step, hdr: hdr, colorSpace: colorSpace) }

@@ -9,7 +9,13 @@ enum SavePanel {
     /// Shows the sheet on `window` (a modal panel without one). The panel's own replace prompt is the
     /// only overwrite confirmation. On Save, the format and its options are remembered.
     static func run(for url: URL, window: NSWindow?) async -> (url: URL, format: OutputFormat, options: FormatOptions)? {
-        await run(name: url.lastPathComponent, folder: url.deletingLastPathComponent(), window: window)
+        await run(name: url.lastPathComponent, folder: DropItem.saveFolder(url.deletingLastPathComponent(), else: picturesFolder),
+                  window: window)
+    }
+
+    /// Where Save As starts when the picture's own folder won't do.
+    static var picturesFolder: URL {
+        FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first ?? FileManager.default.homeDirectoryForCurrentUser
     }
 
     /// The same for an image without a file: `name` (no extension) in `folder`.

@@ -198,6 +198,8 @@ final class ViewerModel {
     private let decodes = DecodeQueue()
     /// Counts opens, so a superseded open's scan can't refocus the newer one's decodes (checked under the lock).
     private let openCount = OSAllocatedUnfairLock(initialState: 0)
+    /// A drop waiting for its promised files; a newer drop or any open supersedes it.
+    @ObservationIgnored var pendingDrop: Task<Void, Never>?
     let cache: ImageCache
     /// Zoom decodes larger than the fit decode: one kept, and ones nobody waits for any more are skipped.
     /// Zoom steps at or below fit size go in `cache`, as large as fit decodes.
@@ -293,6 +295,7 @@ final class ViewerModel {
     /// `keepingCompare`: pane 1 changes folder (a swap or a compare start), pane 2 stays.
     /// `remember`: listed in File › Open Recent (not for browsing into another folder).
     func open(_ url: URL, keepingCompare: Bool = false, remember: Bool = true) {
+        pendingDrop?.cancel()
         if guardUnsaved(then: { [weak self] in self?.open(url, keepingCompare: keepingCompare, remember: remember) }) {
             return
         }
