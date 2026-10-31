@@ -246,7 +246,8 @@ Files". Items show the file or folder name; two items with the same name get " �
 Files that are gone or in the Trash are left out (checked when the app becomes active and after its own
 moves and Trash). Counted as opened: an image or folder opened with ⌘O / O, dropped on the window,
 opened from Finder or the Dock, chosen in Open Recent, the file New from Clipboard opens, and a file
-written by Save As. Not counted: browsing, the folder chooser, Follow New Files, compare. A renamed or
+written by Save As. Not counted: browsing, the folder chooser, Follow New Files, compare, and pictures
+dropped from Photos (their `Dropped/<n>` copies are emptied, and the numbers reused, by later launches). A renamed or
 moved file keeps its entry (the system follows the file). The Dock menu shows the same list, kept by
 macOS itself; it may show a renamed file's old name until macOS refreshes it. The list is read after the
 first image is drawn, never on the launch path.
@@ -703,7 +704,13 @@ the library is ever changed, except a delete the person confirms in the system's
 - **Drops from Photos:** pictures dragged from the Photos app onto a viewer window open as a dropped
   selection: Photos hands over files, which land in a new folder in Featherview's cache folder
   (`…/Dropped/<n>`), and the window browses that folder. Onto the batch window's list they join the
-  inputs. Onto the Dock icon, macOS hands over files as for any other app.
+  inputs; like library pictures they have no originals on disk, so "Next to the originals" doesn't
+  apply and Start asks for a folder or Photos library. A drop waits for its files until a minute
+  passes without one arriving (Photos may still be downloading from iCloud, or may have quit); then
+  what arrived opens or joins and the rest is left out. A later launch's drop empties the folder: it
+  deletes only the files Photos handed over, unchanged, and moves anything else there (saved, renamed or
+  edited by the user) to the Trash; Save As for a dropped picture starts in Pictures, not there. Onto
+  the Dock icon, macOS hands over files as for any other app.
 - **Permission only when used:** the system's Photos access prompt appears the first time Open from
   Photos… is chosen, never at launch, and nothing calls Photos before then (linking the framework costs
   launch nothing measurable). With access denied the sheet says "Featherview can't see your Photos

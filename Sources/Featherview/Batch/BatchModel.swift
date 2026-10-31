@@ -114,6 +114,10 @@ final class BatchModel {
 
     func start() {
         guard canStart else { return }
+        if settings.needsDestination(inputs: inputs.items.map(\.url)) {
+            notice = String(localized: "Choose where to save pictures from Photos.")
+            return
+        }
         // A clicked button doesn't take focus: a field still being edited hasn't written its value yet.
         NSApp.keyWindow?.makeFirstResponder(nil)
         clearFinished()
@@ -276,11 +280,11 @@ final class BatchModel {
 
     /// Runs `work` off the main thread (it touches the disk), then `append`s its result on the main
     /// actor once every earlier add has appended.
-    private func addInOrder<T: Sendable>(_ work: @escaping @Sendable () -> T, append: @escaping (T) -> Void) {
+    private func addInOrder<T: Sendable>(_ work: @escaping @Sendable () async -> T, append: @escaping (T) -> Void) {
         scans += 1
         let previous = lastAdd
         lastAdd = Task {
-            let found = await Task.detached(priority: .userInitiated) { work() }.value
+            let found = await Task.detached(priority: .userInitiated) { await work() }.value
             await previous?.value
             append(found)
             scans -= 1
@@ -289,7 +293,7 @@ final class BatchModel {
 
     /// Scanned and de-duplicated off the main thread, then appended in the order given; folders that
     /// couldn't be listed or hold no images get a notice.
-    private func addInBackground(_ work: @escaping @Sendable () -> (list: BatchInputList, unreadable: [URL], empty: [URL])) {
+    private func addInBackground(_ work: @escaping @Sendable () async -> (list: BatchInputList, unreadable: [URL], empty: [URL])) {
         addInOrder(work) { [self] found in
             inputs.append(found.list)
             if let message = BatchInputList.notice(unreadable: found.unreadable, empty: found.empty) { notice = message }
@@ -308,9 +312,10 @@ final class BatchModel {
         addInBackground { BatchInputList.scanReporting(folder: folder, subfolders: subfolders) }
     }
 
-    /// Dropped files and folders; folders add with their subfolders.
-    func add(dropped urls: [URL]) {
-        addInBackground { BatchInputList.scan(dropped: urls) }
+    /// Dropped files and folders, once they have arrived (promises from Photos take a while); folders
+    /// add with their subfolders. Start waits for them like for a scan.
+    func add(dropped arriving: Task<[URL], Never>) {
+        addInBackground { BatchInputList.scan(dropped: await arriving.value) }
     }
 
     func addFilesPanel() {

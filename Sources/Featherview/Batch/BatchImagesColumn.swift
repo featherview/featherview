@@ -31,11 +31,11 @@ struct BatchImagesColumn: View {
                     .onDeleteCommand { if !model.isRunning { model.removeSelected() } }
                 }
             }
-            .dropDestination(for: URL.self) { urls, _ in
+            .onDrop(of: PromiseDrop.types, isTargeted: $isDropTarget) { _ in
                 guard !model.isRunning, !GridCollectionView.isDraggingOut else { return false }
-                model.add(dropped: urls)
+                model.add(dropped: PromiseDrop.receive())
                 return true
-            } isTargeted: { isDropTarget = $0 }
+            }
             .overlay {
                 if isDropTarget { RoundedRectangle(cornerRadius: Theme.Radius.batchRow).stroke(.tint, lineWidth: 2).padding(2) }
             }
