@@ -973,11 +973,18 @@ final class ViewerModel {
         return nil
     }
 
+    /// A library picture's fetched current version when that needs no download from iCloud; nil for a file or
+    /// when the fetch fails. Blocks, so call it through `offPool`.
+    nonisolated static func localFile(_ url: URL) -> URL? {
+        guard PhotosLocation.isLibrary(url) else { return nil }
+        return try? PhotosLibrary.shared.file(url, network: false)
+    }
+
     /// The info panel's details: a library picture's are read from its fetched file, without a folder (an album has
     /// none) and with the date Photos keeps, not the fetch's. Never downloads from iCloud just for them. Blocks, so
     /// call it through `offPool`.
     nonisolated static func readInfo(_ url: URL) -> ImageInfo {
-        guard PhotosLocation.isLibrary(url), let file = try? PhotosLibrary.shared.file(url, network: false) else { return ImageInfo.read(url) }
+        guard let file = localFile(url) else { return ImageInfo.read(url) }
         var info = ImageInfo.read(file)
         info.folder = nil
         info.modified = PhotosLibrary.shared.info(url).modified?.formatted(date: .abbreviated, time: .shortened)
