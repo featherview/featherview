@@ -379,14 +379,8 @@ public enum PSDFills {
             var space = ""
             if case .enumerated(_, let s)? = grad["ClrS"] { space = s }
             let roughness = min(max((number(grad["Smth"]) ?? 2048) / 4096, 0), 1)
-            var seed = UInt64(truncatingIfNeeded: Int(number(grad["RndS"]) ?? 0))
-            func random() -> Double {  // SplitMix64
-                seed &+= 0x9E37_79B9_7F4A_7C15
-                var z = seed
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return Double((z ^ (z >> 31)) >> 11) / Double(1 << 53)
-            }
+            var generator = SplitMix64(state: UInt64(truncatingIfNeeded: Int(number(grad["RndS"]) ?? 0)))
+            func random() -> Double { Double(generator.next() >> 11) / Double(1 << 53) }
             let labSpace = CGColorSpace(labWhitePoint: [0.9642, 1, 0.8249], blackPoint: [0, 0, 0], range: [-128, 127, -128, 127])
             let target = rgb ?? CGColorSpace(name: CGColorSpace.sRGB)
             // Each range in percent of its channel: RGB, HSB (hue as a share of the circle) or Lab (a, b over −128…127, into
