@@ -51,7 +51,9 @@ let package = Package(
                     + [.unsafeFlags(["-w", "-O2"])]),
         // PhotoKit access (Photos library pictures, albums, adding batch outputs). Only the app and the bench link it,
         // so the Finder and Quick Look extensions stay without Photos.framework.
-        .target(name: "FeatherviewPhotos", dependencies: ["FeatherviewCore"], linkerSettings: [.linkedFramework("Photos")]),
+        // AppKit too: Photos hands pictures over as NSImage, and returns nil without one when nothing else loads AppKit (the bench).
+        .target(name: "FeatherviewPhotos", dependencies: ["FeatherviewCore"],
+                linkerSettings: [.linkedFramework("Photos"), .linkedFramework("AppKit")]),
         // The SwiftUI app. Thin: wires FeatherviewCore to windows, menus and keys.
         .executableTarget(name: "Featherview",
                           dependencies: ["FeatherviewCore", "FeatherviewJXL", "FeatherviewPhotos",
