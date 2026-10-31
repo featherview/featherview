@@ -221,8 +221,8 @@ struct ViewerView: View {
             let arriving = PromiseDrop.receive()
             Task {
                 // Promised files land together in one Dropped folder, so opening the first browses the drop.
-                // Not remembered: Dropped/<n> is emptied and its numbers are reused by later launches.
-                if let url = await arriving.value.first { model.open(url, remember: false) }
+                // Promised files aren't remembered: Dropped/<n> is emptied and its numbers are reused by later launches.
+                if let url = await arriving.value.first { model.open(url, remember: !BatchSettings.isDropped(url)) }
             }
             return true
         }

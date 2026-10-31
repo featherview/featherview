@@ -196,6 +196,14 @@ import Testing
         #expect(!s.needsDestination(inputs: [dropped]))
     }
 
+    /// Only promised files in Dropped/<n> stay out of Open Recent; a Finder drop is remembered (spec "Open Recent").
+    @Test func onlyPromisedDropsAreInTheDroppedCache() {
+        #expect(BatchSettings.isDropped(BatchSettings.droppedCache.appending(path: "1/IMG_0001.HEIC")))
+        #expect(!BatchSettings.isDropped(URL(filePath: "/Users/someone/Pictures/a.jpg")))
+        #expect(!BatchSettings.isDropped(URL(filePath: "/Users/someone/Pictures", directoryHint: .isDirectory)))
+        #expect(!BatchSettings.isDropped(BatchSettings.droppedCache.deletingLastPathComponent().appending(path: "Dropped-x/a.jpg")))
+    }
+
     @Test func secondsLeftTakesPausesOut() {
         #expect(BatchProgress.secondsLeft(elapsed: 10, paused: 4, done: 3, total: 6) == 6)
         #expect(BatchProgress.secondsLeft(elapsed: 10, paused: 0, done: 2, total: 6) == nil)

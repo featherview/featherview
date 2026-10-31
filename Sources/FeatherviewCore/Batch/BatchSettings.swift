@@ -245,8 +245,11 @@ public struct BatchSettings: Codable, Equatable, Sendable {
     public static let droppedCache = URL.cachesDirectory.appending(path: "net.mynetx.featherview/Dropped", directoryHint: .isDirectory)
     /// Outputs next to an input in a folder the app empties would be deleted with it.
     public func needsDestination(inputs: [URL]) -> Bool {
-        let cache = Self.droppedCache.standardizedFileURL.path + "/"
-        return outputFolder.isEmpty && inputs.contains { $0.standardizedFileURL.path.hasPrefix(cache) }
+        outputFolder.isEmpty && inputs.contains(where: Self.isDropped)
+    }
+    /// A promised file received into `Dropped/<n>`, as opposed to one dropped where it lives.
+    public static func isDropped(_ url: URL) -> Bool {
+        url.standardizedFileURL.path.hasPrefix(droppedCache.standardizedFileURL.path + "/")
     }
     public var renamePattern = "{name}"
     public var crop = CropSettings(), resize = ResizeSettings(), orientation = OrientationSettings()
