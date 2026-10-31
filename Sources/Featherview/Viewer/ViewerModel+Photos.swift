@@ -10,6 +10,13 @@ extension ViewerModel {
         (folder ?? list.urls.first).map(PhotosLocation.isLibrary) == true
     }
 
+    /// After a library picture's short wait: false when the task was cancelled meanwhile. A held key or a slideshow
+    /// passes library pictures by, and a fetch can't be stopped once started, so only one stayed on is fetched.
+    nonisolated static func settled(_ url: URL) async -> Bool {
+        if PhotosLocation.isLibrary(url) { try? await Task.sleep(for: .milliseconds(150)) }
+        return !Task.isCancelled
+    }
+
     /// The name shown for `url`: a library picture's original file name, an album's name, else the file or folder name.
     /// A library picture not named yet reads empty until its lookup lands off the main thread, "Untitled" if it fails.
     func displayName(_ url: URL) -> String {

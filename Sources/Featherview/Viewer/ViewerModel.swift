@@ -941,9 +941,7 @@ final class ViewerModel {
         guard start, PhotosLocation.isLibrary(url) else { return }
         // Weak: a closed window's model mustn't wait for PhotoKit.
         let task = Task { [weak self] in
-            // A held key or a slideshow passes pictures by: only one stayed on downloads its original.
-            try? await Task.sleep(for: .milliseconds(150))
-            guard !Task.isCancelled, PhotosLibrary.shared.isInCloud(url) else { return }
+            guard await ViewerModel.settled(url), PhotosLibrary.shared.isInCloud(url) else { return }
             self?.cloudNotes.started(url)
             do {
                 try await PhotosLibrary.shared.download(url)

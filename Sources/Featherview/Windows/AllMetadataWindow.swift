@@ -147,10 +147,8 @@ private struct AllMetadataView: View {
             // Another image: never show the last one's entries under its name while this one is read.
             if key.url != catalogURL { catalog = nil; catalogURL = nil; catalogName = nil; selection = [] }
             guard let url = key.url else { return }
-            // A library picture's tags come from its fetched file, as the info panel's do, and after the same wait:
-            // a held key passes library pictures by, and a fetch can't be stopped once started.
-            if PhotosLocation.isLibrary(url) { try? await Task.sleep(for: .milliseconds(150)) }
-            guard !Task.isCancelled else { return }
+            // A library picture's tags come from its fetched file, as the info panel's do, and after the same wait.
+            guard await ViewerModel.settled(url) else { return }
             let read = await offPool { MetadataCatalog.read(ViewerModel.localFile(url) ?? url) }
             // A later image's read replaced this one: its task was cancelled.
             guard !Task.isCancelled else { return }
