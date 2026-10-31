@@ -101,7 +101,8 @@ public enum BatchCard: String, CaseIterable, Identifiable, Sendable {
                 return String(localized: "\(w) × \((r.percentHeight / 100).formatted(.percent))")
             }
         case .name:
-            let place = s.outputFolder.isEmpty
+            let place = s.toPhotos ? String(localized: "Photos library", comment: "Batch Name card: where files are saved")
+                : s.outputFolder.isEmpty
                 ? String(localized: "Next to the originals", comment: "Batch Name card: where files are saved")
                 : ((s.outputFolder as NSString).expandingTildeInPath as NSString).lastPathComponent
             return String(localized: "\(s.renamePattern) · \(place)", comment: "Batch Name card: rename pattern and the folder saved to")
@@ -260,8 +261,9 @@ public enum BatchRowState: Equatable, Sendable {
 public enum BatchProgress {
     public static func canStart(isRunning: Bool, scans: Int, inputCount: Int, settings: BatchSettings) -> Bool {
         // A scan still in flight would append files the run never sees.
-        // An empty folder means next to each original.
-        !isRunning && scans == 0 && inputCount > 0 && (settings.outputFolder.isEmpty || settings.hasAbsoluteOutputFolder)
+        // An empty folder means next to each original; to Photos the folder isn't used.
+        !isRunning && scans == 0 && inputCount > 0
+            && (settings.toPhotos || settings.outputFolder.isEmpty || settings.hasAbsoluteOutputFolder)
     }
 
     /// Estimated seconds left once 3 files are done, from the time spent not paused.
