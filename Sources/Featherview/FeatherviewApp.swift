@@ -204,14 +204,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let held = NSPasteboard.general.readObjects(forClasses: [NSURL.self],
                                                         options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
             DispatchQueue.global(qos: .utility).async {
-                PhotosLibrary.emptyCaches(all: false)
+                PhotosFetch.emptyCaches(all: false)
                 PhotosFetch.emptyClipboardCopies(unless: held)
             }
         }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        PhotosLibrary.emptyCaches(all: true)
+        PhotosFetch.emptyCaches(all: true)
     }
 
     /// Spec "Help menu": after a crash, offers once (10 s after launch, like the update check) to open the bug report

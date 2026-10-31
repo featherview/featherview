@@ -238,10 +238,4 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
             PHAssetCreationRequest.forAsset().addResource(with: .photo, fileURL: file, options: options)
         }
     }
-
-    /// Empties the fetched files and the drops' folders: at launch (`all` false) all but those this run already
-    /// uses, at quit (`all` true) everything. See `PhotosFetch.emptyCaches`.
-    public static func emptyCaches(all: Bool) {
-        PhotosFetch.emptyCaches(all: all)
-    }
 }
