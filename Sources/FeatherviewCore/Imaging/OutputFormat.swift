@@ -37,6 +37,10 @@ public struct OutputFormat: Hashable, Sendable, Identifiable {
         return UTType(filenameExtension: fileExtension)
     }
 
+    /// Photos imports it, so the batch can add it to the library (spec "Output").
+    /// shortcut: fixed list, check AVIF/JPEG XL/WebP imports when the minimum macOS rises.
+    public var photosImports: Bool { ["jpg", "heic", "png", "tiff", "gif"].contains(id) }
+
     /// `url`'s name with this format's extension, for Save As. Not the UTType's preferred one:
     /// PGM and PPM share public.pbm (.pbm), and JPEG's is .jpeg where batch output writes .jpg.
     public func fileName(for url: URL) -> String {

@@ -239,6 +239,8 @@ public struct BatchSettings: Codable, Equatable, Sendable {
     public var options = FormatOptions()
     /// A path; may contain {folder}. Empty: next to each original.
     public var outputFolder = ""
+    /// Each output is added to the Photos library and nothing stays on disk; `outputFolder` is then unused.
+    public var toPhotos = false
     /// A typed relative path would resolve against the app's working directory, "/"; `~` is fine (BatchNamer expands it).
     public var hasAbsoluteOutputFolder: Bool { (outputFolder as NSString).expandingTildeInPath.hasPrefix("/") }
     public var renamePattern = "{name}"
@@ -272,6 +274,22 @@ public struct BatchSettings: Codable, Equatable, Sendable {
     /// Keep format, nothing changes the pixels and one output per input: the converter copies each
     /// file's bytes (Date Taken rewrites the date in them losslessly).
     public var copiesUnchanged: Bool { !changeFormat && !hasOperations && !splits }
+
+    /// Where the app fetches library pictures (spec "Photos library"); emptied at quit.
+    public static let photosCache = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("net.mynetx.featherview/Photos", isDirectory: true)
+
+    /// A library picture's fetched file: it has no original on disk, and is never trashed.
+    static func isLibraryInput(_ url: URL) -> Bool {
+        url.standardizedFileURL.path.hasPrefix(photosCache.standardizedFileURL.path + "/")
+    }
+
+    /// Why Start can't run with these inputs, or nil.
+    public func problem(inputs: [URL]) -> String? {
+        if toPhotos { return format.photosImports ? nil : PhotosText.cantImport(format: format.name) }
+        if outputFolder.isEmpty, inputs.contains(where: Self.isLibraryInput) { return PhotosText.needsDestination }
+        return nil
+    }
 }
 
 /// One file of the batch's input list.
@@ -472,6 +490,7 @@ extension BatchSettings {
         formatID = c.value(.formatID, d.formatID)
         options = c.value(.options, d.options)
         outputFolder = c.value(.outputFolder, d.outputFolder)
+        toPhotos = c.value(.toPhotos, d.toPhotos)
         renamePattern = c.value(.renamePattern, d.renamePattern)
         crop = c.value(.crop, d.crop); resize = c.value(.resize, d.resize)
         orientation = c.value(.orientation, d.orientation); colour = c.value(.colour, d.colour)
