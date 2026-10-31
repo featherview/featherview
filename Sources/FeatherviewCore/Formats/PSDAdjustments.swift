@@ -170,6 +170,8 @@ public enum PSDAdjustments {
 
     // MARK: - Hue/Saturation
 
+    // shortcut: near-grey colours under a strong hue shift land on other hues in Photoshop's composites (~2 % of one corpus
+    // file's pixels) through an internal precision no 8-bit rounding order reproduces; match it if Adobe documents it.
     private static func hueSaturation(_ r: inout Reader) throws -> Adjust {
         _ = try r.u16()
         let colorize = try r.u8() != 0
