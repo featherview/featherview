@@ -271,25 +271,32 @@ public enum PhotosFetch {
     /// Where grid ⌘C copies library pictures: not emptied at quit, so the clipboard still pastes afterwards.
     public static let clipboardCache = URL.cachesDirectory.appending(path: "net.mynetx.featherview/Clipboard", directoryHint: .isDirectory)
 
-    /// Copies of the fetched `files` for the clipboard, each in a numbered folder of its own under `root`, so two
-    /// IMG_0001.HEIC never meet; the previous copies go first, as the clipboard holds one copy at a time. Nil when
-    /// one can't be copied. Touches the disk, so call it off the main thread.
+    /// Copies of the fetched `files` for the clipboard, each in a numbered folder of its own, so two IMG_0001.HEIC
+    /// never meet, inside a numbered folder for this ⌘C under `root`. Nil when one can't be copied: the partial
+    /// copies go and the earlier ones stay. Once all are made, copies older than the previous ⌘C's go; the previous
+    /// ones stay until the next, as a paste may still be reading them. Touches the disk, so call it off the main thread.
     public static func clipboardCopies(of files: [URL], in root: URL = clipboardCache) -> [URL]? {
         let fm = FileManager.default
         use(root)
-        try? fm.removeItem(at: root)
+        let earlier = ((try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? [])
+            .compactMap { folder in Int(folder.lastPathComponent).map { ($0, folder) } }
+        let number = (earlier.map(\.0).max() ?? -1) + 1
+        let batch = root.appending(path: "\(number)", directoryHint: .isDirectory)
+        guard (try? fm.createDirectory(at: batch, withIntermediateDirectories: true)) != nil else { return nil }
         var copies: [URL] = []
         for (index, file) in files.enumerated() {
-            let folder = root.appending(path: "\(index)", directoryHint: .isDirectory)
+            let folder = batch.appending(path: "\(index)", directoryHint: .isDirectory)
             let copy = folder.appending(path: file.lastPathComponent)
             do {
                 try fm.createDirectory(at: folder, withIntermediateDirectories: true)
                 try fm.copyItem(at: file, to: copy)  // a clone on APFS: no second copy of the bytes
             } catch {
+                try? fm.removeItem(at: batch)
                 return nil
             }
             copies.append(copy)
         }
+        for (old, folder) in earlier where old < number - 1 { try? fm.removeItem(at: folder) }
         return copies
     }
 

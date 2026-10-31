@@ -115,8 +115,35 @@ import Testing
         #expect(first.allSatisfy { fm.fileExists(atPath: $0.path) })
         let second = try #require(PhotosFetch.clipboardCopies(of: [], in: clipboard))
         #expect(second.isEmpty)
+        _ = try #require(PhotosFetch.clipboardCopies(of: [], in: clipboard))
         #expect(!fm.fileExists(atPath: first[0].path))
         #expect(PhotosFetch.clipboardCopies(of: [photos.appending(path: "gone.heic")], in: clipboard) == nil)
+    }
+
+    /// A ⌘C that fails keeps what the clipboard holds and leaves no partial copies; one that works keeps the
+    /// previous copies until the next, so a paste still reading them finishes.
+    @Test func aFailedClipboardCopyKeepsTheEarlierOne() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "fv-clipfail-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: root) }
+        let clipboard = root.appending(path: "Clipboard", directoryHint: .isDirectory)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        let a = root.appending(path: "A.HEIC"), b = root.appending(path: "B.HEIC")
+        try Data([1]).write(to: a)
+        try Data([2]).write(to: b)
+        let held = try #require(PhotosFetch.clipboardCopies(of: [a], in: clipboard))
+        func files() -> Set<String> {
+            Set((fm.enumerator(at: clipboard, includingPropertiesForKeys: nil)?.allObjects as? [URL] ?? [])
+                .filter { !$0.hasDirectoryPath }.map { $0.resolvingSymlinksInPath().path })
+        }
+
+        #expect(PhotosFetch.clipboardCopies(of: [b, root.appending(path: "gone.heic"), a], in: clipboard) == nil)
+        #expect(files() == Set(held.map { $0.resolvingSymlinksInPath().path }))
+        #expect(try Data(contentsOf: held[0]) == Data([1]))
+
+        let next = try #require(PhotosFetch.clipboardCopies(of: [b], in: clipboard))
+        #expect(fm.fileExists(atPath: held[0].path))
+        #expect(try Data(contentsOf: next[0]) == Data([2]))
     }
 
     /// A download stopped because the picture was left behind clears its note, so showing the picture again starts anew.
