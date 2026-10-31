@@ -268,6 +268,7 @@ public enum PhotosFetch {
     /// one can't be copied. Touches the disk, so call it off the main thread.
     public static func clipboardCopies(of files: [URL], in root: URL = clipboardCache) -> [URL]? {
         let fm = FileManager.default
+        use(root)
         try? fm.removeItem(at: root)
         var copies: [URL] = []
         for (index, file) in files.enumerated() {
@@ -282,6 +283,14 @@ public enum PhotosFetch {
             copies.append(copy)
         }
         return copies
+    }
+
+    /// At launch: an earlier run's clipboard copies go once the clipboard (`held`, its file URLs) no longer pastes
+    /// any of them. Copies this run made stay. Touches the disk, so call it off the main thread.
+    public static func emptyClipboardCopies(unless held: [URL], in root: URL = clipboardCache) {
+        let path = root.standardizedFileURL.path + "/"
+        guard !held.contains(where: { $0.standardizedFileURL.path.hasPrefix(path) }) else { return }
+        used.withLockUnchecked { if !$0.contains(root.standardizedFileURL.path) { try? FileManager.default.removeItem(at: root) } }
     }
 
     /// Cache folders (a drop's, a fetched picture's) this run uses; the launch-time emptying leaves them alone.

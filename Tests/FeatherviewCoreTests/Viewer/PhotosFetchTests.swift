@@ -118,4 +118,39 @@ import Testing
         #expect(!fm.fileExists(atPath: first[0].path))
         #expect(PhotosFetch.clipboardCopies(of: [photos.appending(path: "gone.heic")], in: clipboard) == nil)
     }
+
+    /// A download stopped because the picture was left behind clears its note, so showing the picture again starts anew.
+    @Test func aCancelledDownloadLeavesNoNote() {
+        let a = PhotosLocation.url(album: "library", asset: "A/L0/001")
+        var notes = PhotosCloudNotes()
+        notes.started(a)
+        notes.cancelled(a)
+        #expect(!notes.isDownloading(a))
+        #expect(notes.note(for: a) == nil)
+    }
+
+    /// Spec "Photos library": an earlier run's clipboard copies go at launch once the clipboard holds something else;
+    /// they stay while it still pastes them, and this run's copies always stay.
+    @Test func clipboardCopiesGoOnceTheClipboardHoldsSomethingElse() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "fv-clipempty-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: root) }
+        let earlier = root.appending(path: "Earlier", directoryHint: .isDirectory)
+        let copy = earlier.appending(path: "0/IMG_0001.HEIC")
+        try fm.createDirectory(at: copy.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data([1]).write(to: copy)
+        let elsewhere = root.appending(path: "other.png")
+        try Data([2]).write(to: elsewhere)
+
+        PhotosFetch.emptyClipboardCopies(unless: [copy], in: earlier)
+        #expect(fm.fileExists(atPath: copy.path))
+        PhotosFetch.emptyClipboardCopies(unless: [elsewhere], in: earlier)
+        #expect(!fm.fileExists(atPath: earlier.path))
+        #expect(fm.fileExists(atPath: elsewhere.path))
+
+        let now = root.appending(path: "Now", directoryHint: .isDirectory)
+        let copies = try #require(PhotosFetch.clipboardCopies(of: [elsewhere], in: now))
+        PhotosFetch.emptyClipboardCopies(unless: [], in: now)
+        #expect(fm.fileExists(atPath: copies[0].path))
+    }
 }
