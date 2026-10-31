@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import UniformTypeIdentifiers
 
 // Everything the batch window sets (spec "Batch window"), in one value the window edits, presets
 // store and the converter reads. Numeric ranges in comments are the valid ranges: steps clamp
@@ -284,9 +285,21 @@ public struct BatchSettings: Codable, Equatable, Sendable {
         url.standardizedFileURL.path.hasPrefix(photosCache.standardizedFileURL.path + "/")
     }
 
+    /// The format Keep format writes a file in: by extension first (.pbm, .pgm and .ppm share one
+    /// UTType), then by type (.jpeg, .tif); nil when this Mac can't write it (a CR3 that ImageIO reads).
+    static func ownFormat(of url: URL) -> OutputFormat? {
+        let ext = ImageFormats.canonicalExtension(url.pathExtension)
+        let type = UTType(filenameExtension: ext)
+        return FormatRegistry.format(id: ext) ?? FormatRegistry.writable.first { type != nil && $0.type == type }
+    }
+
     /// Why Start can't run with these inputs, or nil.
     public func problem(inputs: [URL]) -> String? {
-        if toPhotos { return format.photosImports ? nil : PhotosText.cantImport(format: format.name) }
+        if toPhotos {
+            // Keep format writes each input in its own format; one Photos can't import blocks Start.
+            let formats = changeFormat ? [format] : inputs.compactMap(Self.ownFormat)
+            return formats.first { !$0.photosImports }.map { PhotosText.cantImport(format: $0.name) }
+        }
         if outputFolder.isEmpty, inputs.contains(where: Self.isLibraryInput) { return PhotosText.needsDestination }
         return nil
     }

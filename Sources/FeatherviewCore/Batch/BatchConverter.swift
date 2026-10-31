@@ -177,11 +177,7 @@ public enum BatchConverter {
             format = settings.format
             options = settings.options
         } else {
-            // Its own format, by extension first (.pbm, .pgm and .ppm share one UTType), then by type
-            // (.jpeg, .tif): a CR3 that ImageIO reads still fails.
-            let ext = ImageFormats.canonicalExtension(url.pathExtension)
-            let type = UTType(filenameExtension: ext)
-            guard let own = FormatRegistry.format(id: ext) ?? FormatRegistry.writable.first(where: { type != nil && $0.type == type }),
+            guard let own = BatchSettings.ownFormat(of: url),
                   // With Frames and Pages each output is one page.
                   own.writer == .pdf || own.optionFields.contains(.keepAllPages) || settings.frames.isOn
                     || pageCount <= 1

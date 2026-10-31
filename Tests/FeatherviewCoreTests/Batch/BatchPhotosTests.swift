@@ -41,6 +41,15 @@ import Testing
         for id in ["qoi", "webp", "jp2", "bmp"] { #expect(FormatRegistry.format(id: id)?.photosImports == false) }
     }
 
+    @Test func keepFormatChecksEachInputsOwnFormat() {
+        let jpgs = [URL(fileURLWithPath: "/tmp/a.jpg"), URL(fileURLWithPath: "/tmp/b.JPEG")]
+        let keep = settings { $0.changeFormat = false; $0.formatID = "qoi"; $0.toPhotos = true }
+        #expect(keep.problem(inputs: jpgs) == nil)
+        #expect(keep.problem(inputs: jpgs + [URL(fileURLWithPath: "/tmp/c.webp")]) == PhotosText.cantImport(format: "WebP"))
+        let keepJPEG = settings { $0.changeFormat = false; $0.formatID = "jpg"; $0.toPhotos = true }
+        #expect(keepJPEG.problem(inputs: [URL(fileURLWithPath: "/tmp/c.qoi")]) == PhotosText.cantImport(format: "QOI"))
+    }
+
     @Test func toPhotosIsStored() throws {
         let stored = try JSONEncoder().encode(settings { $0.toPhotos = true })
         #expect(try JSONDecoder().decode(BatchSettings.self, from: stored).toPhotos)
