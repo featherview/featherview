@@ -15,7 +15,7 @@ struct BatchCardBody: View {
             if model.settings.resize.isOn { ResizeStepView(s: $model.settings.resize) }
         case .name:
             RenameStep(pattern: $model.settings.renamePattern, splits: model.settings.splits)
-            SaveToRow(folder: $model.settings.outputFolder)
+            SaveToRow(model: model)
             Text("Safety and dates")
                 .font(Theme.badge)
                 .foregroundStyle(Theme.labelSecondary)
@@ -76,26 +76,52 @@ private struct FormatStep: View {
     }
 }
 
-/// Empty = next to each original; clearing the field goes back to it.
+/// Empty = next to each original; clearing the field goes back to it. Photos library replaces the folder.
 private struct SaveToRow: View {
-    @Binding var folder: String
+    @Bindable var model: BatchModel
+
+    private var folder: Binding<String> { $model.settings.outputFolder }
+    private var toPhotos: Bool { model.settings.toPhotos }
 
     var body: some View {
         LabeledContent("Save to:") {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    TextField("Save to:", text: $folder, prompt: Text("Next to the originals"))
+                    TextField("Save to:", text: folder, prompt: Text("Next to the originals"))
                         .labelsHidden()
                     Button("Choose…", action: chooseFolder)
                     // Back to the empty default without having to know that empty means this.
-                    if !folder.isEmpty {
-                        Button("Next to the originals") { folder = "" }
+                    if !folder.wrappedValue.isEmpty {
+                        Button("Next to the originals") { folder.wrappedValue = "" }
+                            .disabled(model.needsDestination)
                     }
                 }
+                .disabled(toPhotos)
                 Text("{folder} in the path stands for each image's folder name.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                Toggle("Photos library", isOn: Binding {
+                    toPhotos
+                } set: {
+                    model.settings.toPhotos = $0
+                    model.photosDenied = false
+                })
+                // Stays switchable off when the format changed after it was chosen.
+                .disabled(!toPhotos && model.photosRefusal != nil)
+                if let refusal = model.photosRefusal {
+                    Text(refusal)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if toPhotos && model.photosDenied {
+                    Text(verbatim: PhotosText.denied)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(verbatim: PhotosText.deniedHelp)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }
@@ -106,7 +132,7 @@ private struct SaveToRow: View {
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        folder = url.path
+        folder.wrappedValue = url.path
     }
 }
 

@@ -185,6 +185,24 @@ import Testing
         #expect(BatchProgress.canStart(isRunning: running, scans: scans, inputCount: files, settings: s) == canStart)
     }
 
+    /// To the Photos library the folder field is greyed out and unused: a relative path left in it doesn't block Start.
+    @Test func canStartToPhotosIgnoresTheFolder() {
+        var s = BatchSettings()
+        s.outputFolder = "out"
+        s.toPhotos = true
+        #expect(BatchProgress.canStart(isRunning: false, scans: 0, inputCount: 1, settings: s))
+    }
+
+    @Test func nameSummaryNamesThePhotosLibrary() {
+        var s = BatchSettings()
+        s.toPhotos = true
+        #expect(BatchCard.name.summary(in: s) == "{name} · Photos library")
+        s.outputFolder = "/tmp/out"
+        #expect(BatchCard.name.summary(in: s) == "{name} · Photos library")
+        s.toPhotos = false
+        #expect(BatchCard.name.summary(in: s) == "{name} · out")
+    }
+
     /// Only promised files in Dropped/<n> stay out of Open Recent; a Finder drop is remembered (spec "Open Recent").
     @Test func onlyPromisedDropsAreInTheDroppedCache() {
         #expect(BatchSettings.isDropped(BatchSettings.droppedCache.appending(path: "1/IMG_0001.HEIC")))

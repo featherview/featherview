@@ -663,7 +663,9 @@ struct ViewerView: View {
         case .zoomIn: model.zoomIn()
         case .zoomOut: model.zoomOut()
         case .open: model.showOpenPanel()
-        case .batch: openWindow(id: "batch")
+        case .batch:
+            model.batchSelection()
+            openWindow(id: "batch")
         case .minimize: model.window?.miniaturize(nil)
         case .settings: SettingsWindow.show()
         case .about: openWindow(id: "about")
@@ -1010,8 +1012,8 @@ struct ViewerCommands: Commands {
             AlwaysOpenMenuItem(model: model, claims: $claims)
             Divider()
             Button("Batch Convert…  (B)") {
-                // In the grid the selection joins the batch's list.
-                if model?.isGrid == true { model?.batchSelection() }
+                // The grid's selection, or a library album's picture, joins the batch's list.
+                model?.batchSelection()
                 openWindow(id: "batch")
             }
             .keyboardShortcut("b")

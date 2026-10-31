@@ -1493,9 +1493,15 @@ final class ViewerModel {
         Task { await cache.prefetch(urls, target: .thumbnail(side)) }
     }
 
-    /// B in the grid: the selection joins the Batch window's list; the caller opens the window.
+    /// B and Batch Convert…: in the grid the selection joins the Batch window's list, in a library album also
+    /// the viewed picture (fetched from Photos first); the caller opens the window.
     func batchSelection() {
-        BatchModel.shared.add(files: gridSelection)
+        let urls = operationTargets
+        if urls.contains(where: PhotosLocation.isLibrary) {
+            BatchModel.shared.add(library: urls)
+        } else if isGrid {
+            BatchModel.shared.add(files: urls)
+        }
     }
 
     /// + / −, the View menu's retitled zoom items and a pinch, in the grid: one column fewer or more.

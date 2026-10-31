@@ -137,4 +137,18 @@ import Testing
         #expect(results.map(\.status) == [.converted])
         #expect(trashed.get.isEmpty)
     }
+
+    /// The checks' shortcuts for long lists (one type lookup per extension, standardizing only dotted
+    /// paths) still find the one problem at the end of 10,000 files. Speed is measured by hand, not here:
+    /// a wall-clock limit fails on a busy or slower machine.
+    @Test func problemChecksOfLargeListsFindTheLastProblem() {
+        let urls = (0..<10_000).map { URL(fileURLWithPath: "/Users/someone/Pictures/IMG_\($0).jpg") }
+        let keep = settings { $0.changeFormat = false; $0.toPhotos = true }
+        #expect(keep.problem(inputs: urls) == nil)
+        #expect(keep.problem(inputs: urls + [URL(fileURLWithPath: "/tmp/IMG_0001.webp")]) == PhotosText.cantImport(format: "WebP"))
+        let cache = BatchSettings.photosCache.standardizedFileURL
+        let dotted = URL(fileURLWithPath: cache.deletingLastPathComponent().path + "/x/../" + cache.lastPathComponent + "/6A1F-99/IMG_0001.HEIC")
+        #expect(settings().problem(inputs: urls) == nil)
+        #expect(settings().problem(inputs: urls + [dotted]) == PhotosText.needsDestination)
+    }
 }
