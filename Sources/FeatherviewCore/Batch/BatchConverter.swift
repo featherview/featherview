@@ -47,7 +47,18 @@ public enum BatchConverter {
         onResult: @escaping @Sendable (BatchResult) -> Void = { _ in },
         prepare: (@Sendable (Int, BatchInput) -> Prepared)? = nil
     ) async -> [BatchResult] {
-        let settings = job.settings, inputs = job.inputs, total = inputs.count
+        let inputs = job.inputs, total = inputs.count, trashOriginals = job.settings.safety.trashOriginals
+        // To Photos: outputs land in a temp folder, without subfolders, replacing or dates, and are handed
+        // over one input at a time, so the originals are trashed only once Photos took the outputs.
+        let photosFolder = job.settings.toPhotos ? Self.temporaryFolder() : nil
+        let settings = {
+            var s = job.settings
+            guard let photosFolder else { return s }
+            s.outputFolder = photosFolder.path
+            s.safety = SafetySettings()
+            return s
+        }()
+        defer { if let photosFolder { try? FileManager.default.removeItem(at: photosFolder) } }
         let prepare = prepare ?? {
             // Loaded once per batch; when it can't be read every file fails with that sentence.
             let watermark: Result<CIImage?, WatermarkError>
@@ -60,7 +71,7 @@ public enum BatchConverter {
             }
             return { index, input in Self.prepare(input, index: index, settings: settings, watermark: watermark) }
         }()
-        let sidecars = settings.safety.trashOriginals && moveSidecars ? Sidecars.Finder() : nil
+        let sidecars = trashOriginals && moveSidecars ? Sidecars.Finder() : nil
         var namer = BatchNamer(settings: settings, inputs: inputs)
         var results = [BatchResult?](repeating: nil, count: total)
         var waiting: [Int: Prepared] = [:]
@@ -92,12 +103,16 @@ public enum BatchConverter {
                 while let next = waiting.removeValue(forKey: nextCommit) {
                     let input = inputs[nextCommit]
                     // Off the pool too: commits write and copy whole files. Awaited one at a time, so order holds.
-                    let (result, named) = await offPool { [namer] in
+                    var (result, named) = await offPool { [namer] in
                         var namer = namer
                         let result = commit(next, input: input, settings: settings, namer: &namer, trash: trash)
                         return (result, namer)
                     }
-                    namer = named
+                    if photosFolder != nil, result.status == .converted {
+                        result = await handOver(result, sidecars: next.sidecars, trashOriginals: trashOriginals,
+                                                add: job.addToPhotos, trash: trash)
+                    }
+                    if result.status == .converted { namer = named }
                     results[nextCommit] = result
                     onResult(result)
                     nextCommit += 1
@@ -162,11 +177,7 @@ public enum BatchConverter {
             format = settings.format
             options = settings.options
         } else {
-            // Its own format, by extension first (.pbm, .pgm and .ppm share one UTType), then by type
-            // (.jpeg, .tif): a CR3 that ImageIO reads still fails.
-            let ext = ImageFormats.canonicalExtension(url.pathExtension)
-            let type = UTType(filenameExtension: ext)
-            guard let own = FormatRegistry.format(id: ext) ?? FormatRegistry.writable.first(where: { type != nil && $0.type == type }),
+            guard let own = BatchSettings.ownFormat(of: url),
                   // With Frames and Pages each output is one page.
                   own.writer == .pdf || own.optionFields.contains(.keepAllPages) || settings.frames.isOn
                     || pageCount <= 1
@@ -307,23 +318,55 @@ public enum BatchConverter {
            let date = url.modificationDate {
             for output in outputs { try? fm.setAttributes([.modificationDate: date], ofItemAtPath: output.path) }
         }
-        var message = prepared.note
-        if settings.safety.trashOriginals {
+        let message = settings.safety.trashOriginals
+            ? trashOriginal(url, sidecars: prepared.sidecars, note: prepared.note, trash: trash) : prepared.note
+        return BatchResult(input: url, outputs: outputs, status: .converted, message: message)
+    }
+
+    /// Moves a converted input and its sidecars to the Trash; returns the row's note, with the reason when it stays.
+    /// A library picture's fetched file is never trashed: its original is in Photos.
+    static func trashOriginal(_ url: URL, sidecars: [URL], note: String?, trash: (URL) throws -> Void) -> String? {
+        guard !BatchSettings.isLibraryInput(url) else { return note }
+        do {
+            try trash(url)
+            // Another file of the same name left in the folder (an in-place output, the RAW of a RAW+JPEG
+            // pair) still owns the sidecars. Listed only when there are sidecars to move.
+            let stem = Sidecars.stem(of: url)
+            let owned = !sidecars.isEmpty && Sidecars.list(url.deletingLastPathComponent()).contains {
+                Sidecars.stem(of: $0) == stem && !Sidecars.extensions.contains($0.pathExtension.lowercased())
+            }
+            if !owned { for sidecar in sidecars { try? trash(sidecar) } }
+            return note
+        } catch {
+            let kept = String(localized: "Can't move \(url.lastPathComponent) to the Trash")
+            return note.map { String(localized: "\($0); \(kept)") } ?? kept
+        }
+    }
+
+    /// Adds a converted input's outputs to Photos, then removes them; a refused one fails the row.
+    static func handOver(_ result: BatchResult, sidecars: [URL], trashOriginals: Bool,
+                         add: (@Sendable (URL) async throws -> Void)?,
+                         trash: @escaping @Sendable (URL) throws -> Void) async -> BatchResult {
+        defer { for output in result.outputs { try? FileManager.default.removeItem(at: output) } }
+        for output in result.outputs {
             do {
-                try trash(url)
-                // Another file of the same name left in the folder (an in-place output, the RAW of a RAW+JPEG
-                // pair) still owns the sidecars. Listed only when there are sidecars to move.
-                let stem = Sidecars.stem(of: url)
-                let owned = !prepared.sidecars.isEmpty && Sidecars.list(url.deletingLastPathComponent()).contains {
-                    Sidecars.stem(of: $0) == stem && !Sidecars.extensions.contains($0.pathExtension.lowercased())
-                }
-                if !owned { for sidecar in prepared.sidecars { try? trash(sidecar) } }
+                guard let add else { throw CocoaError(.featureUnsupported) }
+                try await add(output)
             } catch {
-                let kept = String(localized: "Can't move \(url.lastPathComponent) to the Trash")
-                message = message.map { String(localized: "\($0); \(kept)") } ?? kept
+                return BatchResult(input: result.input, output: nil, status: .failed,
+                                   message: PhotosText.cantAdd(name: output.lastPathComponent))
             }
         }
-        return BatchResult(input: url, outputs: outputs, status: .converted, message: message)
+        guard trashOriginals else { return result }
+        let message = await offPool { trashOriginal(result.input, sidecars: sidecars, note: result.message, trash: trash) }
+        return BatchResult(input: result.input, outputs: result.outputs, status: .converted, message: message)
+    }
+
+    /// A new empty folder on the temp volume for outputs on their way to Photos.
+    static func temporaryFolder() -> URL {
+        let fm = FileManager.default
+        return (try? fm.url(for: .itemReplacementDirectory, in: .userDomainMask, appropriateFor: fm.temporaryDirectory, create: true))
+            ?? fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)  // commit creates it
     }
 
     /// Writes a hidden temp file, then moves it in without replacing: a kill mid-write never leaves a

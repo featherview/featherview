@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import UniformTypeIdentifiers
 
 // Everything the batch window sets (spec "Batch window"), in one value the window edits, presets
 // store and the converter reads. Numeric ranges in comments are the valid ranges: steps clamp
@@ -239,14 +240,12 @@ public struct BatchSettings: Codable, Equatable, Sendable {
     public var options = FormatOptions()
     /// A path; may contain {folder}. Empty: next to each original.
     public var outputFolder = ""
+    /// Each output is added to the Photos library and nothing stays on disk; `outputFolder` is then unused.
+    public var toPhotos = false
     /// A typed relative path would resolve against the app's working directory, "/"; `~` is fine (BatchNamer expands it).
     public var hasAbsoluteOutputFolder: Bool { (outputFolder as NSString).expandingTildeInPath.hasPrefix("/") }
     /// Promised drops land in `Dropped/<n>` here, a cache folder the app empties.
     public static let droppedCache = URL.cachesDirectory.appending(path: "net.mynetx.featherview/Dropped", directoryHint: .isDirectory)
-    /// Outputs next to an input in a folder the app empties would be deleted with it.
-    public func needsDestination(inputs: [URL]) -> Bool {
-        outputFolder.isEmpty && inputs.contains(where: Self.isDropped)
-    }
     /// A promised file received into `Dropped/<n>`, as opposed to one dropped where it lives.
     public static func isDropped(_ url: URL) -> Bool {
         url.standardizedFileURL.path.hasPrefix(droppedCache.standardizedFileURL.path + "/")
@@ -282,6 +281,44 @@ public struct BatchSettings: Codable, Equatable, Sendable {
     /// Keep format, nothing changes the pixels and one output per input: the converter copies each
     /// file's bytes (Date Taken rewrites the date in them losslessly).
     public var copiesUnchanged: Bool { !changeFormat && !hasOperations && !splits }
+
+    /// Where the app fetches library pictures (spec "Photos library"); emptied at quit.
+    public static let photosCache = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("net.mynetx.featherview/Photos", isDirectory: true)
+
+    /// A library picture's fetched file: it has no original on disk, and is never trashed.
+    static func isLibraryInput(_ url: URL) -> Bool {
+        url.standardizedFileURL.path.hasPrefix(photosCache.standardizedFileURL.path + "/")
+    }
+
+    /// The format Keep format writes a file in: by extension first (.pbm, .pgm and .ppm share one
+    /// UTType), then by type (.jpeg, .tif); nil when this Mac can't write it (a CR3 that ImageIO reads).
+    static func ownFormat(of url: URL) -> OutputFormat? {
+        let ext = ImageFormats.canonicalExtension(url.pathExtension)
+        let type = UTType(filenameExtension: ext)
+        return FormatRegistry.format(id: ext) ?? FormatRegistry.writable.first { type != nil && $0.type == type }
+    }
+
+    /// Why Start can't run with these inputs, or nil.
+    public func problem(inputs: [URL]) -> String? {
+        if toPhotos {
+            if changeFormat { return format.photosImports ? nil : PhotosText.cantImport(format: format.name) }
+            // Keep format writes each input in its own format (or copies one it can't write, an XCF);
+            // one Photos can't import blocks Start.
+            for input in inputs {
+                let own = Self.ownFormat(of: input)
+                if own?.photosImports != true {
+                    return PhotosText.cantImport(format: own?.name ?? input.pathExtension.uppercased())
+                }
+            }
+            return nil
+        }
+        // Next to the originals would write into a cache folder the app empties.
+        if outputFolder.isEmpty, inputs.contains(where: { Self.isLibraryInput($0) || Self.isDropped($0) }) {
+            return PhotosText.needsDestination
+        }
+        return nil
+    }
 }
 
 /// One file of the batch's input list.
@@ -482,6 +519,7 @@ extension BatchSettings {
         formatID = c.value(.formatID, d.formatID)
         options = c.value(.options, d.options)
         outputFolder = c.value(.outputFolder, d.outputFolder)
+        toPhotos = c.value(.toPhotos, d.toPhotos)
         renamePattern = c.value(.renamePattern, d.renamePattern)
         crop = c.value(.crop, d.crop); resize = c.value(.resize, d.resize)
         orientation = c.value(.orientation, d.orientation); colour = c.value(.colour, d.colour)
