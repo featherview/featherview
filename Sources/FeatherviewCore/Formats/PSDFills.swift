@@ -302,7 +302,7 @@ public enum PSDFills {
     /// box's extent along it; the first stop sits at the line's start. Colour and transparency stops are
     /// interpolated in RGB, each midpoint (on the later stop) where the two meet half-way.
     // shortcut: gradient dither is off, add noise if banding shows.
-    // Smoothness (Intr, of 4096) eases each stretch between stops toward a smoothstep, which Photoshop's composites come close to.
+    // Smoothness (Intr, of 4096) eases each stretch between stops half way toward a smoothstep at most, as Photoshop's composites show.
     private static func gradient(_ settings: PSDDescriptor, box: PSDRect, rgb: CGColorSpace?) throws -> (Int, Int) -> (UInt8, UInt8, UInt8, UInt8) {
         guard case .object(let grad)? = settings["Grad"] else { throw OwnDecodeError.corrupt }
         // The linear method mixes colours in linear light; classic (and perceptual, for now) in the stored values.
@@ -397,7 +397,7 @@ public enum PSDFills {
             var u = b.location > a.location ? (t - a.location) / (b.location - a.location) : 1
             let m = min(max(b.midpoint, 0.001), 0.999)
             u = u < m ? u / m / 2 : 0.5 + (u - m) / (1 - m) / 2
-            u += (u * u * (3 - 2 * u) - u) * smoothness
+            u += (u * u * (3 - 2 * u) - u) * smoothness * 0.5
             return zip(a.value, b.value).map { $0 + ($1 - $0) * u }
         }
         // sRGB's curve to and from linear light, on 0…255.
