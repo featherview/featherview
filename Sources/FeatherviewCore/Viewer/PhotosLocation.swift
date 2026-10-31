@@ -215,6 +215,12 @@ public struct PhotosCloudNotes: Sendable {
         notes[url] = nil
     }
 
+    /// Left behind before its original arrived: the note goes, and showing the picture again starts anew.
+    public mutating func cancelled(_ url: URL) {
+        downloading.remove(url)
+        notes[url] = nil
+    }
+
     public mutating func failed(_ url: URL, name: String) {
         downloading.remove(url)
         notes[url] = PhotosText.cantDownload(name: name)

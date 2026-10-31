@@ -138,18 +138,29 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
         return result
     }
 
-    /// Fetches the original from iCloud, so the next `image` call is local.
+    /// Fetches the original from iCloud, so the next `image` call is local. Cancelling the task stops the download
+    /// and throws `CancellationError`.
     public func download(_ url: URL) async throws {
         let asset = try asset(url)
         let options = PHImageRequestOptions()
         options.deliveryMode = .highQualityFormat
         options.version = .current
         options.isNetworkAccessAllowed = true
-        let ok = await withCheckedContinuation { continuation in
-            manager.requestImageDataAndOrientation(for: asset, options: options) { data, _, _, _ in
-                continuation.resume(returning: data != nil)
+        let manager = manager
+        let request = OSAllocatedUnfairLock<PHImageRequestID?>(initialState: nil)
+        let ok = await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                // PhotoKit calls the handler also for a cancelled request, without data.
+                let id = manager.requestImageDataAndOrientation(for: asset, options: options) { data, _, _, _ in
+                    continuation.resume(returning: data != nil)
+                }
+                request.withLock { $0 = id }
+                if Task.isCancelled { manager.cancelImageRequest(id) }
             }
+        } onCancel: {
+            if let id = request.withLock({ $0 }) { manager.cancelImageRequest(id) }
         }
+        try Task.checkCancellation()
         guard ok else { throw DecodeError.unreadable(url) }
         state.withLock { _ = $0.inCloud.remove(url) }
     }

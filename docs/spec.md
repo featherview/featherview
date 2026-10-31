@@ -699,7 +699,8 @@ the library is ever changed, except a delete the person confirms in the system's
   confirmation (it replaces the "Confirm before moving to Trash" question for library pictures). In
   the grid it acts on the selection, in one prompt.
 - **iCloud:** a picture whose original is only in iCloud shows Photos' local preview at once, and
-  the status bar says "Downloading from iCloud…" until the original has arrived and replaced it.
+  the status bar says "Downloading from iCloud…" until the original has arrived and replaced it. Only
+  the picture on screen downloads, once it has stayed there briefly; moving on stops its download.
   Without a connection the preview stays and the status bar says "Can't download IMG_1234.HEIC from
   iCloud."
 - **Drops from Photos:** pictures dragged from the Photos app onto a viewer window open as a dropped

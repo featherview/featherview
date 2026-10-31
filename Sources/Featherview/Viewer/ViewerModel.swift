@@ -243,6 +243,8 @@ final class ViewerModel {
     @ObservationIgnored private var rotations = 0
     /// ⌘C's full-size decodes: ImageIO can't stop one, so they run one at a time and held ⌘C skips the ones in between.
     private let copies = LatestWins()
+    /// The one original downloading from iCloud, the picture on screen's (`downloadIfInCloud`).
+    private var cloudDownload: (url: URL, task: Task<Void, Never>)?
     /// Read timings with: log stream --level debug --predicate 'subsystem == "net.mynetx.featherview"'
     private static let log = Logger(subsystem: "net.mynetx.featherview", category: "viewer")
     /// When the process started, so the first image's log line covers launch and folder scan too.
@@ -928,22 +930,35 @@ final class ViewerModel {
         }
     }
 
-    /// A library picture shown from Photos' local preview: its original downloads from iCloud, then it shows again
-    /// (if still current) from the original. Without a connection the preview stays and the status bar says so.
-    private func downloadIfInCloud(_ url: URL) {
-        guard !cloudNotes.isDownloading(url), PhotosLibrary.shared.isInCloud(url) else { return }
-        cloudNotes.started(url)
-        Task {
+    /// A library picture shown from Photos' local preview (`start`, a fit decode): its original downloads from iCloud,
+    /// then it shows again (if still current) from the original, and the info panel reads it anew. Without a
+    /// connection the preview stays and the status bar says so. Only the picture on screen downloads: showing
+    /// another stops it.
+    private func downloadIfInCloud(_ url: URL, start: Bool) {
+        if cloudDownload?.url == url { return }
+        cloudDownload?.task.cancel()
+        cloudDownload = nil
+        guard start, PhotosLocation.isLibrary(url) else { return }
+        let task = Task {
+            // A held key or a slideshow passes pictures by: only one stayed on downloads its original.
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled, PhotosLibrary.shared.isInCloud(url) else { return }
+            cloudNotes.started(url)
             do {
                 try await PhotosLibrary.shared.download(url)
                 cloudNotes.arrived(url)
-                ready[url] = nil
-                await cache.remove(url)
+                await forgetDecodes(of: url)
                 if list.current == url { show() }
+            } catch is CancellationError {
+                // Unless the picture was shown again meanwhile: its new download has the note now.
+                if cloudDownload?.url != url { cloudNotes.cancelled(url) }
             } catch {
                 cloudNotes.failed(url, name: displayName(url))
             }
+            // A cancelled task's slot already went to whatever cancelled it.
+            if !Task.isCancelled { cloudDownload = nil }
         }
+        cloudDownload = (url, task)
     }
 
     /// A library picture's current version as a file, fetched from Photos off the main thread; a file as it is.
@@ -992,7 +1007,7 @@ final class ViewerModel {
         if shownZoom != zoom { shownZoom = zoom }
         image = decoded
         errorMessage = nil
-        if fit, PhotosLocation.isLibrary(url) { downloadIfInCloud(url) }
+        downloadIfInCloud(url, start: fit)
         // Starting from a window, the first interval waits for full screen (fullScreenTransitionEnded).
         if slideshow != nil, !waitingForFullScreen {
             slideshow?.shown(url, at: .now)
