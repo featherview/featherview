@@ -1,8 +1,8 @@
 # Milestone 25: Photoshop layers Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: run with the `plan-wave` workflow, wave by wave:
-> Wave 1 = Tasks 1, 2, 3 (independent), Wave 2 = Tasks 4, 5, 6 (independent), Wave 3 = Task 7.
-> Task 8 needs the screen and waits for the maintainer's go. Steps use checkbox (`- [ ]`) syntax.
+> Wave 1 = Tasks 1, 2, 3 (independent), Wave 2 = Tasks 4, 5, 6 (independent), Wave 3 = Task 7,
+> Wave 4 = Task 9 (the files still off the oracle after Wave 3). Task 8 needs the screen and comes last. Steps use checkbox (`- [ ]`) syntax.
 
 **Goal:** An 8-bit RGB PSD/PSB saved without "Maximize Compatibility" shows the picture Photoshop shows,
 drawn from its layers, instead of ImageIO's blank or placeholder composite.
@@ -369,6 +369,49 @@ func readsLayerPixels(version: Int, compression: Int) throws
   layered 8-bit RGB PSD without a composite < 500 ms for 12 MP and 30 layers. Measured: <fill in> |`.
   If a file over 12 MP and 30 layers misses it, profile and fix before recording.
 - [ ] **Step 7: Commit** `feat: Photoshop files without a stored composite show their layers`
+
+---
+
+### Task 9: The seven files still off Photoshop's composite (Core)
+
+Measured on main after Task 7 and its review fixes (`featherview-bench psdlayers` on the corpus, 30 Oct):
+206 of 220 comparable files within target, 101 of 108 when copies under `flat/` are counted once
+(93.5 %, target ≥ 95 %). Speed is within budget (fit decode of the 12 MP, 30-layer file ~246 ms). The
+seven files over the target, none using a known limit:
+
+| File (psd-tools `tests/psd_files/` unless noted) | Mean diff | Pixels off > 8 |
+|---|---|---|
+| `adjustments/brightnesscontrast_rgb.psd` | 37.45 | 93.5 % |
+| `adjustments/huesaturation_rgb.psd` | 0.70 | 2.3 % |
+| `colormodes/4x4_8bit_rgb.psd` | 21.33 | 75 % |
+| `colorprofiles/north_america_newspaper.psd` | 20.75 | 87.5 % |
+| `gradients/noise-gradient-rgb.psd` | 2.22 | 33.3 % |
+| `masks3.psd` | 3.30 | 14.0 % |
+| ag-psd `test/read/gradient-overlay-2/src.psd` | 15.00 | 100 % |
+
+**Files:** whichever of `PSDLayers.swift`, `PSDAdjustments.swift`, `PSDFills.swift`, `PSDCompositor.swift`
+holds each cause; tests in the matching `*Tests.swift`.
+
+**Interfaces:** none new; the oracle (`featherview-bench psdlayers <corpus>`) is the measure.
+
+- [ ] **Step 1: Find each cause.** For each file, list its layers, blend modes, masks and tagged blocks
+  (descriptor keys included), render it with `PSDCompositor.photoshop` and compare with the stored composite
+  region by region (scratchpad PNGs, never committed) until the differing layer or block is known. Decide
+  the correct behaviour from Adobe's *Photoshop File Formats Specification* and the stored composite only
+  (clean-room rules above: never another library's code). Likely areas, unconfirmed: Brightness/Contrast's
+  legacy mode (`brit` with the "use legacy" flag) versus the newer curve; Hue/Saturation's colourize or
+  per-range rounding; gradient fill type, interpolation, dither, reverse or noise gradients (`GdFl`);
+  mask density / feather or a disabled mask in `masks3`. A cause that is a layer effect or another known
+  limit goes on the known-limits list with a `shortcut:` comment instead of a fix.
+- [ ] **Step 2: Failing tests**, one per cause, built with `PSDFixture` (never a corpus file), each
+  asserting the pixel values the stored composite shows, e.g.
+  `@Test func legacyBrightnessContrastShiftsLinearly()`, `@Test func noiseGradientFillUsesItsSeed()`.
+- [ ] **Step 3: FAIL. Step 4: Fix. Step 5: PASS; `swift test -j 4` all PASS.**
+- [ ] **Step 6: Oracle again.** `swift run -c release featherview-bench psdlayers <corpus>`: ≥ 95 % of the
+  unique comparable files within target (≥ 103 of 108), no file that was within target falls out, and the
+  fit decode of the 12 MP, 30-layer file stays < 500 ms (`featherview-bench decode`). Report the per-file
+  numbers before and after, and what stays over and why.
+- [ ] **Step 7: Commit** each cause as its own `fix:` commit.
 
 ---
 
