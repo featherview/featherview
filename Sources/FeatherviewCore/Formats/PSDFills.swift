@@ -15,6 +15,7 @@ public enum PSDFills {
         guard let key = ["SoCo", "GdFl", "PtFl"].first(where: { layer.blocks[$0] != nil }) else { return nil }
         let settings = try PSDDescriptor.versioned(layer.blocks[key]!)
         let sw = PSDLayers.scaledSize(canvas.width, scale), sh = PSDLayers.scaledSize(canvas.height, scale)
+        let sx = Double(sw) / Double(canvas.width), sy = Double(sh) / Double(canvas.height)
         let mask = try vectorMask(layer, canvas: canvas, scale: scale)
         let rect: PSDRect = mask?.rect ?? (0, 0, sh, sw)
         let w = rect.right - rect.left, h = rect.bottom - rect.top
@@ -30,9 +31,9 @@ public enum PSDFills {
             let aligned = settings["Algn"] != .bool(false)
             let canvasBox: PSDRect = (0, 0, canvas.height, canvas.width)
             let box: PSDRect = aligned ? mask?.bounds ?? canvasBox : canvasBox
-            shade = try gradient(settings, box: box, sx: Double(sw) / Double(canvas.width), sy: Double(sh) / Double(canvas.height), rgb: rgb)
+            shade = try gradient(settings, box: box, sx: sx, sy: sy, rgb: rgb)
         default:
-            shade = try pattern(settings, patterns: patterns, sx: Double(sw) / Double(canvas.width), sy: Double(sh) / Double(canvas.height))
+            shade = try pattern(settings, patterns: patterns, sx: sx, sy: sy)
         }
 
         var pixels = [UInt8](repeating: 0, count: w * h * 4)
