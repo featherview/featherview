@@ -81,7 +81,7 @@ struct ViewerView: View {
             background.ignoresSafeArea()
             if model.isGrid {
                 ThumbnailGrid(model: model, urls: model.list.urls, cellSize: thumbnailSize, insets: canvasInsets,
-                              hasKeyboard: model.destinationPanel == nil, onKey: gridKey)
+                              hasKeyboard: model.destinationPanel == nil, namesLooked: model.namesLooked, onKey: gridKey)
                     .ignoresSafeArea()
             } else if let session = model.compareSession {
                 ComparePanes(model: model, session: session, first: firstPane, insets: Self.paneInsets(canvasInsets),
@@ -463,7 +463,8 @@ struct ViewerView: View {
     private func overlayValues(_ url: URL) -> [String: String] {
         var values = ["name": model.displayName(url),
                       "folder": model.displayName(url.deletingLastPathComponent()),
-                      "path": OverlayTemplate.path(of: url, home: FileManager.default.homeDirectoryForCurrentUser),
+                      "path": OverlayTemplate.path(of: url, home: FileManager.default.homeDirectoryForCurrentUser,
+                                                   name: model.displayName),
                       "index": "\(model.list.index + 1)", "count": "\(model.list.urls.count)"]
         if let file = model.fileInfo, file.url == url { values.merge(file.values) { $1 } }
         return values
@@ -778,7 +779,7 @@ struct ImageContextMenu: View {
             .disabled(!model.availability.canEditFile)
         Group {
             Button("Move to Folder…") { model.showDestinations(.move) }
-                .disabled(model.isLibrary)
+                .disabled(!model.availability.canMove)
             Button("Copy to Folder…") { model.showDestinations(.copy) }
             Button("Move to Trash") { model.moveCurrentToTrash() }
         }
@@ -994,7 +995,7 @@ struct ViewerCommands: Commands {
             Group {
                 // ⌘⌫ is handled by the viewer, not as a menu shortcut (see ViewerView.handle).
                 Button("Move to Folder…  (F7)") { model?.showDestinations(.move) }
-                    .disabled(model?.isLibrary == true)
+                    .disabled(model?.availability.canMove != true)
                 Button("Copy to Folder…  (F8)") { model?.showDestinations(.copy) }
                 Button("Move to Trash  (⌘⌫ or ⌦)") { model?.moveCurrentToTrash() }
             }

@@ -74,6 +74,11 @@ final class ViewerModel {
     var fileInfo: FileInfo?
     /// Page-0 reads for the image shown and its prefetched neighbours, so a swap sets the info with the image.
     @ObservationIgnored var knownInfo: [URL: FileInfo] = [:]
+    /// Bumped when library pictures' names arrive, so titles and grid cells naming them refresh.
+    var namesLooked = 0
+    /// Library pictures to name in the next lookup off the main thread (`displayName`).
+    @ObservationIgnored var namesToLookUp: Set<URL> = []
+    @ObservationIgnored var namesTask: Task<Void, Never>?
     /// Fit-size decodes of the image shown and its neighbours, also in `cache`: one swaps in with the
     /// position, in one update. Awaiting the cache actor would draw a frame in between (≈15 ms).
     @ObservationIgnored var ready: [URL: CGImage] = [:]
@@ -424,9 +429,12 @@ final class ViewerModel {
 
     /// File › Open from Photos…: browses the album like a folder, from its newest picture for Library, Recents and
     /// the media types, else its first. Listed off the main thread; not noted in Open Recent, never watched or sorted.
-    func openPhotos(album: String) {
+    /// `showing`: the album opens at this picture while it has it (a swap); `keepingCompare` as for `open`.
+    func openPhotos(album: String, showing: URL? = nil, keepingCompare: Bool = false) {
         pendingDrop?.cancel()
-        if guardUnsaved(then: { [weak self] in self?.openPhotos(album: album) }) { return }
+        if guardUnsaved(then: { [weak self] in self?.openPhotos(album: album, showing: showing, keepingCompare: keepingCompare) }) {
+            return
+        }
         endSlideshow()
         openTask?.cancel()
         sortTask?.cancel()
@@ -435,7 +443,7 @@ final class ViewerModel {
         sortedOrder = .stored()
         followsNewFiles = false
         closeGrid()
-        leaveCompare()
+        if !keepingCompare { leaveCompare() }
         loadTask?.cancel()
         isOpening = true
         closeChooser()
@@ -445,9 +453,11 @@ final class ViewerModel {
         if !AppSettings.keepZoom.value() { zoom = Zoom(Self.fitMode) }
         ready = [:]
         knownInfo = [:]
+        // Pane 2's picture stays in the window, as in `open`.
+        let kept = keepingCompare ? compareSession.map { [$0.url] } ?? [] : []
         openCount.withLock { count in
             count += 1
-            decodes.focus([])
+            decodes.focus(kept)
         }
         openTask = Task {
             defer { if !Task.isCancelled { isOpening = false } }
@@ -457,7 +467,7 @@ final class ViewerModel {
                 // Nonisolated async: PhotoKit's fetch runs off the main thread.
                 let (urls, kind) = try await PhotosLibrary.shared.list(album)
                 guard !Task.isCancelled else { return }
-                list = ImageList(urls: urls, current: kind.opensAtEnd ? urls.last : urls.first)
+                list = ImageList(urls: urls, current: PhotosLocation.start(urls, kind: kind, keeping: showing))
                 if urls.isEmpty { emptyFolder = openedFolder }
                 show()
             } catch {
@@ -1584,7 +1594,14 @@ final class ViewerModel {
             return secondFailed(compareSession, url: second)
         }
         compareSession.change(to: first)
-        if list.select(second) { show() } else { open(second, keepingCompare: true, remember: false) }
+        if list.select(second) {
+            show()
+        } else if let album = PhotosLocation.album(of: second), PhotosLocation.isLibrary(second) {
+            // Its album is pane 1's list again; a scan of the disk can't list it.
+            openPhotos(album: album, showing: second, keepingCompare: true)
+        } else {
+            open(second, keepingCompare: true, remember: false)
+        }
         showSecond()
     }
 

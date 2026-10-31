@@ -56,6 +56,7 @@ extension PhotosLibrary {
     /// first), as URLs; only identifiers are read per asset.
     public func list(_ album: String) async throws -> (urls: [URL], kind: PhotosAlbumKind) {
         let (assets, kind) = try fetch(album)
+        state.withLock { $0.names.forgetFailures() }
         var urls: [URL] = []
         urls.reserveCapacity(assets.count)
         assets.enumerateObjects { asset, _, _ in urls.append(PhotosLocation.url(album: album, asset: asset.localIdentifier)) }

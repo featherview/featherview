@@ -16,6 +16,8 @@ struct ThumbnailGrid: NSViewRepresentable {
     let insets: CanvasInsets
     /// False while the F7 / F8 panel takes the keys; the grid takes them back when it closes.
     let hasKeyboard: Bool
+    /// `ViewerModel.namesLooked`: library pictures' names arrived for cells that showed none.
+    let namesLooked: Int
     /// The viewer's grid keys; Home and End are the grid's own.
     let onKey: (GridKey) -> Bool
 
@@ -74,6 +76,7 @@ struct ThumbnailGrid: NSViewRepresentable {
         private var cellSize = 0.0
         private var insets: CanvasInsets?
         private var hasKeyboard = true
+        private var namesLooked = 0
         /// The cell to scroll to the middle once the grid has its width (entering).
         private var pendingScroll: Int?
         /// ⇧-click selects from this file's cell; a file, so it follows its cell when the list changes.
@@ -112,6 +115,10 @@ struct ThumbnailGrid: NSViewRepresentable {
                 applyColumns()
             }
             if urls != view.urls { reload(view.urls) }
+            if namesLooked != view.namesLooked {
+                namesLooked = view.namesLooked
+                for case let cell as ThumbnailCell in grid.visibleItems() { cell.nameAgain() }
+            }
             if hasKeyboard != view.hasKeyboard {
                 hasKeyboard = view.hasKeyboard
                 if hasKeyboard { grid.window?.makeFirstResponder(grid) }
@@ -264,6 +271,9 @@ struct ThumbnailGrid: NSViewRepresentable {
                 syncSelection(focus: index)
             }
             let menu = NSMenu()
+            menu.autoenablesItems = false
+            let off: Set<Selector> = model.availability.canShowInFinder ? [] : [#selector(menuShowInFinder)]
+            let disabled = off.union(model.availability.canMove ? [] : [#selector(menuMove)])
             let groups: [[(String, Selector)]] = [
                 [(String(localized: "Show Image"), #selector(menuView))],
                 [(String(localized: "Copy"), #selector(menuCopy)), (String(localized: "Show in Finder"), #selector(menuShowInFinder))],
@@ -276,6 +286,7 @@ struct ThumbnailGrid: NSViewRepresentable {
                 for (title, action) in group {
                     let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
                     item.target = self
+                    item.isEnabled = !disabled.contains(action)
                     menu.addItem(item)
                 }
             }
@@ -589,6 +600,11 @@ final class ThumbnailCell: NSCollectionViewItem {
         cell.name = grid.model.displayName(url)
         if grid.isFailed(url) { cell.show(nil, failed: true) }
         load()
+    }
+
+    /// Library pictures' names arrive after the cell shows.
+    func nameAgain() {
+        if let url, let grid { cell.name = grid.model.displayName(url) }
     }
 
     /// The tooltip's details: read off the main thread once the pointer rests on the cell; until then the tooltip is

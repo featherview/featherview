@@ -27,6 +27,13 @@ public enum PhotosLocation {
         return parts.count == 2 ? parts[1] : nil
     }
 
+    /// The picture an album opens at: `keeping` while the album still has it, else its newest picture for
+    /// Library, Recents and the media types, its first for the others.
+    public static func start(_ urls: [URL], kind: PhotosAlbumKind, keeping: URL?) -> URL? {
+        if let keeping, urls.contains(keeping) { return keeping }
+        return kind.opensAtEnd ? urls.last : urls.first
+    }
+
     /// By scheme only; never looks at the disk.
     public static func isLibrary(_ url: URL) -> Bool {
         url.scheme == scheme
@@ -68,6 +75,38 @@ public enum PhotosAlbumKind: Sendable {
         case .library, .recents, .mediaType: true
         case .favorites, .userAlbum: false
         }
+    }
+}
+
+/// Library pictures' original file names, each looked up once; a failed lookup (deleted in Photos, access
+/// revoked) is kept too, so it isn't asked again.
+public struct PhotosNames: Sendable {
+    public enum Lookup: Equatable, Sendable {
+        case unknown, failed
+        case found(String)
+    }
+
+    private var known: [URL: String?] = [:]
+
+    public init() {}
+
+    public func lookup(_ url: URL) -> Lookup {
+        guard let name = known[url] else { return .unknown }
+        return name.map(Lookup.found) ?? .failed
+    }
+
+    public mutating func record(_ name: String?, for url: URL) {
+        known[url] = .some(name)
+    }
+
+    /// Those of `urls` not looked up yet.
+    public func missing(_ urls: [URL]) -> [URL] {
+        urls.filter { known[$0] == nil }
+    }
+
+    /// An album listed again: access may be back.
+    public mutating func forgetFailures() {
+        known = known.filter { $0.value != nil }
     }
 }
 

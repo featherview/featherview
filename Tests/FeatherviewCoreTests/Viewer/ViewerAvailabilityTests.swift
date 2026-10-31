@@ -131,6 +131,9 @@ import Testing
         #expect(!a.canEditFile && !a.canSort)
         #expect(a.canChangeFile && a.canSaveAs && a.canCompare && a.canRefresh && a.canCopy && a.canBatch)
         #expect(a.hasOperationTargets)  // Delete and F8 stay
+        #expect(!a.canMove)
+        let grid = viewing { $0.isLibrary = true; $0.isGrid = true; $0.gridSelectionCount = 2 }
+        #expect(!grid.canMove && !grid.canShowInFinder && grid.hasOperationTargets)
     }
 
     @Test func libraryChooserStopsAtTheEnds() {
@@ -140,6 +143,8 @@ import Testing
 
     @Test func filesStillEditable() {
         let a = viewing()
-        #expect(a.canEditFile && a.canSort)
+        #expect(a.canEditFile && a.canSort && a.canMove)
+        #expect(viewing { $0.isGrid = true; $0.gridSelectionCount = 2 }.canMove)
+        #expect(!viewing { $0.isGrid = true; $0.gridSelectionCount = 0 }.canMove)
     }
 }

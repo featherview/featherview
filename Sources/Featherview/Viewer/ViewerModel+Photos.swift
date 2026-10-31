@@ -11,12 +11,37 @@ extension ViewerModel {
     }
 
     /// The name shown for `url`: a library picture's original file name, an album's name, else the file or folder name.
+    /// A library picture not named yet reads empty until its lookup lands off the main thread, "Untitled" if it fails.
     func displayName(_ url: URL) -> String {
         guard PhotosLocation.isLibrary(url) else { return url.lastPathComponent }
-        if PhotosLocation.asset(of: url) != nil { return PhotosLibrary.shared.name(url) }
+        if PhotosLocation.asset(of: url) != nil {
+            _ = namesLooked
+            switch PhotosLibrary.shared.knownName(url) {
+            case .found(let name): return name
+            case .failed: return String(localized: "Untitled")
+            case .unknown:
+                lookUpName(url)
+                return ""
+            }
+        }
         let album = PhotosLocation.album(of: url)
         return photosAlbums.first { $0.id == album }?.name
             ?? String(localized: "Photos", comment: "Window title for a Photos album whose name isn't known")
+    }
+
+    /// Names asked for in one main-thread turn (the visible cells, a title) are looked up in one PhotoKit fetch.
+    private func lookUpName(_ url: URL) {
+        namesToLookUp.insert(url)
+        guard namesTask == nil else { return }
+        namesTask = Task {
+            while !namesToLookUp.isEmpty {
+                let urls = Array(namesToLookUp)
+                namesToLookUp = []
+                await Task.detached(priority: .userInitiated) { PhotosLibrary.shared.lookUpNames(urls) }.value
+                namesLooked += 1
+            }
+            namesTask = nil
+        }
     }
 
     /// ⇧⌘O: the album sheet, in this viewer's window.
