@@ -113,9 +113,8 @@ extension ViewerModel {
     @discardableResult
     func saveUnsaved(thenOpen: Bool) async -> Bool {
         guard let picture = unsaved else { return true }
-        let pictures = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first
         guard let choice = await SavePanel.run(name: String(localized: "Untitled"),
-                                               folder: folder ?? pictures ?? FileManager.default.homeDirectoryForCurrentUser,
+                                               folder: DropItem.saveFolder(folder, else: SavePanel.picturesFolder),
                                                window: window) else { return false }
         let target = choice.url
         do {

@@ -707,8 +707,10 @@ the library is ever changed, except a delete the person confirms in the system's
   inputs; like library pictures they have no originals on disk, so "Next to the originals" doesn't
   apply and Start asks for a folder or Photos library. A drop waits for its files until a minute
   passes without one arriving (Photos may still be downloading from iCloud, or may have quit); then
-  what arrived opens or joins and the rest is left out. Onto the Dock icon, macOS hands over files as
-  for any other app.
+  what arrived opens or joins and the rest is left out. A later launch's drop empties the folder: it
+  deletes only the files Photos handed over, unchanged, and moves anything else there (saved, renamed or
+  edited by the user) to the Trash; Save As for a dropped picture starts in Pictures, not there. Onto
+  the Dock icon, macOS hands over files as for any other app.
 - **Permission only when used:** the system's Photos access prompt appears the first time Open from
   Photos… is chosen, never at launch, and nothing calls Photos before then (linking the framework costs
   launch nothing measurable). With access denied the sheet says "Featherview can't see your Photos

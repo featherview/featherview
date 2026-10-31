@@ -19,16 +19,46 @@ public enum DropItem: Equatable, Sendable {
         }
     }
 
+    /// The list in a drop's folder of the files it received, by name, with their modification dates.
+    private static let receivedList = ".received"
+
+    /// Records which of `files` the drop received into `folder`, so `freshFolder` deletes only those.
+    /// Touches the disk, so call it off the main thread.
+    public static func noteReceived(_ files: [URL], in folder: URL) {
+        let dates = files.filter { $0.deletingLastPathComponent().standardizedFileURL.path == folder.standardizedFileURL.path }
+            .reduce(into: [String: Date]()) { $0[$1.lastPathComponent] = $1.modificationDate }
+        try? JSONEncoder().encode(dates).write(to: folder.appending(path: receivedList), options: .atomic)
+    }
+
     /// `folder`, created empty: a folder left from an earlier launch holds someone else's drop, which browsing
-    /// would show too. Touches the disk, so call it off the main thread.
-    public static func freshFolder(_ folder: URL) -> URL? {
-        try? FileManager.default.removeItem(at: folder)
+    /// would show too. Never loses data: only files the drop received, unchanged, are deleted; anything else
+    /// there (saved, renamed or edited by the user) goes to `trash`. Touches the disk, so call it off the main thread.
+    public static func freshFolder(_ folder: URL,
+                                   trash: (URL) -> Void = { try? FileManager.default.trashItem(at: $0, resultingItemURL: nil) }) -> URL? {
+        let fm = FileManager.default
+        let received = (try? Data(contentsOf: folder.appending(path: receivedList)))
+            .flatMap { try? JSONDecoder().decode([String: Date].self, from: $0) } ?? [:]
+        for item in (try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? [] {
+            let name = item.lastPathComponent
+            if name == receivedList || (received[name] != nil && received[name] == item.modificationDate) {
+                try? fm.removeItem(at: item)
+            } else {
+                trash(item)
+            }
+        }
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             return folder
         } catch {
             return nil
         }
+    }
+
+    /// Where Save As starts for a picture in `folder`: `fallback` instead of a drop's folder, which a later
+    /// launch empties.
+    public static func saveFolder(_ folder: URL?, else fallback: URL) -> URL {
+        guard let folder, !BatchSettings.isDropped(folder) else { return fallback }
+        return folder
     }
 
     /// The promised files `start` reports through its `add` (the item's drop index and the file, nil when it

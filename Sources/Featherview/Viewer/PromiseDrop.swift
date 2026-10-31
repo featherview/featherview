@@ -41,7 +41,7 @@ enum PromiseDrop {
             guard let folder = await Task.detached(operation: { DropItem.freshFolder(folder) }).value else { return files.map(\.url) }
             let expected = promised.map { max($0.receiver.fileTypes.count, 1) }.reduce(0, +)
             // shortcut: a minute without an arrival ends the wait, a slower iCloud download is left out; upgrade if Photos reports progress.
-            return await DropItem.collect(files, expected: expected, quiet: 60) { add in
+            let urls = await DropItem.collect(files, expected: expected, quiet: 60) { add in
                 for (index, receiver) in promised {
                     receiver.receivePromisedFiles(atDestination: folder, options: [:], operationQueue: queue) { @Sendable url, error in
                         // @Sendable: AppKit calls the reader on `queue`; a main-actor closure would trap there.
@@ -49,6 +49,8 @@ enum PromiseDrop {
                     }
                 }
             }
+            await Task.detached { DropItem.noteReceived(urls, in: folder) }.value
+            return urls
         }
     }
 }

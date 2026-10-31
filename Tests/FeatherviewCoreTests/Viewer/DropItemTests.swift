@@ -19,15 +19,35 @@ struct DropItemTests {
                 == [.promise(0), .file, .file, .skipped, .promise(2)])
     }
 
-    /// A folder left from an earlier launch is emptied before a new drop lands in it.
-    @Test func freshFolderEmptiesALeftoverFolder() throws {
-        let root = FileManager.default.temporaryDirectory.appending(path: "fv-dropped-\(UUID().uuidString)")
-        defer { try? FileManager.default.removeItem(at: root) }
+    /// A folder left from an earlier launch is emptied before a new drop lands in it: the files the drop
+    /// received are deleted, anything else (a file the user saved or changed there) goes to the Trash.
+    @Test func freshFolderDeletesOnlyReceivedFiles() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "fv-dropped-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: root) }
         let folder = root.appending(path: "1", directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        try Data([1]).write(to: folder.appending(path: "old.heic"))
-        #expect(DropItem.freshFolder(folder) == folder)
-        #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path) == [])
+        try fm.createDirectory(at: folder, withIntermediateDirectories: true)
+        let received = folder.appending(path: "old.heic"), changed = folder.appending(path: "changed.heic")
+        try Data([1]).write(to: received)
+        try Data([1]).write(to: changed)
+        DropItem.noteReceived([received, changed, URL(filePath: "/elsewhere/finder.jpg")], in: folder)
+        try Data([2]).write(to: changed)
+        try fm.setAttributes([.modificationDate: Date(timeIntervalSinceNow: 60)], ofItemAtPath: changed.path)
+        let saved = folder.appending(path: "saved.png")
+        try Data([3]).write(to: saved)
+        var trashed: [String] = []
+        #expect(DropItem.freshFolder(folder) { trashed.append($0.lastPathComponent); try? fm.removeItem(at: $0) } == folder)
+        #expect(try fm.contentsOfDirectory(atPath: folder.path) == [])
+        #expect(trashed.sorted() == ["changed.heic", "saved.png"])
+    }
+
+    /// Save As never starts in a drop's folder, which a later launch empties.
+    @Test func saveFolderLeavesDropFolders() {
+        let pictures = URL(filePath: "/Users/someone/Pictures", directoryHint: .isDirectory)
+        let card = URL(filePath: "/Volumes/Card/DCIM", directoryHint: .isDirectory)
+        #expect(DropItem.saveFolder(BatchSettings.droppedCache.appending(path: "3", directoryHint: .isDirectory), else: pictures) == pictures)
+        #expect(DropItem.saveFolder(card, else: pictures) == card)
+        #expect(DropItem.saveFolder(nil, else: pictures) == pictures)
     }
 
     /// All promises arrived: the files come back in the drop's order, with the file URLs between them.
