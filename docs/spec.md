@@ -699,7 +699,8 @@ the library is ever changed, except a delete the person confirms in the system's
   Library albums are not listed in Open Recent.
 - **Delete** (⌘⌫, ⌦) moves the picture to Photos' Recently Deleted, after the system's own
   confirmation (it replaces the "Confirm before moving to Trash" question for library pictures). In
-  the grid it acts on the selection, in one prompt.
+  the grid it acts on the selection, in one prompt. A picture in a shared library is deleted for every
+  participant; the system's prompt says so ("Delete for All Participants").
 - **iCloud:** a picture whose original is only in iCloud shows Photos' local preview at once, and
   the status bar says "Downloading from iCloud…" until the original has arrived and replaced it. Only
   the picture on screen downloads, once it has stayed there briefly; moving on stops its download.
