@@ -105461,6 +105461,7 @@
       }
     },
     "Photos library" : {
+      "comment" : "Batch Name card: where files are saved",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
