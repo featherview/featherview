@@ -64,7 +64,7 @@ struct StatusBar: View {
                                page: model.page, pageCount: model.pageCount,
                                frame: model.player.pausedFrame, frameCount: model.player.frameCount,
                                modified: info?.modified,
-                               note: model.cloudNote.flatMap { $0.url == model.list.current ? $0.text : nil }).fields
+                               note: model.cloudNotes.note(for: model.list.current)).fields
     }
 
     /// Name, pixel size, zoom, file size and date of the pane's picture; the position stays in the title.

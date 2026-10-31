@@ -194,6 +194,33 @@ public enum PhotosText {
     }
 }
 
+/// The status bar's iCloud notes, one per library picture: each stays until that picture's original arrives.
+public struct PhotosCloudNotes: Sendable {
+    private var notes: [URL: String] = [:]
+    private var downloading: Set<URL> = []
+
+    public init() {}
+
+    public func note(for url: URL?) -> String? { url.flatMap { notes[$0] } }
+    /// So showing a picture again starts no second download.
+    public func isDownloading(_ url: URL) -> Bool { downloading.contains(url) }
+
+    public mutating func started(_ url: URL) {
+        downloading.insert(url)
+        notes[url] = PhotosText.downloading
+    }
+
+    public mutating func arrived(_ url: URL) {
+        downloading.remove(url)
+        notes[url] = nil
+    }
+
+    public mutating func failed(_ url: URL, name: String) {
+        downloading.remove(url)
+        notes[url] = PhotosText.cantDownload(name: name)
+    }
+}
+
 /// How `PhotosLibrary` names, places and keeps track of library pictures, without PhotoKit.
 public enum PhotosFetch {
     /// The fetched file's name: the original's base name ("IMG_1234") with the written resource's extension,
@@ -225,6 +252,30 @@ public enum PhotosFetch {
         let fm = FileManager.default
         if !fm.fileExists(atPath: file.path) { try? fm.moveItem(at: temporary, to: file) }
         return fm.fileExists(atPath: file.path)
+    }
+
+    /// Where grid ⌘C copies library pictures: not emptied at quit, so the clipboard still pastes afterwards.
+    public static let clipboardCache = URL.cachesDirectory.appending(path: "net.mynetx.featherview/Clipboard", directoryHint: .isDirectory)
+
+    /// Copies of the fetched `files` for the clipboard, each in a numbered folder of its own under `root`, so two
+    /// IMG_0001.HEIC never meet; the previous copies go first, as the clipboard holds one copy at a time. Nil when
+    /// one can't be copied. Touches the disk, so call it off the main thread.
+    public static func clipboardCopies(of files: [URL], in root: URL = clipboardCache) -> [URL]? {
+        let fm = FileManager.default
+        try? fm.removeItem(at: root)
+        var copies: [URL] = []
+        for (index, file) in files.enumerated() {
+            let folder = root.appending(path: "\(index)", directoryHint: .isDirectory)
+            let copy = folder.appending(path: file.lastPathComponent)
+            do {
+                try fm.createDirectory(at: folder, withIntermediateDirectories: true)
+                try fm.copyItem(at: file, to: copy)  // a clone on APFS: no second copy of the bytes
+            } catch {
+                return nil
+            }
+            copies.append(copy)
+        }
+        return copies
     }
 
     /// Cache folders (a drop's, a fetched picture's) this run uses; the launch-time emptying leaves them alone.

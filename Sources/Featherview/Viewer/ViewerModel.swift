@@ -208,10 +208,8 @@ final class ViewerModel {
     var showsPhotos = false
     /// The library's albums as the sheet last listed them, for album names (`displayName`).
     @ObservationIgnored var photosAlbums: [PhotosAlbumRow] = []
-    /// The status bar's iCloud sentence and the library picture it is about (shown only while that one is current).
-    private(set) var cloudNote: (url: URL, text: String)?
-    /// Library pictures whose originals are downloading from iCloud, so showing one again starts no second download.
-    @ObservationIgnored private var downloads: Set<URL> = []
+    /// The status bar's iCloud sentences, per library picture (each shown while its picture is current).
+    private(set) var cloudNotes = PhotosCloudNotes()
     /// A drop waiting for its promised files; a newer drop or any open supersedes it.
     @ObservationIgnored var pendingDrop: Task<Void, Never>?
     let cache: ImageCache
@@ -933,19 +931,17 @@ final class ViewerModel {
     /// A library picture shown from Photos' local preview: its original downloads from iCloud, then it shows again
     /// (if still current) from the original. Without a connection the preview stays and the status bar says so.
     private func downloadIfInCloud(_ url: URL) {
-        guard !downloads.contains(url), PhotosLibrary.shared.isInCloud(url) else { return }
-        downloads.insert(url)
-        cloudNote = (url, PhotosText.downloading)
+        guard !cloudNotes.isDownloading(url), PhotosLibrary.shared.isInCloud(url) else { return }
+        cloudNotes.started(url)
         Task {
-            defer { downloads.remove(url) }
             do {
                 try await PhotosLibrary.shared.download(url)
-                if cloudNote?.url == url { cloudNote = nil }
+                cloudNotes.arrived(url)
                 ready[url] = nil
                 await cache.remove(url)
                 if list.current == url { show() }
             } catch {
-                cloudNote = (url, PhotosText.cantDownload(name: displayName(url)))
+                cloudNotes.failed(url, name: displayName(url))
             }
         }
     }
@@ -954,7 +950,8 @@ final class ViewerModel {
     /// Nil when the fetch fails, which then says "Can't open IMG_1234.HEIC".
     func operationFile(_ url: URL) async -> URL? {
         guard PhotosLocation.isLibrary(url) else { return url }
-        if let file = try? await Task.detached(priority: .userInitiated, operation: { try PhotosLibrary.shared.file(url) }).value {
+        // On GCD: the fetch blocks its thread until Photos has written (or downloaded) the whole original.
+        if let file = try? await offPool({ try PhotosLibrary.shared.file(url) }) {
             return file
         }
         errorMessage = String(localized: "Can't open \(displayName(url))")
@@ -962,9 +959,10 @@ final class ViewerModel {
     }
 
     /// The info panel's details: a library picture's are read from its fetched file, without a folder (an album has
-    /// none) and with the date Photos keeps, not the fetch's.
+    /// none) and with the date Photos keeps, not the fetch's. Never downloads from iCloud just for them. Blocks, so
+    /// call it through `offPool`.
     nonisolated static func readInfo(_ url: URL) -> ImageInfo {
-        guard PhotosLocation.isLibrary(url), let file = try? PhotosLibrary.shared.file(url) else { return ImageInfo.read(url) }
+        guard PhotosLocation.isLibrary(url), let file = try? PhotosLibrary.shared.file(url, network: false) else { return ImageInfo.read(url) }
         var info = ImageInfo.read(file)
         info.folder = nil
         info.modified = PhotosLibrary.shared.info(url).modified?.formatted(date: .abbreviated, time: .shortened)
@@ -1196,7 +1194,7 @@ final class ViewerModel {
             let listed = Set(list.urls)
             let urls = urls.filter(listed.contains)
             guard !urls.isEmpty else { return }
-            let (moved, failed, unfetched) = await Task.detached(priority: .userInitiated) {
+            let (moved, failed, unfetched) = await offPool {
                 var moved: [URL] = [], failed: [URL] = [], unfetched: [URL] = []
                 for url in urls {
                     // A library picture (only ever copied) goes as its current version, fetched from Photos.
@@ -1215,7 +1213,7 @@ final class ViewerModel {
                     }
                 }
                 return (moved, failed, unfetched)
-            }.value
+            }
             if operation == .move { await removeFromList(moved) }
             if !failed.isEmpty { errorMessage = GridText.transferFailed(failed, name: failed.first.map(displayName), operation: operation, folder: folder) }
             if let url = unfetched.first { errorMessage = String(localized: "Can't open \(displayName(url))") }
@@ -2093,15 +2091,20 @@ final class ViewerModel {
     func copyGridSelection() {
         guard !gridSelection.isEmpty else { return }
         guard isLibrary else { return putFiles(gridSelection) }
-        // Library pictures go as their fetched files; one that can't be fetched says so and copies nothing.
+        // Library pictures go as copies of their fetched files, which quitting would empty; one that can't be
+        // fetched says so and copies nothing. Queued like the viewer's ⌘C, so an older one never lands last.
         let selection = gridSelection
-        Task {
+        copies.submit {
             var files: [URL] = []
             for url in selection {
-                guard let file = await operationFile(url) else { return }
+                guard let file = await self.operationFile(url), !Task.isCancelled else { return }
                 files.append(file)
             }
-            putFiles(files)
+            guard let copied = await offPool({ [files] in PhotosFetch.clipboardCopies(of: files) }), !Task.isCancelled else {
+                if !Task.isCancelled { self.errorMessage = String(localized: "Couldn't copy \(self.displayName(selection[0]))") }
+                return
+            }
+            self.putFiles(copied)
         }
     }
 

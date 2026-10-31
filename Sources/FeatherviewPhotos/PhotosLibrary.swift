@@ -161,8 +161,10 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
     }
 
     /// The current version (edited, or the original) fetched into `PhotosFetch.folder`, under the original's
-    /// name; reused until the picture changes in Photos.
-    public func file(_ url: URL) throws -> URL {
+    /// name; reused until the picture changes in Photos. Without `network`, an original only in iCloud fails.
+    public func file(_ url: URL) throws -> URL { try file(url, network: true) }
+
+    public func file(_ url: URL, network: Bool) throws -> URL {
         let asset = try asset(url)
         guard let resource = Self.resource(of: asset) else { throw DecodeError.unreadable(url) }
         let folder = PhotosFetch.folder(asset: asset.localIdentifier, modified: asset.modificationDate)
@@ -175,7 +177,7 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
         // Written under a temporary name and moved in, so a second caller never sees half a file.
         let temporary = folder.appendingPathComponent(".\(UUID().uuidString)")
         let options = PHAssetResourceRequestOptions()
-        options.isNetworkAccessAllowed = true
+        options.isNetworkAccessAllowed = network
         let done = DispatchSemaphore(value: 0)
         let failed = OSAllocatedUnfairLock(initialState: false)
         PHAssetResourceManager.default().writeData(for: resource, toFile: temporary, options: options) { error in

@@ -71,4 +71,51 @@ import Testing
         #expect(!fm.fileExists(atPath: photos.path))
         #expect(try fm.contentsOfDirectory(atPath: folders[2].path) == [])
     }
+
+    /// Spec "Photos library": each picture's iCloud note stays until its own original arrives, so going back to a
+    /// picture still downloading shows it again, and one picture's failure never hides another's note.
+    @Test func everyPictureKeepsItsOwnCloudNote() {
+        let a = PhotosLocation.url(album: "library", asset: "A/L0/001")
+        let b = PhotosLocation.url(album: "library", asset: "B/L0/001")
+        var notes = PhotosCloudNotes()
+        notes.started(a)
+        notes.started(b)
+        #expect(notes.isDownloading(a))
+        #expect(notes.note(for: a) == PhotosText.downloading)
+        notes.failed(a, name: "IMG_0001.HEIC")
+        #expect(!notes.isDownloading(a))
+        #expect(notes.note(for: a) == PhotosText.cantDownload(name: "IMG_0001.HEIC"))
+        #expect(notes.note(for: b) == PhotosText.downloading)
+        notes.arrived(b)
+        #expect(notes.note(for: b) == nil)
+        #expect(!notes.isDownloading(b))
+        #expect(notes.note(for: nil) == nil)
+    }
+
+    /// Grid ⌘C puts copies on the clipboard that outlast quitting, which empties the fetch cache: each in a
+    /// folder of its own, so two IMG_0001.HEIC never meet, and only the latest copy's files are kept.
+    @Test func clipboardCopiesOutlastTheFetchCache() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appending(path: "fv-clip-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: root) }
+        let photos = root.appending(path: "Photos", directoryHint: .isDirectory)
+        let clipboard = root.appending(path: "Clipboard", directoryHint: .isDirectory)
+        var fetched: [URL] = []
+        for (index, folder) in ["a", "b"].enumerated() {
+            let dir = photos.appending(path: folder, directoryHint: .isDirectory)
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            let file = dir.appending(path: "IMG_0001.HEIC")
+            try Data([UInt8(index)]).write(to: file)
+            fetched.append(file)
+        }
+        let first = try #require(PhotosFetch.clipboardCopies(of: fetched, in: clipboard))
+        #expect(first.map(\.lastPathComponent) == ["IMG_0001.HEIC", "IMG_0001.HEIC"])
+        #expect(try first.map { try Data(contentsOf: $0) } == [Data([0]), Data([1])])
+        PhotosFetch.emptyCaches(photos: photos, dropped: root.appending(path: "Dropped"), all: true)
+        #expect(first.allSatisfy { fm.fileExists(atPath: $0.path) })
+        let second = try #require(PhotosFetch.clipboardCopies(of: [], in: clipboard))
+        #expect(second.isEmpty)
+        #expect(!fm.fileExists(atPath: first[0].path))
+        #expect(PhotosFetch.clipboardCopies(of: [photos.appending(path: "gone.heic")], in: clipboard) == nil)
+    }
 }
