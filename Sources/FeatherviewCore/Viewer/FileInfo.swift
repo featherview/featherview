@@ -10,8 +10,27 @@ public struct FileInfo: Equatable, Sendable {
     /// The overlay's `{size}` and `{date}`.
     public let values: [String: String]
 
-    /// Reads the file; call off the main thread (it touches the disk).
+    public init(url: URL, page: Int, pixelSize: CGSize?, bytes: Int?, modified: Date?, values: [String: String]) {
+        self.url = url
+        self.page = page
+        self.pixelSize = pixelSize
+        self.bytes = bytes
+        self.modified = modified
+        self.values = values
+    }
+
+    /// Reads the file; call off the main thread (it touches the disk). A library picture's info comes from the
+    /// library (`ImageDecoder.library`); without one it has none.
     public static func read(url: URL, page: Int) -> FileInfo {
+        if ImageDecoder.isLibrary(url) {
+            guard let info = ImageDecoder.library?.info(url) else {
+                return FileInfo(url: url, page: page, pixelSize: nil, bytes: nil, modified: nil, values: [:])
+            }
+            // The hook leaves `values` empty; they come from its size and date, as for a file.
+            return FileInfo(url: info.url, page: info.page, pixelSize: info.pixelSize, bytes: info.bytes,
+                            modified: info.modified,
+                            values: OverlayTemplate.fileValues(size: info.pixelSize, modified: info.modified))
+        }
         let modified = url.modificationDate
         let size = ImageDecoder.displaySize(of: url, page: page)
         // `{size}` is page 0's on every page.
@@ -27,8 +46,8 @@ public struct FileInfo: Equatable, Sendable {
     }
 
     /// True while the file has the size and date this read saw, so nothing rewrote it since: one stat, where a read
-    /// opens the file's header too.
-    public var isCurrent: Bool { url.modificationDate == modified && url.fileSize == bytes }
+    /// opens the file's header too. A library picture always is: it has no file to stat.
+    public var isCurrent: Bool { ImageDecoder.isLibrary(url) || (url.modificationDate == modified && url.fileSize == bytes) }
 
     /// A read for another page of the same file has another pixel size.
     public func isFor(_ url: URL?, page: Int) -> Bool { self.url == url && self.page == page }
