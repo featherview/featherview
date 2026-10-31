@@ -2112,10 +2112,11 @@ final class ViewerModel {
     /// The grid's selection as files on the clipboard, as Finder's Copy puts them: they paste as files.
     func copyGridSelection() {
         guard !gridSelection.isEmpty else { return }
-        guard isLibrary else { return putFiles(gridSelection) }
-        // Library pictures go as copies of their fetched files, which quitting would empty; one that can't be
-        // fetched says so and copies nothing. Queued like the viewer's ⌘C, so an older one never lands last.
         let selection = gridSelection
+        // Queued like the viewer's ⌘C, so an older one (a library one still fetching) never lands last.
+        guard isLibrary else { copies.submit { self.putFiles(selection) }; return }
+        // Library pictures go as copies of their fetched files, which quitting would empty; one that can't be
+        // fetched says so and copies nothing.
         copies.submit {
             var files: [URL] = []
             for url in selection {
