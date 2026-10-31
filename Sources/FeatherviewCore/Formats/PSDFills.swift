@@ -320,8 +320,9 @@ public enum PSDFills {
         var type = "Lnr "
         if case .enumerated(_, let value)? = settings["Type"] { type = value }
         return { x, y in
-            // Along the line and across it; y grows downwards on screen, so the line points (cos, −sin).
-            let dx = Double(x) + 0.5 - cx, dy = Double(y) + 0.5 - cy
+            // Along the line and across it, from the pixel's top-left corner (as Photoshop's composites show); y grows
+            // downwards on screen, so the line points (cos, −sin).
+            let dx = Double(x) - cx, dy = Double(y) - cy
             let along = dx * cosA - dy * sinA, across = dx * sinA + dy * cosA
             var t: Double
             switch type {

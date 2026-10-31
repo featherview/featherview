@@ -40,11 +40,11 @@ import Testing
 
     /// A GdFl block: colour stops (colour, location 0…4096), transparency stops (percent, location).
     static func gradient(_ type: String, angle: Double, colours: [(V, Int)], opacities: [(Double, Int)] = [(100, 0), (100, 4096)],
-                         extra: [(String, V)] = []) -> Data {
+                         smoothness: Double = 4096, extra: [(String, V)] = []) -> Data {
         block(extra + [
             ("Angl", .unit("#Ang", angle)), ("Type", .enm("GrdT", type)),
             ("Grad", .obj("Grdn", [
-                ("Nm  ", .text("Test")), ("GrdF", .enm("GrdF", "CstS")), ("Intr", .doub(4096)),
+                ("Nm  ", .text("Test")), ("GrdF", .enm("GrdF", "CstS")), ("Intr", .doub(smoothness)),
                 ("Clrs", .list(colours.map { .obj("Clrt", [("Clr ", $0.0), ("Type", .enm("Clry", "UsrS")), ("Lctn", .long($0.1)), ("Mdpn", .long(50))]) })),
                 ("Trns", .list(opacities.map { .obj("TrnS", [("Opct", .unit("#Prc", $0.0)), ("Lctn", .long($0.1)), ("Mdpn", .long(50))]) })),
             ])),
@@ -211,7 +211,16 @@ import Testing
         let shaped = try Self.fillLayer(["GdFl": Self.gradient("Lnr ", angle: 0, colours: stops),
                                          "vmsk": Self.vectorMask(Self.square(0.5, 1))], width: 64, height: 64)
         let half = try #require(try PSDFills.content(shaped, canvas: (64, 64), patterns: [:], scale: 1))
-        #expect(Self.pixel(half, 0, 16)[0] <= 2 && Self.pixel(half, 31, 16)[0] >= 253)
+        #expect(Self.pixel(half, 0, 16)[0] <= 2 && Self.pixel(half, 31, 16)[0] >= 250)  // the last corner is 31/32 along
+    }
+
+    /// A gradient takes each pixel's colour at its top-left corner, as Photoshop's composites show: the first pixel of a
+    /// left-to-right ramp is the first stop exactly.
+    @Test func gradientsSampleAtPixelCorners() throws {
+        let stops: [(V, Int)] = [(Self.rgb(0, 0, 0), 0), (Self.rgb(255, 255, 255), 4096)]
+        let layer = try Self.fillLayer(["GdFl": Self.gradient("Lnr ", angle: 0, colours: stops, smoothness: 0)], width: 4, height: 1)
+        let image = try #require(try PSDFills.content(layer, canvas: (4, 1), patterns: [:], scale: 1))
+        #expect((0..<4).map { Self.pixel(image, $0, 0)[0] } == [0, 64, 128, 191])
     }
 
     /// "Snap to pixel" (sn2P) puts a vector mask's points on whole canvas pixels: an edge at 2.4 px covers pixel 2 fully.
@@ -229,7 +238,8 @@ import Testing
         let radial = try #require(try PSDFills.content(
             try Self.fillLayer(["GdFl": Self.gradient("Rdl ", angle: 90, colours: stops)], width: 65, height: 65),
             canvas: (65, 65), patterns: [:], scale: 1))
-        #expect(Self.pixel(radial, 32, 32)[0] <= 2)
+        // The centre (32.5, 32.5) lies between pixel corners, 0.7 px from the nearest.
+        #expect(Self.pixel(radial, 32, 32)[0] <= 3 && Self.pixel(radial, 33, 33) == Self.pixel(radial, 32, 32))
         #expect(Self.pixel(radial, 0, 32)[0] >= 245)
         #expect(Self.pixel(radial, 0, 0)[0] == 255)
         #expect(Self.pixel(radial, 16, 32) == Self.pixel(radial, 32, 16))
@@ -239,7 +249,7 @@ import Testing
             canvas: (65, 65), patterns: [:], scale: 1))
         #expect(Self.pixel(reflected, 10, 32)[0] <= 2)
         #expect(Self.pixel(reflected, 10, 0)[0] >= 245 && Self.pixel(reflected, 10, 64)[0] >= 245)
-        for y in 0..<65 { #expect(Self.pixel(reflected, 5, y) == Self.pixel(reflected, 5, 64 - y)) }
+        for y in 1..<65 { #expect(Self.pixel(reflected, 5, y) == Self.pixel(reflected, 5, 65 - y)) }
     }
 
     @Test func transparencyStops() throws {
