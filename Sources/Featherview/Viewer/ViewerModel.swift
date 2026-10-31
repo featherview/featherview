@@ -468,7 +468,10 @@ final class ViewerModel {
                 let (urls, kind) = try await PhotosLibrary.shared.list(album)
                 guard !Task.isCancelled else { return }
                 list = ImageList(urls: urls, current: PhotosLocation.start(urls, kind: kind, keeping: showing))
-                if urls.isEmpty { emptyFolder = openedFolder }
+                if urls.isEmpty {
+                    emptyFolder = openedFolder
+                    leaveCompare()  // as in `open`: an empty list ends it
+                }
                 show()
             } catch {
                 guard !Task.isCancelled else { return }
