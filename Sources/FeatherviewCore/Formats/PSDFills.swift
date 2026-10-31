@@ -15,6 +15,7 @@ public enum PSDFills {
         guard let key = ["SoCo", "GdFl", "PtFl"].first(where: { layer.blocks[$0] != nil }) else { return nil }
         let settings = try PSDDescriptor.versioned(layer.blocks[key]!)
         let sw = PSDLayers.scaledSize(canvas.width, scale), sh = PSDLayers.scaledSize(canvas.height, scale)
+        let sx = Double(sw) / Double(canvas.width), sy = Double(sh) / Double(canvas.height)
         let mask = try vectorMask(layer, canvas: canvas, scale: scale)
         let rect: PSDRect = mask?.rect ?? (0, 0, sh, sw)
         let w = rect.right - rect.left, h = rect.bottom - rect.top
@@ -30,9 +31,9 @@ public enum PSDFills {
             let aligned = settings["Algn"] != .bool(false)
             let canvasBox: PSDRect = (0, 0, canvas.height, canvas.width)
             let box: PSDRect = aligned ? mask?.bounds ?? canvasBox : canvasBox
-            shade = try gradient(settings, box: box, sx: Double(sw) / Double(canvas.width), sy: Double(sh) / Double(canvas.height), rgb: rgb)
+            shade = try gradient(settings, box: box, sx: sx, sy: sy, rgb: rgb)
         default:
-            shade = try pattern(settings, patterns: patterns, sx: Double(sw) / Double(canvas.width), sy: Double(sh) / Double(canvas.height))
+            shade = try pattern(settings, patterns: patterns, sx: sx, sy: sy)
         }
 
         var pixels = [UInt8](repeating: 0, count: w * h * 4)
@@ -379,14 +380,8 @@ public enum PSDFills {
             var space = ""
             if case .enumerated(_, let s)? = grad["ClrS"] { space = s }
             let roughness = min(max((number(grad["Smth"]) ?? 2048) / 4096, 0), 1)
-            var seed = UInt64(truncatingIfNeeded: Int(number(grad["RndS"]) ?? 0))
-            func random() -> Double {  // SplitMix64
-                seed &+= 0x9E37_79B9_7F4A_7C15
-                var z = seed
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return Double((z ^ (z >> 31)) >> 11) / Double(1 << 53)
-            }
+            var generator = SplitMix64(state: UInt64(truncatingIfNeeded: Int(number(grad["RndS"]) ?? 0)))
+            func random() -> Double { Double(generator.next() >> 11) / Double(1 << 53) }
             let labSpace = CGColorSpace(labWhitePoint: [0.9642, 1, 0.8249], blackPoint: [0, 0, 0], range: [-128, 127, -128, 127])
             let target = rgb ?? CGColorSpace(name: CGColorSpace.sRGB)
             // Each range in percent of its channel: RGB, HSB (hue as a share of the circle) or Lab (a, b over −128…127, into

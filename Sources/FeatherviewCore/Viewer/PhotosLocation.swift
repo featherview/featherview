@@ -263,9 +263,8 @@ public enum PhotosFetch {
     /// Moves a fetched file into place; true when `file` is there afterwards, also when another fetch of
     /// the same picture got there first.
     public static func moveIn(_ temporary: URL, to file: URL) -> Bool {
-        let fm = FileManager.default
-        if !fm.fileExists(atPath: file.path) { try? fm.moveItem(at: temporary, to: file) }
-        return fm.fileExists(atPath: file.path)
+        let err = BatchConverter.moveExclusive(temporary.path, file.path)
+        return err == 0 || err == EEXIST
     }
 
     /// Where grid ⌘C copies library pictures: not emptied at quit, so the clipboard still pastes afterwards.

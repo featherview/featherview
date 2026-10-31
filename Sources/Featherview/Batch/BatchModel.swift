@@ -31,7 +31,7 @@ final class BatchModel {
     var settings: BatchSettings {
         didSet {
             guard settings != oldValue else { return }
-            if settings.format != oldValue.format || settings.changeFormat != oldValue.changeFormat { updatePhotosChecks() }
+            if settings.format != oldValue.format || settings.changeFormat != oldValue.changeFormat { updatePhotosChecks(inputsChanged: false) }
             isEdited = true
             if !isRunning { clearFinished() }
             scheduleSave()
@@ -98,12 +98,14 @@ final class BatchModel {
     }
 
     /// Both answers come from `BatchSettings.problem`, which Start uses too; run when the format or the list changes.
-    private func updatePhotosChecks() {
+    /// Only the refusal depends on the format.
+    private func updatePhotosChecks(inputsChanged: Bool = true) {
         let urls = inputs.items.map(\.url)
         var photos = settings
         photos.toPhotos = true
         let refusal = photos.problem(inputs: urls)
         if refusal != photosRefusal { photosRefusal = refusal }
+        guard inputsChanged else { return }
         var nextTo = settings
         nextTo.toPhotos = false
         nextTo.outputFolder = ""
@@ -375,7 +377,7 @@ final class BatchModel {
             }
         }) { [self] found in
             inputs.append(found.list)
-            if let failed = found.failed { notice = String(localized: "Can't open \(PhotosLibrary.shared.name(failed))") }
+            if let failed = found.failed { notice = String(localized: "Can't open \(PhotosLibrary.shared.name(failed) ?? failed.lastPathComponent)") }
         }
     }
 

@@ -941,9 +941,7 @@ final class ViewerModel {
         guard start, PhotosLocation.isLibrary(url) else { return }
         // Weak: a closed window's model mustn't wait for PhotoKit.
         let task = Task { [weak self] in
-            // A held key or a slideshow passes pictures by: only one stayed on downloads its original.
-            try? await Task.sleep(for: .milliseconds(150))
-            guard !Task.isCancelled, PhotosLibrary.shared.isInCloud(url) else { return }
+            guard await ViewerModel.settled(url), PhotosLibrary.shared.isInCloud(url) else { return }
             self?.cloudNotes.started(url)
             do {
                 try await PhotosLibrary.shared.download(url)
@@ -1076,7 +1074,7 @@ final class ViewerModel {
     func becameActive() {
         updateAvailability()  // "Past the end of a folder" may have changed in Settings
         // View › Sort By may have changed while this window was closed (its onChange didn't run).
-        if !isLibrary, sortedOrder != .stored() { applySortOrder() }
+        if sortedOrder != .stored() { applySortOrder() }
         // Pane 2's file may have been trashed or moved in Finder meanwhile; a library picture has no path to check.
         if let compareSession, compareSession.errorMessage == nil, !PhotosLocation.isLibrary(compareSession.url),
            !FileManager.default.fileExists(atPath: compareSession.url.path) {
@@ -1302,7 +1300,7 @@ final class ViewerModel {
     }
 
     /// The file's decodes go from the window's caches and the grid's.
-    private func dropDecodes(of url: URL) async {
+    func dropDecodes(of url: URL) async {
         await cache.remove(url)
         await fullSizeCache.remove(url)
         await thumbnails?.cache.remove(url)
@@ -1707,7 +1705,7 @@ final class ViewerModel {
         compareSession.change(to: first)
         if list.select(second) {
             show()
-        } else if let album = PhotosLocation.album(of: second), PhotosLocation.isLibrary(second) {
+        } else if let album = PhotosLocation.album(of: second) {
             // Its album is pane 1's list again; a scan of the disk can't list it.
             openPhotos(album: album, showing: second, keepingCompare: true)
         } else {

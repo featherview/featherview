@@ -7,10 +7,9 @@ public struct BatchJob: Sendable {
     /// With `settings.toPhotos`: adds one finished output (a temp file, removed afterwards) to the library.
     public var addToPhotos: (@Sendable (URL) async throws -> Void)?
 
-    public init(inputs: [BatchInput], settings: BatchSettings, addToPhotos: (@Sendable (URL) async throws -> Void)? = nil) {
+    public init(inputs: [BatchInput], settings: BatchSettings) {
         self.inputs = inputs
         self.settings = settings
-        self.addToPhotos = addToPhotos
     }
 }
 

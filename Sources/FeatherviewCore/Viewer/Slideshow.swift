@@ -245,8 +245,8 @@ public struct Slideshow: Equatable, Sendable {
     }
 }
 
-/// A small seeded generator, so a slideshow's order is reproducible and the struct stays `Equatable`.
-private struct SplitMix64: RandomNumberGenerator, Equatable, Sendable {
+/// A small seeded generator, so a slideshow's order (and a noise gradient) is reproducible and the struct stays `Equatable`.
+struct SplitMix64: RandomNumberGenerator, Equatable, Sendable {
     var state: UInt64
 
     mutating func next() -> UInt64 {
