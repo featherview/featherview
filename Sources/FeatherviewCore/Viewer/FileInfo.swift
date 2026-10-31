@@ -23,8 +23,13 @@ public struct FileInfo: Equatable, Sendable {
     /// library (`ImageDecoder.library`); without one it has none.
     public static func read(url: URL, page: Int) -> FileInfo {
         if ImageDecoder.isLibrary(url) {
-            return ImageDecoder.library?.info(url)
-                ?? FileInfo(url: url, page: page, pixelSize: nil, bytes: nil, modified: nil, values: [:])
+            guard let info = ImageDecoder.library?.info(url) else {
+                return FileInfo(url: url, page: page, pixelSize: nil, bytes: nil, modified: nil, values: [:])
+            }
+            // The hook leaves `values` empty; they come from its size and date, as for a file.
+            return FileInfo(url: info.url, page: info.page, pixelSize: info.pixelSize, bytes: info.bytes,
+                            modified: info.modified,
+                            values: OverlayTemplate.fileValues(size: info.pixelSize, modified: info.modified))
         }
         let modified = url.modificationDate
         let size = ImageDecoder.displaySize(of: url, page: page)

@@ -76,6 +76,8 @@ private final class FakeLibrary: LibraryImages {
             #expect(info.pixelSize == CGSize(width: 4, height: 3))
             #expect(info.modified == fake.created)
             #expect(info.bytes == nil)
+            #expect(info.values == OverlayTemplate.fileValues(size: CGSize(width: 4, height: 3), modified: fake.created))
+            #expect(info.values["size"]?.isEmpty == false)
             #expect(info.isCurrent)
             #expect(ImageDecoder.pageCount(of: url) == 1)
             #expect(ImageDecoder.displaySize(of: url) == CGSize(width: 4, height: 3))
