@@ -295,7 +295,7 @@ struct InfoPanel: View {
             row("Folder", info.folder)
             row("Modified", info.modified)
             row("Created", info.created)
-            if let url {
+            if let url, info.folder != nil {
                 buttonRow(.file, glyph: "folder", title: Text("Show in Finder", comment: "Info panel button")) {
                     NSWorkspace.shared.activateFileViewerSelecting([url])
                 }
@@ -454,7 +454,8 @@ struct InfoPanel: View {
 
     /// The panel's controls in Tab order (`InfoPanelFocus.order`).
     private var focusOrder: [InfoFocus] {
-        InfoPanelFocus.order(picture: image != nil, groups: shownGroups, open: state.open, hasContent: info != nil)
+        InfoPanelFocus.order(picture: image != nil, groups: shownGroups, open: state.open, hasContent: info != nil,
+                             finder: info?.folder != nil)
     }
 
     private func moveFocus(back: Bool) -> KeyPress.Result {

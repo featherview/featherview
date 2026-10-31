@@ -30,6 +30,16 @@ import Testing
         #expect(InfoPanelFocus.order(picture: false, groups: [], open: [], hasContent: false) == [.showAll])
     }
 
+    /// A library picture has no folder on disk: no Folder row, and Show in Finder is no button and no stop.
+    @Test func libraryPictureHasNoFolderOrFinderButton() {
+        let url = PhotosLocation.url(album: "AB12/L0/040", asset: "9D8E/L0/001")
+        let library = ImageInfo.read(properties: [:], metadata: nil, url: url, fileSize: nil)
+        #expect(library.folder == nil)
+        #expect(info(camera: nil).folder == "/tmp")
+        let order = InfoPanelFocus.order(picture: true, groups: [.file], open: [.file], hasContent: true, finder: library.folder != nil)
+        #expect(!order.contains(.button(.file)))
+    }
+
     /// A control the next file hasn't hands the focus to the stop after it, never back to the mode control, whose
     /// ← / → would switch the histogram instead of browsing.
     @Test func lostControlFocusesTheNextStop() {

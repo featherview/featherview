@@ -46,12 +46,14 @@ public enum InfoPanelFocus {
 
     /// Mode, clip marks (with a picture), then each group's header and, when open, its button (Location's
     /// Open in Maps, File's Show in Finder), then "Show all metadata…". `hasContent` is false while the file's info
-    /// is read: open groups show their headers only then, so their buttons are no stops.
-    public static func order(picture: Bool, groups: [InfoGroup], open: Set<InfoGroup>, hasContent: Bool) -> [InfoFocus] {
+    /// is read: open groups show their headers only then, so their buttons are no stops. `finder` false: the file has no
+    /// folder (a library picture), so File has no Show in Finder.
+    public static func order(picture: Bool, groups: [InfoGroup], open: Set<InfoGroup>, hasContent: Bool,
+                             finder: Bool = true) -> [InfoFocus] {
         var order: [InfoFocus] = picture ? [.mode, .shadowsClip, .highlightsClip] : []
         for group in groups {
             order.append(.header(group))
-            if hasContent, group == .file || group == .location, open.contains(group) { order.append(.button(group)) }
+            if hasContent, group == .file && finder || group == .location, open.contains(group) { order.append(.button(group)) }
         }
         order.append(.showAll)
         return order

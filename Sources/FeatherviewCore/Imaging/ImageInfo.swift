@@ -57,7 +57,8 @@ public struct ImageInfo: Equatable, Sendable {
     public var picture = Picture()
     public var gps: GPS?
     public var description = Description()
-    public var folder: String
+    /// Nil for a Photos library picture, whose album is no folder.
+    public var folder: String?
     public var modified: String?
     public var created: String?
 
@@ -118,7 +119,8 @@ public struct ImageInfo: Equatable, Sendable {
         picture.summary = summary(picture, depth: depth)
 
         var info = ImageInfo(fileName: url.lastPathComponent, formatLine: formatLine,
-                             folder: (url.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath)
+                             folder: PhotosLocation.isLibrary(url) ? nil
+                                 : (url.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath)
         info.picture = picture
         info.camera = nonEmpty(MetadataReader.camera(make: tiff[kCGImagePropertyTIFFMake] as? String,
                                                      model: tiff[kCGImagePropertyTIFFModel] as? String))
