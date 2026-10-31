@@ -248,7 +248,7 @@ public struct BatchSettings: Codable, Equatable, Sendable {
     public static let droppedCache = URL.cachesDirectory.appending(path: "net.mynetx.featherview/Dropped", directoryHint: .isDirectory)
     /// A promised file received into `Dropped/<n>`, as opposed to one dropped where it lives.
     public static func isDropped(_ url: URL) -> Bool {
-        url.standardizedFileURL.path.hasPrefix(droppedCache.standardizedFileURL.path + "/")
+        standardPath(url).hasPrefix(droppedCachePrefix)
     }
     public var renamePattern = "{name}"
     public var crop = CropSettings(), resize = ResizeSettings(), orientation = OrientationSettings()
@@ -288,7 +288,15 @@ public struct BatchSettings: Codable, Equatable, Sendable {
 
     /// A library picture's fetched file: it has no original on disk, and is never trashed.
     static func isLibraryInput(_ url: URL) -> Bool {
-        url.standardizedFileURL.path.hasPrefix(photosCache.standardizedFileURL.path + "/")
+        standardPath(url).hasPrefix(photosCachePrefix)
+    }
+    private static let photosCachePrefix = photosCache.standardizedFileURL.path + "/"
+    private static let droppedCachePrefix = droppedCache.standardizedFileURL.path + "/"
+    /// Only a path with "." or ".." parts changes when standardized; skipping the rest keeps a check of
+    /// 10,000 files quick (NSString's search is several times faster here than String's).
+    private static func standardPath(_ url: URL) -> String {
+        let path = url.path
+        return (path as NSString).range(of: "/.").location == NSNotFound ? path : url.standardizedFileURL.path
     }
 
     /// The format Keep format writes a file in: by extension first (.pbm, .pgm and .ppm share one
@@ -305,7 +313,9 @@ public struct BatchSettings: Codable, Equatable, Sendable {
             if changeFormat { return format.photosImports ? nil : PhotosText.cantImport(format: format.name) }
             // Keep format writes each input in its own format (or copies one it can't write, an XCF);
             // one Photos can't import blocks Start.
-            for input in inputs {
+            // Once per extension: looking up a type is slow and a long list has few extensions.
+            var checked: Set<String> = []
+            for input in inputs where checked.insert(input.pathExtension).inserted {
                 let own = Self.ownFormat(of: input)
                 if own?.photosImports != true {
                     return PhotosText.cantImport(format: own?.name ?? input.pathExtension.uppercased())
@@ -314,7 +324,10 @@ public struct BatchSettings: Codable, Equatable, Sendable {
             return nil
         }
         // Next to the originals would write into a cache folder the app empties.
-        if outputFolder.isEmpty, inputs.contains(where: { Self.isLibraryInput($0) || Self.isDropped($0) }) {
+        if outputFolder.isEmpty, inputs.contains(where: {
+            let path = Self.standardPath($0)
+            return path.hasPrefix(Self.photosCachePrefix) || path.hasPrefix(Self.droppedCachePrefix)
+        }) {
             return PhotosText.needsDestination
         }
         return nil

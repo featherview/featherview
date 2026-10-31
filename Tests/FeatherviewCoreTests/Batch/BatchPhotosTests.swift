@@ -137,4 +137,19 @@ import Testing
         #expect(results.map(\.status) == [.converted])
         #expect(trashed.get.isEmpty)
     }
+
+    /// The batch window runs both checks on the main thread after every list change: 10,000 files stay
+    /// well under a frame each (a debug build; release is several times faster).
+    @Test func problemChecksAreQuickForLargeLists() {
+        let urls = (0..<10_000).map { URL(fileURLWithPath: "/Users/someone/Pictures/IMG_\($0).jpg") }
+        let keep = settings { $0.changeFormat = false; $0.toPhotos = true }
+        let nextTo = settings()
+        let clock = ContinuousClock()
+        #expect(keep.problem(inputs: urls) == nil)
+        #expect(nextTo.problem(inputs: urls) == nil)
+        let keepTime = clock.measure { _ = keep.problem(inputs: urls) }
+        let nextToTime = clock.measure { _ = nextTo.problem(inputs: urls) }
+        #expect(keepTime < .milliseconds(25))
+        #expect(nextToTime < .milliseconds(25))
+    }
 }
