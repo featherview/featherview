@@ -32,13 +32,44 @@ public struct PixelSize: Hashable, Sendable {
     }
 }
 
+/// Pictures of the Photos library (`featherview-photos:` URLs), from PhotoKit in the app. Calls block and run on
+/// `DecodeQueue` threads like ImageIO.
+public protocol LibraryImages: Sendable {
+    /// The picture for a `.fit` or `.thumbnail` target, drawn into `colorSpace`.
+    func image(_ url: URL, target: DecodeTarget, colorSpace: CGColorSpace?) throws -> CGImage
+    /// Pixel size and creation date (`modified`); `bytes` nil, `values` empty.
+    func info(_ url: URL) -> FileInfo
+    /// The current version fetched into the cache folder, for everything that needs a real file.
+    func file(_ url: URL) throws -> URL
+}
+
 public enum ImageDecoder {
+    /// Set once by the app at launch, like `ImageEncoder.jxlEncoder`; nil: every library picture is unreadable.
+    nonisolated(unsafe) public static var library: (any LibraryImages)?
+
+    /// A Photos library picture, by scheme only (never the disk).
+    // shortcut: own copy of PhotosLocation's scheme check, switch to PhotosLocation.isLibrary once it is in Core.
+    static func isLibrary(_ url: URL) -> Bool { url.scheme == "featherview-photos" }
+
+    /// A display decode of a library picture: `.fit` and `.thumbnail` from the library, `.full` and `.step` from
+    /// its fetched file.
+    static func libraryImage(_ url: URL, target: DecodeTarget, hdr: Bool, colorSpace: CGColorSpace?) throws -> CGImage {
+        guard let library else { throw DecodeError.unreadable(url) }
+        switch target {
+        case .fit, .thumbnail: return try library.image(url, target: target, colorSpace: colorSpace)
+        case .full: return try decode(library.file(url), halvingSteps: true, hdr: hdr, colorSpace: colorSpace)
+        case .step(let step):
+            return try decode(library.file(url), halvingSteps: true, step: step, hdr: hdr, colorSpace: colorSpace)
+        }
+    }
+
     /// HDR display needs macOS 15 (spec "Formats").
     public static var supportsHDR: Bool { if #available(macOS 15, *) { true } else { false } }
 
     /// Pages of a multi-page TIFF; 1 for every other file, so GIF frames and HEIC image sequences
     /// are not browsed as pages (spec: GIF shows its first frame). `source`: the file's, when already open.
     public static func pageCount(of url: URL, source: CGImageSource? = nil) -> Int {
+        if isLibrary(url) { return 1 }
         if let own = OwnDecoders.format(for: url) {
             return (try? Data(contentsOf: url, options: .mappedIfSafe)).map { max(own.pageCount($0), 1) } ?? 1
         }
@@ -51,6 +82,7 @@ public enum ImageDecoder {
     /// Pixel size as displayed, with EXIF orientation applied. nil if the file isn't a readable image.
     /// `source`: the file's, when already open.
     public static func displaySize(of url: URL, page: Int = 0, source: CGImageSource? = nil) -> CGSize? {
+        if isLibrary(url) { return library?.info(url).pixelSize }
         if let own = OwnDecoders.format(for: url) {
             // Mapped, so only the header's pages are read from disk.
             return (try? Data(contentsOf: url, options: .mappedIfSafe)).flatMap { own.size($0, page) }

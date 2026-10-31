@@ -65,4 +65,12 @@ import Testing
         let line = StatusLine.unsaved(pixelSize: CGSize(width: 1200, height: 800), zoomPercent: 50)
         #expect(line.fields == ["\(1200.formatted()) × \(800.formatted())", 0.5.formatted(.percent)])
     }
+
+    @Test func statusNoteIsLast() {
+        let line = StatusLine.make(pixelSize: CGSize(width: 40, height: 30), zoomPercent: nil, fileBytes: nil,
+                                   index: 0, count: 2, page: 0, pageCount: 1, modified: Date(timeIntervalSince1970: 0),
+                                   note: "Downloading from iCloud…")
+        #expect(line.fields.count == 4)
+        #expect(line.fields.last == "Downloading from iCloud…")
+    }
 }
