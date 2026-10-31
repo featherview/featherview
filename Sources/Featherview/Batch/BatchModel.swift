@@ -114,6 +114,10 @@ final class BatchModel {
 
     func start() {
         guard canStart else { return }
+        if settings.needsDestination(inputs: inputs.items.map(\.url)) {
+            notice = String(localized: "Choose where to save pictures from Photos.")
+            return
+        }
         // A clicked button doesn't take focus: a field still being edited hasn't written its value yet.
         NSApp.keyWindow?.makeFirstResponder(nil)
         clearFinished()

@@ -241,6 +241,13 @@ public struct BatchSettings: Codable, Equatable, Sendable {
     public var outputFolder = ""
     /// A typed relative path would resolve against the app's working directory, "/"; `~` is fine (BatchNamer expands it).
     public var hasAbsoluteOutputFolder: Bool { (outputFolder as NSString).expandingTildeInPath.hasPrefix("/") }
+    /// Promised drops land in `Dropped/<n>` here, a cache folder the app empties.
+    public static let droppedCache = URL.cachesDirectory.appending(path: "net.mynetx.featherview/Dropped", directoryHint: .isDirectory)
+    /// Outputs next to an input in a folder the app empties would be deleted with it.
+    public func needsDestination(inputs: [URL]) -> Bool {
+        let cache = Self.droppedCache.standardizedFileURL.path + "/"
+        return outputFolder.isEmpty && inputs.contains { $0.standardizedFileURL.path.hasPrefix(cache) }
+    }
     public var renamePattern = "{name}"
     public var crop = CropSettings(), resize = ResizeSettings(), orientation = OrientationSettings()
     public var colour = ColourSettings(), filters = FilterSettings(), canvas = CanvasSettings()

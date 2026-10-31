@@ -185,6 +185,17 @@ import Testing
         #expect(BatchProgress.canStart(isRunning: running, scans: scans, inputCount: files, settings: s) == canStart)
     }
 
+    /// Dropped promises live in a cache folder the app empties: their outputs need a folder of their own.
+    @Test func droppedInputsNeedADestination() {
+        let dropped = BatchSettings.droppedCache.appending(path: "1/IMG_0001.HEIC")
+        var s = BatchSettings()
+        #expect(s.needsDestination(inputs: [URL(filePath: "/tmp/a.jpg"), dropped]))
+        #expect(!s.needsDestination(inputs: [URL(filePath: "/tmp/a.jpg")]))
+        #expect(!s.needsDestination(inputs: [BatchSettings.droppedCache.deletingLastPathComponent().appending(path: "Dropped-x/a.jpg")]))
+        s.outputFolder = "~/Desktop/Out"
+        #expect(!s.needsDestination(inputs: [dropped]))
+    }
+
     @Test func secondsLeftTakesPausesOut() {
         #expect(BatchProgress.secondsLeft(elapsed: 10, paused: 4, done: 3, total: 6) == 6)
         #expect(BatchProgress.secondsLeft(elapsed: 10, paused: 0, done: 2, total: 6) == nil)
