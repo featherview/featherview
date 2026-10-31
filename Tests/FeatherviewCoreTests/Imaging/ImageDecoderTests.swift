@@ -283,4 +283,15 @@ import UniformTypeIdentifiers
         #expect(banded.colorSpace == p3 && banded.width == width && banded.height == height)
         #expect(PSDCompositeTests.same(PSDCompositeTests.pixels(banded), PSDCompositeTests.pixels(whole)))
     }
+
+    /// Photos' quick preview of a picture can be 64 × 30: the viewer gets it at the size it asked for, never smaller.
+    @Test func smallPreviewGrowsToTheAskedSize() throws {
+        let context = try #require(CGContext(data: nil, width: 64, height: 30, bitsPerComponent: 8, bytesPerRow: 0,
+                                             space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                             bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
+        let preview = try #require(context.makeImage())
+        let grown = ImageDecoder.enlarged(preview, toLongestSide: 640)
+        #expect(grown.width == 640 && grown.height == 300)
+        #expect(ImageDecoder.enlarged(preview, toLongestSide: 32) === preview)  // never shrinks
+    }
 }

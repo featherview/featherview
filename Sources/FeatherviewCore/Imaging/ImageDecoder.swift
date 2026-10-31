@@ -496,6 +496,17 @@ public enum ImageDecoder {
                        in: CGColorSpace(name: CGColorSpace.sRGB)!)
     }
 
+    /// `image` grown so its longest side is `side`, in its own colour space; itself if it's already that large.
+    /// A stand-in shown until the real picture arrives (Photos' quick preview can be 64 px wide) fills the same space.
+    public static func enlarged(_ image: CGImage, toLongestSide side: Int) -> CGImage {
+        let longest = max(image.width, image.height)
+        guard longest < side else { return image }
+        let scale = Double(side) / Double(longest)
+        return redrawn(image, width: max(1, Int((Double(image.width) * scale).rounded())),
+                       height: max(1, Int((Double(image.height) * scale).rounded())),
+                       in: image.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!) ?? image
+    }
+
     /// `image` drawn into an RGB(A) bitmap of the given size and color space: 8-bit, or 16-bit half float.
     private static func redrawn(_ image: CGImage, width: Int, height: Int, in space: CGColorSpace,
                                 bitsPerComponent: Int = 8) -> CGImage? {

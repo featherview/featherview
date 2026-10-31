@@ -122,6 +122,7 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
             options.deliveryMode = .fastFormat
             options.resizeMode = .fast
             image = request(asset, size: size, options: options).image
+                .map { ImageDecoder.enlarged($0, toLongestSide: side) }
         }
         state.withLock { PhotosFetch.record(inCloud: inCloud, url, target: target, in: &$0.inCloud) }
         guard let image else { throw DecodeError.unreadable(url) }
