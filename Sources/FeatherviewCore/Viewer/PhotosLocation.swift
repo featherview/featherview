@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// A picture in the Photos library as a URL: `featherview-photos://library/<album>/<asset>`, each
@@ -150,5 +151,39 @@ public enum PhotosText {
 
     public static func cantAdd(name: String) -> String {
         String(localized: "Can't add \(name) to Photos.", comment: "Batch log row when Photos refuses an output")
+    }
+}
+
+/// How `PhotosLibrary` names, places and keeps track of library pictures, without PhotoKit.
+public enum PhotosFetch {
+    /// The fetched file's name: the original's base name ("IMG_1234") with the written resource's extension,
+    /// since Photos names every edited version "FullSizeRender".
+    public static func fileName(original: String?, written: String) -> String {
+        guard let original else { return written }
+        let ext = (written as NSString).pathExtension
+        let base = (original as NSString).deletingPathExtension
+        return ext.isEmpty ? original : "\(base).\(ext)"
+    }
+
+    /// One folder per asset and version, so two IMG_0001.HEIC never meet and an edit in Photos fetches anew.
+    public static func folder(asset: String, modified: Date?) -> URL {
+        let key = "\(asset)\n\(modified?.timeIntervalSinceReferenceDate ?? 0)"
+        let hash = SHA256.hash(data: Data(key.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
+        return BatchSettings.photosCache.appendingPathComponent(hash, isDirectory: true)
+    }
+
+    /// Only the fit request says whether the viewer shows a preview of an iCloud-only picture: a thumbnail
+    /// Photos keeps locally says nothing about the original.
+    public static func record(inCloud: Bool, _ url: URL, target: DecodeTarget, in set: inout Set<URL>) {
+        guard case .fit = target else { return }
+        if inCloud { set.insert(url) } else { set.remove(url) }
+    }
+
+    /// Moves a fetched file into place; true when `file` is there afterwards, also when another fetch of
+    /// the same picture got there first.
+    public static func moveIn(_ temporary: URL, to file: URL) -> Bool {
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: file.path) { try? fm.moveItem(at: temporary, to: file) }
+        return fm.fileExists(atPath: file.path)
     }
 }

@@ -1,5 +1,4 @@
 import AppKit
-import CryptoKit
 import FeatherviewCore
 import Foundation
 import os
@@ -49,10 +48,9 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
     /// The original file name ("IMG_1234.HEIC"), for the title and visible grid cells.
     public func name(_ url: URL) -> String {
         if let name = state.withLock({ $0.names[url] }) { return name }
-        guard let asset = try? asset(url), let resource = Self.resource(of: asset) else {
+        guard let asset = try? asset(url), let name = Self.originalName(of: asset) else {
             return PhotosLocation.asset(of: url) ?? url.lastPathComponent
         }
-        let name = resource.originalFilename
         state.withLock { $0.names[url] = name }
         return name
     }
@@ -87,7 +85,7 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
             options.resizeMode = .fast
             image = request(asset, size: size, options: options).image
         }
-        state.withLock { if inCloud { $0.inCloud.insert(url) } else { $0.inCloud.remove(url) } }
+        state.withLock { PhotosFetch.record(inCloud: inCloud, url, target: target, in: &$0.inCloud) }
         guard let image else { throw DecodeError.unreadable(url) }
         return ImageDecoder.inColorSpace(image, colorSpace)
     }
@@ -124,14 +122,14 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
                         bytes: nil, modified: asset?.creationDate, values: [:])
     }
 
-    /// The current version (edited, or the original) fetched into `BatchSettings.photosCache/<asset hash>/<name>`,
-    /// one folder per asset so two IMG_0001.HEIC never meet; reused while it exists.
+    /// The current version (edited, or the original) fetched into `PhotosFetch.folder`, under the original's
+    /// name; reused until the picture changes in Photos.
     public func file(_ url: URL) throws -> URL {
         let asset = try asset(url)
         guard let resource = Self.resource(of: asset) else { throw DecodeError.unreadable(url) }
-        let hash = SHA256.hash(data: Data(asset.localIdentifier.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
-        let folder = BatchSettings.photosCache.appendingPathComponent(hash, isDirectory: true)
-        let file = folder.appendingPathComponent(resource.originalFilename)
+        let folder = PhotosFetch.folder(asset: asset.localIdentifier, modified: asset.modificationDate)
+        let file = folder.appendingPathComponent(PhotosFetch.fileName(original: Self.originalName(of: asset),
+                                                                      written: resource.originalFilename))
         let fm = FileManager.default
         if fm.fileExists(atPath: file.path) { return file }
         do { try fm.createDirectory(at: folder, withIntermediateDirectories: true) } catch { throw DecodeError.unreadable(url) }
@@ -148,11 +146,7 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
         done.wait()
         defer { try? fm.removeItem(at: temporary) }
         if failed.withLock({ $0 }) { throw DecodeError.unreadable(url) }
-        if !fm.fileExists(atPath: file.path) {
-            do { try fm.moveItem(at: temporary, to: file) } catch where !fm.fileExists(atPath: file.path) {
-                throw DecodeError.unreadable(url)
-            }
-        }
+        guard PhotosFetch.moveIn(temporary, to: file) else { throw DecodeError.unreadable(url) }
         return file
     }
 
@@ -160,6 +154,12 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
     private static func resource(of asset: PHAsset) -> PHAssetResource? {
         let resources = PHAssetResource.assetResources(for: asset)
         return resources.first { $0.type == .fullSizePhoto } ?? resources.first { $0.type == .photo } ?? resources.first
+    }
+
+    /// The camera's name ("IMG_1234.HEIC"): the original's, since an edited version is always "FullSizeRender".
+    private static func originalName(of asset: PHAsset) -> String? {
+        let resources = PHAssetResource.assetResources(for: asset)
+        return (resources.first { $0.type == .photo } ?? resources.first)?.originalFilename
     }
 
     // MARK: - Changes
