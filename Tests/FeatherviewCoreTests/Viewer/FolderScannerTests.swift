@@ -24,6 +24,12 @@ import Testing
 }
 
 @Suite struct FolderScannerTests {
+    /// The Library album's path is "/library", which a case-insensitive disk opens as /Library.
+    @Test func neverScansALibraryAlbum() {
+        #expect(throws: (any Error).self) { try FolderScanner.images(around: PhotosLocation.albumURL("library")) }
+        #expect(throws: (any Error).self) { try FolderScanner.images(around: PhotosLocation.url(album: "library", asset: "001")) }
+    }
+
     @Test func listsImagesInFinderOrderSkippingOtherAndHiddenFiles() throws {
         let dir = try Fixtures.makeTempDir()
         try Fixtures.writeImage(to: dir.appendingPathComponent("img10.jpg"), width: 4, height: 4)

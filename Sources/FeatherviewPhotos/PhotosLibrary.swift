@@ -9,13 +9,25 @@ import Photos
 public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
     public static let shared = PhotosLibrary()
 
-    private struct State: Sendable {
-        var names: [URL: String] = [:]
+    struct State: Sendable {
+        var names = PhotosNames()
         var inCloud: Set<URL> = []
     }
 
-    private let state = OSAllocatedUnfairLock(initialState: State())
-    private let manager = PHCachingImageManager()
+    let state = OSAllocatedUnfairLock(initialState: State())
+    /// Made on the first picture, not at launch, where the app makes `shared`.
+    private let madeManager = OSAllocatedUnfairLock<PHCachingImageManager?>(uncheckedState: nil)
+
+    private var manager: PHCachingImageManager {
+        madeManager.withLockUnchecked { made in
+            if let made { return made }
+            let manager = PHCachingImageManager()
+            made = manager
+            return manager
+        }
+    }
+
+    var hasImageManager: Bool { madeManager.withLockUnchecked { $0 != nil } }
 
     public init() {}
 
@@ -37,22 +49,48 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
 
     // MARK: - Pictures
 
-    /// The asset behind `url`; a denied library or a deleted picture is one bad file.
+    /// The asset behind `url`; a denied library or a deleted picture is one bad file. Its name is noted on the way,
+    /// so a picture decoded (or prefetched) is named even after it is gone.
     func asset(_ url: URL) throws -> PHAsset {
         guard let id = PhotosLocation.asset(of: url),
               let asset = PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil).firstObject
-        else { throw DecodeError.unreadable(url) }
+        else {
+            state.withLock { if $0.names.lookup(url) == .unknown { $0.names.record(nil, for: url) } }
+            throw DecodeError.unreadable(url)
+        }
+        if state.withLock({ $0.names.lookup(url) }) == .unknown {
+            let name = Self.originalName(of: asset)
+            state.withLock { $0.names.record(name, for: url) }
+        }
         return asset
     }
 
-    /// The original file name ("IMG_1234.HEIC"), for the title and visible grid cells.
-    public func name(_ url: URL) -> String {
-        if let name = state.withLock({ $0.names[url] }) { return name }
-        guard let asset = try? asset(url), let name = Self.originalName(of: asset) else {
-            return PhotosLocation.asset(of: url) ?? url.lastPathComponent
+    /// The original file name ("IMG_1234.HEIC") as far as looked up; no PhotoKit call, so fine on the main thread.
+    public func knownName(_ url: URL) -> PhotosNames.Lookup {
+        state.withLock { $0.names.lookup(url) }
+    }
+
+    /// Looks up the names of those of `urls` not looked up yet, in one fetch; off the main thread.
+    public func lookUpNames(_ urls: [URL]) {
+        let missing = state.withLock { $0.names.missing(urls) }
+        guard !missing.isEmpty else { return }
+        var found: [String: String] = [:]
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: missing.compactMap(PhotosLocation.asset(of:)), options: nil)
+        for index in 0..<assets.count {
+            let asset = assets.object(at: index)
+            found[asset.localIdentifier] = Self.originalName(of: asset)
         }
-        state.withLock { $0.names[url] = name }
-        return name
+        let named = missing.map { url in (url, PhotosLocation.asset(of: url).flatMap { found[$0] }) }
+        state.withLock { state in
+            for (url, name) in named { state.names.record(name, for: url) }
+        }
+    }
+
+    /// The original file name, looked up now if need be; nil when it can't be.
+    public func name(_ url: URL) -> String? {
+        lookUpNames([url])
+        if case .found(let name) = knownName(url) { return name }
+        return nil
     }
 
     /// Whether the last `image` call for `url` got only Photos' local preview of a picture kept in iCloud.

@@ -13,8 +13,10 @@ public enum OverlayTemplate {
         return values
     }
 
-    /// `{path}`: the file's full path, the home folder written as `~`.
-    public static func path(of url: URL, home: URL) -> String {
+    /// `{path}`: the file's full path, the home folder written as `~`; a library picture's album and name, as `name`
+    /// gives them.
+    public static func path(of url: URL, home: URL, name: (URL) -> String = \.lastPathComponent) -> String {
+        if PhotosLocation.isLibrary(url) { return "\(name(url.deletingLastPathComponent()))/\(name(url))" }
         let path = url.path(percentEncoded: false), home = home.path(percentEncoded: false)
         let prefix = home.hasSuffix("/") ? home : home + "/"
         return path.hasPrefix(prefix) ? "~/" + path.dropFirst(prefix.count) : path

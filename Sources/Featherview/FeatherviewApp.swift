@@ -1,5 +1,6 @@
 import FeatherviewCore
 import FeatherviewJXL
+import FeatherviewPhotos
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -9,6 +10,8 @@ struct FeatherviewApp: App {
 
     init() {
         ImageEncoder.jxlEncoder = JXLEncoder.encode
+        // Only the hook: PhotoKit is first asked when the person opens the library.
+        ImageDecoder.library = PhotosLibrary.shared
         // Only the location is handed over: the file is read on the first geotagged picture, never at launch.
         let places = Bundle.main.url(forResource: "places", withExtension: "fvpl")
         Task { await PlaceIndex.shared.configure(url: places, language: Bundle.main.preferredLocalizations.first) }
@@ -195,6 +198,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         offerCrashReport()
         // Open Recent also when no viewer window comes back (showOnce reads it sooner when one does).
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { RecentFiles.shared.reload() }
+        // The last run's fetched and dropped pictures go after the first image, off the main thread; folders this run
+        // already uses stay (PhotosFetch.use).
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 2) { PhotosLibrary.emptyCaches(all: false) }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        PhotosLibrary.emptyCaches(all: true)
     }
 
     /// Spec "Help menu": after a crash, offers once (10 s after launch, like the update check) to open the bug report

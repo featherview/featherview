@@ -5,6 +5,8 @@ public enum FolderScanner {
     /// Hidden files are skipped unless `includeHidden` (Settings › Browsing). Without `sorted`, in
     /// listing order: sort with `inFinderOrder`, or find the first with `firstInFinderOrder`.
     public static func images(around url: URL, includeHidden: Bool = false, sorted: Bool = true) throws -> [URL] {
+        // A library album's path ("/library") would list /Library on a case-insensitive disk.
+        guard url.isFileURL else { throw CocoaError(.fileReadUnsupportedScheme) }
         let resolved = url.resolvingSymlinksInPath()
         let isFolder = (try? resolved.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
         let folder = isFolder ? resolved : url.deletingLastPathComponent()

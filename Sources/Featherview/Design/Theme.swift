@@ -441,6 +441,8 @@ enum Theme {
         static let firstImageWait = 0.25
         /// A grid cell reads its tooltip's file details once the pointer has rested this long, so scrolling reads nothing.
         static let hoverRest = 0.15
+        /// Typing a name in a list (Open from Photos): a longer pause starts a new name, as in Finder.
+        static let typeSelectPause = 1.0
         /// Histogram curves rising from the baseline when they arrive with the info panel already open, ease-out.
         static let histogramRise = 0.24
 

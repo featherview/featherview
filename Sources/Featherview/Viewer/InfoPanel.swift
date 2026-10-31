@@ -7,6 +7,8 @@ import SwiftUI
 /// Everything is read off the main thread; each result lands only while its file is still the panel's.
 struct InfoPanel: View {
     let url: URL?
+    /// The header's name: a library picture's original file name, not its URL's asset identifier.
+    let name: String
     /// Changes when the file is rewritten (rotation), so everything is read again.
     let revision: Int
     /// The picture on screen, its file and page, and its fit-size decode, which the histogram is counted from.
@@ -148,8 +150,7 @@ struct InfoPanel: View {
     // MARK: Header
 
     private var header: some View {
-        let name = url?.lastPathComponent ?? ""
-        return VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(verbatim: name)
                 .font(Theme.panelHeader)
                 .foregroundStyle(Theme.labelTitle)
@@ -294,7 +295,7 @@ struct InfoPanel: View {
             row("Folder", info.folder)
             row("Modified", info.modified)
             row("Created", info.created)
-            if let url {
+            if let url, info.folder != nil {
                 buttonRow(.file, glyph: "folder", title: Text("Show in Finder", comment: "Info panel button")) {
                     NSWorkspace.shared.activateFileViewerSelecting([url])
                 }
@@ -453,7 +454,8 @@ struct InfoPanel: View {
 
     /// The panel's controls in Tab order (`InfoPanelFocus.order`).
     private var focusOrder: [InfoFocus] {
-        InfoPanelFocus.order(picture: image != nil, groups: shownGroups, open: state.open, hasContent: info != nil)
+        InfoPanelFocus.order(picture: image != nil, groups: shownGroups, open: state.open, hasContent: info != nil,
+                             finder: info?.folder != nil)
     }
 
     private func moveFocus(back: Bool) -> KeyPress.Result {

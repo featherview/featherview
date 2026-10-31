@@ -63,6 +63,7 @@ struct ComparePanes<First: View>: View {
                     Button("Stop Comparing") { model.stopComparing() }
                     Divider()
                     Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([session.url]) }
+                        .disabled(PhotosLocation.isLibrary(session.url))
                 }
         } else if let message = session.errorMessage {
             Text(message)

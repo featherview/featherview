@@ -21,7 +21,7 @@ import Foundation
     func decode(_ url: URL) -> Double? {
         let start = ContinuousClock.now
         guard (try? library.image(url, target: target, colorSpace: displayP3)) != nil else {
-            print("Can't decode \(library.name(url))")
+            print("Can't decode \(library.name(url) ?? url.absoluteString)")
             return nil
         }
         return start.duration(to: .now).milliseconds

@@ -1,6 +1,7 @@
 import Accessibility
 import AppKit
 import FeatherviewCore
+import FeatherviewPhotos
 import Observation
 import os
 
@@ -73,6 +74,11 @@ final class ViewerModel {
     var fileInfo: FileInfo?
     /// Page-0 reads for the image shown and its prefetched neighbours, so a swap sets the info with the image.
     @ObservationIgnored var knownInfo: [URL: FileInfo] = [:]
+    /// Bumped when library pictures' names arrive, so titles and grid cells naming them refresh.
+    var namesLooked = 0
+    /// Library pictures to name in the next lookup off the main thread (`displayName`).
+    @ObservationIgnored var namesToLookUp: Set<URL> = []
+    @ObservationIgnored var namesTask: Task<Void, Never>?
     /// Fit-size decodes of the image shown and its neighbours, also in `cache`: one swaps in with the
     /// position, in one update. Awaiting the cache actor would draw a frame in between (≈15 ms).
     @ObservationIgnored var ready: [URL: CGImage] = [:]
@@ -106,7 +112,7 @@ final class ViewerModel {
             compareDecoded: image != nil && compareSession?.image != nil,
             showsDifference: compareSession?.showsDifference == true, isSlideshow: slideshow != nil,
             hasUnsaved: unsaved != nil, hasFolder: folder != nil, pastEnd: AppSettings.pastEndBehavior,
-            desktopCanShow: list.current.map(ImageFormats.desktopCanShow) == true))
+            desktopCanShow: list.current.map(ImageFormats.desktopCanShow) == true, isLibrary: isLibrary))
         if new != availability { availability = new }
         if isAnimation != (player.frameCount > 1) { isAnimation.toggle() }
     }
@@ -198,6 +204,10 @@ final class ViewerModel {
     private let decodes = DecodeQueue()
     /// Counts opens, so a superseded open's scan can't refocus the newer one's decodes (checked under the lock).
     private let openCount = OSAllocatedUnfairLock(initialState: 0)
+    /// File › Open from Photos…: the sheet shows (PhotosAlbumSheet).
+    var showsPhotos = false
+    /// The library's albums as the sheet last listed them, for album names (`displayName`).
+    @ObservationIgnored var photosAlbums: [PhotosAlbumRow] = []
     /// A drop waiting for its promised files; a newer drop or any open supersedes it.
     @ObservationIgnored var pendingDrop: Task<Void, Never>?
     let cache: ImageCache
@@ -260,12 +270,12 @@ final class ViewerModel {
     /// in the title font.
     var titleName: String {
         if unsaved != nil { return String(localized: "Untitled") }
-        if isGrid, let folder { return folder.lastPathComponent }
+        if isGrid, let folder { return displayName(folder) }
         if let compareSession, let current = list.current {
-            return CompareText.title(first: current.lastPathComponent, second: compareSession.url.lastPathComponent)
+            return CompareText.title(first: displayName(current), second: displayName(compareSession.url))
         }
-        return list.current?.lastPathComponent ?? emptyFolder?.lastPathComponent
-            ?? (isOpening ? openingFile?.lastPathComponent ?? "" : "Featherview")
+        return list.current.map(displayName) ?? emptyFolder.map(displayName)
+            ?? (isOpening ? openingFile.map(displayName) ?? "" : "Featherview")
     }
 
     /// The file being opened, named in the title before its image shows; nil for a folder, whose first image
@@ -410,10 +420,64 @@ final class ViewerModel {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
-                errorMessage = String(localized: "Can't open \(url.lastPathComponent)")
+                errorMessage = String(localized: "Can't open \(displayName(url))")
             }
         }
         // Only now: shown earlier, the view sees no image and !isOpening and builds the toolbar (~150 ms) first.
+        revealWindow()
+    }
+
+    /// File › Open from Photos…: browses the album like a folder, from its newest picture for Library, Recents and
+    /// the media types, else its first. Listed off the main thread; not noted in Open Recent, never watched or sorted.
+    /// `showing`: the album opens at this picture while it has it (a swap); `keepingCompare` as for `open`.
+    func openPhotos(album: String, showing: URL? = nil, keepingCompare: Bool = false) {
+        pendingDrop?.cancel()
+        if guardUnsaved(then: { [weak self] in self?.openPhotos(album: album, showing: showing, keepingCompare: keepingCompare) }) {
+            return
+        }
+        endSlideshow()
+        openTask?.cancel()
+        sortTask?.cancel()
+        sortValues = [:]
+        // The album's own order: a Sort By change while it shows has nothing to re-sort.
+        sortedOrder = .stored()
+        followsNewFiles = false
+        closeGrid()
+        if !keepingCompare { leaveCompare() }
+        loadTask?.cancel()
+        isOpening = true
+        closeChooser()
+        emptyFolder = nil
+        openingFile = nil
+        openedFolder = PhotosLocation.albumURL(album)
+        if !AppSettings.keepZoom.value() { zoom = Zoom(Self.fitMode) }
+        ready = [:]
+        knownInfo = [:]
+        // Pane 2's picture stays in the window, as in `open`.
+        let kept = keepingCompare ? compareSession.map { [$0.url] } ?? [] : []
+        openCount.withLock { count in
+            count += 1
+            decodes.focus(kept)
+        }
+        openTask = Task {
+            defer { if !Task.isCancelled { isOpening = false } }
+            await cache.removeAll()
+            await fullSizeCache.removeAll()
+            do {
+                // Nonisolated async: PhotoKit's fetch runs off the main thread.
+                let (urls, kind) = try await PhotosLibrary.shared.list(album)
+                guard !Task.isCancelled else { return }
+                list = ImageList(urls: urls, current: PhotosLocation.start(urls, kind: kind, keeping: showing))
+                if urls.isEmpty {
+                    emptyFolder = openedFolder
+                    leaveCompare()  // as in `open`: an empty list ends it
+                }
+                show()
+            } catch {
+                guard !Task.isCancelled else { return }
+                errorMessage = String(localized: "Can't open \(displayName(PhotosLocation.albumURL(album)))")
+            }
+        }
         revealWindow()
     }
 
@@ -499,7 +563,8 @@ final class ViewerModel {
             if forward { list.first() } else { list.last() }
             show()
         case .folderChooser:
-            guard let folder else { break }
+            // An album has no neighbouring folders: Stop.
+            guard !isLibrary, let folder else { break }
             let includeHidden = AppSettings.showHiddenFiles.value()
             chooserCounts = [:]  // folders may have changed since the last chooser
             chooserSession.start(folder: folder, includeHidden: includeHidden)
@@ -746,7 +811,7 @@ final class ViewerModel {
                 }
                 fileInfo = nil
                 image = nil  // pageCount stays: one bad page mustn't hide the file's other pages
-                errorMessage = String(localized: "Can't open \(url.lastPathComponent)")
+                errorMessage = String(localized: "Can't open \(displayName(url))")
             }
             if let size, page == 0, prefetchesNeighbors {
                 await cache.prefetch(neighbors, target: .fit(size))
@@ -934,9 +999,10 @@ final class ViewerModel {
     func becameActive() {
         updateAvailability()  // "Past the end of a folder" may have changed in Settings
         // View › Sort By may have changed while this window was closed (its onChange didn't run).
-        if sortedOrder != .stored() { applySortOrder() }
-        // Pane 2's file may have been trashed or moved in Finder meanwhile.
-        if let compareSession, compareSession.errorMessage == nil, !FileManager.default.fileExists(atPath: compareSession.url.path) {
+        if !isLibrary, sortedOrder != .stored() { applySortOrder() }
+        // Pane 2's file may have been trashed or moved in Finder meanwhile; a library picture has no path to check.
+        if let compareSession, compareSession.errorMessage == nil, !PhotosLocation.isLibrary(compareSession.url),
+           !FileManager.default.fileExists(atPath: compareSession.url.path) {
             secondFailed(compareSession, url: compareSession.url)
         }
         guard zoom == .fit, !list.isEmpty else { return }
@@ -984,7 +1050,7 @@ final class ViewerModel {
                 return (trashed, failed)
             }.value
             await removeFromList(trashed)
-            if !failed.isEmpty { errorMessage = GridText.trashFailed(failed) }
+            if !failed.isEmpty { errorMessage = GridText.trashFailed(failed, name: failed.first.map(displayName)) }
         }
     }
 
@@ -1053,7 +1119,8 @@ final class ViewerModel {
     }
 
     func showDestinations(_ operation: FileOperation) {
-        guard !operationTargets.isEmpty else { return }
+        // A library picture is copied (F8), never moved out of Photos.
+        guard !operationTargets.isEmpty, operation == .copy || !isLibrary else { return }
         slots = DestinationSlots(defaults: .standard)  // Settings or another window may have changed them
         destinationPanel = operation
     }
@@ -1091,7 +1158,7 @@ final class ViewerModel {
                 return (moved, failed)
             }.value
             if operation == .move { await removeFromList(moved) }
-            if !failed.isEmpty { errorMessage = GridText.transferFailed(failed, operation: operation, folder: folder) }
+            if !failed.isEmpty { errorMessage = GridText.transferFailed(failed, name: failed.first.map(displayName), operation: operation, folder: folder) }
         }
     }
 
@@ -1162,7 +1229,7 @@ final class ViewerModel {
 
     private func confirm(_ operation: FileOperation, _ urls: [URL], _ folder: URL) -> Bool {
         let alert = NSAlert()
-        alert.messageText = GridText.confirm(urls, operation: operation, folder: folder)
+        alert.messageText = GridText.confirm(urls, name: urls.first.map(displayName), operation: operation, folder: folder)
         alert.addButton(withTitle: operation == .move ? String(localized: "Move") : String(localized: "Copy"))
         alert.addButton(withTitle: String(localized: "Cancel"))
         return alert.runModal() == .alertFirstButtonReturn
@@ -1174,7 +1241,8 @@ final class ViewerModel {
 
     /// Rewrites the file off the main thread. Rotations, flips and trashing run one at a time so none is lost.
     func change(_ change: OrientationChange) {
-        guard let url = list.current, !list.isHolding else { return }  // a held image is already gone
+        // A held image is already gone; a library picture changes only in Photos.
+        guard let url = list.current, !list.isHolding, !isLibrary else { return }
         let page = page
         let isRotation = if case .rotate = change { true } else { false }
         pendingChanges.add(change)
@@ -1206,8 +1274,8 @@ final class ViewerModel {
             } catch RotateError.notFirstPage {
                 dropFailed(url)
                 errorMessage = isRotation
-                    ? String(localized: "Only page 1 of \(url.lastPathComponent) can be rotated losslessly")
-                    : String(localized: "Only page 1 of \(url.lastPathComponent) can be flipped losslessly")
+                    ? String(localized: "Only page 1 of \(displayName(url)) can be rotated losslessly")
+                    : String(localized: "Only page 1 of \(displayName(url)) can be flipped losslessly")
             } catch RotateError.unsupportedFormat {
                 dropFailed(url)
                 errorMessage = isRotation
@@ -1216,8 +1284,8 @@ final class ViewerModel {
             } catch {
                 dropFailed(url)
                 errorMessage = isRotation
-                    ? String(localized: "Couldn't rotate \(url.lastPathComponent)")
-                    : String(localized: "Couldn't flip \(url.lastPathComponent)")
+                    ? String(localized: "Couldn't rotate \(displayName(url))")
+                    : String(localized: "Couldn't flip \(displayName(url))")
             }
         }
     }
@@ -1305,7 +1373,7 @@ final class ViewerModel {
             } else if let failure = failures.first {
                 errorMessage = count == 1 && failure.error as? DateTakenError == .unsupportedFormat
                     ? String(localized: "The date taken can be changed in JPEG, HEIC, TIFF and PSD files only")
-                    : String(localized: "Can't change the date taken of \(failure.url.lastPathComponent)")
+                    : String(localized: "Can't change the date taken of \(displayName(failure.url))")
             }
         }
     }
@@ -1503,7 +1571,7 @@ final class ViewerModel {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image]
         panel.directoryURL = current.deletingLastPathComponent()
-        panel.message = CompareText.choose(current.lastPathComponent)
+        panel.message = CompareText.choose(displayName(current))
         guard panel.runModal() == .OK, let url = panel.url, list.current == current else { return }
         compare(current, with: url)
     }
@@ -1531,9 +1599,18 @@ final class ViewerModel {
         guard availability.canSwap, let compareSession, let first = list.current else { return }
         let second = compareSession.url
         // shortcut: a file gone in Finder shows until a swap or the app is reactivated; watch it if users ask.
-        guard FileManager.default.fileExists(atPath: second.path) else { return secondFailed(compareSession, url: second) }
+        guard PhotosLocation.isLibrary(second) || FileManager.default.fileExists(atPath: second.path) else {
+            return secondFailed(compareSession, url: second)
+        }
         compareSession.change(to: first)
-        if list.select(second) { show() } else { open(second, keepingCompare: true, remember: false) }
+        if list.select(second) {
+            show()
+        } else if let album = PhotosLocation.album(of: second), PhotosLocation.isLibrary(second) {
+            // Its album is pane 1's list again; a scan of the disk can't list it.
+            openPhotos(album: album, showing: second, keepingCompare: true)
+        } else {
+            open(second, keepingCompare: true, remember: false)
+        }
         showSecond()
     }
 
@@ -1648,7 +1725,7 @@ final class ViewerModel {
         session.image = nil
         session.info = nil
         endDifference(session)
-        session.errorMessage = String(localized: "Can't open \(url.lastPathComponent)")
+        session.errorMessage = String(localized: "Can't open \(displayName(url))")
         updateAvailability()
     }
 
@@ -1907,9 +1984,9 @@ final class ViewerModel {
                 guard let data = await Task.detached(priority: .userInitiated, operation: { ClipboardImage.pngData(image) }).value
                 else { throw DecodeError.unreadable(url) }
                 guard !Task.isCancelled else { return }
-                self.putOnPasteboard(data, name: url.lastPathComponent)
+                self.putOnPasteboard(data, name: self.displayName(url))
             } catch {
-                if !Task.isCancelled { self.errorMessage = String(localized: "Couldn't copy \(url.lastPathComponent)") }
+                if !Task.isCancelled { self.errorMessage = String(localized: "Couldn't copy \(self.displayName(url))") }
             }
         }
     }
@@ -1933,12 +2010,13 @@ final class ViewerModel {
                                                       configuration: NSWorkspace.OpenConfiguration())
             } catch {
                 let app = FileManager.default.displayName(atPath: path)
-                errorMessage = String(localized: "Can't open \(url.lastPathComponent) with \(app)")
+                errorMessage = String(localized: "Can't open \(displayName(url)) with \(app)")
             }
         }
     }
 
     func showInFinder() {
+        guard !isLibrary else { return }
         if isGrid {
             if !gridSelection.isEmpty { NSWorkspace.shared.activateFileViewerSelecting(gridSelection) }
         } else if let url = list.current {

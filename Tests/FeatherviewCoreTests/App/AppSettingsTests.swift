@@ -100,4 +100,11 @@ import Testing
         #expect(OverlayTemplate.path(of: URL(filePath: "/Volumes/Card/DCIM/a.jpg"), home: home) == "/Volumes/Card/DCIM/a.jpg")
         #expect(OverlayTemplate.render("{path}", values: ["path": "~/a.jpg"]) == "~/a.jpg")
     }
+
+    @Test func aLibraryPicturesPathIsItsAlbumAndName() {
+        let url = PhotosLocation.url(album: "AB12/L0/040", asset: "9D8E/L0/001")
+        let names = [url: "IMG_0001.HEIC", url.deletingLastPathComponent(): "Trips"]
+        #expect(OverlayTemplate.path(of: url, home: URL(filePath: "/Users/ann")) { names[$0] ?? "?" } == "Trips/IMG_0001.HEIC")
+        #expect(OverlayTemplate.path(of: URL(filePath: "/Users/ann/a.jpg"), home: URL(filePath: "/Users/ann")) { _ in "?" } == "~/a.jpg")
+    }
 }

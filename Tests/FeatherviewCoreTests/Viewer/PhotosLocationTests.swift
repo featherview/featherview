@@ -12,6 +12,32 @@ import Testing
         #expect(PhotosLocation.asset(of: PhotosLocation.albumURL("AB12/L0/040")) == nil)
     }
 
+    @Test func anAlbumOpensAtTheKeptPictureElseAtItsEnd() {
+        let urls = ["a/L0/001", "b/L0/001", "c/L0/001"].map { PhotosLocation.url(album: "library", asset: $0) }
+        #expect(PhotosLocation.start(urls, kind: .library, keeping: urls[1]) == urls[1])
+        #expect(PhotosLocation.start(urls, kind: .library, keeping: nil) == urls[2])
+        #expect(PhotosLocation.start(urls, kind: .userAlbum, keeping: nil) == urls[0])
+        // Deleted in Photos since: where the album opens anyway.
+        let gone = PhotosLocation.url(album: "library", asset: "d/L0/001")
+        #expect(PhotosLocation.start(urls, kind: .favorites, keeping: gone) == urls[0])
+        #expect(PhotosLocation.start([], kind: .library, keeping: gone) == nil)
+    }
+
+    @Test func aFailedNameLookupIsKeptAndNotAskedAgain() {
+        let a = PhotosLocation.url(album: "library", asset: "a/L0/001")
+        let b = PhotosLocation.url(album: "library", asset: "b/L0/001")
+        var names = PhotosNames()
+        #expect(names.missing([a, b]) == [a, b])
+        names.record("IMG_0001.HEIC", for: a)
+        names.record(nil, for: b)
+        #expect(names.missing([a, b]).isEmpty)
+        #expect(names.lookup(a) == .found("IMG_0001.HEIC"))
+        #expect(names.lookup(b) == .failed)
+        #expect(names.lookup(PhotosLocation.url(album: "library", asset: "c/L0/001")) == .unknown)
+        names.forgetFailures()
+        #expect(names.missing([a, b]) == [b])
+    }
+
     @Test func libraryURLsHaveNoFilePath() {
         let url = PhotosLocation.url(album: "library", asset: "X/L0/001")
         #expect(PhotosLocation.isLibrary(url) && !url.isFileURL)
