@@ -32,7 +32,11 @@ Done for the next release:
 
 ## Planned
 
-Nothing beyond 1.0 yet; ideas are welcome in Discussions.
+- **1.0: polish and hardening.** No new features until 1.0: fixing what early users report, checks for
+  stability, memory and speed on more real-world files, translations reviewed by native speakers, and a
+  notarized download once sponsors cover Apple's fee.
+- **After 1.0: your requests.** Missing something? Ask in
+  [Discussions](https://github.com/featherview/featherview/discussions); the most-wanted ideas go here.
 
 ## Not planned
 
