@@ -124,4 +124,22 @@ import Testing
         #expect(!viewing { $0.pageCount = 1; $0.frameCount = 1 }.hasPages)
         #expect(!viewing { $0.frameCount = 12; $0.isGrid = true }.hasPages)
     }
+
+    @Test func libraryIsReadOnly() {
+        let a = viewing { $0.isLibrary = true }
+        #expect(!a.canSetDesktop && !a.canAdjustDate && !a.canShowInFinder && !a.canOpenWith && !a.canFollow)
+        #expect(!a.canEditFile && !a.canSort)
+        #expect(a.canChangeFile && a.canSaveAs && a.canCompare && a.canRefresh && a.canCopy && a.canBatch)
+        #expect(a.hasOperationTargets)  // Delete and F8 stay
+    }
+
+    @Test func libraryChooserStopsAtTheEnds() {
+        #expect(!viewing { $0.isLibrary = true; $0.pastEnd = .folderChooser; $0.index = 4 }.canGoForward)
+        #expect(viewing { $0.isLibrary = true; $0.pastEnd = .loop; $0.index = 4 }.canGoForward)
+    }
+
+    @Test func filesStillEditable() {
+        let a = viewing()
+        #expect(a.canEditFile && a.canSort)
+    }
 }

@@ -7,9 +7,10 @@ public struct StatusLine: Equatable, Sendable {
 
     /// `index`, `page` and `frame` are 0-based; the page shows only for multi-page files, the frame field
     /// only for animations: the frame count while playing (`frame` nil), the frame shown while paused.
+    /// `note` (a library picture's iCloud sentence) is the last field.
     public static func make(pixelSize: CGSize?, zoomPercent: Int?, fileBytes: Int?, index: Int, count: Int,
                             page: Int, pageCount: Int, frame: Int? = nil, frameCount: Int = 1,
-                            modified: Date?) -> StatusLine {
+                            modified: Date?, note: String? = nil) -> StatusLine {
         var fields = describe(pixelSize: pixelSize, zoomPercent: zoomPercent, fileBytes: fileBytes)
         fields.append(String(localized: "\((index + 1).formatted()) / \(count.formatted())"))
         if pageCount > 1 {
@@ -25,6 +26,7 @@ public struct StatusLine: Equatable, Sendable {
         if let modified {
             fields.append(modified.formatted(date: .abbreviated, time: .shortened))
         }
+        if let note { fields.append(note) }
         return StatusLine(fields: fields)
     }
 

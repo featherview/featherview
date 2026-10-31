@@ -1,8 +1,9 @@
 # Milestone 22: Photos library Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: run with the `plan-wave` workflow, wave by wave:
-> Wave 1 = Tasks 1–4 and 7 (independent), Wave 2 = Task 5, Wave 3 = Tasks 6 and 8,
-> Wave 4 = Task 9. Task 10 needs the screen and waits for the maintainer's go. Steps use checkbox
+> Wave 1 = Tasks 1, 2 and 7 (independent), Wave 2 = Tasks 3 and 4 (both need Task 1's
+> `PhotosLocation` and `PhotosText`), Wave 3 = Task 5, Wave 4 = Tasks 6 and 8, Wave 5 = Task 9.
+> Task 10 needs the screen and waits for the maintainer's go. Steps use checkbox
 > (`- [ ]`) syntax for tracking.
 
 **Goal:** Browse Apple's Photos library like a folder (File › Open from Photos…, ⇧⌘O), take pictures
@@ -166,6 +167,7 @@ destination). Roadmap: `docs/roadmap.md` › Next version › Photos library.
   clears the hook), `Tests/FeatherviewCoreTests/Viewer/StatusLineTests.swift`
 
 **Interfaces:**
+- Consumes: Task 1 (`PhotosLocation.isLibrary`).
 - Produces:
   - `public protocol LibraryImages: Sendable` with
     `func image(_ url: URL, target: DecodeTarget, colorSpace: CGColorSpace?) throws -> CGImage` (blocking,
@@ -201,6 +203,7 @@ destination). Roadmap: `docs/roadmap.md` › Next version › Photos library.
 - Test: `Tests/FeatherviewCoreTests/Batch/BatchPhotosTests.swift`
 
 **Interfaces:**
+- Consumes: Task 1 (`PhotosText.cantAdd(name:)`, `needsDestination`, `cantImport(format:)`).
 - Produces:
   - `BatchSettings.toPhotos: Bool` (stored with the other settings and presets; default false).
   - `OutputFormat.photosImports: Bool` — JPEG, HEIC, PNG, TIFF, GIF true; everything else false
