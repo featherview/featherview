@@ -67,6 +67,7 @@ let package = Package(
         .executableTarget(name: "FeatherviewDMG", dependencies: ["FeatherviewCore"]),
         .testTarget(name: "FeatherviewCoreTests", dependencies: ["FeatherviewCore", "FeatherviewJXL"]),
         .testTarget(name: "FeatherviewBenchTests", dependencies: ["FeatherviewBench"]),
+        .testTarget(name: "FeatherviewPhotosTests", dependencies: ["FeatherviewPhotos"]),
     ],
     cxxLanguageStandard: .cxx17
 )

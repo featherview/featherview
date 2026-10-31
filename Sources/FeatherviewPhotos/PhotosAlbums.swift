@@ -3,12 +3,13 @@ import Foundation
 import Photos
 
 extension PhotosLibrary {
-    /// The system's smart albums listed under Media Types, when they hold pictures. Videos, Slo-mo, Time-lapse,
-    /// Cinematic, Hidden and Recently Deleted are not among them.
-    static let mediaTypes: Set<PHAssetCollectionSubtype> = [
-        .smartAlbumSelfPortraits, .smartAlbumDepthEffect, .smartAlbumPanoramas, .smartAlbumScreenshots,
-        .smartAlbumLivePhotos, .smartAlbumBursts, .smartAlbumRAW, .smartAlbumLongExposures, .smartAlbumAnimated,
-    ]
+    /// Whether a system smart album of this subtype is listed under Media Types (when it holds pictures): every one
+    /// but the video, hidden and generic ones and those the sheet lists elsewhere or that aren't media types.
+    static func isMediaType(_ subtype: PHAssetCollectionSubtype) -> Bool {
+        ![.smartAlbumVideos, .smartAlbumSlomoVideos, .smartAlbumTimelapses, .smartAlbumCinematic, .smartAlbumScreenRecordings,
+          .smartAlbumAllHidden, .smartAlbumGeneric, .smartAlbumFavorites, .smartAlbumRecentlyAdded, .smartAlbumUserLibrary,
+          .smartAlbumUnableToUpload].contains(subtype)
+    }
 
     /// The sheet's rows: Library, Favorites, Recents, the media types that hold pictures, then the person's albums
     /// depth-first with their folder path. Counts come later (`count`).
@@ -27,7 +28,7 @@ extension PhotosLibrary {
         PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .any, options: nil).enumerateObjects { album, _, _ in
             let probe = Self.imagesOnly(sorted: false)
             probe.fetchLimit = 1
-            guard Self.mediaTypes.contains(album.assetCollectionSubtype),
+            guard Self.isMediaType(album.assetCollectionSubtype),
                   PHAsset.fetchAssets(in: album, options: probe).count > 0 else { return }
             rows.append(PhotosAlbumRow(id: album.localIdentifier, name: album.localizedTitle ?? "", folders: [],
                                        kind: .mediaType, count: nil))
@@ -68,7 +69,7 @@ extension PhotosLibrary {
         let kind: PhotosAlbumKind = switch collection.assetCollectionSubtype {
         case .smartAlbumFavorites: .favorites
         case .smartAlbumRecentlyAdded: .recents
-        case let subtype where Self.mediaTypes.contains(subtype): .mediaType
+        case let subtype where collection.assetCollectionType == .smartAlbum && Self.isMediaType(subtype): .mediaType
         default: .userAlbum
         }
         return (PHAsset.fetchAssets(in: collection, options: Self.imagesOnly(sorted: kind != .userAlbum)), kind)
