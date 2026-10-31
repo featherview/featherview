@@ -1065,8 +1065,8 @@ the About window.
 - Finder previews (after the own decoders): a Quick Look preview and
   thumbnail extension for the formats only Featherview reads, reusing its decoders, so Finder,
   Quick Look (Space) and open panels show them too. Formats ImageIO reads are left to macOS:
-  for a type macOS previews itself, it never asks an app's extension, even when the app claims the
-  type and macOS's own thumbnail fails. So PSD and PSB without a stored composite, which Featherview
+  macOS's own image thumbnailer claims every `public.image` type and is always chosen over an app's
+  extension for them, also when the app is the type's owner, and a failure isn't handed on. So PSD and PSB without a stored composite, which Featherview
   draws from their layers, stay blank (PSB: no thumbnail) in Finder and Quick Look.
 - Write (ImageIO): JPEG, PNG, HEIC, AVIF, TIFF, GIF, BMP, JPEG 2000, PDF, PSD, TGA, ICO, ICNS,
   OpenEXR.
