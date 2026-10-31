@@ -15,6 +15,8 @@ struct PhotosAlbumSheet: View {
     /// Type-select: the letters typed so far, dropped after a pause.
     @State private var typed = ""
     @State private var typedAt = Date.distantPast
+    /// The list takes the keys as the sheet opens: without focus ↑/↓, typing and Return go nowhere.
+    @FocusState private var listFocused: Bool
 
     private static let lastAlbumKey = "photosLastAlbum"
 
@@ -53,7 +55,15 @@ struct PhotosAlbumSheet: View {
             }
         }
         .frame(height: Theme.chooserListHeight)
+        .focused($listFocused)
+        .onAppear { listFocused = true }
         .contextMenu(forSelectionType: String.self, menu: { _ in }) { open($0.first) }
+        // The focused list keeps Return from the Open button's default action.
+        .onKeyPress(.return) {
+            guard selection != nil else { return .ignored }
+            open(selection)
+            return .handled
+        }
         .onKeyPress(characters: .alphanumerics.union(.punctuationCharacters).union(.whitespaces), action: typeSelect)
     }
 

@@ -557,8 +557,8 @@ struct ViewerView: View {
     }
 
     private func handle(_ press: KeyPress) -> KeyPress.Result {
-        // The rename field has the keyboard.
-        if model.renaming { return .ignored }
+        // The rename field has the keyboard, or the Photos sheet: a sheet is inside this view, so its keys pass here first.
+        if model.renaming || model.showsPhotos { return .ignored }
         // Arrow keys carry the numeric-pad/function flags and Caps Lock changes nothing here,
         // so only these modifiers count.
         let modifiers = press.modifiers.intersection([.command, .control, .option, .shift])
