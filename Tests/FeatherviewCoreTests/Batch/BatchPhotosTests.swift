@@ -59,6 +59,10 @@ import Testing
         #expect(keep.problem(inputs: jpgs + [URL(fileURLWithPath: "/tmp/c.webp")]) == PhotosText.cantImport(format: "WebP"))
         let keepJPEG = settings { $0.changeFormat = false; $0.formatID = "jpg"; $0.toPhotos = true }
         #expect(keepJPEG.problem(inputs: [URL(fileURLWithPath: "/tmp/c.qoi")]) == PhotosText.cantImport(format: "QOI"))
+        // No writable own format: Keep format would hand Photos the original bytes.
+        for ext in ["xcf", "jxr", "psb", "dds", "sgi"] {
+            #expect(keepJPEG.problem(inputs: jpgs + [URL(fileURLWithPath: "/tmp/c.\(ext)")]) == PhotosText.cantImport(format: ext.uppercased()))
+        }
     }
 
     @Test func toPhotosIsStored() throws {

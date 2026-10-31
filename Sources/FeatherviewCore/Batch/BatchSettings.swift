@@ -302,9 +302,16 @@ public struct BatchSettings: Codable, Equatable, Sendable {
     /// Why Start can't run with these inputs, or nil.
     public func problem(inputs: [URL]) -> String? {
         if toPhotos {
-            // Keep format writes each input in its own format; one Photos can't import blocks Start.
-            let formats = changeFormat ? [format] : inputs.compactMap(Self.ownFormat)
-            return formats.first { !$0.photosImports }.map { PhotosText.cantImport(format: $0.name) }
+            if changeFormat { return format.photosImports ? nil : PhotosText.cantImport(format: format.name) }
+            // Keep format writes each input in its own format (or copies one it can't write, an XCF);
+            // one Photos can't import blocks Start.
+            for input in inputs {
+                let own = Self.ownFormat(of: input)
+                if own?.photosImports != true {
+                    return PhotosText.cantImport(format: own?.name ?? input.pathExtension.uppercased())
+                }
+            }
+            return nil
         }
         // Next to the originals would write into a cache folder the app empties.
         if outputFolder.isEmpty, inputs.contains(where: { Self.isLibraryInput($0) || Self.isDropped($0) }) {
