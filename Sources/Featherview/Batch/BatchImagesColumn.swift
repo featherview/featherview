@@ -31,12 +31,9 @@ struct BatchImagesColumn: View {
                     .onDeleteCommand { if !model.isRunning { model.removeSelected() } }
                 }
             }
-            .onDrop(of: PromiseDrop.types, isTargeted: $isDropTarget) { providers in
+            .onDrop(of: PromiseDrop.types, isTargeted: $isDropTarget) { _ in
                 guard !model.isRunning, !GridCollectionView.isDraggingOut else { return false }
-                Task {
-                    let urls = await PromiseDrop.receive(providers)
-                    if !urls.isEmpty { model.add(dropped: urls) }
-                }
+                model.add(dropped: PromiseDrop.receive())
                 return true
             }
             .overlay {
