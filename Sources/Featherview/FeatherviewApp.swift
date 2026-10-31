@@ -197,10 +197,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Updater.startLater()
         offerCrashReport()
         // Open Recent also when no viewer window comes back (showOnce reads it sooner when one does).
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { RecentFiles.shared.reload() }
         // The last run's fetched and dropped pictures go after the first image, off the main thread; folders this run
         // already uses stay (PhotosFetch.use). Its clipboard copies go too once the clipboard holds something else.
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            RecentFiles.shared.reload()
             let held = NSPasteboard.general.readObjects(forClasses: [NSURL.self],
                                                         options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
             DispatchQueue.global(qos: .utility).async {
