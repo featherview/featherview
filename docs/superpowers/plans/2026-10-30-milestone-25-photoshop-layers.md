@@ -408,7 +408,9 @@ holds each cause; tests in the matching `*Tests.swift`.
   `@Test func legacyBrightnessContrastShiftsLinearly()`, `@Test func noiseGradientFillUsesItsSeed()`.
 - [ ] **Step 3: FAIL. Step 4: Fix. Step 5: PASS; `swift test -j 4` all PASS.**
 - [ ] **Step 6: Oracle again.** `swift run -c release featherview-bench psdlayers <corpus>`: ≥ 95 % of the
-  unique comparable files within target (≥ 103 of 108), no file that was within target falls out, and the
+  unique comparable files within target, aiming for all 108: a file may stay over only when its cause is
+  something Adobe's specification doesn't describe (e.g. the random generator behind noise gradients),
+  then listed as a known limit with that reason. No file that was within target falls out, and the
   fit decode of the 12 MP, 30-layer file stays < 500 ms (`featherview-bench decode`). Report the per-file
   numbers before and after, and what stays over and why.
 - [ ] **Step 7: Commit** each cause as its own `fix:` commit.
