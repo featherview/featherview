@@ -18,6 +18,7 @@ let usage = """
       swift run -c release featherview-bench places <out.fvpl>
       swift run -c release featherview-bench places --time <file.fvpl> [--lookups 10000] [--language ja]
       swift run -c release featherview-bench psdlayers <dir> [--time]
+      swift run -c release featherview-bench photos [--album <id>]
 
     corpus  writes generated test images into <dir> (never commit them).
     decode  times the viewer's fit decode per file and screen, plus one full-size decode per file,
@@ -54,6 +55,9 @@ let usage = """
             size against that composite, both over white. Per file: mean difference per channel, % of pixels off by
             more than 8 in a channel, the known limits it uses (layer effects, colour lookup, knockout); then how many
             files without known limits are within mean ≤ 1 and ≤ 1 % off. --time adds the time to draw the layers.
+    photos  lists the Photos library (or --album, a local identifier) as Open from Photos does and prints the time,
+            the first fit picture's time (where the album opens) and p50 / p95 of the next 50, from PhotoKit at the
+            3024x1964 screen's fit size. Needs Photos access for the terminal: the first run asks.
     Screens are in pixels; default 3024x1964 3456x2234 5120x2880 (decode), 3024x1964 (browse).
     """
 
@@ -103,7 +107,8 @@ func fail(_ message: String) -> Never {
 }
 
 var arguments = Array(CommandLine.arguments.dropFirst())
-guard arguments.count >= 2 else { fail("Missing mode or folder.") }
+// `photos` reads the Photos library, not a folder.
+guard arguments.count >= 2 || arguments.first == "photos" else { fail("Missing mode or folder.") }
 let mode = arguments.removeFirst()
 // `places --time <file>` times a built file instead of building one.
 let timePlaces = mode == "places" && arguments.first == "--time"
@@ -111,8 +116,8 @@ if timePlaces { arguments.removeFirst() }
 // `psdlayers --time` adds render times; the flag takes no value.
 let timeLayers = mode == "psdlayers" && arguments.contains("--time")
 if timeLayers { arguments.removeAll { $0 == "--time" } }
-guard !arguments.isEmpty else { fail("Missing folder or file.") }
-let folder = URL(fileURLWithPath: arguments.removeFirst())
+guard !arguments.isEmpty || mode == "photos" else { fail("Missing folder or file.") }
+let folder = mode == "photos" ? URL(fileURLWithPath: ".") : URL(fileURLWithPath: arguments.removeFirst())
 guard knownOptions[mode] != nil else { fail("Unknown mode \(mode).") }
 let options: [String: [String]]
 do { options = try parseOptions(arguments, mode: mode) } catch { fail(error.message) }
@@ -501,6 +506,7 @@ case "histogram": runHistogram()
 case "psdlayers": runPSDLayers(folder, time: timeLayers)
 case "places" where timePlaces: runPlaceTiming(folder)
 case "places": await runPlaces(out: folder)
+case "photos": await runPhotos()
 case "thumbnail": await runThumbnail(folder, out: option("--out").map { URL(fileURLWithPath: $0) })
 default: fail("Unknown mode \(mode).")
 }

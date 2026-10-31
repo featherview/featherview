@@ -14,6 +14,10 @@ import Testing
                             "--json": ["a.json"], "--baseline": ["b.json"]])
     }
 
+    @Test func photosOptionsParse() throws {
+        #expect(try parseOptions(["--album", "AB12/L0/040"], mode: "photos") == ["--album": ["AB12/L0/040"]])
+    }
+
     @Test func misspelledOptionFails() {
         #expect(throws: OptionError("Unknown option --sreen for decode.")) {
             try parseOptions(["--sreen", "1x1"], mode: "decode")
