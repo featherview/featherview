@@ -26,13 +26,16 @@ public struct ViewerState: Sendable {
     public var pastEnd: PastEndBehavior
     /// The current file is one the system can set as its desktop picture.
     public var desktopCanShow: Bool
+    /// The list is a Photos library album: its pictures are read-only.
+    public var isLibrary: Bool
 
     public init(hasCurrent: Bool = false, isHolding: Bool = false, isOpening: Bool = false,
                 index: Int = 0, count: Int = 1, pageCount: Int = 1, frameCount: Int = 1,
                 isGrid: Bool = false, gridSelectionCount: Int = 0,
                 isComparing: Bool = false, compareFailed: Bool = false, compareDecoded: Bool = false,
                 showsDifference: Bool = false, isSlideshow: Bool = false, hasUnsaved: Bool = false,
-                hasFolder: Bool = false, pastEnd: PastEndBehavior = .folderChooser, desktopCanShow: Bool = false) {
+                hasFolder: Bool = false, pastEnd: PastEndBehavior = .folderChooser, desktopCanShow: Bool = false,
+                isLibrary: Bool = false) {
         self.hasCurrent = hasCurrent
         self.isHolding = isHolding
         self.isOpening = isOpening
@@ -51,6 +54,7 @@ public struct ViewerState: Sendable {
         self.hasFolder = hasFolder
         self.pastEnd = pastEnd
         self.desktopCanShow = desktopCanShow
+        self.isLibrary = isLibrary
     }
 }
 
@@ -62,6 +66,10 @@ public struct ViewerAvailability: Equatable, Sendable {
     public var canGoForward = false
     /// Rotate, Trash, F2, F7 / F8: not on a held (already removed) image.
     public var canChangeFile = false
+    /// Rotate, flip, Rename, Move to Folder (F7): change the file itself, never a library picture.
+    public var canEditFile = false
+    /// Sort By: a library album keeps the album's order.
+    public var canSort = false
     public var hasPages = false
     /// T: the window has a list to show as thumbnails (also while the grid shows, to leave it).
     public var canShowGrid = false
@@ -106,7 +114,9 @@ public struct ViewerAvailability: Equatable, Sendable {
 
     public init(_ s: ViewerState) {
         // While the folder is listed its ends aren't known yet.
-        let pastEnd = s.isOpening ? .loop : s.pastEnd
+        // An album has no neighbouring folder to choose.
+        let pastEnd: PastEndBehavior = s.isOpening ? .loop
+            : s.isLibrary && s.pastEnd == .folderChooser ? .stop : s.pastEnd
         // In the grid → moves between cells, not images (Decision 8).
         let canBrowse = s.hasFolder && !s.isGrid
         // A slideshow steps in its play order, which has no Finder ends.
@@ -118,17 +128,19 @@ public struct ViewerAvailability: Equatable, Sendable {
         let hasPicture = s.hasCurrent || s.hasUnsaved
         // In the grid these act on one viewed image (Decision 13).
         canChangeFile = s.hasCurrent && !s.isHolding && !s.isGrid
+        canEditFile = canChangeFile && !s.isLibrary
+        canSort = !s.isLibrary
         hasPages = (s.pageCount > 1 || s.frameCount > 1) && !s.isHolding && !s.isGrid
         canShowGrid = s.isGrid || (s.count > 0 && !s.isOpening)
         canCompare = canChangeFile
         canSwap = s.isComparing && !s.compareFailed && s.hasCurrent && !s.isHolding
         canShowDifference = s.isComparing && !s.compareFailed && s.compareDecoded
-        canSetDesktop = canChangeFile && s.desktopCanShow
+        canSetDesktop = canChangeFile && s.desktopCanShow && !s.isLibrary
         canShowInfo = s.hasCurrent && !s.isGrid && !s.isComparing
-        canAdjustDate = s.isGrid ? s.gridSelectionCount > 0 : canChangeFile
-        hasOperationTargets = canAdjustDate
-        canShowInFinder = s.isGrid ? s.gridSelectionCount > 0 : s.hasCurrent
-        canOpenWith = s.hasCurrent && !s.isGrid
+        hasOperationTargets = s.isGrid ? s.gridSelectionCount > 0 : canChangeFile
+        canAdjustDate = hasOperationTargets && !s.isLibrary
+        canShowInFinder = (s.isGrid ? s.gridSelectionCount > 0 : s.hasCurrent) && !s.isLibrary
+        canOpenWith = s.hasCurrent && !s.isGrid && !s.isLibrary
         canSaveAs = canChangeFile || s.hasUnsaved
         canBatch = !s.isGrid || s.gridSelectionCount > 0
         canCopy = !s.isGrid || s.gridSelectionCount > 0
@@ -136,7 +148,7 @@ public struct ViewerAvailability: Equatable, Sendable {
         canCompareSelection = s.isGrid && s.gridSelectionCount == 2
         canToggleDifference = canShowDifference || s.showsDifference
         canToggleSlideshow = s.isSlideshow || canStartSlideshow
-        canFollow = s.hasFolder
+        canFollow = s.hasFolder && !s.isLibrary
         canRefresh = s.hasFolder
     }
 }
