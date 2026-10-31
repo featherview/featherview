@@ -1302,7 +1302,7 @@ final class ViewerModel {
     }
 
     /// The file's decodes go from the window's caches and the grid's.
-    private func dropDecodes(of url: URL) async {
+    func dropDecodes(of url: URL) async {
         await cache.remove(url)
         await fullSizeCache.remove(url)
         await thumbnails?.cache.remove(url)

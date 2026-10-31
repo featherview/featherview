@@ -72,10 +72,7 @@ extension ViewerModel {
             let removed = Set(list.urls).subtracting(urls)
             ready = ready.filter { !removed.contains($0.key) }
             knownInfo = knownInfo.filter { !removed.contains($0.key) }
-            for url in removed {
-                await cache.remove(url)
-                await fullSizeCache.remove(url)
-            }
+            for url in removed { await dropDecodes(of: url) }
             list.reorder(urls)
             list.release()
             emptyFolder = list.isEmpty ? folder : nil
