@@ -424,7 +424,7 @@ holds each cause; tests in the matching `*Tests.swift`.
 
 - [ ] Open a folder of the corpus files without a real composite: every one shows a picture (no blank),
   ←/→ through them within the not-prefetched budget for files ≤ 12 MP.
-- [ ] Thumbnail grid of the same folder; Finder thumbnails and Quick Look (the extensions decode through `ImageDecoder` too).
+- [ ] Thumbnail grid of the same folder. Finder thumbnails and Quick Look stay macOS's: the extensions don't claim PSD/PSB, and claiming them changes nothing (macOS keeps its own thumbnailer for both, spec "Formats").
 - [ ] A file with known limits (layer effects) shows without the effects, no error.
 - [ ] Mark milestone 25 done in `docs/roadmap.md` and `ROADMAP.md` with the oracle numbers, commit
   `docs: Photoshop layers measured`.

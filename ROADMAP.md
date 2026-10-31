@@ -25,13 +25,11 @@ Done for the next release:
 
 - Huge pictures: a 1.5-gigapixel Photoshop file (Hubble's Andromeda mosaic) opens in under a second,
   huge TIFFs open several times faster, and zooming in reads only the part on screen
+- Photoshop layers: files saved without "Maximize Compatibility" show the picture Photoshop shows,
+  drawn from their layers with every blend mode, groups, masks, fill and adjustment layers
 
 ## Planned
 
-- Photoshop layers: files saved without "Maximize Compatibility" show the picture Photoshop shows,
-  drawn from their layers with every blend mode, groups, masks, fill and adjustment layers (in
-  progress: drawn as Photoshop draws them in 104 of 108 test files, in under half a second;
-  a last check in the app is left)
 - Photos library: browse albums from Apple's Photos with the arrow keys, drag pictures in from
   Photos, and batch convert from it or into it, without exporting first
 
