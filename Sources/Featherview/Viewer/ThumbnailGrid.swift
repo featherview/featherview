@@ -585,7 +585,8 @@ final class ThumbnailCell: NSCollectionViewItem {
         self.url = url
         self.grid = grid
         cell.position = (index, count)
-        cell.name = url.lastPathComponent
+        // Asked only for cells being shown: a library picture's name is a PhotoKit lookup.
+        cell.name = grid.model.displayName(url)
         if grid.isFailed(url) { cell.show(nil, failed: true) }
         load()
     }

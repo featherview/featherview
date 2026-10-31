@@ -5,7 +5,7 @@ import FeatherviewCore
 /// and the picture stays on screen without a new decode.
 extension ViewerModel {
     func beginRename() {
-        guard availability.canChangeFile, !renaming, let url = list.current else { return }
+        guard availability.canEditFile, !renaming, let url = list.current else { return }
         renamingURL = url
         errorMessage = nil
         renamingInSheet = isFullScreen || UserDefaults.standard.bool(forKey: toolbarHiddenKey)

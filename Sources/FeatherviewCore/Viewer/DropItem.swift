@@ -55,9 +55,9 @@ public enum DropItem: Equatable, Sendable {
     }
 
     /// Where Save As starts for a picture in `folder`: `fallback` instead of a drop's folder, which a later
-    /// launch empties.
+    /// launch empties, or an album, which has no folder on disk.
     public static func saveFolder(_ folder: URL?, else fallback: URL) -> URL {
-        guard let folder, !BatchSettings.isDropped(folder) else { return fallback }
+        guard let folder, !BatchSettings.isDropped(folder), !PhotosLocation.isLibrary(folder) else { return fallback }
         return folder
     }
 

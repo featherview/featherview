@@ -94,7 +94,7 @@ struct ViewerView: View {
             } else if let message = model.errorMessage {
                 Text(message).messageBox()
             } else if let folder = model.emptyFolder {
-                Text("No images in \(folder.lastPathComponent)").messageBox()
+                Text("No images in \(model.displayName(folder))").messageBox()
             } else if !model.isOpening && model.list.current == nil {
                 // Only when nothing is on its way: a loading image shows black, not the hint.
                 // Centred in the fit area, not the whole window below the toolbar.
@@ -103,6 +103,7 @@ struct ViewerView: View {
         }
         .overlay { sheets }
         .sheet(item: Binding { model.dateSheet } set: { model.dateSheet = $0 }) { AdjustDateSheet(model: model, sheet: $0) }
+        .sheet(isPresented: Binding { model.showsPhotos } set: { model.showsPhotos = $0 }) { PhotosAlbumSheet(model: model) }
         .sheet(isPresented: Binding { model.renaming && model.renamingInSheet } set: { if !$0 { model.cancelRename() } }) {
             RenameSheet(model: model)
         }
@@ -169,8 +170,9 @@ struct ViewerView: View {
         .modifier(ToolbarHiddenInFullScreen())
         .onChange(of: displayScale, initial: true) { model.displayScale = displayScale }
         .onChange(of: model.unsaved != nil) { model.window?.isDocumentEdited = $1 }
-        .onChange(of: sortKey) { model.applySortOrder() }
-        .onChange(of: sortAscending) { model.applySortOrder() }
+        // An album keeps its own order.
+        .onChange(of: sortKey) { if model.availability.canSort { model.applySortOrder() } }
+        .onChange(of: sortAscending) { if model.availability.canSort { model.applySortOrder() } }
         // Not set on the window directly: SwiftUI puts the scene's title back on its next update.
         .navigationTitle(model.title)
         .overlay(alignment: .topTrailing) { infoPanel }
@@ -459,8 +461,8 @@ struct ViewerView: View {
     }
 
     private func overlayValues(_ url: URL) -> [String: String] {
-        var values = ["name": url.lastPathComponent,
-                      "folder": url.deletingLastPathComponent().lastPathComponent,
+        var values = ["name": model.displayName(url),
+                      "folder": model.displayName(url.deletingLastPathComponent()),
                       "path": OverlayTemplate.path(of: url, home: FileManager.default.homeDirectoryForCurrentUser),
                       "index": "\(model.list.index + 1)", "count": "\(model.list.urls.count)"]
         if let file = model.fileInfo, file.url == url { values.merge(file.values) { $1 } }
@@ -625,7 +627,7 @@ struct ViewerView: View {
             case .deleteForward: model.moveCurrentToTrash(); return .handled
             case Self.f7: model.showDestinations(.move); return .handled
             case Self.f8: model.showDestinations(.copy); return .handled
-            case Self.f5: model.refreshFolder(); return .handled
+            case Self.f5: model.refresh(); return .handled
             case Self.f2: model.beginRename(); return .handled
             case .return: model.toggleFullScreen(); return .handled
             case .escape:
@@ -695,7 +697,7 @@ struct ViewerView: View {
         case .trash: model.moveCurrentToTrash()
         case .move: model.showDestinations(.move)
         case .copy: model.showDestinations(.copy)
-        case .refresh: model.refreshFolder()
+        case .refresh: model.refresh()
         case .batch:
             guard !model.gridSelection.isEmpty else { return true }
             model.batchSelection()
@@ -768,20 +770,22 @@ struct ImageContextMenu: View {
             Button("Flip Horizontal") { model.flip(.horizontal) }
             Button("Flip Vertical") { model.flip(.vertical) }
         }
-        .disabled(!model.availability.canChangeFile)
+        .disabled(!model.availability.canEditFile)
         Button("Adjust Date Taken…") { model.showAdjustDate() }
             .disabled(!model.availability.canAdjustDate)
         Divider()
         Button("Rename…") { model.beginRename() }
-            .disabled(!model.availability.canChangeFile)
+            .disabled(!model.availability.canEditFile)
         Group {
             Button("Move to Folder…") { model.showDestinations(.move) }
+                .disabled(model.isLibrary)
             Button("Copy to Folder…") { model.showDestinations(.copy) }
             Button("Move to Trash") { model.moveCurrentToTrash() }
         }
         .disabled(!model.availability.hasOperationTargets)
         Divider()
         Button("Show in Finder") { model.showInFinder() }
+            .disabled(!model.availability.canShowInFinder)
         OpenWithMenu(model: model)
         Divider()
         ShareMenu(model: model)
@@ -968,6 +972,8 @@ struct ViewerCommands: Commands {
             Button("Open…  (O)") { (model ?? ViewerModel.lastActive.current).showOpenPanel() }
                 .keyboardShortcut("o")
             RecentMenu()
+            Button("Open from Photos…") { (model ?? ViewerModel.lastActive.current).showPhotos() }
+                .keyboardShortcut("o", modifiers: [.command, .shift])
             Button("Compare With…") { model?.showCompareOpenPanel() }
                 .keyboardShortcut("o", modifiers: [.command, .option])
                 .disabled(model?.availability.canCompare != true)
@@ -981,13 +987,14 @@ struct ViewerCommands: Commands {
                 .keyboardShortcut("s", modifiers: [.command, .shift])
                 .disabled(model?.availability.canSaveAs != true)
             Button("Rename…  (F2)") { model?.beginRename() }
-                .disabled(model?.availability.canChangeFile != true)
+                .disabled(model?.availability.canEditFile != true)
             Divider()
             ShareMenu(model: model)
             Divider()
             Group {
                 // ⌘⌫ is handled by the viewer, not as a menu shortcut (see ViewerView.handle).
                 Button("Move to Folder…  (F7)") { model?.showDestinations(.move) }
+                    .disabled(model?.isLibrary == true)
                 Button("Copy to Folder…  (F8)") { model?.showDestinations(.copy) }
                 Button("Move to Trash  (⌘⌫ or ⌦)") { model?.moveCurrentToTrash() }
             }
@@ -1058,7 +1065,7 @@ struct ViewerCommands: Commands {
                 Button("Flip Horizontal  (H)") { model?.flip(.horizontal) }
                 Button("Flip Vertical  (V)") { model?.flip(.vertical) }
             }
-            .disabled(model?.availability.canChangeFile != true)
+            .disabled(model?.availability.canEditFile != true)
             // Also on the grid's selection, as Photos does (Decision 8).
             Button("Adjust Date Taken…") { model?.showAdjustDate() }
                 .disabled(model?.availability.canAdjustDate != true)
@@ -1126,7 +1133,8 @@ struct ViewerCommands: Commands {
             Toggle("Keep Zoom  (⇧L)", isOn: $keepZoom)
             Divider()
             SortMenu()
-            Button("Refresh  (F5)") { model?.refreshFolder() }
+                .disabled(model?.availability.canSort == false)
+            Button("Refresh  (F5)") { model?.refresh() }
                 .keyboardShortcut("r")
                 .disabled(model?.availability.canRefresh != true)
             FollowToggle(model: model)

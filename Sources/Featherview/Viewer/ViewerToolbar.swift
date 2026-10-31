@@ -65,19 +65,19 @@ struct ViewerToolbar: CustomizableToolbarContent {
                 ThumbnailsToggle(model: model)
             }
             ToolbarItem(id: "rotateLeft", placement: .primaryAction) {
-                ToolbarButton("Rotate Left", "rotate.left", "Rotate left (L)", enabled: { $0.availability.canChangeFile }, model) { $0.rotate(.counterClockwise) }
+                ToolbarButton("Rotate Left", "rotate.left", "Rotate left (L)", enabled: { $0.availability.canEditFile }, model) { $0.rotate(.counterClockwise) }
             }
             ToolbarItem(id: "rotateRight", placement: .primaryAction) {
-                ToolbarButton("Rotate Right", "rotate.right", "Rotate right (R)", enabled: { $0.availability.canChangeFile }, model) { $0.rotate(.clockwise) }
+                ToolbarButton("Rotate Right", "rotate.right", "Rotate right (R)", enabled: { $0.availability.canEditFile }, model) { $0.rotate(.clockwise) }
             }
             ToolbarItem(id: "flipHorizontal", placement: .primaryAction) {
                 ToolbarButton("Flip Horizontal", "arrow.left.and.right.righttriangle.left.righttriangle.right", "Flip horizontal (H)",
-                              enabled: { $0.availability.canChangeFile }, model) { $0.flip(.horizontal) }
+                              enabled: { $0.availability.canEditFile }, model) { $0.flip(.horizontal) }
             }
             .defaultCustomization(.hidden)
             ToolbarItem(id: "flipVertical", placement: .primaryAction) {
                 ToolbarButton("Flip Vertical", "arrow.up.and.down.righttriangle.up.righttriangle.down", "Flip vertical (V)",
-                              enabled: { $0.availability.canChangeFile }, model) { $0.flip(.vertical) }
+                              enabled: { $0.availability.canEditFile }, model) { $0.flip(.vertical) }
             }
             .defaultCustomization(.hidden)
         }

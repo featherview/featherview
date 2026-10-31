@@ -50,6 +50,12 @@ struct DropItemTests {
         #expect(DropItem.saveFolder(nil, else: pictures) == pictures)
     }
 
+    /// An album has no folder on disk: Save As there (a library picture, ⌘N's image over an album) starts in Pictures.
+    @Test func saveFolderLeavesAlbums() {
+        let pictures = URL(filePath: "/Users/someone/Pictures", directoryHint: .isDirectory)
+        #expect(DropItem.saveFolder(PhotosLocation.albumURL("AB12/L0/040"), else: pictures) == pictures)
+    }
+
     /// All promises arrived: the files come back in the drop's order, with the file URLs between them.
     @Test func arrivalsKeepTheDropOrder() async {
         let urls = await DropItem.collect([(1, URL(filePath: "/a/finder.jpg"))], expected: 2, quiet: 5) { add in

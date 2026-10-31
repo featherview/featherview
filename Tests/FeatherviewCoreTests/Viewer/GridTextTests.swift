@@ -24,6 +24,15 @@ import Testing
         #expect(GridText.transferFailed([a], operation: .copy, folder: folder) == "Couldn't copy a.jpg to Keep")
     }
 
+    /// A library picture is named as the viewer shows it (its original file name), not by its URL.
+    @Test func oneFileByItsShownName() {
+        let picture = PhotosLocation.url(album: "library", asset: "A/L0/001")
+        #expect(GridText.trashFailed([picture], name: "IMG_1.HEIC") == "Couldn't move IMG_1.HEIC to the Trash")
+        #expect(GridText.transferFailed([picture], name: "IMG_1.HEIC", operation: .copy, folder: folder)
+            == "Couldn't copy IMG_1.HEIC to Keep")
+        #expect(GridText.confirm([picture], name: "IMG_1.HEIC", operation: .copy, folder: folder) == "Copy IMG_1.HEIC to Keep?")
+    }
+
     @Test func severalFailuresCount() throws {
         #expect(GridText.trashFailed([a, b]) == "Couldn't move 2 images to the Trash")
         #expect(GridText.transferFailed([a, b], operation: .move, folder: folder) == "Couldn't move 2 images to Keep")
