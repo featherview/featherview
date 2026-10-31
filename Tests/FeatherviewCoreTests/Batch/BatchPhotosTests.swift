@@ -138,18 +138,17 @@ import Testing
         #expect(trashed.get.isEmpty)
     }
 
-    /// The batch window runs both checks on the main thread after every list change: 10,000 files stay
-    /// well under a frame each (a debug build; release is several times faster).
-    @Test func problemChecksAreQuickForLargeLists() {
+    /// The checks' shortcuts for long lists (one type lookup per extension, standardizing only dotted
+    /// paths) still find the one problem at the end of 10,000 files. Speed is measured by hand, not here:
+    /// a wall-clock limit fails on a busy or slower machine.
+    @Test func problemChecksOfLargeListsFindTheLastProblem() {
         let urls = (0..<10_000).map { URL(fileURLWithPath: "/Users/someone/Pictures/IMG_\($0).jpg") }
         let keep = settings { $0.changeFormat = false; $0.toPhotos = true }
-        let nextTo = settings()
-        let clock = ContinuousClock()
         #expect(keep.problem(inputs: urls) == nil)
-        #expect(nextTo.problem(inputs: urls) == nil)
-        let keepTime = clock.measure { _ = keep.problem(inputs: urls) }
-        let nextToTime = clock.measure { _ = nextTo.problem(inputs: urls) }
-        #expect(keepTime < .milliseconds(25))
-        #expect(nextToTime < .milliseconds(25))
+        #expect(keep.problem(inputs: urls + [URL(fileURLWithPath: "/tmp/IMG_0001.webp")]) == PhotosText.cantImport(format: "WebP"))
+        let cache = BatchSettings.photosCache.standardizedFileURL
+        let dotted = URL(fileURLWithPath: cache.deletingLastPathComponent().path + "/x/../" + cache.lastPathComponent + "/6A1F-99/IMG_0001.HEIC")
+        #expect(settings().problem(inputs: urls) == nil)
+        #expect(settings().problem(inputs: urls + [dotted]) == PhotosText.needsDestination)
     }
 }
