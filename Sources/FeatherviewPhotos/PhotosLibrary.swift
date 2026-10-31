@@ -131,6 +131,7 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
         let file = folder.appendingPathComponent(PhotosFetch.fileName(original: Self.originalName(of: asset),
                                                                       written: resource.originalFilename))
         let fm = FileManager.default
+        PhotosFetch.use(folder)
         if fm.fileExists(atPath: file.path) { return file }
         do { try fm.createDirectory(at: folder, withIntermediateDirectories: true) } catch { throw DecodeError.unreadable(url) }
         // Written under a temporary name and moved in, so a second caller never sees half a file.
@@ -181,13 +182,9 @@ public final class PhotosLibrary: LibraryImages, @unchecked Sendable {
         }
     }
 
-    /// Empties the fetched files and the drops' folders (at launch and quit). Drops lose only the files Photos
-    /// handed over; anything the user put there goes to the Trash (`DropItem.freshFolder`).
-    public static func emptyCaches() {
-        let fm = FileManager.default
-        try? fm.removeItem(at: BatchSettings.photosCache)
-        for drop in (try? fm.contentsOfDirectory(at: BatchSettings.droppedCache, includingPropertiesForKeys: nil)) ?? [] {
-            _ = DropItem.freshFolder(drop)
-        }
+    /// Empties the fetched files and the drops' folders: at launch (`all` false) all but those this run already
+    /// uses, at quit (`all` true) everything. See `PhotosFetch.emptyCaches`.
+    public static func emptyCaches(all: Bool) {
+        PhotosFetch.emptyCaches(all: all)
     }
 }

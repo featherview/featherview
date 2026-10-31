@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import os
 
 /// A picture in the Photos library as a URL: `featherview-photos://library/<album>/<asset>`, each
 /// identifier percent-encoded into one path component (its `/` as `%2F`). The album URL is the
@@ -185,5 +186,28 @@ public enum PhotosFetch {
         let fm = FileManager.default
         if !fm.fileExists(atPath: file.path) { try? fm.moveItem(at: temporary, to: file) }
         return fm.fileExists(atPath: file.path)
+    }
+
+    /// Cache folders (a drop's, a fetched picture's) this run uses; the launch-time emptying leaves them alone.
+    /// Held while emptying, so a folder is either emptied before its first use or not at all.
+    private static let used = OSAllocatedUnfairLock(initialState: Set<String>())
+
+    /// Marks `folder` as used by this run; waits while the launch-time emptying is on it. Call it before
+    /// touching the folder, off the main thread.
+    public static func use(_ folder: URL) {
+        used.withLock { _ = $0.insert(folder.standardizedFileURL.path) }
+    }
+
+    /// Empties the fetched pictures in `photos` and the drops' folders in `dropped`; drops lose only the
+    /// files Photos handed over (`DropItem.freshFolder`). Unless `all` (at quit), folders this run uses stay.
+    public static func emptyCaches(photos: URL = BatchSettings.photosCache, dropped: URL = BatchSettings.droppedCache, all: Bool) {
+        let fm = FileManager.default
+        func each(_ root: URL, _ empty: (URL) -> Void) {
+            for folder in (try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? [] {
+                used.withLockUnchecked { if all || !$0.contains(folder.standardizedFileURL.path) { empty(folder) } }
+            }
+        }
+        if all { try? fm.removeItem(at: photos) } else { each(photos) { try? fm.removeItem(at: $0) } }
+        each(dropped) { _ = DropItem.freshFolder($0) }
     }
 }

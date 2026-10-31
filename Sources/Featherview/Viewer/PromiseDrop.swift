@@ -38,7 +38,7 @@ enum PromiseDrop {
         let folder = BatchSettings.droppedCache.appending(path: "\(drops)", directoryHint: .isDirectory)
         return Task {
             // Emptying a leftover folder can take a while: off the main thread.
-            guard let folder = await Task.detached(operation: { DropItem.freshFolder(folder) }).value else { return files.map(\.url) }
+            guard let folder = await Task.detached(operation: { PhotosFetch.use(folder); return DropItem.freshFolder(folder) }).value else { return files.map(\.url) }
             let expected = promised.map { max($0.receiver.fileTypes.count, 1) }.reduce(0, +)
             // shortcut: a minute without an arrival ends the wait, a slower iCloud download is left out; upgrade if Photos reports progress.
             let urls = await DropItem.collect(files, expected: expected, quiet: 60) { add in
