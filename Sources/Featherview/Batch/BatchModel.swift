@@ -362,14 +362,17 @@ final class BatchModel {
     /// thread (the header's spinner shows meanwhile) and the fetched files join the list in the order given.
     func add(library urls: [URL]) {
         addInOrder({ () -> (list: BatchInputList, failed: URL?) in
-            var files: [URL] = []
-            var failed: URL?
-            for url in urls {
-                if let file = try? PhotosLibrary.shared.file(url) { files.append(file) } else if failed == nil { failed = url }
+            // Each fetch blocks its thread until Photos has written the file: on GCD, never the cooperative pool.
+            await offPool {
+                var files: [URL] = []
+                var failed: URL?
+                for url in urls {
+                    if let file = try? PhotosLibrary.shared.file(url) { files.append(file) } else if failed == nil { failed = url }
+                }
+                var list = BatchInputList()
+                list.add(files: files)
+                return (list, failed)
             }
-            var list = BatchInputList()
-            list.add(files: files)
-            return (list, failed)
         }) { [self] found in
             inputs.append(found.list)
             if let failed = found.failed { notice = String(localized: "Can't open \(PhotosLibrary.shared.name(failed))") }
