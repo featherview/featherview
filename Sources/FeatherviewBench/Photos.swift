@@ -11,6 +11,8 @@ import Foundation
         fail("No access to the Photos library. Allow this terminal in System Settings › Privacy & Security › Photos.")
     }
     let album = option("--album") ?? "library"
+    // The sheet has listed the albums before one is chosen, so Photos' connection is set up (~140 ms the first time).
+    _ = await library.albums()
     let start = ContinuousClock.now
     guard let (urls, kind) = try? await library.list(album) else { fail("No album \(album).") }
     let listMs = start.duration(to: .now).milliseconds
