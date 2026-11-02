@@ -50,6 +50,13 @@ it straight away, Apple has to notarize it, and that costs $99 every year. If Fe
 useful to you, a [small contribution](https://github.com/sponsors/mynetx) towards that fee would mean
 a lot.
 
+<a href="https://featherview.mynetx.net/#huge"><img src="https://featherview.mynetx.net/hubble.webp" alt="Hubble's Andromeda mosaic, 69,536 × 22,230 pixels, open in Featherview" width="720"></a>
+
+Hubble's 4.6 GB Andromeda file, 1.5 gigapixels, is on screen about two seconds after the double-click,
+app launch included ([watch it](https://featherview.mynetx.net/#huge)). Andromeda: NASA, ESA,
+J. Dalcanton, B. F. Williams, L. C. Johnson (University of Washington, USA), the PHAT team, and R. Gendler
+([esahubble.org](https://esahubble.org/images/heic1502a/), CC BY 4.0).
+
 ## Viewing
 
 - Opens instantly and flips through every image in the folder with the arrow keys; past the last
@@ -64,6 +71,8 @@ a lot.
   frames
 - HDR photos (iPhone HEIC and JPEG, HDR AVIF, OpenEXR) show their extra brightness on HDR screens
   (macOS 15 and later)
+- Huge pictures (8-bit RGB PSD and PSB, and TIFF from 100 megapixels) open in about a second, and
+  zooming in decodes only the part on screen
 - EXIF info panel (<kbd>I</kbd>), full screen (<kbd>F</kbd> or <kbd>Return</kbd>)
 - Browses albums of Apple's Photos library (<kbd>⇧⌘O</kbd>) like folders, takes pictures dragged in from Photos,
   and batch converts from the library or into it, without exporting first and without changing it
@@ -82,6 +91,8 @@ a lot.
 
 - Opens everything macOS can read (JPEG, PNG, HEIC, AVIF, JPEG XL, WebP, TIFF, GIF, PSD, camera RAW
   and more), upright and colour-managed, plus SVG and PDF pages
+- Photoshop files saved without "Maximize Compatibility" are drawn from their layers, with blend
+  modes, groups, masks, fills and adjustment layers
 - Also reads 16 formats macOS can't, such as QOI, PCX, XPM, IFF/LBM, JPEG XR and BPG, and shows
   layered files from GIMP, Krita, Paint.NET, Procreate and others flattened
 - Finder thumbnails and Quick Look (<kbd>Space</kbd>) previews for all of them
@@ -95,7 +106,12 @@ a lot.
 - Layered files, flattened: Photoshop PSB, GIMP XCF, Paint.NET PDN, PaintShop Pro PSP, Krita KRA and
   OpenRaster ORA (their stored flattened image), and Procreate (at full size, turned the way the
   canvas was)
-- Limits: blend modes other than normal are drawn as normal; PSB files without a stored composite,
+- Photoshop layers (8-bit RGB): every blend mode, groups, layer and vector masks, clipping masks, Blend
+  If, solid colour, gradient and pattern fills, and most adjustment layers; text, shape and smart objects
+  show the pixels Photoshop stored for them
+- Limits: Photoshop layer effects (shadows, glows, strokes) and colour lookups aren't drawn, and
+  16-bit, grey or CMYK Photoshop files without a stored composite aren't drawn from their layers;
+  in GIMP, Paint.NET and PaintShop Pro files, blend modes other than normal are drawn as normal;
   multichannel PSB and GIMP layer effects aren't shown; `.xcf.gz` isn't read
 
 </details>
