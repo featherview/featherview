@@ -12,6 +12,11 @@ enum Fixtures {
     /// The repository's root folder, for tests that read files shipped with the app.
     static let repo = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
 
+    /// True under scripts/sanitize.sh: its runtime slows every loop many times over, so speed budgets don't apply.
+    static let sanitized = (0..<_dyld_image_count()).contains { index in
+        _dyld_get_image_name(index).map { String(cString: $0) }.map { $0.contains("/libclang_rt.") && $0.hasSuffix("_osx_dynamic.dylib") } ?? false
+    }
+
     /// Gives `ImageEncoder` its JPEG XL encoder, as the app does at launch: `_ = Fixtures.jxl` before writing JPEG XL.
     static let jxl: Void = { ImageEncoder.jxlEncoder = JXLEncoder.encode }()
 

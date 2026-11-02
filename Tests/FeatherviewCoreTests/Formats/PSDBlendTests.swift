@@ -161,7 +161,8 @@ struct PSDBlendTests {
     /// Task 7's budget: a 12 MP layered PSD with 30 layers < 500 ms, about 16 ms a layer in a release build, which
     /// an opaque normal layer meets (measured ~9 ms; translucent normal ~35 ms, multiply ~55 ms, so those are only
     /// guarded against regressions). Unoptimized the loops are many times slower, so a debug build times 1/16 of it.
-    @Test func compositeIsFastEnoughFor30Layers() {
+    @Test(.disabled(if: Fixtures.sanitized, "a sanitizer's runtime slows the loops many times over"))
+    func compositeIsFastEnoughFor30Layers() {
         let debug = _isDebugAssertConfiguration()
         let width = debug ? 1000 : 4000, height = debug ? 750 : 3000
         var opaque = [UInt8](repeating: 0, count: width * height * 4)
