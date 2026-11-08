@@ -10,6 +10,11 @@ About 400 ms from launch to the first image, about 20 ms to the next one (12 MP 
 
 **[Download](https://github.com/featherview/featherview/releases/latest)** · [Website](https://featherview.mynetx.net) · [Roadmap](ROADMAP.md)
 
+Double-click a photo, press <kbd>→</kbd>. Preview stays on that one photo; Featherview goes through the
+whole folder, about 20 ms a photo ([watch it](https://featherview.mynetx.net/#preview)).
+
+<a href="https://featherview.mynetx.net/#preview"><img src="https://featherview.mynetx.net/vs-preview.webp" alt="The same photo open in Preview and in Featherview: after pressing → Preview still shows the first photo, Featherview has reached photo 12 of 18" width="720"></a>
+
 <img src="docs/screenshots/viewer.png" alt="The Featherview viewer window showing a landscape picture, with the toolbar above and the status bar below" width="720">
 
 <img src="docs/screenshots/batch.png" alt="The Batch Convert window with six images listed, WebP output, a resize step and a before-and-after preview" width="720">
