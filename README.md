@@ -3,6 +3,7 @@
 A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversion.
 
 [![CI](https://github.com/featherview/featherview/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/featherview/featherview/actions/workflows/ci.yml)
+<a href="https://macpip.com/apps/featherview?ref=badge"><img src="https://macpip.com/badge/featherview.svg" height="40" alt="Featherview is listed on MacPip"></a>
 
 For anyone who flips through folders of photos with the keyboard, the way classic Windows viewers
 work: open one image, hold <kbd>→</kbd>, rotate the sideways ones, trash the rejects, batch convert the rest.
