@@ -80,11 +80,12 @@ Write them yourself from the log. The reader uses Featherview and has never seen
 - Small fixes in one line ("Plus smaller fixes, among them …"). `test:`, `docs:`, `chore:` and
   refactors leave the notes, unless a user notices them.
 - While releases aren't notarized, the last bullet asks for help with the fee, in place of any other
-  "isn't notarized yet" bullet. Take the number of sponsors from
-  `gh api graphql -f query='{user(login:"mynetx"){sponsors{totalCount}}}'` and word it to match, e.g.
-  "Still not notarized: Apple charges $99 a year for that, and nobody has chipped in so far. Even
-  $5 once helps: github.com/sponsors/mynetx. Then the first-open step and the Photos question
-  after each update go away."
+  "isn't notarized yet" bullet. Take what is covered from the website's own line
+  (`grep -o 'So far [0-9]* of 99' ~/Web/mx/featherview.github.io/index.html`, kept by hand; GitHub's
+  sponsor count drops one-time givers after a month) and word it to match, e.g. "Still not
+  notarized: Apple charges $99 a year for that, and nobody has chipped in so far. Even $5 once
+  helps: github.com/sponsors/mynetx. Then the first-open step and the Photos question after each
+  update go away."
 - First release: up to 8 bullets on what Featherview does (viewer, keys, batch, formats, Finder
   previews, languages), from docs/spec.md and README.md.
 - A one-line title: the release's highlight.
