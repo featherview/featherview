@@ -83,7 +83,7 @@ Write them yourself from the log. The reader uses Featherview and has never seen
   "isn't notarized yet" bullet. Take the number of sponsors from
   `gh api graphql -f query='{user(login:"mynetx"){sponsors{totalCount}}}'` and word it to match, e.g.
   "Still not notarized: Apple charges $99 a year for that, and nobody has chipped in so far. Even
-  $10 once helps: github.com/sponsors/mynetx. Then the first-open step and the Photos question
+  $5 once helps: github.com/sponsors/mynetx. Then the first-open step and the Photos question
   after each update go away."
 - First release: up to 8 bullets on what Featherview does (viewer, keys, batch, formats, Finder
   previews, languages), from docs/spec.md and README.md.
