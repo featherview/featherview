@@ -34,6 +34,8 @@ small contribution towards that fee would mean a lot:
 
    https://github.com/sponsors/mynetx
 
+Once the fee is covered, this extra step goes away for everyone.
+
 Thank you for trying it either way.
 
 Featherview is open source: https://github.com/featherview/featherview
