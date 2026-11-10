@@ -1713,7 +1713,6 @@ ERR ParsePFDEntry(
                 &pID->WMP.sDescMetadata.pvarCaption));
 
             if (errTmp == WMP_errSuccess) { // sanity check
-                // featherview patch: converted only when it was read as bytes (the check said !=); the file needn't end it with a null
                 if ((DPKVT_BYREF | DPKVT_UI1) == pID->WMP.sDescMetadata.pvarCaption.vt && uCount >= sizeof(U16) * 2) {
                     // Change type from C-style byte array to LPWSTR
                     //  make sure null term (ReadPropvar allocated enough space for this)
@@ -1961,6 +1960,10 @@ ERR PKImageDecode_Copy_WMP(
     // and I didn't care to get into floating point or a bunch of conditional tests or
     // other rewrite for a case not needed nor tested by PS plugin.  sorry.
     linesperMBRow = 16 / cThumbnailScale;
+    // A thumbnail scale above 16 cannot be handled by the banded decode below
+    // (linesperMBRow would be 0, making the MB row arithmetic divide by zero);
+    // fail cleanly instead of triggering a floating-point exception.
+    FailIf(0 == linesperMBRow, WMP_errFail);
 
 #ifdef REENTRANT_MODE
     if (0 == pID->WMP.DecoderCurrMBRow)
@@ -2038,6 +2041,7 @@ ERR PKImageDecode_Copy_WMP(
             wmiBI.uiLastMBRow = i;
             if (ICERR_OK != ImageStrDecDecode(pID->WMP.ctxSC, &wmiBI, &cLinesDecoded)) {
                 ImageStrDecTerm(pID->WMP.ctxSC);
+                pID->WMP.DecoderCurrMBRow = 0; // decoder terminated: next Copy must re-init
                 FailIf(TRUE, WMP_errFail);
             }
             pID->WMP.cLinesDecoded = cLinesDecoded;
@@ -2063,8 +2067,10 @@ ERR PKImageDecode_Copy_WMP(
         // If we're past the top of the image, then we're done, so terminate.
         if ((ULong)linesperMBRow * (cMBRow - 1) >= (U32) pID->WMP.cLinesCropped + pID->WMP.wmiI.cROIHeight) {
             FailIf(ICERR_OK != ImageStrDecTerm(pID->WMP.ctxSC), WMP_errFail);
+            pID->WMP.DecoderCurrMBRow = 0; // decoder terminated: next Copy must re-init
+        } else {
+            pID->WMP.DecoderCurrMBRow = cMBRow; // Set to next possible MBRow that is decodable
         }
-        pID->WMP.DecoderCurrMBRow = cMBRow; // Set to next possible MBRow that is decodable
 
 #else
         FailIf(ICERR_OK != ImageStrDecInit(&pID->WMP.wmiI, &pID->WMP.wmiSCP, &pID->WMP.ctxSC), WMP_errFail);
@@ -2141,6 +2147,7 @@ ERR PKImageDecode_Copy_WMP(
             wmiBI.uiLastMBRow = i;
             if (ICERR_OK != ImageStrDecDecode(pID->WMP.ctxSC_Alpha, &wmiBI, &cLinesDecoded)) {
                 ImageStrDecTerm(pID->WMP.ctxSC_Alpha);
+                pID->WMP.DecoderCurrAlphaMBRow = 0; // decoder terminated: next Copy must re-init
                 FailIf(TRUE, WMP_errFail);
             }
         }
@@ -2148,8 +2155,10 @@ ERR PKImageDecode_Copy_WMP(
         // If we're past the top of the image, then we're done, so terminate
         if ((ULong)linesperMBRow * (cMBRow - 1) >= (U32) pID->WMP.cLinesCropped + pID->WMP.wmiI.cROIHeight) {
             FailIf(ICERR_OK != ImageStrDecTerm(pID->WMP.ctxSC_Alpha), WMP_errFail);
+            pID->WMP.DecoderCurrAlphaMBRow = 0; // decoder terminated: next Copy must re-init
+        } else {
+            pID->WMP.DecoderCurrAlphaMBRow = cMBRow; // Set to next possible MBRow that is decodable
         }
-        pID->WMP.DecoderCurrAlphaMBRow = cMBRow; // Set to next possible MBRow that is decodable
         wmiBI.pv = pb;
 #else
         FailIf(ICERR_OK != ImageStrDecInit(&pID->WMP.wmiI_Alpha, &pID->WMP.wmiSCP_Alpha, &pID->WMP.ctxSC_Alpha), WMP_errFail);

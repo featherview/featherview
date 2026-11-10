@@ -154,7 +154,7 @@ Disk image: `scripts/dmg.sh` writes `build/Featherview-<version>.dmg`.
 
 - [libwebp](https://chromium.googlesource.com/webm/libwebp) 1.6.0 (BSD-3-Clause), for writing WebP,
   built from source through [libwebp-Xcode](https://github.com/SDWebImage/libwebp-Xcode).
-- [jxrlib](https://github.com/mircomir/jxrlib) 1.4.4 (BSD-2-Clause, Microsoft), for reading JPEG XR,
+- [jxrlib](https://github.com/mircomir/jxrlib) 1.4.6 (BSD-2-Clause, Microsoft), for reading JPEG XR,
   vendored in `Sources/CJPEGXR` and built from source by SwiftPM. Thanks to Mirco Miranda, whose
   maintained fork carries years of fixes for damaged files.
 - [libjxl](https://github.com/libjxl/libjxl) 0.12.0 (BSD-3-Clause), with
