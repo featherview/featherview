@@ -3362,8 +3362,10 @@ EXTERN_C Int WMPhotoValidate(
         pII->cfColorFormat = cII.cfColorFormat;
     if(cII.cfColorFormat == CF_RGBE)
         pII->cfColorFormat = CF_RGBE;
-    // featherview patch: outputMBRow writes 1-bit pixels for grey only.
+    // featherview patch: outputMBRow writes 1-bit pixels for grey only, 555, 565 and 10-bit ones for RGB only.
     if(pII->bdBitDepth == BD_1 && (pII->cfColorFormat != Y_ONLY || pSCP->cfColorFormat != Y_ONLY))
+        return ICERR_ERROR;
+    if((pII->bdBitDepth == BD_5 || pII->bdBitDepth == BD_565 || pII->bdBitDepth == BD_10) && pII->cfColorFormat != CF_RGB)
         return ICERR_ERROR;
 
     // validate thumbnail parameters

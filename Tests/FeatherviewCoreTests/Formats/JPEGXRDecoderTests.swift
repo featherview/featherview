@@ -153,6 +153,18 @@ import Testing
         #expect(throws: OwnDecodeError.corrupt) { try JPEGXRDecoder.decode(data) }
     }
 
+    /// 16-bit 555 pixels in a black and white file: jxrlib writes them for RGB only.
+    @Test func crashInput9Throws() {
+        throwsOrDecodes(Self.hex("""
+            49 49 BC 01 20 00 00 00 24 C3 DD 6F 03 4E FE 4B B1 85 3D 77 76 8D C9 05 00 00 00 00 00 00 00 00 08
+            00 01 BC 01 00 10 00 00 00 08 00 00 00 02 BC 04 00 01 00 00 00 00 00 00 00 80 BC 04 00 01 00 00 00
+            02 00 00 00 81 BC 04 00 01 00 00 00 02 00 00 00 82 BC 0B 00 01 00 00 00 00 00 C0 42 83 BC 0B 00 01
+            00 00 00 00 00 C0 42 C0 BC 04 00 01 00 00 00 86 00 00 00 C1 BC 04 00 01 00 00 00 1F 00 00 00 00 00
+            00 00 57 4D 50 48 4F 54 4F 00 11 44 C0 08 00 16 00 00 01 03 00 01 FF FF FF FF 00 00 01 00 16 00 00
+            01 03 00 01 FF FF FF FF 00 00 01 01 0B FF FF
+            """))
+    }
+
     /// `rgb` with its orientation entry (the IFD's second, at 46) replaced.
     static func rgb(entry: [UInt8]) -> Data {
         var data = rgb
