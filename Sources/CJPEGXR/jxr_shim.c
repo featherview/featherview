@@ -7,6 +7,8 @@ static int open_decoder(const void *data, size_t size, struct WMPStream **stream
     const uint8_t *bytes = data;
     // "II", 0xBC, then the version: the HD Photo / JPEG XR container.
     if (size < 4 || bytes[0] != 'I' || bytes[1] != 'I' || bytes[2] != 0xBC) return FVJXR_NOT_JXR;
+    // jxrlib refuses any single buffer above this, as Qt 6 sets it: a damaged header can't ask for gigabytes.
+    PKAlloc_SetLimit(256 << 20);
     if (CreateWS_Memory(stream, (void *)data, size) != WMP_errSuccess) return FVJXR_NOT_JXR;
     if (PKImageDecode_Create_WMP(decoder) != WMP_errSuccess) {
         CloseWS_Memory(stream);
