@@ -34,6 +34,7 @@ let package = Package(
         .target(name: "CJPEGXR", exclude: ["jxrlib/LICENSE"],
                 cSettings: [
                     .define("__ANSI__"), .define("DISABLE_PERF_MEASUREMENT"),
+                    .define("NDEBUG"),  // as upstream builds it: a damaged file fails the decode instead of stopping the app
                     .headerSearchPath("jxrlib/common/include"), .headerSearchPath("jxrlib/image/sys"),
                     .headerSearchPath("jxrlib/jxrgluelib"),
                     .unsafeFlags(["-w", "-O2"]),  // third-party code: no warnings; optimised in debug too, for the tests

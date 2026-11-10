@@ -3333,6 +3333,10 @@ EXTERN_C Int WMPhotoValidate(
     if(ImageStrDecGetInfo(&cII, pSCP) != ICERR_OK)
         return ICERR_ERROR;
 
+    // featherview patch: a plane may not claim more than the caller's image (a damaged alpha plane asked for 43 GB).
+    if(pII->cWidth != 0 && pII->cHeight != 0 && (cII.cWidth > pII->cWidth || cII.cHeight > pII->cHeight))
+        return ICERR_ERROR;
+
     // copy over un-overwritable ImageInfo parameters
     pII->bdBitDepth = cII.bdBitDepth;
     pII->cWidth = cII.cWidth;
