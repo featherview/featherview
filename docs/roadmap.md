@@ -186,8 +186,8 @@ measured again at its end (after a real ⌘Q) and that number becomes the budget
 ## v2 (not in v1)
 
 The reference viewer's menu commands that make sense on a Mac, split into milestones 9–17, plus
-JPEG XL writing. Left out on purpose: painting and editing in the viewer, printing, scanning, OCR,
-plugins and video (`AGENTS.md` "Out of scope for v1"); file search (Spotlight and Finder do it), hex
+JPEG XL writing. Left out on purpose: painting and editing in the viewer, printing, scanning, an own OCR engine
+(Live Text, below, uses macOS's), plugins and video (`AGENTS.md` "Out of scope for v1"); file search (Spotlight and Finder do it), hex
 view, e-mail (the Share menu covers it), screenshots (macOS has them), showing or hiding the menu bar
 and title (not a Mac thing), new blank images, panoramas and tiled images (editing).
 
@@ -298,6 +298,12 @@ Ideas from the maintainer's QA that no spec covers yet; each gets a plan and a s
   - Design: <https://claude.ai/artifact/Lf6bXo8PaC2Exi6A6Unvmx>, option B2-1b-2 chosen (coral line
     histogram, coral glyphs, place under the file line). Reference behaviour: `docs/parity.md`, "Metadata".
   - **Not planned:** editing metadata in the panel (Adjust Date Taken stays the only metadata edit).
+
+- Live Text (idea, after 1.0; [Discussions #7](https://github.com/featherview/featherview/discussions/7)):
+  text in the shown picture can be selected and copied like in Preview, with links, phone numbers,
+  addresses and dates active. macOS's own VisionKit analysis, on the device; it starts only once the
+  user stays on a picture (never while flipping through or prefetching), runs off the main thread on
+  the screen-size decode, and stays out of the browsing, launch and memory budgets.
 
 - Accessibility pass for the whole app (idea, after M23): the info panel gets full keyboard focus and
   VoiceOver in M23; the same for toolbar, grid, batch window, sheets and Settings (focus rings,

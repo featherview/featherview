@@ -34,8 +34,10 @@ Next:
   notarized download once sponsors cover Apple's fee.
 - **After 1.0: your requests.** Missing something? Ask in
   [Discussions](https://github.com/featherview/featherview/discussions); the most-wanted ideas go here.
+  First candidate: [select and copy text in pictures](https://github.com/featherview/featherview/discussions/7),
+  with macOS's own Live Text, like in Preview.
 
 ## Not planned
 
-Painting and editing beyond the batch steps, printing, scanning, OCR, plugins, slideshow effects,
+Painting and editing beyond the batch steps, printing, scanning, an OCR engine of our own, plugins, slideshow effects,
 video, and versions for Windows or Linux.
