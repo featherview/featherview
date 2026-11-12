@@ -60,6 +60,7 @@ swift build --build-tests --triple x86_64-apple-macosx14.0 --scratch-path .build
 arch -x86_64 xcrun xctest .build/x86/out/Products/Debug/FeatherviewCoreTests.xctest   # (arch -x86_64 swift test runs arm64; firstEncodesInAFreshProcess… needs swift test's runner, fails here only)
 scripts/strings.sh               # after changing UI text: extract strings into Resources/Localizable.xcstrings, then translate the new keys
 scripts/merge-strings.py         # catalog merge conflict: resolves it, then git add Resources/Localizable.xcstrings
+make release                     # publish: notes + bump from one claude -p call, the rest scripts/release.sh (DRY=1, VERSION=x.y.z, BRIEF="wishes for the notes")
 open build/Featherview.app
 open -a build/Featherview.app ~/Pictures/some.jpg   # open a file with it
 swift run -c release featherview-bench corpus /tmp/fv   # generated test images, then: decode /tmp/fv, browse /tmp/fv/browse
