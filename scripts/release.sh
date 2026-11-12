@@ -34,7 +34,7 @@ BUILD=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Resources/Info.plist
 LOG=$(git log "$PREV_TAG"..HEAD --no-merges --format='- %s%n%b')
 [ -n "$LOG" ] || die "no commits since $PREV_TAG, nothing to release"
 NOW=$(awk '/^## Now/ { f = 1; next } /^Next:/ { f = 0 } f' ROADMAP.md)
-SPONSORS=$(grep -o 'So far [0-9]* of 99' "$SITE/index.html" || echo "So far 0 of 99")
+SPONSORS=$(sed -E 's/<[^>]+>//g' "$SITE/index.html" | grep -o 'So far [0-9]* of 99' || echo "So far 0 of 99")
 
 step "Release notes"
 BRIEF_TEXT=""
@@ -138,8 +138,9 @@ EOF
 awk -v f="$WORK/item.xml" '!done && /<item>/ { while ((getline l < f) > 0) print l; done = 1 } { print }' "$SITE/appcast.xml" >"$WORK/appcast.xml"
 xmllint --noout "$WORK/appcast.xml"
 mv "$WORK/appcast.xml" "$SITE/appcast.xml"
-sed -i '' -E "s#releases/download/v[0-9.]+/Featherview-[0-9.]+\.dmg#releases/download/v$NEW/Featherview-$NEW.dmg#; s#Download [0-9]+\.[0-9]+\.[0-9]+#Download $NEW#" "$SITE/index.html"
-grep -q "Download $NEW<" "$SITE/index.html" || die "the Download button wasn't updated"
+# the version sits in its own element: the word "Download" is translated, the number is not
+sed -i '' -E "s#releases/download/v[0-9.]+/Featherview-[0-9.]+\.dmg#releases/download/v$NEW/Featherview-$NEW.dmg#; s#(<span id=\"dlv\"[^>]*>)[0-9.]+<#\\1$NEW<#" "$SITE/index.html"
+grep -q "id=\"dlv\"[^>]*>$NEW<" "$SITE/index.html" || die "the Download button wasn't updated"
 
 LEFT="Homebrew tap, website commit, install"
 SHA=$(shasum -a 256 "$DMG" | cut -d' ' -f1)
