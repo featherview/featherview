@@ -5,19 +5,14 @@ Where Featherview is going. Ideas and wishes are welcome in
 
 ## Now: beta, on the way to 1.0
 
-0.13 has everything planned for 1.0: the viewer, thumbnail grid, slideshow, compare, batch
+0.14 has everything planned for 1.0: the viewer, thumbnail grid, slideshow, compare, batch
 conversion, the extra formats with Finder previews, the info panel with histogram and place names,
-30 languages and automatic updates. New in 0.13:
+30 languages and automatic updates. New in 0.14:
 
-- Huge pictures: Hubble's 4.6 GB, 1.5-gigapixel Andromeda file is on screen about two seconds after
-  the double-click, app launch included; huge TIFFs open several times faster, and zooming in reads
-  only the part on screen
-- Photoshop layers: files saved without "Maximize Compatibility" show the picture Photoshop shows,
-  drawn from their layers with every blend mode, groups, masks, fill and adjustment layers
-- Photos library: browse albums from Apple's Photos with the arrow keys, drag pictures in from
-  Photos, and batch convert from it or into it, without exporting first
-
-0.13.1 shows a sharp preview of a Photos picture that is only in iCloud while it downloads.
+- Photoshop PSB: Finder thumbnails and Quick Look (Space) previews for large Photoshop files, which
+  macOS's own thumbnailer never draws; if macOS already tried a PSB before, its thumbnails appear
+  after the next login
+- Sturdier JPEG XR: damaged files fail to open with a short message instead of stalling the app
 
 Next:
 

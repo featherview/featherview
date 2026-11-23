@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.14.0 – 2026-11-23
+
+- Photoshop PSB files now get Finder thumbnails and Quick Look (Space) previews, which macOS never draws on its own.
+- If macOS already tried a PSB before, its thumbnails appear after your next login.
+- Damaged JPEG XR files now fail to open with a short message instead of stalling the app.
+- The README is rewritten for skimming, with Homebrew install first and a table of keys.
+- Plus smaller fixes, among them safer handling of unusual JPEG XR files.
+- Still not notarized: Apple charges $99 a year for that, and nobody has chipped in so far. Even $5 once helps: github.com/sponsors/mynetx. Then the first-open step and the Photos question after each update go away.
+
 ## 0.13.1 – 2026-10-31
 
 - An iCloud-only picture from your Photos library now shows a sharp preview (about 1024 px) while it downloads, not a tiny blurry one.
