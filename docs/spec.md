@@ -1076,11 +1076,13 @@ the About window.
     can't read shows "Can't open <name>" like any other.
 - Finder previews (after the own decoders): a Quick Look preview and
   thumbnail extension for the formats only Featherview reads, reusing its decoders, so Finder,
-  Quick Look (Space) and open panels show them too. Formats ImageIO reads are left to macOS:
-  macOS's own image thumbnailer claims every `public.image` type and is always chosen over an app's
-  extension for them, also when the app is the type's owner, and a failure isn't handed on. So PSD and PSB without a stored composite, which Featherview
-  draws from their layers, show what macOS makes of them in Finder and Quick Look: a picture for some
-  PSDs, blank for others, and no thumbnail at all for PSB.
+  Quick Look (Space) and open panels show them too, and PSB, which macOS's own image thumbnailer
+  never draws. Other formats ImageIO reads are left to macOS: its thumbnailer claims every
+  `public.image` type, and when it fails for a file Quick Look asks no other extension. So PSD without
+  a stored composite, which Featherview draws from its layers, shows what macOS makes of it in Finder
+  and Quick Look: a picture for some PSDs, blank for others. Quick Look keeps its pick of extension for
+  a type until the next login, so PSB thumbnails appear after installing or updating once the user
+  has logged in again (only if macOS already tried a PSB before).
 - Write (ImageIO): JPEG, PNG, HEIC, AVIF, TIFF, GIF, BMP, JPEG 2000, PDF, PSD, TGA, ICO, ICNS,
   OpenEXR.
 - Write (own encoders, pure Swift, no dependency): PBM, PGM, PPM, QOI, PCX. PBM is real 1-bit

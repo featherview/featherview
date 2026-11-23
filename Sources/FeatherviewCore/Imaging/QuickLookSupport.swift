@@ -4,8 +4,9 @@ import Foundation
 /// What the Finder thumbnail and Quick Look preview extensions need (spec "Formats", Finder previews):
 /// the types only Featherview reads, and decodes through the viewer's own code.
 public enum QuickLookSupport {
-    /// The types of every own format except PDF and SVG, which macOS previews itself, and PAM, which ImageIO
-    /// reads but macOS has no type for, so its own previews never get it.
+    /// The types of every own format except PDF and SVG, which macOS previews itself, plus PAM, which ImageIO
+    /// reads but macOS has no type for, and PSB, which macOS's own thumbnailer never draws. A type listed
+    /// here takes effect only after the next login: Quick Look keeps its earlier pick for a type until then.
     public static let contentTypes = [
         "net.mynetx.featherview.qoi", "net.mynetx.featherview.pcx", "net.mynetx.featherview.dcx",
         "public.xbitmap-image", "net.mynetx.featherview.xpm", "net.mynetx.featherview.wbmp",
@@ -15,6 +16,7 @@ public enum QuickLookSupport {
         "net.mynetx.featherview.fits", "net.mynetx.featherview.ani", "net.mynetx.featherview.openraster",
         "net.mynetx.featherview.krita", "net.mynetx.featherview.procreate", "com.apple.macpaint-image",
         "net.mynetx.featherview.photo-cd", "net.mynetx.featherview.jpeg-xr", "net.mynetx.featherview.bpg",
+        "com.adobe.photoshop-large-image",
     ]
 
     /// `image` scaled to fit `maximum`, never enlarged.

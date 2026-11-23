@@ -28,7 +28,8 @@ struct QuickLookSupportTests {
             let tags = declaration["UTTypeTagSpecification"] as? [String: Any]
             for ext in tags?["public.filename-extension"] as? [String] ?? [] { typeOf[ext] = id }
         }
-        var reached: Set = ["net.mynetx.featherview.pam"]  // read by ImageIO, previewed by us
+        // read by ImageIO, previewed by us: PAM has no macOS type, macOS's own thumbnailer draws no PSB
+        var reached: Set = ["net.mynetx.featherview.pam", "com.adobe.photoshop-large-image"]
         for format in OwnDecoders.builtIn where format.name != "PDF" {
             for ext in format.extensions {
                 let id = try #require(typeOf[ext], "\(format.name): .\(ext) has no type in Info.plist")
