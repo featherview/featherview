@@ -104,7 +104,7 @@ import Testing
             #expect(try #require(RGBAImage(full))[width / 2, height / 2] == (0, 128, 255, 255))
             #expect(try ImageDecoder.decode(url, maxPixelSize: 850).width == 850)
         }
-        try PSDCompositor.$maxPixels.withValue(100_000) {
+        PSDCompositor.$maxPixels.withValue(100_000) {
             #expect(throws: DecodeError.self) { try ImageDecoder.decode(url) }
         }
     }
