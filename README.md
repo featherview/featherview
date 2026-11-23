@@ -5,106 +5,106 @@ A fast, lightweight, keyboard-driven image viewer for macOS, with batch conversi
 [![CI](https://github.com/featherview/featherview/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/featherview/featherview/actions/workflows/ci.yml)
 <a href="https://macpip.com/apps/featherview?ref=badge"><img src="https://macpip.com/badge/featherview.svg" height="40" alt="Featherview is listed on MacPip"></a>
 
-For anyone who flips through folders of photos with the keyboard, the way classic Windows viewers
-work: open one image, hold <kbd>→</kbd>, rotate the sideways ones, trash the rejects, batch convert the rest.
-About 400 ms from launch to the first image, about 20 ms to the next one (12 MP JPEG, Apple Silicon).
+Double-click a photo and press <kbd>→</kbd>: Preview stays on that one photo, Featherview goes through
+the whole folder.
+
+- **Fast:** first photo on screen in about 0.4 s, the next one in about 20 ms
+- **Keyboard first:** turn, trash, move and rename without the mouse
+- **Batch:** convert, resize and rename hundreds of photos in one go
+- **Free and open source**, for macOS 14 and later; public preview, on the way to 1.0
 
 **[Download](https://github.com/featherview/featherview/releases/latest)** · [Website](https://featherview.mynetx.net) · [Roadmap](ROADMAP.md)
 
-Double-click a photo, press <kbd>→</kbd>. Preview stays on that one photo; Featherview goes through the
-whole folder, about 20 ms a photo ([watch it](https://featherview.mynetx.net/#preview)).
-
 <a href="https://featherview.mynetx.net/#preview"><img src="https://featherview.mynetx.net/vs-preview.webp" alt="The same photo open in Preview and in Featherview: after pressing → Preview still shows the first photo, Featherview has reached photo 12 of 18" width="720"></a>
-
-<img src="docs/screenshots/viewer.png" alt="The Featherview viewer window showing a landscape picture, with the toolbar above and the status bar below" width="720">
-
-<img src="docs/screenshots/batch.png" alt="The Batch Convert window with six images listed, WebP output, a resize step and a before-and-after preview" width="720">
 
 ## Install
 
-Needs a Mac with Apple Silicon or Intel and macOS 14 (Sonoma) or later.
+With [Homebrew](https://brew.sh):
 
-Download `Featherview-<version>.dmg` from the
-[latest release](https://github.com/featherview/featherview/releases/latest), open it and drag `Featherview.app` to
-`Applications`.
-Or with Homebrew: `brew install --cask featherview/tap/featherview`.
+```sh
+brew install --cask featherview/tap/featherview
+```
 
-Featherview is free and not notarized by Apple yet, so macOS blocks the first launch. One line in
-Terminal lets it open, on any Mac account, administrator or not (the disk image's **Read Me First**
-file has it too, ready to copy):
+Or by hand:
 
-1. Drag Featherview to Applications. On a standard account, macOS asks for an administrator's name
-   and password here.
-2. Open Terminal, paste this line and press Return. It removes the "downloaded from the internet"
-   mark from Featherview only:
+1. Download the `.dmg` from the [latest release](https://github.com/featherview/featherview/releases/latest)
+   and drag Featherview to Applications.
+2. Open Terminal and run this once:
 
    ```sh
    xattr -dr com.apple.quarantine /Applications/Featherview.app
    ```
 
-3. Open Featherview. From now on it opens normally. After this first open, Finder shows thumbnails
-   and Quick Look previews for the formats only Featherview reads (switches in System Settings →
-   General → Login Items & Extensions → Quick Look).
+3. Open Featherview.
 
-Administrator? Instead of step 2 you can double-click Featherview, click **Done**, then click
-**Open Anyway** in **System Settings → Privacy & Security**. On a standard account Open Anyway can
-fail on macOS 26.4 and later (the icon keeps bouncing in the Dock, or the administrator's password is
-refused), so use the Terminal line there.
-
-Why the extra step? Featherview is made in our spare time and given away for free. For macOS to open
-it straight away, Apple has to notarize it, and that costs $99 every year. If Featherview turns out
-useful to you, a [small contribution](https://github.com/sponsors/mynetx) towards that fee would mean
-a lot.
-
-<a href="https://featherview.mynetx.net/#huge"><img src="https://featherview.mynetx.net/hubble.webp" alt="Hubble's Andromeda mosaic, 69,536 × 22,230 pixels, open in Featherview" width="720"></a>
-
-Hubble's 4.6 GB Andromeda file, 1.5 gigapixels, is on screen about two seconds after the double-click,
-app launch included ([watch it](https://featherview.mynetx.net/#huge)). Andromeda: NASA, ESA,
-J. Dalcanton, B. F. Williams, L. C. Johnson (University of Washington, USA), the PHAT team, and R. Gendler
-([esahubble.org](https://esahubble.org/images/heic1502a/), CC BY 4.0).
-
-## Viewing
-
-- Opens instantly and flips through every image in the folder with the arrow keys; past the last
-  one, a keyboard-driven folder chooser takes you on to the next folder
-- Fit, actual size, zoom to width or height for tall and wide images, and Keep Zoom to look at the
-  same spot from image to image
-- Thumbnail grid (<kbd>T</kbd>) of the folder, with a size slider and selection: Quick Look, move, copy, Trash
-  and batch convert several images at once
-- Slideshow (<kbd>W</kbd>) in full screen or in the window (<kbd>⇧A</kbd>), with shuffle and repeat; <kbd>Space</kbd> pauses
-- Compare two images side by side, zoomed and panned in step, with a difference view
-- Plays animated GIF, PNG, WebP, HEIC and AVIF, and Windows animated cursors; <kbd>G</kbd> pauses, <kbd>⌥→</kbd> / <kbd>⌥←</kbd> step
-  frames
-- HDR photos (iPhone HEIC and JPEG, HDR AVIF, OpenEXR) show their extra brightness on HDR screens
-  (macOS 15 and later)
-- Huge pictures (8-bit RGB PSD and PSB, and TIFF from 100 megapixels) open in about a second, and
-  zooming in decodes only the part on screen
-- EXIF info panel (<kbd>I</kbd>), full screen (<kbd>F</kbd> or <kbd>Return</kbd>)
-- Browses albums of Apple's Photos library (<kbd>⇧⌘O</kbd>) like folders, takes pictures dragged in from Photos,
-  and batch converts from the library or into it, without exporting first and without changing it
-
-## Organising
-
-- Move and copy to folders with <kbd>F7</kbd> / <kbd>F8</kbd> (14 destinations, one key each), Move to Trash with <kbd>⌘⌫</kbd>;
-  sidecar files (`.xmp`, `.aae`, `.thm`) go along
-- Rename (<kbd>F2</kbd>), and sort by name, date modified, date taken, size or kind
-- Lossless rotate and flip of JPEG, HEIC and TIFF (<kbd>R</kbd> <kbd>L</kbd> <kbd>H</kbd> <kbd>V</kbd>); adjust the date taken in place
-- Follow New Files shows each image as it lands in the folder, for tethered shooting and screenshots
-- Open Recent, Share, Set as Desktop Picture (fill, fit, stretch or centre), Float on Top, New from Clipboard (<kbd>⌘N</kbd>)
-- Refresh the folder (<kbd>F5</kbd>), jump to a random image
-
-## Formats
-
-- Opens everything macOS can read (JPEG, PNG, HEIC, AVIF, JPEG XL, WebP, TIFF, GIF, PSD, camera RAW
-  and more), upright and colour-managed, plus SVG and PDF pages
-- Photoshop files saved without "Maximize Compatibility" are drawn from their layers, with blend
-  modes, groups, masks, fills and adjustment layers
-- Also reads 16 formats macOS can't, such as QOI, PCX, XPM, IFF/LBM, JPEG XR and BPG, and shows
-  layered files from GIMP, Krita, Paint.NET, Procreate and others flattened
-- Finder thumbnails and Quick Look (<kbd>Space</kbd>) previews for all of them
+Step 2 is needed because Featherview isn't notarized by Apple yet: that costs $99 a year.
+[Sponsoring](https://github.com/sponsors/mynetx) helps cover it.
 
 <details>
-<summary>Every extra format, and what isn't shown</summary>
+<summary>More about the first launch</summary>
+
+- The line removes the "downloaded from the internet" mark from Featherview only. The disk image's
+  **Read Me First** file has it too, ready to copy.
+- On a standard account, macOS asks for an administrator's password when you drag Featherview to
+  Applications.
+- Administrators can skip Terminal: double-click Featherview, click **Done**, then **Open Anyway** in
+  **System Settings → Privacy & Security**. On a standard account this can fail on macOS 26.4 and
+  later, so use the Terminal line there.
+
+</details>
+
+## What it does
+
+<img src="docs/screenshots/viewer.png" alt="The Featherview viewer window showing a landscape picture, with the toolbar above and the status bar below" width="720">
+
+- **Browse:** whole folders with the arrow keys, then on to the next folder
+- **Zoom:** fit, actual size or fill the width, and keep the zoom while you flip
+- **Thumbnails:** the whole folder at a glance; select several to move, copy or convert
+- **Compare:** two pictures side by side, zoomed in step, with a difference view
+- **Slideshow** in full screen or in the window
+- **Info panel:** camera settings, histogram and where the photo was taken
+- **Photos library:** browse your albums like folders, without exporting
+- **Animations and HDR:** GIFs play, iPhone HDR photos shine on HDR screens
+- **Huge pictures:** even Hubble's 4.6 GB Andromeda file opens in about two seconds
+  ([watch it](https://featherview.mynetx.net/#huge))
+- **Lossless turning** of JPEG, HEIC and TIFF
+- **Follow New Files:** shows each photo as it arrives, for tethered shooting
+- **30 languages**, right to left in Arabic and Hebrew
+
+### Batch convert
+
+<img src="docs/screenshots/batch.png" alt="The Batch Convert window with six images listed, WebP output, a resize step and a before-and-after preview" width="720">
+
+- **21 output formats**, among them JPEG, JPEG XL, HEIC, AVIF, WebP and PNG
+- **Steps:** resize, crop, rotate, colours, text, watermark, border
+- **Rename** by pattern, with a live preview and saved presets
+
+### Keys
+
+| Key | Does |
+|---|---|
+| <kbd>→</kbd> <kbd>←</kbd> | Next / previous picture |
+| <kbd>T</kbd> | Thumbnails |
+| <kbd>I</kbd> | Info panel |
+| <kbd>F</kbd> or <kbd>Return</kbd> | Full screen |
+| <kbd>W</kbd> | Slideshow |
+| <kbd>R</kbd> <kbd>L</kbd> | Turn right / left |
+| <kbd>H</kbd> <kbd>V</kbd> | Flip horizontally / vertically |
+| <kbd>F2</kbd> | Rename |
+| <kbd>F7</kbd> <kbd>F8</kbd> | Move / copy to a folder |
+| <kbd>⌘⌫</kbd> | Move to Trash |
+| <kbd>F5</kbd> | Refresh the folder |
+| <kbd>⇧⌘O</kbd> | Open from Photos |
+
+### Formats
+
+- **Everything macOS opens:** JPEG, PNG, HEIC, AVIF, WebP, camera RAW, PSD, SVG, PDF and more
+- **16 formats macOS can't:** QOI, PCX, JPEG XR, BPG, Amiga IFF and others
+- **Layered files** from Photoshop, GIMP, Krita, Procreate and Paint.NET, shown as one picture
+- **Finder thumbnails** and Quick Look previews for the formats only Featherview reads
+
+<details>
+<summary>Every format, and what isn't shown</summary>
 
 - Formats macOS can't read: QOI, PCX/DCX, XBM, XPM, WBMP, Sun Raster, IFF/LBM (including HAM),
   MacPaint, PAM, farbfeld, X Window Dump, FITS (astronomy), Windows animated cursors, Kodak Photo CD
@@ -112,32 +112,27 @@ J. Dalcanton, B. F. Williams, L. C. Johnson (University of Washington, USA), the
 - Layered files, flattened: Photoshop PSB, GIMP XCF, Paint.NET PDN, PaintShop Pro PSP, Krita KRA and
   OpenRaster ORA (their stored flattened image), and Procreate (at full size, turned the way the
   canvas was)
-- Photoshop layers (8-bit RGB): every blend mode, groups, layer and vector masks, clipping masks, Blend
-  If, solid colour, gradient and pattern fills, and most adjustment layers; text, shape and smart objects
-  show the pixels Photoshop stored for them
+- Photoshop files saved without "Maximize Compatibility" (8-bit RGB) are drawn from their layers:
+  every blend mode, groups, layer and vector masks, clipping masks, Blend If, solid colour, gradient
+  and pattern fills, and most adjustment layers; text, shape and smart objects show the pixels
+  Photoshop stored for them
 - Limits: Photoshop layer effects (shadows, glows, strokes) and colour lookups aren't drawn, and
   16-bit, grey or CMYK Photoshop files without a stored composite aren't drawn from their layers;
   in GIMP, Paint.NET and PaintShop Pro files, blend modes other than normal are drawn as normal;
   multichannel PSB and GIMP layer effects aren't shown; `.xcf.gz` isn't read
+- Writes: JPEG, JPEG XL, PNG, HEIC, AVIF, TIFF, WebP, GIF, BMP, JPEG 2000, PDF, PSD, TGA, ICO, ICNS,
+  OpenEXR, PBM, PGM, PPM, QOI and PCX
+- Finder previews: a thumbnail appears after Featherview's first open (switches in System Settings →
+  General → Login Items & Extensions → Quick Look)
 
 </details>
 
-## Converting
-
-- Saves and batch converts to JPEG, JPEG XL, PNG, HEIC, AVIF, TIFF, WebP, GIF, BMP, JPEG 2000, PDF,
-  PSD, TGA, ICO, ICNS, OpenEXR, PBM, PGM, PPM, QOI and PCX
-- Batch convert and rename with crop, resize, rotate, colour, filters, canvas, border, text and
-  watermark steps, a live preview and presets
-- The batch can also write every frame or page of a file as its own image, cut each image into
-  tiles, and set or shift the date taken
-
-In 30 languages, with right-to-left layout in Arabic and Hebrew. Public preview, on the way to 1.0.
-
 ## Updates
 
-About once a day Featherview reads a small feed at `https://featherview.mynetx.net/appcast.xml` (no
-cookies; the request carries only the app's version) and tells you when a new version is out; it never downloads
-or installs anything itself. Turn it off in Settings › Browsing › "Check for updates automatically".
+- Featherview tells you when a new version is out; it never downloads or installs anything by itself.
+- About once a day it reads `https://featherview.mynetx.net/appcast.xml`, sending only its version
+  number, no cookies.
+- Turn it off in Settings › Browsing › "Check for updates automatically".
 
 ## Build
 
